@@ -101,45 +101,47 @@ The client will handle rendering, user input, and local ECS simulation for a res
 
 ## 7. Module and Folder Structure
 
-**Client**
+## 7. Module and Folder Structure
+
+### Client
+
 client/
 ├── assets/
-│ ├── models/ # .glb files for cities, units
-│ └── textures/ # Hex tile textures, UI sprites
+│   ├── models/        # .glb files for cities, units
+│   └── textures/      # Hex tile textures, UI sprites
 ├── ecs/
-│ ├── components/ # Position, Tile, Unit, City, Resource
-│ └── systems/ # InputSystem, AISystem, MovementSystem, ResourceSystem, TurnSystem, RenderSystem
-├── render/ # Three.js scene, camera, lights, hex-grid generator
-├── ui/ # HUD, menus, vanilla-DOM controls & CSS
-├── ai/ # Behavior3js tree definitions and configs
-├── network/ # axios clients, WS handlers
-├── main.js # Bootstraps ECS, rendering, game loop
-└── index.html # Canvas and root DOM elements
+│   ├── components/    # Position, Tile, Unit, City, Resource
+│   └── systems/       # InputSystem, AISystem, MovementSystem, ResourceSystem, TurnSystem, RenderSystem
+├── render/            # Three.js scene, camera, lights, hex-grid generator
+├── ui/                # HUD, menus, vanilla-DOM controls & CSS
+├── ai/                # Behavior3js tree definitions and configs
+├── network/           # axios clients, WS handlers
+├── main.js            # Bootstraps ECS, rendering, game loop
+└── index.html         # Canvas and root DOM elements
 
-**Server**
 server/
 ├── src/
-│ ├── api/
-│ │ ├── matches.rs
-│ │ ├── actions.rs
-│ │ ├── state.rs
-│ ├── game/
-│ │ ├── components.rs # mirrored from client
-│ │ └── systems.rs # TurnSystem, AISystem
-│ ├── db/
-│ │ ├── schema.rs # SQLx migrations
-│ │ └── models.rs
-│ └── logging.rs # centralized logging setup
+│   ├── api/
+│   │   ├── matches.rs
+│   │   ├── actions.rs
+│   │   ├── state.rs
+│   ├── game/
+│   │   ├── components.rs   # mirrored from client
+│   │   └── systems.rs      # TurnSystem, AISystem
+│   ├── db/
+│   │   ├── schema.rs       # SQLx migrations
+│   │   └── models.rs
+│   └── logging.rs          # centralized logging setup
 ├── Cargo.toml
 └── build.rs
 
-**Shared**
 shared/
 ├── protocol/
-│ ├── TurnAction.json
-│ └── GameState.json
+│   ├── TurnAction.json
+│   └── GameState.json
 └── config/
-└── constants.ts (or .rs) # map limits, timeouts
+    └── constants.ts (or .rs)   # map limits, timeouts
+
 
 
 ---
