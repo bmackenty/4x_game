@@ -1,0 +1,122 @@
+"""
+Character Classes and Backgrounds for 4X Game
+"""
+
+character_classes = {
+    "Merchant Captain": {
+        "description": "A savvy trader with connections across the galaxy",
+        "starting_credits": 15000,
+        "starting_ships": ["Aurora-Class Freighter"],
+        "bonuses": {
+            "trade_discount": 0.1,  # 10% better prices
+            "negotiation_bonus": 0.15
+        },
+        "skills": ["Trade Networks", "Market Analysis", "Cargo Optimization"]
+    },
+    "Explorer": {
+        "description": "A fearless pioneer seeking new frontiers",
+        "starting_credits": 8000,
+        "starting_ships": ["Stellar Voyager"],
+        "bonuses": {
+            "exploration_bonus": 0.2,
+            "fuel_efficiency": 0.15
+        },
+        "skills": ["Navigation", "Xenobiology", "Survey Operations"]
+    },
+    "Industrial Magnate": {
+        "description": "A manufacturing expert focused on production",
+        "starting_credits": 12000,
+        "starting_ships": ["Basic Transport"],
+        "starting_platforms": ["Nanoforge Spires"],
+        "bonuses": {
+            "production_efficiency": 0.2,
+            "construction_discount": 0.15
+        },
+        "skills": ["Industrial Management", "Resource Optimization", "Logistics"]
+    },
+    "Military Commander": {
+        "description": "A tactical genius with combat experience",
+        "starting_credits": 10000,
+        "starting_ships": ["Aurora Ascendant"],
+        "bonuses": {
+            "combat_effectiveness": 0.25,
+            "crew_morale": 0.2
+        },
+        "skills": ["Fleet Tactics", "Combat Engineering", "Strategic Planning"]
+    },
+    "Diplomat": {
+        "description": "A skilled negotiator and alliance builder",
+        "starting_credits": 12000,
+        "starting_ships": ["Celestium-Class Communication Ship"],
+        "bonuses": {
+            "diplomatic_relations": 0.3,
+            "information_access": 0.2
+        },
+        "skills": ["Xenolinguistics", "Cultural Analysis", "Treaty Negotiation"]
+    },
+    "Scientist": {
+        "description": "A researcher focused on technological advancement",
+        "starting_credits": 9000,
+        "starting_ships": ["Nebula Drifter"],
+        "starting_stations": ["Archive of Echoes"],
+        "bonuses": {
+            "research_speed": 0.25,
+            "technology_discount": 0.15
+        },
+        "skills": ["Quantum Physics", "Bioengineering", "Data Analysis"]
+    }
+}
+
+character_backgrounds = {
+    "Core Worlds Noble": {
+        "description": "Born into wealth and privilege in the galactic center",
+        "credit_bonus": 5000,
+        "reputation_bonus": 0.2,
+        "traits": ["Well Connected", "Educated", "Resource Rich"]
+    },
+    "Frontier Survivor": {
+        "description": "Hardened by life on the galaxy's dangerous edges",
+        "credit_penalty": -2000,
+        "resilience_bonus": 0.25,
+        "traits": ["Resourceful", "Hardy", "Independent"]
+    },
+    "Corporate Executive": {
+        "description": "Former high-ranking member of a mega-corporation",
+        "credit_bonus": 3000,
+        "business_bonus": 0.15,
+        "traits": ["Business Acumen", "Network Access", "Profit Focused"]
+    },
+    "Military Veteran": {
+        "description": "Retired from galactic military service",
+        "combat_bonus": 0.2,
+        "discipline_bonus": 0.15,
+        "traits": ["Disciplined", "Combat Ready", "Leadership"]
+    },
+    "Academic Researcher": {
+        "description": "Former university professor and researcher",
+        "knowledge_bonus": 0.25,
+        "credit_penalty": -1000,
+        "traits": ["Analytical", "Methodical", "Innovative"]
+    },
+    "Pirate Reformed": {
+        "description": "Former outlaw seeking legitimate opportunities",
+        "credit_penalty": -3000,
+        "street_smart_bonus": 0.3,
+        "traits": ["Cunning", "Adaptable", "Risk Taker"]
+    }
+}
+
+def create_character_stats():
+    """Generate random character statistics"""
+    import random
+    
+    stats = {
+        "leadership": random.randint(1, 10),
+        "technical": random.randint(1, 10), 
+        "diplomacy": random.randint(1, 10),
+        "combat": random.randint(1, 10),
+        "exploration": random.randint(1, 10),
+        "trade": random.randint(1, 10)
+    }
+    
+    return stats

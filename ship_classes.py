@@ -1,4 +1,8 @@
 ship_classes = {
+    "Basic Transport": {
+        "Class": "Starter Vessel",
+        "Description": "A simple, reliable ship provided to new commanders. Basic but functional for early operations."
+    },
     "Aurora Ascendant": {
         "Class": "Light Cruiser",
         "Description": "Known for its speed and agility, often used in reconnaissance missions and quick-strike operations."
