@@ -18,6 +18,7 @@ from economy import EconomicSystem
 from station_manager import ShipUpgradeSystem, SpaceStationManager
 from ai_bots import BotManager
 from factions import FactionSystem
+from professions import ProfessionSystem
 import threading
 import time
 
@@ -41,6 +42,7 @@ class Game:
         self.bot_update_thread = None
         self.game_running = True
         self.faction_system = FactionSystem()
+        self.profession_system = ProfessionSystem()
         
     def display_header(self):
         print("\n" + "="*60)
@@ -73,10 +75,11 @@ class Game:
             print("11. Station Management")
             print("12. AI Bots Status")
             print("13. Faction Relations")
-            print("14. Character Profile")
-            print("15. Save & Exit")
+            print("14. Profession & Career")
+            print("15. Character Profile")
+            print("16. Save & Exit")
             
-            choice = input("\nEnter your choice (1-15): ").strip()
+            choice = input("\nEnter your choice (1-16): ").strip()
             
             if choice == "1":
                 self.browse_manufacturing()
@@ -105,8 +108,10 @@ class Game:
             elif choice == "13":
                 self.faction_relations_menu()
             elif choice == "14":
-                self.character_profile()
+                self.profession_career_menu()
             elif choice == "15":
+                self.character_profile()
+            elif choice == "16":
                 self.save_and_exit()
                 break
             else:
@@ -497,6 +502,20 @@ class Game:
                                 result = self.faction_system.modify_reputation(faction, rep_change, "trade")
                                 print(f"Faction Relations: {result}")
                         
+                        # Profession experience for trading
+                        trade_xp = max(5, quantity // 5)  # 5-20+ XP based on quantity
+                        if self.profession_system.character_profession == "Interstellar Trade Broker":
+                            xp_result = self.profession_system.gain_experience("Interstellar Trade Broker", trade_xp * 2, "major trade")
+                            print(f"Professional Development: {xp_result}")
+                        elif self.profession_system.character_profession == "Intergalactic Trader":
+                            xp_result = self.profession_system.gain_experience("Intergalactic Trader", trade_xp * 2, "trade transaction")
+                            print(f"Professional Development: {xp_result}")
+                        else:
+                            # Generic trade experience for any profession
+                            if self.profession_system.character_profession:
+                                xp_result = self.profession_system.gain_experience(self.profession_system.character_profession, trade_xp, "trade activity")
+                                print(f"Professional Development: {xp_result}")
+                        
                         print(f"\n{message}")
                     else:
                         print(f"\nTrade failed: {message}")
@@ -876,6 +895,9 @@ class Game:
             print("Invalid input.")
             return self.character_creation()
         
+        # Profession selection
+        self.select_profession()
+        
         # Generate character stats
         self.character_stats = create_character_stats()
         
@@ -887,7 +909,67 @@ class Game:
         print(f"\nCharacter created successfully!")
         print(f"Final starting credits: {self.credits:,}")
         print(f"Starting ships: {', '.join(self.owned_ships)}")
+        if hasattr(self.profession_system, 'character_profession') and self.profession_system.character_profession:
+            print(f"Profession: {self.profession_system.character_profession}")
         input("\nPress Enter to continue...")
+
+    def select_profession(self):
+        """Select character profession during creation"""
+        from professions import professions, profession_categories
+        
+        print("\n" + "="*60)
+        print("           PROFESSION SELECTION")
+        print("="*60)
+        print("Choose your character's profession:")
+        
+        # Display by categories
+        all_profs = []
+        for category, prof_list in profession_categories.items():
+            print(f"\n[{category.upper()}]")
+            print("-" * (len(category) + 2))
+            
+            for prof_name in prof_list:
+                if prof_name in professions:
+                    prof_num = len(all_profs) + 1
+                    all_profs.append(prof_name)
+                    prof_info = professions[prof_name]
+                    print(f"{prof_num:2d}. {prof_name}")
+                    print(f"    {prof_info['description']}")
+        
+        # Add remaining professions not in categories
+        remaining_profs = [p for p in professions.keys() if p not in all_profs]
+        if remaining_profs:
+            print(f"\n[OTHER PROFESSIONS]")
+            print("-" * 18)
+            for prof_name in remaining_profs:
+                prof_num = len(all_profs) + 1
+                all_profs.append(prof_name)
+                prof_info = professions[prof_name]
+                print(f"{prof_num:2d}. {prof_name}")
+                print(f"    {prof_info['description']}")
+        
+        try:
+            choice = int(input(f"\nSelect profession (1-{len(all_profs)}): ")) - 1
+            if 0 <= choice < len(all_profs):
+                selected_profession = all_profs[choice]
+                success = self.profession_system.assign_profession(selected_profession)
+                
+                if success:
+                    prof_info = professions[selected_profession]
+                    print(f"\nSelected: {selected_profession}")
+                    print(f"Category: {prof_info['category']}")
+                    print(f"Requirements: {', '.join(prof_info['requirements'])}")
+                    
+                    # Give starting benefits
+                    benefits = self.profession_system.get_profession_bonuses(selected_profession)
+                    if benefits:
+                        print(f"Starting Benefits: {', '.join(benefits[:2])}")  # Show first 2
+                else:
+                    print("Error assigning profession.")
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input. Skipping profession selection.")
 
     def character_profile(self):
         print("\n" + "="*60)
@@ -905,6 +987,20 @@ class Game:
         print(f"Class: {self.character_class}")
         print(f"Background: {self.character_background}")
         print(f"Credits: {self.credits:,}")
+        
+        # Show profession info
+        if self.profession_system.character_profession:
+            prof_level = self.profession_system.profession_levels.get(self.profession_system.character_profession, 1)
+            prof_xp = self.profession_system.profession_experience.get(self.profession_system.character_profession, 0)
+            print(f"Profession: {self.profession_system.character_profession} (Level {prof_level})")
+            print(f"Professional Experience: {prof_xp} XP")
+            
+            # Show active benefits
+            benefits = self.profession_system.get_profession_bonuses(self.profession_system.character_profession)
+            if benefits:
+                print(f"Active Benefits: {len(benefits)} skills unlocked")
+        else:
+            print(f"Profession: None assigned")
         
         print("\nCHARACTER STATISTICS:")
         for stat, value in self.character_stats.items():
@@ -1600,6 +1696,192 @@ class Game:
         if self.navigation.current_ship:
             x, y, z = self.navigation.current_ship.coordinates
             print(f"\nCurrent Position: ({x}, {y}, {z})")
+        
+        input("\nPress Enter to continue...")
+
+    def profession_career_menu(self):
+        """Profession and career management menu"""
+        while True:
+            print("\n" + "="*60)
+            print("           PROFESSION & CAREER")
+            print("="*60)
+            
+            print("1. View Your Profession")
+            print("2. Browse All Professions")
+            print("3. View Job Opportunities")
+            print("4. Check Experience & Levels")
+            print("5. Profession Benefits")
+            print("6. Back to Main Menu")
+            
+            choice = input("\nEnter your choice (1-6): ").strip()
+            
+            if choice == "1":
+                self.view_current_profession()
+            elif choice == "2":
+                self.browse_all_professions()
+            elif choice == "3":
+                self.view_job_opportunities()
+            elif choice == "4":
+                self.check_profession_experience()
+            elif choice == "5":
+                self.view_profession_benefits()
+            elif choice == "6":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                input("\nPress Enter to continue...")
+    
+    def view_current_profession(self):
+        """Display current character profession details"""
+        print("\n" + "="*60)
+        print("           YOUR PROFESSION")
+        print("="*60)
+        
+        if self.profession_system.character_profession:
+            prof_info = self.profession_system.get_profession_info(self.profession_system.character_profession)
+            
+            print(f"Current Profession: {self.profession_system.character_profession}")
+            print(f"Category: {prof_info['category']}")
+            print(f"Description: {prof_info['description']}")
+            print(f"Experience: {prof_info['player_experience']} XP")
+            print(f"Level: {prof_info['player_level']}/10")
+            
+            # Show current benefits
+            benefits = self.profession_system.get_profession_bonuses(self.profession_system.character_profession)
+            if benefits:
+                print(f"\nCurrent Benefits:")
+                for benefit in benefits:
+                    print(f"  • {benefit}")
+            
+            # Show requirements
+            print(f"\nRequirements: {', '.join(prof_info['requirements'])}")
+            
+        else:
+            print("No profession assigned.")
+            print("Visit Character Creation to select a profession.")
+        
+        input("\nPress Enter to continue...")
+    
+    def browse_all_professions(self):
+        """Browse and view details of all available professions"""
+        from professions import professions, profession_categories
+        
+        print("\n" + "="*60)
+        print("           ALL PROFESSIONS")
+        print("="*60)
+        
+        # Group by category
+        for category, prof_list in profession_categories.items():
+            print(f"\n[{category.upper()}]")
+            print("-" * (len(category) + 2))
+            
+            for prof_name in prof_list:
+                if prof_name in professions:
+                    prof_info = professions[prof_name]
+                    level = self.profession_system.profession_levels.get(prof_name, 0)
+                    
+                    status = "★" if prof_name == self.profession_system.character_profession else ""
+                    level_str = f" (Lv.{level})" if level > 0 else ""
+                    
+                    print(f"• {prof_name}{status}{level_str}")
+                    print(f"  {prof_info['description']}")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_job_opportunities(self):
+        """View available job opportunities"""
+        print("\n" + "="*60)
+        print("           JOB OPPORTUNITIES")
+        print("="*60)
+        
+        # Generate jobs based on current location
+        current_system_type = None
+        if self.navigation.current_ship:
+            coords = self.navigation.current_ship.coordinates
+            system = self.navigation.galaxy.get_system_at(*coords)
+            if system:
+                current_system_type = system['type']
+        
+        jobs = self.profession_system.generate_job_opportunities(current_system_type)
+        
+        if jobs:
+            for i, job in enumerate(jobs, 1):
+                player_level = self.profession_system.profession_levels.get(job['profession'], 0)
+                qualified = "✓" if player_level > 0 else "○"
+                
+                print(f"{i}. {job['title']} [{job['context']}] {qualified}")
+                print(f"   Profession: {job['profession']}")
+                print(f"   Pay: {job['pay']:,} credits")
+                print(f"   Experience: +{job['experience_reward']} XP")
+                print(f"   Duration: {job['duration']} time units")
+                print(f"   Requirements: {', '.join(job['requirements'])}")
+                print()
+        else:
+            print("No job opportunities available at this time.")
+            print("Try visiting different systems or developing your skills!")
+        
+        input("\nPress Enter to continue...")
+    
+    def check_profession_experience(self):
+        """Check experience and levels in all professions"""
+        print("\n" + "="*60)
+        print("           EXPERIENCE & LEVELS")
+        print("="*60)
+        
+        if self.profession_system.profession_experience:
+            # Sort by experience
+            sorted_profs = sorted(
+                self.profession_system.profession_experience.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )
+            
+            print("Your profession development:")
+            
+            for prof_name, experience in sorted_profs:
+                level = self.profession_system.profession_levels.get(prof_name, 1)
+                next_level_xp = level * 100
+                
+                current_marker = "★" if prof_name == self.profession_system.character_profession else " "
+                
+                print(f"{current_marker} {prof_name:<35} Level {level}/10 ({experience}/{next_level_xp} XP)")
+                
+                # Show progress bar
+                if level < 10:
+                    current_level_xp = experience - ((level - 1) * 100)
+                    progress = current_level_xp / 100
+                    bar_length = 20
+                    filled = int(progress * bar_length)
+                    bar = "█" * filled + "░" * (bar_length - filled)
+                    print(f"   [{bar}] {current_level_xp}/100 to next level")
+        else:
+            print("No profession experience yet.")
+            print("Complete activities related to your profession to gain experience!")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_profession_benefits(self):
+        """View benefits from all known professions"""
+        print("\n" + "="*60)
+        print("           PROFESSION BENEFITS")
+        print("="*60)
+        
+        total_benefits = []
+        
+        for prof_name, level in self.profession_system.profession_levels.items():
+            if level > 0:
+                benefits = self.profession_system.get_profession_bonuses(prof_name)
+                if benefits:
+                    print(f"\n{prof_name} (Level {level}):")
+                    for benefit in benefits:
+                        print(f"  • {benefit}")
+                        total_benefits.append(benefit)
+        
+        if not total_benefits:
+            print("No profession benefits unlocked yet.")
+            print("Develop your profession skills to unlock powerful benefits!")
+        else:
+            print(f"\nTotal Active Benefits: {len(total_benefits)}")
         
         input("\nPress Enter to continue...")
 

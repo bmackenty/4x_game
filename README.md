@@ -260,9 +260,43 @@ Engage with 30 unique galactic factions, each with distinct philosophies and goa
 - **Keepers of the Spire**: Ancient guardians protecting mysterious alien artifacts
 - **The Brewmasters' Guild**: Master fermenters creating exotic beverages across space
 
+## Profession System
+
+Choose from 30+ unique sci-fi professions that shape your character's abilities and opportunities:
+
+### Profession Categories
+- **Scientific**: Astrobiologist, Dimensional Physicist, Quantum Computer Scientist, Galactic Historian
+- **Engineering**: Quantum Network Engineer, Terraforming Engineer, Gravity Technician, Energy Harvesting Technician
+- **Medical**: Nanomedic, Cybernetic Enhancement Specialist, Regenerative Medicine Specialist, Xeno-neurologist
+- **Military**: Temporal Investigator, Chrono-Marine, Dimensional Rift Stabilizer
+- **Artistic**: Virtual Reality Architect, Holographic Entertainment Designer, Interstellar Diplomat
+- **Mystical**: Soul Architect, Reality Weaver, Void Architect, Etheric Communicator
+
+### Profession Features
+- **Character Specialization**: Each profession offers unique abilities and perspectives
+- **Experience System**: Gain XP through related activities to level up (1-10 levels)
+- **Progressive Benefits**: Unlock new abilities and bonuses as you advance in your profession
+- **Job Opportunities**: Find profession-specific work in different star systems
+- **Activity Bonuses**: Get enhanced rewards when performing activities related to your expertise
+- **Career Development**: Track experience across multiple professions
+
+### Level Progression
+- **Level 1-2**: Base benefits and professional recognition
+- **Level 3-5**: Intermediate abilities and enhanced effectiveness
+- **Level 6-8**: Advanced capabilities and mastery of your field  
+- **Level 9-10**: Master-level abilities and transcendent skills
+
+### Sample Professions
+- **Astrobiologist**: Study alien life forms and ecosystems across the galaxy
+- **Quantum Navigator**: Master quantum propulsion systems for impossible journeys
+- **Time Travel Coordinator**: Regulate temporal activities and maintain timeline integrity
+- **Reality Weaver**: Manipulate the fabric of local reality using advanced energy fields
+- **Interstellar Trade Broker**: Facilitate complex trade agreements between star systems
+
 ## File Structure
 
 - `game.py` - Main game frontend and logic
+- `professions.py` - 30+ sci-fi professions with experience and career progression
 - `factions.py` - 30 galactic factions with diplomacy and territory systems
 - `ai_bots.py` - AI bot system with autonomous NPCs
 - `economy.py` - Dynamic supply/demand economic system with market simulation
