@@ -148,7 +148,7 @@ class AIBot:
         
         # Check if we can reach the target
         if self.ship.can_jump_to(target_coords, galaxy):
-            success, message = self.ship.jump_to(target_coords, galaxy)
+            success, message = self.ship.jump_to(target_coords, galaxy, self.game)
             if success:
                 # Mark system as visited
                 system = galaxy.get_system_at(*target_coords)
@@ -174,7 +174,7 @@ class AIBot:
                         best_system = system
                 
                 if best_system and self.ship.can_jump_to(best_system['coordinates'], galaxy):
-                    self.ship.jump_to(best_system['coordinates'], galaxy)
+                    self.ship.jump_to(best_system['coordinates'], galaxy, self.game)
     
     def execute_goal_action(self):
         """Execute action at goal location"""

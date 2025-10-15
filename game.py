@@ -45,6 +45,28 @@ class Game:
         self.faction_system = FactionSystem()
         self.profession_system = ProfessionSystem()
         self.galactic_history = GalacticHistory()
+    
+    def initialize_new_game(self, character_data):
+        """Initialize a new game with character data"""
+        try:
+            # Set character data
+            self.player_name = character_data.get('name', 'Captain')
+            self.character_class = character_data.get('class_name', 'Explorer')
+            self.character_background = character_data.get('background_name', 'Frontier Survivor')
+            
+            # Create character stats based on class and background
+            from characters import create_character_stats
+            self.character_stats = create_character_stats(
+                character_data.get('class', '1'), 
+                character_data.get('background', 'a')
+            )
+            
+            print(f"Character initialized: {self.player_name} ({self.character_class})")
+            return True
+            
+        except Exception as e:
+            print(f"Error initializing character: {e}")
+            return False
         
     def display_header(self):
         print("\n" + "="*60)

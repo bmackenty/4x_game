@@ -132,7 +132,7 @@ class Ship:
         
         return distance <= self.jump_range and fuel_needed <= self.fuel
     
-    def jump_to(self, target_coords, galaxy):
+    def jump_to(self, target_coords, galaxy, game=None):
         """Jump to target coordinates"""
         if self.can_jump_to(target_coords, galaxy):
             distance = galaxy.calculate_distance(self.coordinates, target_coords)
@@ -145,9 +145,9 @@ class Ship:
             system = galaxy.get_system_at(*target_coords)
             if system:
                 system["visited"] = True
-                # Update market when visiting
-                if hasattr(self.game, 'economy') and system["name"] in self.game.economy.markets:
-                    self.game.economy.update_market(system["name"])
+                # Update market when visiting (if game reference provided)
+                if game and hasattr(game, 'economy') and system["name"] in game.economy.markets:
+                    game.economy.update_market(system["name"])
             
             return True, f"Jumped to {target_coords}. Used {fuel_needed} fuel."
         else:
@@ -336,7 +336,7 @@ class NavigationSystem:
             
             confirm = input("\nProceed with jump? (y/n): ")
             if confirm.lower() == 'y':
-                success, message = self.current_ship.jump_to(target, self.galaxy)
+                success, message = self.current_ship.jump_to(target, self.galaxy, self.game)
                 print(f"\n{message}")
                 
                 # Check what's at the destination
@@ -379,7 +379,7 @@ class NavigationSystem:
                     print("Insufficient fuel!")
                     return
                 
-                success, message = self.current_ship.jump_to(system["coordinates"], self.galaxy)
+                success, message = self.current_ship.jump_to(system["coordinates"], self.galaxy, self.game)
                 print(f"\n{message}")
                 
                 if success:
