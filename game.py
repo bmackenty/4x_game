@@ -54,6 +54,33 @@ class Game:
         if self.character_class:
             print(f"Class: {self.character_class} | Background: {self.character_background}")
         print(f"Credits: {self.credits:,}")
+        
+        # Display current ship information
+        if self.navigation.current_ship:
+            ship = self.navigation.current_ship
+            x, y, z = ship.coordinates
+            cargo_count = sum(ship.cargo.values()) if ship.cargo else 0
+            
+            print(f"\n[SHIP] Current Ship: {ship.name} ({ship.ship_class})")
+            print(f"   Location: ({x}, {y}, {z}) | Fuel: {ship.fuel}/{ship.max_fuel}")
+            print(f"   Cargo: {cargo_count}/{ship.max_cargo} units")
+            
+            # Show cargo details if any
+            if ship.cargo:
+                cargo_items = []
+                for item, quantity in ship.cargo.items():
+                    if quantity > 0:
+                        cargo_items.append(f"{item}: {quantity}")
+                if cargo_items:
+                    print(f"   Contents: {', '.join(cargo_items)}")
+            
+            # Show current system if at one
+            system = self.navigation.galaxy.get_system_at(x, y, z)
+            if system:
+                print(f"   System: {system['name']} ({system['type']})")
+        else:
+            print("\n[SHIP] No ship selected - use Navigation menu to select a vessel")
+        
         print("="*60)
 
     def main_menu(self):
@@ -182,6 +209,34 @@ class Game:
                 print()
         
         input("\nPress Enter to return to main menu...")
+
+    def auto_select_ship(self):
+        """Automatically select the first available ship if none is currently selected"""
+        if self.navigation.current_ship:
+            return  # Already have a ship selected
+        
+        all_ships = self.owned_ships + [ship['name'] for ship in self.custom_ships]
+        
+        if all_ships:
+            # Select the first available ship
+            ship_name = all_ships[0]
+            
+            # Determine ship class
+            if ship_name in self.owned_ships:
+                ship_class = ship_name
+            else:
+                # Custom ship - find its class
+                for custom_ship in self.custom_ships:
+                    if custom_ship['name'] == ship_name:
+                        ship_class = "Custom Ship"
+                        break
+                else:
+                    ship_class = "Custom Ship"
+            
+            # Create and select the ship
+            from navigation import Ship
+            self.navigation.current_ship = Ship(ship_name, ship_class)
+            print(f"\n[SHIP] Automatically selected ship: {ship_name}")
 
     def view_stations(self):
         print("\n" + "="*60)
@@ -1110,11 +1165,10 @@ class Game:
         print(f"\nDescription:")
         print(f"{civ_data['description']}")
         
-        print(f"\nRemnant Types:")
-        for remnant in civ_data['remnant_types']:
-            print(f"  • {remnant}")
+        print(f"\nRemnant Type:")
+        print(f"  • {civ_data['remnant_type']}")
         
-        print(f"\nArchaeological Difficulty: {civ_data['archaeological_difficulty']}/10")
+        print(f"\nArchaeological Value: {civ_data['archaeological_value']}")
         
         if civ_data.get('discovered', False):
             print(f"\nDISCOVERY STATUS: CONFIRMED")
@@ -2553,6 +2607,9 @@ class Game:
         print("\nNow let's create your character...")
         input("Press Enter to proceed to character creation...")
         self.character_creation()
+        
+        # Automatically select the first available ship if none is selected
+        self.auto_select_ship()
         
         print(f"\nYou begin your journey with {self.credits:,} credits.")
         print("Use them wisely to build your galactic empire!")
