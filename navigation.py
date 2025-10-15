@@ -197,6 +197,14 @@ class NavigationSystem:
             print(f"Threat Level: {system['threat_level']}/10")
             print(f"Description: {system['description']}")
             
+            # Check for faction control
+            if hasattr(self.game, 'faction_system'):
+                controlling_faction = self.game.faction_system.get_system_faction((x, y, z))
+                if controlling_faction:
+                    rep_status = self.game.faction_system.get_reputation_status(controlling_faction)
+                    print(f"\nControlled by: {controlling_faction}")
+                    print(f"Your Standing: {rep_status}")
+            
             # Check for space stations
             if hasattr(self.game, 'station_manager') and self.game.station_manager:
                 station = self.game.station_manager.get_station_at_location((x, y, z))
@@ -253,6 +261,12 @@ class NavigationSystem:
                     bot = self.game.bot_manager.get_bot_at_location(coords)
                     if bot:
                         extra_info.append("🤖")
+                
+                # Check for faction control
+                if hasattr(self.game, 'faction_system'):
+                    faction = self.game.faction_system.get_system_faction(coords)
+                    if faction:
+                        extra_info.append("⚑")
                 
                 extra_str = " ".join(extra_info)
                 if extra_str:
@@ -442,3 +456,7 @@ class NavigationSystem:
             from ai_bots import BotManager
             self.game.bot_manager = BotManager(self.game)
             self.game.start_bot_update_thread()
+        
+        # Initialize faction territories
+        if hasattr(self.game, 'faction_system'):
+            self.game.faction_system.assign_faction_territories(self.galaxy)

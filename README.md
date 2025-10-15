@@ -191,9 +191,80 @@ Purchase and manage orbital facilities throughout the galaxy:
 - **Empire Building**: Establish presence across multiple systems
 - **Investment Growth**: Station upgrades increase long-term profitability
 
+## AI Bot System
+
+Interact with 5 autonomous AI bots that live and act in your galaxy:
+
+### Bot Types
+- **Captain Vex** (Trader): Focuses on commerce and trade routes
+- **Dr. Cosmos** (Researcher): Seeks research stations and data collection  
+- **Explorer Zara** (Explorer): Discovers new systems and surveys space
+- **Industrialist Kane** (Industrialist): Builds infrastructure and collects resources
+- **Ambassador Nova** (Diplomat): Establishes relations and visits core worlds
+
+### Bot Features
+- **Autonomous Behavior**: Bots move independently through the galaxy pursuing their goals
+- **Dynamic Personalities**: Each bot has unique traits affecting risk tolerance, trading, and exploration
+- **Economic Participation**: Bots buy and sell goods, purchase stations, and compete for resources
+- **Player Interaction**: Meet bots at star systems for dialogue, trading, and reputation building
+- **Real-time Activity**: Bots operate continuously in background while you play
+- **Peaceful NPCs**: No hostile actions - focused on cooperation and trade
+
+### Interaction System
+- **Location-based Encounters**: Meet bots when visiting the same star systems
+- **Dialogue Options**: Greetings, trade discussions, system information exchange
+- **Reputation System**: Build relationships through positive interactions
+- **Trading Opportunities**: View bot inventories and trading patterns
+- **Status Monitoring**: Track all bot locations, goals, and activities
+
+### Bot Behaviors
+- **Goal-driven AI**: Bots pursue specific objectives based on their type
+- **Resource Management**: Autonomous fuel, credit, and inventory management
+- **Market Participation**: Active buying/selling in the economic system
+- **Exploration**: Bots discover and visit new star systems
+- **Station Competition**: Bots can purchase available space stations
+
+## Faction System
+
+Engage with 30 unique galactic factions, each with distinct philosophies and goals:
+
+### Major Faction Categories
+- **Technology Focused**: The Technotheos, Quantum Artificers Guild, Icaron Collective
+- **Research Oriented**: Veritas Covenant, Scholara Nexus, Chemists' Concord
+- **Trade & Commerce**: Stellar Nexus Guild, Collective of Commonality, Galactic Salvage Guild
+- **Mystical Orders**: Harmonic Resonance Collective, Voidbound Monks, Triune Daughters
+- **Cultural Groups**: Galactic Circus, Provocateurs' Guild, Harmonic Synaxis
+- **Industrial Powers**: Gearwrights Guild, Ironclad Collective
+- **Exploration Guilds**: Stellar Cartographers Alliance, Map Makers, Navigators
+
+### Faction Features
+- **Territorial Control**: Factions control 1-3 star systems each across the galaxy
+- **Reputation System**: Build relationships from Enemy (-100) to Allied (+100)
+- **Dynamic Activities**: Each faction pursues goals based on their philosophy and focus
+- **Reputation Benefits**: Unlock faction-specific services, technologies, and bonuses
+- **Trade Preferences**: Each faction favors specific commodities and resources
+- **Political Complexity**: Factions have relationships with each other affecting diplomacy
+
+### Faction Interactions
+- **Territory Indicators**: Systems controlled by factions marked with ⚑ in navigation
+- **Reputation Display**: View your standing with all 30 factions
+- **Faction Details**: Comprehensive information about each faction's goals and culture
+- **Trade Benefits**: Gain reputation through commerce in faction territories
+- **Activity Monitoring**: Track what each faction is currently doing
+- **Diplomatic Consequences**: Actions affect your reputation with controlling factions
+
+### Sample Factions
+- **The Veritas Covenant**: Truth-seeking researchers pursuing universal knowledge
+- **Celestial Marauders**: Space pirates roaming the galaxy for treasure and freedom
+- **The Gaian Enclave**: Nature guardians balancing technology with ecological harmony
+- **Keepers of the Spire**: Ancient guardians protecting mysterious alien artifacts
+- **The Brewmasters' Guild**: Master fermenters creating exotic beverages across space
+
 ## File Structure
 
 - `game.py` - Main game frontend and logic
+- `factions.py` - 30 galactic factions with diplomacy and territory systems
+- `ai_bots.py` - AI bot system with autonomous NPCs
 - `economy.py` - Dynamic supply/demand economic system with market simulation
 - `station_manager.py` - Ship upgrade system and space station management
 - `navigation.py` - 3D space navigation and galaxy generation system

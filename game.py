@@ -17,6 +17,7 @@ from navigation import NavigationSystem
 from economy import EconomicSystem
 from station_manager import ShipUpgradeSystem, SpaceStationManager
 from ai_bots import BotManager
+from factions import FactionSystem
 import threading
 import time
 
@@ -39,6 +40,7 @@ class Game:
         self.bot_manager = None  # Will be initialized after navigation
         self.bot_update_thread = None
         self.game_running = True
+        self.faction_system = FactionSystem()
         
     def display_header(self):
         print("\n" + "="*60)
@@ -70,10 +72,11 @@ class Game:
             print("10. Navigate Space")
             print("11. Station Management")
             print("12. AI Bots Status")
-            print("13. Character Profile")
-            print("14. Save & Exit")
+            print("13. Faction Relations")
+            print("14. Character Profile")
+            print("15. Save & Exit")
             
-            choice = input("\nEnter your choice (1-14): ").strip()
+            choice = input("\nEnter your choice (1-15): ").strip()
             
             if choice == "1":
                 self.browse_manufacturing()
@@ -100,8 +103,10 @@ class Game:
             elif choice == "12":
                 self.ai_bots_menu()
             elif choice == "13":
-                self.character_profile()
+                self.faction_relations_menu()
             elif choice == "14":
+                self.character_profile()
+            elif choice == "15":
                 self.save_and_exit()
                 break
             else:
@@ -482,6 +487,15 @@ class Game:
                             self.inventory[commodity] += quantity
                         else:
                             self.inventory[commodity] = quantity
+                        
+                        # Faction reputation bonus for trade
+                        if self.navigation.current_ship:
+                            coords = self.navigation.current_ship.coordinates
+                            faction = self.faction_system.get_system_faction(coords)
+                            if faction:
+                                rep_change = max(1, quantity // 10)  # 1 rep per 10 units
+                                result = self.faction_system.modify_reputation(faction, rep_change, "trade")
+                                print(f"Faction Relations: {result}")
                         
                         print(f"\n{message}")
                     else:
@@ -1587,6 +1601,224 @@ class Game:
             x, y, z = self.navigation.current_ship.coordinates
             print(f"\nCurrent Position: ({x}, {y}, {z})")
         
+        input("\nPress Enter to continue...")
+
+    def faction_relations_menu(self):
+        """Faction relations and diplomacy menu"""
+        while True:
+            print("\n" + "="*60)
+            print("           FACTION RELATIONS")
+            print("="*60)
+            
+            print("1. View All Factions")
+            print("2. View Faction Details")
+            print("3. Check Faction Territories")
+            print("4. View Your Reputation")
+            print("5. Faction Activities")
+            print("6. Back to Main Menu")
+            
+            choice = input("\nEnter your choice (1-6): ").strip()
+            
+            if choice == "1":
+                self.view_all_factions()
+            elif choice == "2":
+                self.view_faction_details()
+            elif choice == "3":
+                self.check_faction_territories()
+            elif choice == "4":
+                self.view_player_reputation()
+            elif choice == "5":
+                self.view_faction_activities()
+            elif choice == "6":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                input("\nPress Enter to continue...")
+    
+    def view_all_factions(self):
+        """Display all factions with basic info"""
+        print("\n" + "="*60)
+        print("           GALACTIC FACTIONS")
+        print("="*60)
+        
+        from factions import factions
+        
+        # Group by philosophy
+        philosophies = {}
+        for name, data in factions.items():
+            phil = data['philosophy']
+            if phil not in philosophies:
+                philosophies[phil] = []
+            philosophies[phil].append((name, data))
+        
+        for philosophy, faction_list in philosophies.items():
+            print(f"\n[{philosophy.upper()}]")
+            print("-" * (len(philosophy) + 2))
+            
+            for name, data in faction_list:
+                rep_status = self.faction_system.get_reputation_status(name)
+                rep_value = self.faction_system.player_relations.get(name, 0)
+                
+                print(f"• {name}")
+                print(f"  Focus: {data['primary_focus']} | Reputation: {rep_status} ({rep_value:+d})")
+                print(f"  Government: {data['government_type']}")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_faction_details(self):
+        """View detailed information about a specific faction"""
+        from factions import factions
+        
+        print("\n" + "="*60)
+        print("           FACTION DETAILS")
+        print("="*60)
+        
+        faction_names = list(factions.keys())
+        
+        print("Select a faction:")
+        for i, name in enumerate(faction_names, 1):
+            print(f"{i:2d}. {name}")
+        
+        try:
+            choice = int(input(f"\nEnter faction number (1-{len(faction_names)}): ")) - 1
+            if 0 <= choice < len(faction_names):
+                faction_name = faction_names[choice]
+                faction_info = self.faction_system.get_faction_info(faction_name)
+                
+                if faction_info:
+                    print(f"\n{'='*60}")
+                    print(f"           {faction_name.upper()}")
+                    print(f"{'='*60}")
+                    
+                    print(f"Philosophy: {faction_info['philosophy']}")
+                    print(f"Primary Focus: {faction_info['primary_focus']}")
+                    print(f"Government: {faction_info['government_type']}")
+                    print(f"Description: {faction_info['description']}")
+                    
+                    rep_status = self.faction_system.get_reputation_status(faction_name)
+                    rep_value = faction_info['player_reputation']
+                    print(f"\nYour Reputation: {rep_status} ({rep_value:+d})")
+                    
+                    print(f"Current Activity: {faction_info['current_activity']}")
+                    print(f"Controlled Systems: {faction_info['territory_count']}")
+                    
+                    # Show benefits available at current reputation
+                    benefits = self.faction_system.get_faction_benefits(faction_name)
+                    if benefits:
+                        print(f"\nAvailable Benefits:")
+                        for benefit in benefits:
+                            print(f"  • {benefit}")
+                    
+                    print(f"\nPreferred Trades:")
+                    for trade in faction_info['preferred_trades']:
+                        print(f"  • {trade}")
+                    
+                    print(f"\nTypical Activities:")
+                    for activity in faction_info['typical_activities']:
+                        print(f"  • {activity}")
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def check_faction_territories(self):
+        """View faction control of star systems"""
+        print("\n" + "="*60)
+        print("           FACTION TERRITORIES")
+        print("="*60)
+        
+        # Initialize territories if not done
+        if not self.faction_system.faction_territories:
+            self.faction_system.assign_faction_territories(self.navigation.galaxy)
+        
+        controlled_systems = 0
+        uncontrolled_systems = 0
+        
+        print("Faction-controlled systems:")
+        for faction_name, territories in self.faction_system.faction_territories.items():
+            if territories:
+                print(f"\n{faction_name}:")
+                controlled_systems += len(territories)
+                
+                for coords in territories:
+                    system = self.navigation.galaxy.get_system_at(*coords)
+                    if system:
+                        print(f"  • {system['name']} - {coords}")
+        
+        total_systems = len(self.navigation.galaxy.systems)
+        uncontrolled_systems = total_systems - controlled_systems
+        
+        print(f"\nSummary:")
+        print(f"  Faction-controlled: {controlled_systems}")
+        print(f"  Independent: {uncontrolled_systems}")
+        print(f"  Total systems: {total_systems}")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_player_reputation(self):
+        """View player's reputation with all factions"""
+        print("\n" + "="*60)
+        print("           YOUR REPUTATION")
+        print("="*60)
+        
+        # Sort factions by reputation (highest first)
+        sorted_factions = sorted(
+            self.faction_system.player_relations.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        print("Reputation standings:")
+        
+        for faction_name, reputation in sorted_factions:
+            status = self.faction_system.get_reputation_status(faction_name)
+            
+            # Color coding based on reputation
+            if reputation >= 50:
+                marker = "✓"
+            elif reputation >= 0:
+                marker = "○"
+            elif reputation >= -25:
+                marker = "△"
+            else:
+                marker = "✗"
+            
+            print(f"{marker} {faction_name:<35} {status:<12} ({reputation:+3d})")
+        
+        # Show summary
+        allied = sum(1 for r in sorted_factions if r[1] >= 75)
+        friendly = sum(1 for r in sorted_factions if 50 <= r[1] < 75)
+        neutral = sum(1 for r in sorted_factions if -25 <= r[1] < 50)
+        hostile = sum(1 for r in sorted_factions if r[1] < -25)
+        
+        print(f"\nSummary:")
+        print(f"  Allied: {allied}")
+        print(f"  Friendly: {friendly}")
+        print(f"  Neutral: {neutral}")
+        print(f"  Hostile: {hostile}")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_faction_activities(self):
+        """View current faction activities"""
+        print("\n" + "="*60)
+        print("           FACTION ACTIVITIES")
+        print("="*60)
+        
+        from factions import factions
+        
+        for faction_name in factions.keys():
+            activity = self.faction_system.faction_activities.get(faction_name, "Unknown")
+            rep_status = self.faction_system.get_reputation_status(faction_name)
+            
+            print(f"{faction_name}:")
+            print(f"  Current Activity: {activity}")
+            print(f"  Your Standing: {rep_status}")
+            print()
+        
+        print("Note: Faction activities change periodically based on their goals and circumstances.")
         input("\nPress Enter to continue...")
 
     def start_bot_update_thread(self):
