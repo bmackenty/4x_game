@@ -223,6 +223,20 @@ class NavigationSystem:
                     print(f"\nAI Bot Present: {bot.name} ({bot.bot_type})")
                     print(f"Bot Activity: {bot.current_goal}")
                     print(f"Bot Attitude: {bot.personality['type']}")
+            
+            # Check for archaeological sites at current location
+            if hasattr(self.game, 'galactic_history'):
+                sites = self.game.galactic_history.get_archaeological_sites_near(x, y, z, radius=1)
+                if sites:
+                    print(f"\n🏛️ Archaeological Sites Detected: {len(sites)}")
+                    for site in sites:
+                        coords = site['coordinates']
+                        if coords == (x, y, z):  # Exact location
+                            status = "EXCAVATED" if site.get('excavated', False) else "Unexplored"
+                            print(f"  • {site['name']} ({site['civilization']}) - {status}")
+                        else:
+                            distance = ((x - coords[0])**2 + (y - coords[1])**2 + (z - coords[2])**2)**0.5
+                            print(f"  • {site['name']} - {distance:.1f} units away")
         else:
             print("\nCurrent Location: Deep Space")
     
@@ -267,6 +281,12 @@ class NavigationSystem:
                     faction = self.game.faction_system.get_system_faction(coords)
                     if faction:
                         extra_info.append("⚑")
+                
+                # Check for archaeological sites
+                if hasattr(self.game, 'galactic_history'):
+                    sites = self.game.galactic_history.get_archaeological_sites_near(coords[0], coords[1], coords[2], radius=1)
+                    if sites:
+                        extra_info.append("🏛️")
                 
                 extra_str = " ".join(extra_info)
                 if extra_str:
@@ -460,3 +480,8 @@ class NavigationSystem:
         # Initialize faction territories
         if hasattr(self.game, 'faction_system'):
             self.game.faction_system.assign_faction_territories(self.galaxy)
+        
+        # Initialize archaeological sites
+        if hasattr(self.game, 'galactic_history'):
+            sites_placed = self.game.galactic_history.place_archaeological_sites(self.galaxy)
+            print(f"Galactic history initialized: {sites_placed} archaeological sites placed")

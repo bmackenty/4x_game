@@ -19,6 +19,7 @@ from station_manager import ShipUpgradeSystem, SpaceStationManager
 from ai_bots import BotManager
 from factions import FactionSystem
 from professions import ProfessionSystem
+from galactic_history import GalacticHistory
 import threading
 import time
 
@@ -43,6 +44,7 @@ class Game:
         self.game_running = True
         self.faction_system = FactionSystem()
         self.profession_system = ProfessionSystem()
+        self.galactic_history = GalacticHistory()
         
     def display_header(self):
         print("\n" + "="*60)
@@ -76,10 +78,11 @@ class Game:
             print("12. AI Bots Status")
             print("13. Faction Relations")
             print("14. Profession & Career")
-            print("15. Character Profile")
-            print("16. Save & Exit")
+            print("15. Galactic History & Archaeology")
+            print("16. Character Profile")
+            print("17. Save & Exit")
             
-            choice = input("\nEnter your choice (1-16): ").strip()
+            choice = input("\nEnter your choice (1-17): ").strip()
             
             if choice == "1":
                 self.browse_manufacturing()
@@ -110,8 +113,10 @@ class Game:
             elif choice == "14":
                 self.profession_career_menu()
             elif choice == "15":
-                self.character_profile()
+                self.galactic_history_menu()
             elif choice == "16":
+                self.character_profile()
+            elif choice == "17":
                 self.save_and_exit()
                 break
             else:
@@ -1017,6 +1022,249 @@ class Game:
             print(f"  • {trait}")
         
         input("\nPress Enter to return to main menu...")
+
+    def galactic_history_menu(self):
+        """Galactic History and Archaeology menu interface"""
+        while True:
+            print("\n" + "="*60)
+            print("           GALACTIC HISTORY & ARCHAEOLOGY")
+            print("="*60)
+            
+            print("1. View Ancient Civilizations")
+            print("2. Browse Historical Timeline")
+            print("3. Archaeological Site Scanner")
+            print("4. Excavate at Current Location")
+            print("5. Discovered Artifacts")
+            print("6. Archaeological Research")
+            print("7. Back to Main Menu")
+            
+            choice = input("\nEnter your choice (1-7): ").strip()
+            
+            if choice == "1":
+                self.view_ancient_civilizations()
+            elif choice == "2":
+                self.browse_historical_timeline()
+            elif choice == "3":
+                self.archaeological_site_scanner()
+            elif choice == "4":
+                self.excavate_current_location()
+            elif choice == "5":
+                self.view_discovered_artifacts()
+            elif choice == "6":
+                self.archaeological_research()
+            elif choice == "7":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                input("\nPress Enter to continue...")
+
+    def view_ancient_civilizations(self):
+        """Display information about ancient civilizations"""
+        print("\n" + "="*60)
+        print("           ANCIENT CIVILIZATIONS DATABASE")
+        print("="*60)
+        
+        civilizations = self.galactic_history.ancient_civilizations
+        
+        for i, (name, data) in enumerate(civilizations.items(), 1):
+            print(f"\n{i}. {name}")
+            print(f"   Era: {data['era']}")
+            print(f"   Technology Focus: {data['technology_focus']}")
+            print(f"   {data['description'][:100]}...")
+            
+            # Show discovery status
+            if data.get('discovered', False):
+                artifacts = len(data.get('discovered_artifacts', []))
+                print(f"   Status: DISCOVERED ({artifacts} artifacts found)")
+            else:
+                print(f"   Status: Unknown civilization")
+        
+        print(f"\nTotal: {len(civilizations)} ancient civilizations in database")
+        
+        # Allow detailed view
+        try:
+            choice = input(f"\nView details for civilization (1-{len(civilizations)}) or Enter to return: ").strip()
+            if choice:
+                choice = int(choice) - 1
+                if 0 <= choice < len(civilizations):
+                    civ_name = list(civilizations.keys())[choice]
+                    self.view_civilization_details(civ_name)
+        except (ValueError, IndexError):
+            pass
+        
+        input("\nPress Enter to continue...")
+
+    def view_civilization_details(self, civilization_name):
+        """Show detailed information about a specific ancient civilization"""
+        civ_data = self.galactic_history.ancient_civilizations.get(civilization_name)
+        if not civ_data:
+            print("Civilization not found.")
+            return
+        
+        print("\n" + "="*60)
+        print(f"           {civilization_name.upper()}")
+        print("="*60)
+        
+        print(f"Era: {civ_data['era']}")
+        print(f"Technology Focus: {civ_data['technology_focus']}")
+        print(f"\nDescription:")
+        print(f"{civ_data['description']}")
+        
+        print(f"\nRemnant Types:")
+        for remnant in civ_data['remnant_types']:
+            print(f"  • {remnant}")
+        
+        print(f"\nArchaeological Difficulty: {civ_data['archaeological_difficulty']}/10")
+        
+        if civ_data.get('discovered', False):
+            print(f"\nDISCOVERY STATUS: CONFIRMED")
+            artifacts = civ_data.get('discovered_artifacts', [])
+            if artifacts:
+                print(f"Discovered Artifacts ({len(artifacts)}):")
+                for artifact in artifacts:
+                    print(f"  • {artifact}")
+            
+            sites = civ_data.get('known_sites', [])
+            if sites:
+                print(f"Known Archaeological Sites ({len(sites)}):")
+                for site in sites:
+                    coords = site['coordinates']
+                    print(f"  • {site['name']} at ({coords[0]}, {coords[1]}, {coords[2]})")
+        else:
+            print(f"\nDISCOVERY STATUS: THEORETICAL")
+            print("No confirmed archaeological evidence found yet.")
+
+    def browse_historical_timeline(self):
+        """Browse the galactic historical timeline"""
+        print("\n" + "="*60)
+        print("           GALACTIC HISTORICAL TIMELINE")
+        print("="*60)
+        
+        timeline_data = []
+        for year, events in sorted(self.galactic_history.timeline.items()):
+            for event in events:
+                timeline_data.append({
+                    'year': year,
+                    'event': event['description'],
+                    'civilization': event.get('civilization', '')
+                })
+        
+        print("Major Historical Events:")
+        for event in timeline_data:
+            print(f"\n{event['year']:>6} GY: {event['event']}")
+            if event.get('civilization'):
+                print(f"        Related to: {event['civilization']}")
+        
+        print(f"\nGY = Galactic Years (years since galactic standardization)")
+        input("\nPress Enter to continue...")
+
+    def archaeological_site_scanner(self):
+        """Scan for archaeological sites in the current area"""
+        if not self.navigation.current_ship:
+            print("\nNo ship selected! Use Navigation -> Select Ship first.")
+            input("\nPress Enter to continue...")
+            return
+        
+        print("\n" + "="*60)
+        print("           ARCHAEOLOGICAL SITE SCANNER")
+        print("="*60)
+        
+        x, y, z = self.navigation.current_ship.coordinates
+        nearby_sites = self.galactic_history.get_archaeological_sites_near(x, y, z, radius=5)
+        
+        if not nearby_sites:
+            print("No archaeological sites detected within scanner range (5 units).")
+            print("Try moving to different star systems or expanding your search radius.")
+        else:
+            print(f"Detected {len(nearby_sites)} archaeological site(s) nearby:")
+            
+            for i, site in enumerate(nearby_sites, 1):
+                coords = site['coordinates']
+                distance = ((x - coords[0])**2 + (y - coords[1])**2 + (z - coords[2])**2)**0.5
+                
+                print(f"\n{i}. {site['name']}")
+                print(f"   Civilization: {site['civilization']}")
+                print(f"   Type: {site['type']}")
+                print(f"   Distance: {distance:.1f} units")
+                print(f"   Coordinates: ({coords[0]}, {coords[1]}, {coords[2]})")
+                
+                if site.get('excavated', False):
+                    print(f"   Status: EXCAVATED")
+                else:
+                    print(f"   Status: Unexplored")
+        
+        input("\nPress Enter to continue...")
+
+    def excavate_current_location(self):
+        """Attempt archaeological excavation at current location"""
+        if not self.navigation.current_ship:
+            print("\nNo ship selected! Use Navigation -> Select Ship first.")
+            input("\nPress Enter to continue...")
+            return
+        
+        x, y, z = self.navigation.current_ship.coordinates
+        result = self.galactic_history.excavate_site(x, y, z)
+        
+        print("\n" + "="*60)
+        print("           ARCHAEOLOGICAL EXCAVATION")
+        print("="*60)
+        
+        print(f"Excavation at coordinates ({x}, {y}, {z})")
+        print(f"Result: {result}")
+        
+        input("\nPress Enter to continue...")
+
+    def view_discovered_artifacts(self):
+        """View all discovered artifacts"""
+        print("\n" + "="*60)
+        print("           DISCOVERED ARTIFACTS")
+        print("="*60)
+        
+        artifacts = self.galactic_history.get_discovered_artifacts()
+        
+        if not artifacts:
+            print("No artifacts discovered yet.")
+            print("Explore archaeological sites to find ancient relics!")
+        else:
+            total_count = 0
+            for civ_name, civ_artifacts in artifacts.items():
+                if civ_artifacts:
+                    print(f"\n{civ_name}:")
+                    for artifact in civ_artifacts:
+                        print(f"  • {artifact}")
+                        total_count += 1
+            
+            print(f"\nTotal artifacts discovered: {total_count}")
+        
+        input("\nPress Enter to continue...")
+
+    def archaeological_research(self):
+        """Research interface for analyzing artifacts and sites"""
+        print("\n" + "="*60)
+        print("           ARCHAEOLOGICAL RESEARCH")
+        print("="*60)
+        
+        artifacts = self.galactic_history.get_discovered_artifacts()
+        total_artifacts = sum(len(arts) for arts in artifacts.values())
+        
+        if total_artifacts == 0:
+            print("No artifacts to research yet.")
+            print("Discover artifacts through excavation to unlock research.")
+            input("\nPress Enter to continue...")
+            return
+        
+        print(f"Available for Research: {total_artifacts} artifacts")
+        print("\nResearch unlocks:")
+        print("• Detailed civilization information")
+        print("• Advanced archaeological scanning")
+        print("• Historical technology blueprints")
+        print("• Ancient navigation charts")
+        
+        print("\n[RESEARCH SYSTEM - Coming Soon]")
+        print("This feature will allow you to study discovered artifacts")
+        print("to unlock new technologies and historical insights.")
+        
+        input("\nPress Enter to continue...")
 
     def ship_builder_menu(self):
         print("\n" + "="*60)
