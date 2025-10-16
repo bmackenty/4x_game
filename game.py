@@ -49,6 +49,17 @@ class Game:
         self.galactic_history = GalacticHistory()
         self.event_system = EventSystem(self)
         self.news_system = NewsSystem(self.event_system)
+        
+        # Turn-based game system
+        self.current_turn = 1
+        self.max_turns = 100  # Default game length
+        self.turn_actions_remaining = 3  # Actions per turn
+        self.max_actions_per_turn = 3
+        self.game_ended = False
+        
+        # Player log system
+        self.player_log = []  # List of log entries
+        self.max_log_entries = 100  # Keep last 100 entries
     
     def initialize_new_game(self, character_data):
         """Initialize a new game with character data"""
@@ -411,6 +422,158 @@ class Game:
                 return True, f"Renamed ship from '{old_name}' to '{new_name}'"
         
         return False, f"Custom ship '{old_name}' not found (owned ships cannot be renamed)"
+
+    # Turn-Based Game Management Methods
+    def get_turn_info(self):
+        """Get current turn information"""
+        return {
+            'current_turn': self.current_turn,
+            'max_turns': self.max_turns,
+            'actions_remaining': self.turn_actions_remaining,
+            'max_actions': self.max_actions_per_turn,
+            'game_ended': self.game_ended
+        }
+    
+    def can_take_action(self):
+        """Check if player can take an action this turn"""
+        return self.turn_actions_remaining > 0 and not self.game_ended
+    
+    def consume_action(self, action_name="action"):
+        """Consume one action point"""
+        if not self.can_take_action():
+            return False, "No actions remaining this turn"
+        
+        self.turn_actions_remaining -= 1
+        
+        # Log the action
+        self.add_log_entry('action', f"Performed {action_name}", {
+            'action': action_name,
+            'actions_remaining': self.turn_actions_remaining
+        })
+        
+        return True, f"Action '{action_name}' consumed. {self.turn_actions_remaining} actions remaining."
+    
+    def end_turn(self):
+        """End current turn and advance to next"""
+        if self.game_ended:
+            return False, "Game has ended"
+        
+        # Log turn end
+        old_turn = self.current_turn
+        self.add_log_entry('system', f"Turn {old_turn} ended", {
+            'actions_used': self.max_actions_per_turn - self.turn_actions_remaining
+        })
+        
+        # Advance turn
+        self.current_turn += 1
+        
+        # Check if game should end
+        if self.current_turn > self.max_turns:
+            self.game_ended = True
+            self.add_log_entry('system', f"Game ended after {self.max_turns} turns", {
+                'final_turn': self.current_turn - 1
+            })
+            return True, f"Game ended! Reached maximum turns ({self.max_turns})"
+        
+        # Reset action points
+        self.turn_actions_remaining = self.max_actions_per_turn
+        
+        # Log new turn start
+        self.add_log_entry('system', f"Turn {self.current_turn} begins", {
+            'actions_available': self.turn_actions_remaining
+        })
+        
+        # Process end-of-turn events
+        self._process_turn_end_events()
+        
+        return True, f"Turn {self.current_turn} begins. You have {self.turn_actions_remaining} actions."
+    
+    def set_game_length(self, max_turns):
+        """Set the maximum number of turns for the game"""
+        if max_turns < 1:
+            return False, "Game must have at least 1 turn"
+        
+        self.max_turns = max_turns
+        return True, f"Game length set to {max_turns} turns"
+    
+    def set_actions_per_turn(self, actions):
+        """Set the number of actions per turn"""
+        if actions < 1:
+            return False, "Must have at least 1 action per turn"
+        
+        self.max_actions_per_turn = actions
+        # Update current turn if game is in progress
+        if self.turn_actions_remaining > actions:
+            self.turn_actions_remaining = actions
+        
+        return True, f"Actions per turn set to {actions}"
+    
+    def _process_turn_end_events(self):
+        """Process events that happen at the end of each turn"""
+        # Economic fluctuations
+        if hasattr(self, 'economy') and self.economy:
+            # Update markets every few turns
+            if self.current_turn % 3 == 0:
+                # Market update logic could go here
+                pass
+        
+        # Random events
+        if hasattr(self, 'event_system') and self.event_system:
+            # Chance for random events
+            import random
+            if random.random() < 0.1:  # 10% chance per turn
+                # Trigger random event
+                pass
+        
+        # AI bot actions (if implemented)
+        if hasattr(self, 'bot_manager') and self.bot_manager:
+            # AI bots take their actions
+            pass
+
+    # Player Log Management Methods
+    def add_log_entry(self, entry_type, message, details=None):
+        """Add an entry to the player log"""
+        import datetime
+        
+        log_entry = {
+            'turn': self.current_turn,
+            'timestamp': datetime.datetime.now().strftime("%H:%M:%S"),
+            'type': entry_type,  # 'action', 'event', 'system', 'combat', 'trade', etc.
+            'message': message,
+            'details': details or {}
+        }
+        
+        self.player_log.append(log_entry)
+        
+        # Trim log if it gets too long
+        if len(self.player_log) > self.max_log_entries:
+            self.player_log = self.player_log[-self.max_log_entries:]
+    
+    def get_log_entries(self, entry_type=None, turn_filter=None, limit=None):
+        """Get log entries with optional filtering"""
+        entries = self.player_log.copy()
+        
+        # Filter by type if specified
+        if entry_type:
+            entries = [e for e in entries if e['type'] == entry_type]
+        
+        # Filter by turn if specified
+        if turn_filter:
+            entries = [e for e in entries if e['turn'] == turn_filter]
+        
+        # Limit results if specified
+        if limit and len(entries) > limit:
+            entries = entries[-limit:]
+        
+        return entries
+    
+    def get_current_turn_log(self):
+        """Get all log entries for the current turn"""
+        return self.get_log_entries(turn_filter=self.current_turn)
+    
+    def clear_log(self):
+        """Clear all log entries"""
+        self.player_log = []
 
     def view_stations(self):
         print("\n" + "="*60)

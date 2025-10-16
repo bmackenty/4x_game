@@ -42,21 +42,39 @@ class StatusBar(Static):
     
     def __init__(self):
         super().__init__()
-        self.credits = 10000
-        self.location = "Deep Space"
-        self.ship_name = "No Ship Selected"
+        self.credits = 0
+        self.location = "Unknown"
+        self.ship_name = "No Ship"
         
     def compose(self) -> ComposeResult:
-        yield Label(f"Credits: {self.credits:,} | Location: {self.location} | Ship: {self.ship_name}")
+        yield Label("🎭 Welcome to 7019! Create a character to begin...")
         
-    def update_status(self, credits: int = None, location: str = None, ship: str = None):
+    def update_status(self, credits: int = None, location: str = None, ship: str = None, turn_info: dict = None):
+        """Update with normal game status (character + ship active)"""
         if credits is not None:
             self.credits = credits
         if location is not None:
             self.location = location
         if ship is not None:
             self.ship_name = ship
-        self.query_one(Label).update(f"Credits: {self.credits:,} | Location: {self.location} | Ship: {self.ship_name}")
+        
+        # Build status string with turn information
+        status_parts = []
+        if turn_info:
+            status_parts.append(f"Turn: {turn_info['current_turn']}/{turn_info['max_turns']}")
+            status_parts.append(f"Actions: {turn_info['actions_remaining']}/{turn_info['max_actions']}")
+        
+        status_parts.extend([
+            f"Credits: {self.credits:,}",
+            f"Location: {self.location}",
+            f"Ship: {self.ship_name}"
+        ])
+        
+        self.query_one(Label).update(" | ".join(status_parts))
+    
+    def update_message(self, message: str):
+        """Update with a custom message"""
+        self.query_one(Label).update(message)
 
 class CharacterCreationScreen(Static):
     """Character creation interface"""
@@ -150,49 +168,48 @@ class MainMenu(Static):
         # ASCII Art Header
         header_text = """
 ╔════════════════════════════════════════════════════════════════════════════════╗
-║                    GALACTIC EMPIRE MANAGEMENT SYSTEM                          ║
+║                              7019 MANAGEMENT SYSTEM                            ║
 ║                                                                                ║
-║    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
-║    ░███████╗███╗   ███╗██████╗ ██╗██████╗ ███████╗                          ║
-║    ░██╔════╝████╗ ████║██╔══██╗██║██╔══██╗██╔════╝                          ║
-║    ░█████╗  ██╔████╔██║██████╔╝██║██████╔╝█████╗                            ║
-║    ░██╔══╝  ██║╚██╔╝██║██╔═══╝ ██║██╔══██╗██╔══╝                            ║
-║    ░███████╗██║ ╚═╝ ██║██║     ██║██║  ██║███████╗                          ║
-║    ░╚══════╝╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝                          ║
-║    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
+║    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░║
+║    ░███████╗ ██████╗  ██╗ █████╗                                               ║
+║    ░╚════██║██╔═████╗███║██╔══██╗                                              ║
+║    ░    ██╔╝██║██╔██║╚██║╚██████║                                              ║
+║    ░   ██╔╝ ████╔╝██║ ██║ ╚═══██║                                              ║
+║    ░   ██║  ╚██████╔╝ ██║ █████╔╝                                              ║
+║    ░   ╚═╝   ╚═════╝  ╚═╝ ╚════╝                                               ║
+║    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░║
 ╚════════════════════════════════════════════════════════════════════════════════╝"""
         
         yield Static(header_text, id="header")
         yield Static("═" * 80, classes="rule")
-        yield Static("COMMAND CENTER", classes="section_header")
         
-        # Main menu buttons in a grid
-        with Grid(id="menu_grid"):
-            yield Button("🏭 Manufacturing", id="manufacturing", variant="primary")
-            yield Button("📈 Market Trading", id="trading", variant="primary") 
+        # Core Game Actions
+        yield Static("CORE SYSTEMS", classes="section_header")
+        with Grid(id="core_grid"):
             yield Button("🚀 Navigation", id="navigation", variant="primary")
-            yield Button("🏗️ Station Management", id="stations", variant="primary")
-            yield Button("🤖 AI Bots", id="bots", variant="primary")
-            yield Button("⚔️ Faction Relations", id="factions", variant="primary")
-            yield Button("🎓 Professions", id="professions", variant="primary")
+            yield Button("📈 Trading", id="trading", variant="primary")
+            yield Button("🏭 Manufacturing", id="manufacturing", variant="primary")
+            yield Button("🏗️ Stations", id="stations", variant="primary")
+            yield Button("🛸 Ships", id="ship_manager", variant="primary")
             yield Button("🏛️ Archaeology", id="archaeology", variant="primary")
-            yield Button("📰 Galactic News", id="news", variant="primary")
-            yield Button("⚙️ Ship Builder", id="shipbuilder", variant="primary")
-            yield Button("📊 Character Profile", id="character", variant="primary")
-            yield Button("🎭 New Character", id="new_character", variant="success")
-            yield Button("💾 Save & Exit", id="exit", variant="warning")
-            
-        yield Static("═" * 80, classes="rule")
-        yield Static("SHIP MANAGEMENT", classes="section_header")
         
-        # Ship management buttons
-        with Grid(id="ship_grid"):
-            yield Button("🛸 Ship Manager", id="ship_manager", variant="primary")
-            yield Button("🔧 Create Ship", id="create_ship", variant="success")
-            yield Button("📋 List Ships", id="list_ships", variant="primary")
-            yield Button("✏️ Edit Ship", id="edit_ship", variant="primary")
-            yield Button("🗑️ Delete Ship", id="delete_ship", variant="error")
-            yield Button("⭐ Set Active Ship", id="set_active_ship", variant="warning")
+        # Management & Information
+        yield Static("MANAGEMENT", classes="section_header")
+        with Grid(id="management_grid"):
+            yield Button("🤖 AI Bots", id="bots", variant="primary")
+            yield Button("⚔️ Factions", id="factions", variant="primary")
+            yield Button("🎓 Professions", id="professions", variant="primary")
+            yield Button("� News", id="news", variant="primary")
+            yield Button("📊 Character", id="character", variant="primary")
+            yield Button("� Activity Log", id="player_log", variant="primary")
+        
+        # Character & Game Control
+        yield Static("GAME CONTROL", classes="section_header")
+        with Grid(id="control_grid"):
+            yield Button("🎭 New Character", id="new_character", variant="success")
+            yield Button("⏭️ End Turn", id="end_turn", variant="warning")
+            yield Button("⚙️ Settings", id="game_settings", variant="default")
+            yield Button("💾 Save & Exit", id="exit", variant="error")
 
 class NavigationScreen(Static):
     """Space navigation interface with 3D map"""
@@ -1158,7 +1175,116 @@ you focus on strategic goals."""
                 yield Button("🤝 Trade with Bot", id="trade_bot", variant="success")
                 yield Button("📍 Track Bot", id="track_bot", variant="primary")
 
-class GalacticEmpireApp(App):
+class PlayerLogScreen(Static):
+    """Player log and activity history"""
+    
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
+        self.game_instance = game_instance
+    
+    def compose(self) -> ComposeResult:
+        """Create child widgets"""
+        yield Static("📜 PLAYER ACTIVITY LOG", classes="screen_title")
+        yield Static("─" * 80, classes="rule")
+        
+        if not self.game_instance:
+            yield Static("[red]No game instance available[/red]", id="log_content")
+            return
+            
+        # Log controls
+        with Container(id="log_controls"):
+            yield Static("Filter by:", classes="section_header")
+            with Grid(id="filter_grid"):
+                yield Button("All Entries", id="filter_all", variant="primary")
+                yield Button("Actions", id="filter_actions", variant="primary") 
+                yield Button("System", id="filter_system", variant="primary")
+                yield Button("Events", id="filter_events", variant="primary")
+                yield Button("Current Turn", id="filter_current", variant="success")
+                yield Button("Clear Log", id="clear_log", variant="warning")
+        
+        yield Static("─" * 80, classes="rule")
+        
+        # Log content
+        with Container(id="log_container"):
+            yield Static("Loading log...", id="log_content")
+    
+    def on_mount(self) -> None:
+        """Called when the screen is mounted"""
+        self.refresh_log()
+    
+    def refresh_log(self, entry_type=None):
+        """Update log display"""
+        try:
+            if not self.game_instance:
+                return
+                
+            # Get log entries
+            if entry_type == "current":
+                entries = self.game_instance.get_current_turn_log()
+                header = f"Turn {self.game_instance.current_turn} Activity:"
+            elif entry_type:
+                entries = self.game_instance.get_log_entries(entry_type=entry_type, limit=50)
+                header = f"{entry_type.title()} Log:"
+            else:
+                entries = self.game_instance.get_log_entries(limit=50)
+                header = "Complete Activity Log:"
+            
+            if not entries:
+                log_text = f"{header}\n\n[dim]No entries found[/dim]"
+            else:
+                log_lines = [header, ""]
+                
+                # Group entries by turn for better readability
+                current_turn = None
+                for entry in reversed(entries):  # Most recent first
+                    if entry['turn'] != current_turn:
+                        current_turn = entry['turn']
+                        log_lines.append(f"[bold cyan]═══ Turn {current_turn} ═══[/bold cyan]")
+                    
+                    # Format entry based on type
+                    time_str = entry['timestamp']
+                    msg = entry['message']
+                    entry_type_str = entry['type'].upper()
+                    
+                    # Color code by type
+                    if entry['type'] == 'action':
+                        color = "green"
+                        icon = "▶"
+                    elif entry['type'] == 'system':
+                        color = "blue" 
+                        icon = "ⓘ"
+                    elif entry['type'] == 'event':
+                        color = "yellow"
+                        icon = "!"
+                    elif entry['type'] == 'combat':
+                        color = "red"
+                        icon = "⚔"
+                    elif entry['type'] == 'trade':
+                        color = "cyan"
+                        icon = "💰"
+                    else:
+                        color = "white"
+                        icon = "•"
+                    
+                    log_lines.append(f"[{color}]{icon} [{time_str}] {msg}[/{color}]")
+                
+                log_text = "\n".join(log_lines)
+            
+            # Update display
+            try:
+                log_widget = self.query_one("#log_content")
+                log_widget.update(log_text)
+            except:
+                pass
+                
+        except Exception as e:
+            try:
+                log_widget = self.query_one("#log_content")
+                log_widget.update(f"[red]Error loading log: {str(e)}[/red]")
+            except:
+                pass
+
+class Game7019App(App):
     """Main application class"""
     
     CSS = """
@@ -1177,29 +1303,65 @@ class GalacticEmpireApp(App):
     }
     
     .section_header {
-        height: 2;
+        height: 1;
         text-style: bold;
         color: yellow;
         background: blue 20%;
         content-align: center middle;
+        margin: 0;
+        padding: 0;
     }
     
-    #menu_grid {
-        grid-size: 3 4;
-        grid-gutter: 1 2;
-        margin: 1;
-        padding: 1;
-        height: auto;
-        width: 100%;
-    }
-    
-    #ship_grid {
+    #core_grid {
         grid-size: 3 2;
-        grid-gutter: 1 2;
+        grid-gutter: 1 1;
+        margin: 1 0;
+        padding: 0 1;
+        height: auto;
+        width: 100%;
+    }
+    
+    #management_grid {
+        grid-size: 3 2;
+        grid-gutter: 1 1;
+        margin: 1 0;
+        padding: 1;
+        height: auto;
+        width: 100%;
+    }
+    
+    #control_grid {
+        grid-size: 4 1;
+        grid-gutter: 1 1;
+        margin: 1 0;
+        padding: 1;
+        height: auto;
+        width: 100%;
+    }
+    
+
+    
+    #filter_grid {
+        grid-size: 3 2;
+        grid-gutter: 1 1;
         margin: 1;
         padding: 1;
         height: auto;
         width: 100%;
+    }
+    
+    #log_container {
+        height: auto;
+        max-height: 80%;
+        overflow-y: auto;
+        padding: 1;
+        border: solid green;
+    }
+    
+    #log_content {
+        padding: 1;
+        color: green;
+        background: black;
     }
     
     #header {
@@ -1220,10 +1382,12 @@ class GalacticEmpireApp(App):
     Button {
         min-height: 3;
         height: 3;
-        min-width: 20;
+        min-width: 15;
         width: 100%;
         margin: 0 1;
+        padding: 0 1;
         content-align: center middle;
+        text-style: none;
     }
     
     Button:focus {
@@ -1537,7 +1701,7 @@ class GalacticEmpireApp(App):
         
     def on_mount(self) -> None:
         """App startup"""
-        self.title = "Galactic Empire Management System"
+        self.title = "7019 Management System"
         self.sub_title = "4X Space Strategy Game"
         self.update_status_bar()
         
@@ -1600,21 +1764,62 @@ class GalacticEmpireApp(App):
     def update_status_bar(self):
         """Update the status bar with current game state"""
         if self.game_instance:
-            credits = getattr(self.game_instance, 'credits', 0)
-            location = "Deep Space"
-            ship_name = "Aurora Ascendant"
+            # Check if we have a real character (created through character creation)
+            has_character = (
+                self.game_instance.player_name and 
+                self.game_instance.character_stats and
+                getattr(self.game_instance, 'character_created', False)
+            )
             
-            # Try to get real location data
-            if hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
+            # Check if we have an active ship
+            has_ship = (
+                hasattr(self.game_instance, 'navigation') and 
+                self.game_instance.navigation and
+                self.game_instance.navigation.current_ship
+            )
+            
+            if not has_character and not has_ship:
+                # No character or ship - show helpful message
+                try:
+                    status_bar = self.query_one(StatusBar)
+                    status_bar.update_message("🎭 Create a character and board a ship to begin your galactic journey!")
+                except:
+                    pass
+            elif not has_character:
+                # Has ship but no character
+                try:
+                    status_bar = self.query_one(StatusBar)
+                    status_bar.update_message("🎭 Create a character to begin commanding your fleet!")
+                except:
+                    pass
+            elif not has_ship:
+                # Has character but no ship
+                credits = getattr(self.game_instance, 'credits', 0)
+                turn_info = self.game_instance.get_turn_info()
+                try:
+                    status_bar = self.query_one(StatusBar)
+                    status_parts = [
+                        f"Turn: {turn_info['current_turn']}/{turn_info['max_turns']}",
+                        f"Actions: {turn_info['actions_remaining']}/{turn_info['max_actions']}",
+                        f"Credits: {credits:,}",
+                        "🚀 Select or create a ship from Ship Manager!"
+                    ]
+                    status_bar.update_message(" | ".join(status_parts))
+                except:
+                    pass
+            else:
+                # Has both character and ship - show normal status
+                credits = getattr(self.game_instance, 'credits', 0)
                 ship_name = self.game_instance.navigation.current_ship.name
                 coords = self.game_instance.navigation.current_ship.coordinates
                 location = f"({coords[0]}, {coords[1]}, {coords[2]})"
+                turn_info = self.game_instance.get_turn_info()
                 
-            try:
-                status_bar = self.query_one(StatusBar)
-                status_bar.update_status(credits=credits, location=location, ship=ship_name)
-            except:
-                pass
+                try:
+                    status_bar = self.query_one(StatusBar)
+                    status_bar.update_status(credits=credits, location=location, ship=ship_name, turn_info=turn_info)
+                except:
+                    pass
             
             # Also try to update character screen if it's currently displayed
             if self.current_content == "character":
@@ -1696,6 +1901,8 @@ class GalacticEmpireApp(App):
             self.show_notification("⚙️ Ship builder coming soon!")
         elif button_id == "character":
             self.action_show_character()
+        elif button_id == "player_log":
+            self.action_show_player_log()
         elif button_id == "new_character":
             self.action_show_character_creation()
         elif button_id == "exit":
@@ -1710,6 +1917,12 @@ class GalacticEmpireApp(App):
             self.handle_create_character()
         elif button_id == "back_to_menu":
             self.action_show_main_menu()
+        
+        # Turn management buttons
+        elif button_id == "end_turn":
+            self.handle_end_turn()
+        elif button_id == "game_settings":
+            self.handle_game_settings()
             
         # Navigation screen buttons
         elif button_id == "local_map":
@@ -1786,6 +1999,20 @@ class GalacticEmpireApp(App):
             self.handle_confirm_ship_creation()
         elif button_id == "btn_cancel_create":
             self.handle_cancel_ship_creation()
+            
+        # Player log filter buttons
+        elif button_id == "filter_all":
+            self.handle_log_filter(None)
+        elif button_id == "filter_actions":
+            self.handle_log_filter("action")
+        elif button_id == "filter_system":
+            self.handle_log_filter("system")
+        elif button_id == "filter_events":
+            self.handle_log_filter("event")
+        elif button_id == "filter_current":
+            self.handle_log_filter("current")
+        elif button_id == "clear_log":
+            self.handle_clear_log()
     
     def _switch_to_screen(self, new_screen_widget, screen_name):
         """Safely switch to a new screen using container replacement"""
@@ -1822,6 +2049,8 @@ class GalacticEmpireApp(App):
     def action_show_main_menu(self) -> None:
         """Show main menu"""
         self._switch_to_screen(MainMenu(), "main_menu")
+        # Update status bar when returning to main menu
+        self.update_status_bar()
         
     def action_show_navigation(self) -> None:
         """Show navigation screen"""
@@ -1855,6 +2084,10 @@ class GalacticEmpireApp(App):
         """Show character creation screen"""
         self._switch_to_screen(CharacterCreationScreen(game_instance=self.game_instance), "character_creation")
     
+    def action_show_player_log(self) -> None:
+        """Show player log screen"""
+        self._switch_to_screen(PlayerLogScreen(game_instance=self.game_instance), "player_log")
+    
     def action_show_ship_manager(self) -> None:
         """Show ship manager screen"""
         self._switch_to_screen(ShipManagerScreen(game_instance=self.game_instance), "ship_manager")
@@ -1862,7 +2095,7 @@ class GalacticEmpireApp(App):
     def action_show_help(self) -> None:
         """Show help information"""
         help_text = """
-# Galactic Empire Management System - Help
+# 7019 Management System - Help
 
 ## Mouse Controls
 - Click buttons to navigate
@@ -1879,7 +2112,7 @@ class GalacticEmpireApp(App):
 - **F1**: This help screen
 
 ## Game Features
-- Build and manage your galactic empire
+- Build and manage your interstellar corporation
 - Explore 30+ star systems
 - Trade exotic commodities
 - Discover ancient civilizations
@@ -1949,6 +2182,10 @@ class GalacticEmpireApp(App):
         if GAME_AVAILABLE and self.game_instance:
             try:
                 self.apply_character_to_game_direct()
+                # Mark that a character has been properly created
+                self.game_instance.character_created = True
+                # Update status bar immediately after character creation
+                self.update_status_bar()
                 self.show_notification(f"✅ Character '{self.char_character_name}' created!")
                 # Return to main menu after a brief delay
                 self.set_timer(2.0, self.action_show_main_menu)
@@ -2161,34 +2398,69 @@ Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and 
         if not self.game_instance or not hasattr(self.game_instance, 'galactic_history'):
             self.show_notification("🔍 Archaeological scanner offline")
             return
+        
+        # Check if we can take an action
+        if not self.game_instance.can_take_action():
+            turn_info = self.game_instance.get_turn_info()
+            self.show_notification(f"⏰ No actions remaining this turn ({turn_info['actions_remaining']}/{turn_info['actions_per_turn']})")
+            return
             
+        # Consume action point
+        self.game_instance.consume_action("Archaeological Site Scanning")
+        
         # Simulate scanning with real game data if available
         self.show_notification("🔍 Scanning... Found 3 potential archaeological sites nearby!")
+        
+        # Update status bar to show remaining actions
+        self.update_status_bar()
         
     def handle_excavation(self):
         """Handle archaeological excavation"""
         if not self.game_instance:
             self.show_notification("⛏️ Excavation equipment not available")
             return
+        
+        # Check if we can take an action
+        if not self.game_instance.can_take_action():
+            turn_info = self.game_instance.get_turn_info()
+            self.show_notification(f"⏰ No actions remaining this turn ({turn_info['actions_remaining']}/{turn_info['actions_per_turn']})")
+            return
             
+        # Consume action point
+        self.game_instance.consume_action("Archaeological Excavation")
+        
         # Simulate excavation
         import random
         success = random.choice([True, False])
         if success:
             artifacts = ["Ancient Crystal Matrix", "Temporal Resonator", "Quantum Data Core"]
             artifact = random.choice(artifacts)
+            # Log the discovery as an event
+            self.game_instance.add_log_entry('event', f"Discovered artifact: {artifact}", {'artifact': artifact})
             self.show_notification(f"⛏️ Excavation successful! Discovered: {artifact}")
         else:
             self.show_notification("⛏️ Excavation incomplete. Continue digging...")
+            
+        # Update status bar to show remaining actions
+        self.update_status_bar()
             
     def handle_buy_platform(self):
         """Handle manufacturing platform purchase"""
         if not self.game_instance:
             self.show_notification("💳 Transaction system offline")
             return
+        
+        # Check if we can take an action
+        if not self.game_instance.can_take_action():
+            turn_info = self.game_instance.get_turn_info()
+            self.show_notification(f"⏰ No actions remaining this turn ({turn_info['actions_remaining']}/{turn_info['actions_per_turn']})")
+            return
             
         cost = 2500000
         if self.game_instance.credits >= cost:
+            # Consume action point
+            self.game_instance.consume_action("Manufacturing Platform Purchase")
+            
             self.game_instance.credits -= cost
             self.show_notification(f"🏭 Platform purchased! Remaining credits: {self.game_instance.credits:,}")
             self.update_status_bar()
@@ -2278,10 +2550,20 @@ Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and 
         if not self.game_instance:
             self.show_notification("🎯 Jump drive offline")
             return
+        
+        # Check if we can take an action
+        if not self.game_instance.can_take_action():
+            turn_info = self.game_instance.get_turn_info()
+            self.show_notification(f"⏰ No actions remaining this turn ({turn_info['actions_remaining']}/{turn_info['actions_per_turn']})")
+            return
             
         jump_systems = ["Proxima Alpha", "Centauri Beta", "Vega Prime", "Wolf 359"]
         import random
         destination = random.choice(jump_systems)
+        
+        # Consume action point
+        self.game_instance.consume_action(f"Hyperspace Jump to {destination}")
+        
         self.show_notification(f"🎯 Hyperspace jump initiated! Destination: {destination}")
         
         # Update location in status bar
@@ -2290,6 +2572,9 @@ Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and 
             status_bar.update_status(location=destination)
         except:
             pass
+            
+        # Update status bar to show remaining actions
+        self.update_status_bar()
         
     def handle_buy_commodity(self):
         """Handle commodity purchase"""
@@ -2432,6 +2717,72 @@ Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and 
             
         except Exception as e:
             self.show_notification(f"❌ Error refreshing fleet: {str(e)[:30]}...")
+    
+    def handle_end_turn(self):
+        """End the current turn and advance to next turn"""
+        if not GAME_AVAILABLE or not self.game_instance:
+            self.show_notification("❌ Game not available")
+            return
+            
+        try:
+            # Check if we can end the turn
+            turn_info = self.game_instance.get_turn_info()
+            
+            # End the turn in the game logic
+            self.game_instance.end_turn()
+            
+            # Update the status bar to reflect the new turn
+            self.update_status_bar()
+            
+            # Show notification about turn advancement
+            new_turn_info = self.game_instance.get_turn_info()
+            self.show_notification(f"⏰ Turn {new_turn_info['current_turn']} begins!")
+            
+        except Exception as e:
+            self.show_notification(f"❌ Error ending turn: {str(e)[:30]}...")
+    
+    def handle_game_settings(self):
+        """Show game settings dialog"""
+        self.show_notification("⚙️ Game settings coming soon!")
+    
+    def handle_log_filter(self, entry_type):
+        """Handle log filtering"""
+        try:
+            # Find the current screen
+            current_screen = self.query_one("#main_container").children[0]
+            if isinstance(current_screen, PlayerLogScreen):
+                current_screen.refresh_log(entry_type)
+                
+                # Show notification about filter
+                if entry_type:
+                    if entry_type == "current":
+                        self.show_notification(f"📜 Showing current turn activity")
+                    else:
+                        self.show_notification(f"📜 Filtering by: {entry_type}")
+                else:
+                    self.show_notification("📜 Showing all log entries")
+        except Exception as e:
+            self.show_notification(f"❌ Error filtering log: {str(e)[:30]}...")
+    
+    def handle_clear_log(self):
+        """Handle clearing the log"""
+        if not GAME_AVAILABLE or not self.game_instance:
+            self.show_notification("❌ Game not available")
+            return
+            
+        try:
+            self.game_instance.clear_log()
+            self.show_notification("🗑️ Player log cleared")
+            
+            # Refresh the log display if we're on the log screen
+            try:
+                current_screen = self.query_one("#main_container").children[0]
+                if isinstance(current_screen, PlayerLogScreen):
+                    current_screen.refresh_log()
+            except:
+                pass
+        except Exception as e:
+            self.show_notification(f"❌ Error clearing log: {str(e)[:30]}...")
 
 class HelpModal(ModalScreen):
     """Help screen modal"""
@@ -2452,5 +2803,5 @@ class HelpModal(ModalScreen):
             self.app.pop_screen()
 
 if __name__ == "__main__":
-    app = GalacticEmpireApp()
+    app = Game7019App()
     app.run()
