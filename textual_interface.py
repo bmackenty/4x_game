@@ -31,6 +31,7 @@ try:
     from factions import FactionSystem
     from ai_bots import BotManager
     from galactic_history import GalacticHistory
+    from characters import character_classes, character_backgrounds, create_character_stats
     GAME_AVAILABLE = True
 except ImportError:
     GAME_AVAILABLE = False
@@ -409,6 +410,17 @@ class ManufacturingScreen(Static):
         super().__init__(**kwargs)
         self.game_instance = game_instance
         self.selected_platform = None
+        self.platform_names = []
+        
+        # Load platforms during initialization
+        try:
+            from manufacturing import industrial_platforms
+            self.platform_names = list(industrial_platforms.keys())[:10]  # Show first 10
+            self.selected_platform = self.platform_names[0] if self.platform_names else None
+        except ImportError as e:
+            print(f"Manufacturing import error: {e}")
+        except Exception as e:
+            print(f"Unexpected error loading platforms: {e}")
     
     def compose(self) -> ComposeResult:
         yield Static("🏭 MANUFACTURING PLATFORMS", classes="screen_title")
@@ -418,14 +430,11 @@ class ManufacturingScreen(Static):
             with Vertical(id="platform_categories"):
                 yield Static("📋 AVAILABLE PLATFORMS", classes="section_header")
                 
-                # Get real manufacturing platforms
-                try:
-                    from manufacturing import industrial_platforms
-                    platform_names = list(industrial_platforms.keys())[:10]  # Show first 10
-                    platform_list = ListView(*[ListItem(Label(f"🏭 {name}")) for name in platform_names])
-                    self.selected_platform = platform_names[0] if platform_names else None
-                except ImportError:
-                    platform_list = ListView(ListItem(Label("No platforms available")))
+                # Use pre-loaded manufacturing platforms
+                if self.platform_names:
+                    platform_list = ListView(*[ListItem(Label(f"🏭 {name}")) for name in self.platform_names])
+                else:
+                    platform_list = ListView(ListItem(Label("❌ No platforms available - Check manufacturing.py")))
                 
                 yield platform_list
                 
@@ -434,28 +443,52 @@ class ManufacturingScreen(Static):
                 yield Static("🏗️ PLATFORM DETAILS", classes="section_header")
                 
                 # Show details of first platform
-                if self.selected_platform:
-                    try:
+                details = "No platform data available"
+                try:
+                    if self.selected_platform:
                         from manufacturing import industrial_platforms
                         platform_data = industrial_platforms.get(self.selected_platform, {})
+                        owned_count = 0
+                        if self.game_instance and hasattr(self.game_instance, 'owned_platforms'):
+                            owned_count = len(self.game_instance.owned_platforms)
+                        elif self.game_instance and hasattr(self.game_instance, 'manufacturing'):
+                            owned_count = len(getattr(self.game_instance.manufacturing, 'owned_platforms', []))
+                        
                         details = f"""{self.selected_platform}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Category: {platform_data.get('category', 'Unknown')}
 Type: {platform_data.get('type', 'Unknown')}
 Cost: 2,500,000 credits
 
-Description: {platform_data.get('description', 'No description available')}
+Description: 
+{platform_data.get('description', 'No description available')}
 
-Your Platforms: {len(self.game_instance.owned_platforms) if self.game_instance else 0}"""
-                    except ImportError:
-                        details = "Platform data unavailable"
-                else:
-                    details = "No platform selected"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Your Owned Platforms: {owned_count}
+Daily Income: +{owned_count * 50000:,} credits"""
+                    else:
+                        details = """No Platform Selected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Select a platform from the list to:
+• View detailed specifications
+• Purchase manufacturing rights  
+• Manage existing platforms
+• View income projections
+
+Manufacturing platforms generate
+passive income and resources for
+your galactic empire."""
+                        
+                except Exception as e:
+                    details = f"Error loading platform data: {str(e)}"
                     
                 yield Static(details, id="platform_info")
                 
-                yield Static("─" * 30, classes="rule")
+                yield Static("─" * 40, classes="rule")
                 yield Button("💳 Purchase Platform", id="buy_platform", variant="success")
-                yield Button("📊 View Stats", id="view_platform_stats", variant="primary")
+                yield Button("📊 View Platform Stats", id="view_platform_stats", variant="primary")
                 yield Button("🔧 Manage Platforms", id="manage_platforms", variant="primary")
 
 class StationScreen(Static):
@@ -832,7 +865,9 @@ class GalacticEmpireApp(App):
         """Create child widgets for the app."""
         yield Header(show_clock=True)
         yield StatusBar()
-        yield MainMenu(id="main_content")
+        # Create a container that will hold the main content
+        with Container(id="main_container"):
+            yield MainMenu(id="main_menu_initial")
         yield Footer()
         
     def on_mount(self) -> None:
@@ -961,34 +996,33 @@ class GalacticEmpireApp(App):
             self.show_notification("📍 Tracking bot location...")
     
     def _switch_to_screen(self, new_screen_widget, screen_name):
-        """Safely switch to a new screen by removing the old one first"""
+        """Safely switch to a new screen using container replacement"""
         try:
-            # Find and remove ALL widgets with main_content ID
-            existing_widgets = self.query("#main_content")
-            for widget in existing_widgets:
-                try:
-                    widget.remove()
-                except Exception:
-                    pass
-        except Exception:
-            # No existing widgets found, that's fine
-            pass
-        
-        try:
-            # Set the ID after removing old content
-            new_screen_widget.id = "main_content"
+            # Get the main container
+            container = self.query_one("#main_container")
             
-            # Mount the new screen
-            self.mount(new_screen_widget)
+            # Remove all existing content from the container
+            container.remove_children()
+            
+            # Use unique ID based on screen name to avoid conflicts
+            import time
+            unique_id = f"{screen_name}_{int(time.time() * 1000000) % 1000000}"
+            new_screen_widget.id = unique_id
+            
+            # Mount the new screen in the container
+            container.mount(new_screen_widget)
             self.current_content = screen_name
+            
         except Exception as e:
-            # If mounting fails, show an error notification
-            self.show_notification(f"Error loading {screen_name} screen: {str(e)[:50]}...")
-            # Try to fall back to main menu
+            # Show error and fall back to main menu
+            self.show_notification(f"Screen error: {str(e)[:40]}...")
             try:
-                fallback_menu = MainMenu()
-                fallback_menu.id = "main_content"
-                self.mount(fallback_menu)
+                # Get container and reset to main menu
+                container = self.query_one("#main_container")
+                container.remove_children()
+                unique_fallback_id = f"main_menu_{int(time.time() * 1000000) % 1000000}"
+                fallback = MainMenu(id=unique_fallback_id)
+                container.mount(fallback)
                 self.current_content = "main_menu"
             except Exception:
                 pass
