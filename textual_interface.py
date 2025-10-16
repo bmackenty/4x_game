@@ -58,6 +58,91 @@ class StatusBar(Static):
             self.ship_name = ship
         self.query_one(Label).update(f"Credits: {self.credits:,} | Location: {self.location} | Ship: {self.ship_name}")
 
+class CharacterCreationScreen(Static):
+    """Character creation interface"""
+    
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
+        self.game_instance = game_instance
+        self.selected_class = None
+        self.selected_background = None
+        self.character_name = ""
+        self.generated_stats = None
+        
+    def compose(self) -> ComposeResult:
+        yield Static("🎭 CHARACTER CREATION", classes="screen_title")
+        
+        with Horizontal():
+            # Left panel - Name and Class selection
+            with Vertical(id="char_left_panel"):
+                yield Static("📝 CHARACTER DETAILS", classes="section_header")
+                
+                # Character name input
+                yield Static("Character Name:", classes="label")
+                yield Input(placeholder="Enter your character name...", id="char_name_input")
+                
+                yield Static("─" * 30, classes="rule")
+                yield Static("🎯 CHARACTER CLASS", classes="section_header")
+                
+                # Character classes
+                if GAME_AVAILABLE:
+                    class_items = []
+                    for class_name, class_data in character_classes.items():
+                        class_items.append(ListItem(Label(f"⚡ {class_name}")))
+                    class_list = ListView(*class_items, id="class_list")
+                else:
+                    class_list = ListView(ListItem(Label("Demo mode - no classes available")))
+                
+                yield class_list
+                
+            # Middle panel - Background selection
+            with Vertical(id="char_middle_panel"):
+                yield Static("🏛️ CHARACTER BACKGROUND", classes="section_header")
+                
+                # Character backgrounds
+                if GAME_AVAILABLE:
+                    bg_items = []
+                    for bg_name, bg_data in character_backgrounds.items():
+                        bg_items.append(ListItem(Label(f"🌟 {bg_name}")))
+                    bg_list = ListView(*bg_items, id="background_list")
+                else:
+                    bg_list = ListView(ListItem(Label("Demo mode - no backgrounds available")))
+                
+                yield bg_list
+                
+                yield Static("─" * 30, classes="rule")
+                yield Button("🎲 Generate Random Stats", id="generate_stats", variant="primary")
+                yield Button("🔄 Reroll Stats", id="reroll_stats", variant="warning")
+                
+            # Right panel - Character preview
+            with Vertical(id="char_right_panel"):
+                yield Static("👤 CHARACTER PREVIEW", classes="section_header")
+                
+                preview_text = """Name: [Not Set]
+Class: [None Selected]
+Background: [None Selected]
+
+📊 STATS:
+Leadership: ?
+Technical: ?
+Combat: ?
+Diplomacy: ?
+Exploration: ?
+Trade: ?
+
+💰 STARTING RESOURCES:
+Credits: Calculate after selection
+Ships: [Based on class]
+Bonuses: [Based on class + background]
+
+Select class and background to see details."""
+                
+                yield Static(preview_text, id="char_preview")
+                
+                yield Static("─" * 40, classes="rule")
+                yield Button("✅ Create Character", id="create_character", variant="success")
+                yield Button("🏠 Back to Main Menu", id="back_to_menu", variant="error")
+
 class MainMenu(Static):
     """Main menu with ASCII art header and navigation buttons"""
     
@@ -94,6 +179,7 @@ class MainMenu(Static):
             yield Button("📰 Galactic News", id="news", variant="primary")
             yield Button("⚙️ Ship Builder", id="shipbuilder", variant="primary")
             yield Button("📊 Character Profile", id="character", variant="primary")
+            yield Button("🎭 New Character", id="new_character", variant="success")
             yield Button("💾 Save & Exit", id="exit", variant="warning")
 
 class NavigationScreen(Static):
@@ -351,57 +437,171 @@ class CharacterScreen(Static):
         super().__init__(**kwargs)
         self.game_instance = game_instance
     
+    def on_mount(self) -> None:
+        """Called when the screen is mounted"""
+        self.refresh_character_data()
+        
+    def refresh_character_data(self) -> None:
+        """Update character data display"""
+        try:
+            # Update wealth info
+            if self.game_instance:
+                credits = getattr(self.game_instance, 'credits', 0)
+                ships = len(getattr(self.game_instance, 'owned_ships', []))
+                stations = len(getattr(self.game_instance, 'owned_stations', []))
+                platforms = len(getattr(self.game_instance, 'owned_platforms', []))
+                
+                wealth_info = f"""[green]Credits:[/green] [bold]{credits:,}[/bold] ¤
+                        
+[blue]Fleet:[/blue] {ships} ship{'s' if ships != 1 else ''}
+[purple]Stations:[/purple] {stations} station{'s' if stations != 1 else ''}
+[orange3]Platforms:[/orange3] {platforms} platform{'s' if platforms != 1 else ''}"""
+                
+                try:
+                    wealth_widget = self.query_one("#wealth_info")
+                    wealth_widget.update(wealth_info)
+                except:
+                    pass
+        except Exception as e:
+            pass
+    
     def compose(self) -> ComposeResult:
         yield Static("👤 CHARACTER PROFILE", classes="screen_title")
         
-        with Grid(id="character_grid"):
-            # Basic info
-            with Container(id="basic_info"):
-                yield Static("📋 BASIC INFO", classes="section_header")
-                
-                # Get real game data
-                if self.game_instance:
-                    commander_name = self.game_instance.player_name or "Unknown Commander"
-                    char_class = self.game_instance.character_class or "Unassigned"
-                    char_background = self.game_instance.character_background or "Unknown"
-                    credits = self.game_instance.credits or 0
+        with Horizontal():
+            # Left column - Character Info
+            with Vertical(id="char_info_column"):
+                # Character Portrait & Basic Info
+                with Container(id="character_portrait", classes="profile_section"):
+                    yield Static("🧑‍� COMMANDER PROFILE", classes="section_header")
                     
-                    # Get profession info
-                    profession_info = "None"
-                    if hasattr(self.game_instance, 'profession_system') and self.game_instance.profession_system:
-                        prof = self.game_instance.profession_system.character_profession
-                        if prof:
-                            level = self.game_instance.profession_system.profession_levels.get(prof, 1)
-                            xp = self.game_instance.profession_system.profession_experience.get(prof, 0)
-                            profession_info = f"{prof} (Level {level}, {xp} XP)"
-                    
-                    profile = f"""Commander: {commander_name}
-Class: {char_class}  
-Background: {char_background}
-Profession: {profession_info}
+                    if self.game_instance and self.game_instance.player_name:
+                        commander_name = self.game_instance.player_name
+                        char_class = self.game_instance.character_class or "Unassigned"
+                        char_background = self.game_instance.character_background or "Unknown"
+                        
+                        # Get class and background descriptions
+                        class_desc = ""
+                        bg_desc = ""
+                        if GAME_AVAILABLE:
+                            try:
+                                from characters import character_classes, character_backgrounds
+                                if char_class in character_classes:
+                                    class_desc = character_classes[char_class].get('description', '')
+                                if char_background in character_backgrounds:
+                                    bg_desc = character_backgrounds[char_background].get('description', '')
+                            except:
+                                pass
+                        
+                        profile_info = f"""[bold cyan]═══ {commander_name} ═══[/bold cyan]
+                        
+[yellow]Class:[/yellow] [bold]{char_class}[/bold]
+{class_desc}
 
-Credits: {credits:,}
-Ships Owned: {len(self.game_instance.owned_ships)}
-Stations Owned: {len(self.game_instance.owned_stations)}"""
-                else:
-                    profile = "Game data unavailable"
-                    
-                yield Static(profile, id="profile_text")
+[yellow]Background:[/yellow] [bold]{char_background}[/bold] 
+{bg_desc}"""
+                        
+                        yield Static(profile_info, id="profile_info")
+                    else:
+                        yield Static("[red]No character data available[/red]\n[dim]Create a character first[/dim]", id="profile_info")
                 
-            # Skills and stats
-            with Container(id="skills_panel"):
-                yield Static("⚡ ABILITIES & SKILLS", classes="section_header")
-                
-                if self.game_instance and self.game_instance.character_stats:
-                    skills_text = ""
-                    for stat_name, value in self.game_instance.character_stats.items():
-                        bar = "█" * value + "░" * (10 - value)
-                        skills_text += f"{stat_name.title()}: {bar} {value}/10\n"
-                    skills_text = skills_text.rstrip()
-                else:
-                    skills_text = "Character stats not available"
+                # Wealth & Assets
+                with Container(id="wealth_section", classes="profile_section"):
+                    yield Static("💰 WEALTH & ASSETS", classes="section_header")
                     
-                yield Static(skills_text, id="skills_display")
+                    if self.game_instance:
+                        credits = self.game_instance.credits or 0
+                        ships = len(self.game_instance.owned_ships)
+                        stations = len(self.game_instance.owned_stations)
+                        platforms = len(self.game_instance.owned_platforms)
+                        
+                        wealth_info = f"""[green]Credits:[/green] [bold]{credits:,}[/bold] ¤
+                        
+[blue]Fleet:[/blue] {ships} ship{'s' if ships != 1 else ''}
+[purple]Stations:[/purple] {stations} station{'s' if stations != 1 else ''}
+[orange3]Platforms:[/orange3] {platforms} platform{'s' if platforms != 1 else ''}"""
+                        
+                        yield Static(wealth_info, id="wealth_info")
+                    else:
+                        yield Static("[red]Financial data unavailable[/red]", id="wealth_info")
+            
+            # Right column - Stats & Skills
+            with Vertical(id="stats_column"):
+                # Character Stats
+                with Container(id="stats_section", classes="profile_section"):
+                    yield Static("⚡ CHARACTER ATTRIBUTES", classes="section_header")
+                    
+                    if self.game_instance and self.game_instance.character_stats:
+                        stats_display = ""
+                        stat_order = ['leadership', 'combat', 'engineering', 'navigation', 'diplomacy', 'trading']
+                        
+                        for stat_name in stat_order:
+                            if stat_name in self.game_instance.character_stats:
+                                value = self.game_instance.character_stats[stat_name]
+                                # Create visual bar with colors based on value
+                                filled = "█" * value
+                                empty = "░" * (10 - value)
+                                
+                                # Color coding for stats
+                                if value >= 8:
+                                    color = "bright_green"
+                                elif value >= 6:
+                                    color = "green"  
+                                elif value >= 4:
+                                    color = "yellow"
+                                else:
+                                    color = "red"
+                                
+                                stats_display += f"[white]{stat_name.title()}:[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                        
+                        # Add any remaining stats not in the ordered list
+                        for stat_name, value in self.game_instance.character_stats.items():
+                            if stat_name not in stat_order:
+                                filled = "█" * value
+                                empty = "░" * (10 - value)
+                                if value >= 6:
+                                    color = "green"
+                                elif value >= 4:
+                                    color = "yellow"
+                                else:
+                                    color = "red"
+                                stats_display += f"[white]{stat_name.title()}:[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                        
+                        yield Static(stats_display.rstrip(), id="stats_display")
+                    else:
+                        yield Static("[red]Character stats not available[/red]\n[dim]Generate stats in character creation[/dim]", id="stats_display")
+                
+                # Profession & Progress
+                with Container(id="profession_section", classes="profile_section"):
+                    yield Static("🎓 PROFESSION & PROGRESSION", classes="section_header")
+                    
+                    if self.game_instance and hasattr(self.game_instance, 'profession_system'):
+                        prof_system = self.game_instance.profession_system
+                        
+                        if hasattr(prof_system, 'character_profession') and prof_system.character_profession:
+                            profession = prof_system.character_profession
+                            level = prof_system.profession_levels.get(profession, 1)
+                            xp = prof_system.profession_experience.get(profession, 0)
+                            
+                            # Calculate XP to next level (simplified)
+                            next_level_xp = level * 100
+                            xp_progress = min(xp / next_level_xp, 1.0) if next_level_xp > 0 else 0
+                            progress_bar_length = 20
+                            filled_bars = int(xp_progress * progress_bar_length)
+                            
+                            progress_bar = "█" * filled_bars + "░" * (progress_bar_length - filled_bars)
+                            
+                            prof_info = f"""[bold cyan]Current Profession:[/bold cyan]
+[green]{profession}[/green] - Level [yellow]{level}[/yellow]
+
+[cyan]Experience:[/cyan] [green]{progress_bar}[/green] 
+{xp}/{next_level_xp} XP"""
+                            
+                            yield Static(prof_info, id="profession_info")
+                        else:
+                            yield Static("[yellow]No active profession[/yellow]\n[dim]Visit the profession system to choose[/dim]", id="profession_info")
+                    else:
+                        yield Static("[red]Profession system unavailable[/red]", id="profession_info")
 
 class ManufacturingScreen(Static):
     """Manufacturing platforms interface"""
@@ -835,6 +1035,111 @@ class GalacticEmpireApp(App):
         grid-gutter: 1 1;
         margin: 1;
     }
+    
+    /* Notification styling - make it more readable */
+    Notification {
+        background: $primary;
+        color: white;
+        text-style: bold;
+        border: thick white;
+    }
+    
+    .notification {
+        background: $primary;
+        color: white;
+        text-style: bold;
+        border: solid white;
+    }
+    
+    Toast {
+        background: $primary;
+        color: white;
+        text-style: bold;
+        border: solid white;
+    }
+    
+    /* Additional notification system styling */
+    #notifications {
+        color: white;
+        background: $primary;
+    }
+    
+    .toast {
+        color: white;
+        background: $primary;
+        text-style: bold;
+        border: solid white;
+    }
+    
+    /* Textual's notification widget styling */
+    NotificationGroup {
+        color: white;
+        background: $primary;
+    }
+    
+    NotificationGroup > Static {
+        color: white;
+        text-style: bold;
+    }
+    
+    /* Character Profile Styling */
+    #char_info_column {
+        width: 1fr;
+        padding: 1;
+    }
+    
+    #stats_column {
+        width: 1fr;
+        padding: 1;
+    }
+    
+    .profile_section {
+        background: $boost;
+        border: thick $primary;
+        padding: 1 2;
+        margin: 1 0;
+        min-height: 10;
+    }
+    
+    #character_portrait {
+        background: $panel;
+        border: thick cyan;
+    }
+    
+    #wealth_section {
+        background: $panel;
+        border: thick green;
+    }
+    
+    #stats_section {
+        background: $panel;
+        border: thick yellow;
+    }
+    
+    #profession_section {
+        background: $panel;  
+        border: thick purple;
+    }
+    
+    #profile_info {
+        text-align: center;
+        padding: 1;
+    }
+    
+    #wealth_info {
+        text-align: left;
+        padding: 1;
+    }
+    
+    #stats_display {
+        text-align: left;
+        padding: 1;
+    }
+    
+    #profession_info {
+        text-align: left;
+        padding: 1;
+    }
     """
     
     BINDINGS = [
@@ -919,7 +1224,61 @@ class GalacticEmpireApp(App):
                 status_bar.update_status(credits=credits, location=location, ship=ship_name)
             except:
                 pass
+            
+            # Also try to update character screen if it's currently displayed
+            if self.current_content == "character":
+                try:
+                    char_screen = self.query_one(CharacterScreen)
+                    char_screen.refresh_character_data()
+                except:
+                    pass
         
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle list view selections"""
+        list_id = event.list_view.id
+        
+        if list_id == "class_list" and GAME_AVAILABLE:
+            try:
+                # Get the index of the selected item
+                selected_index = event.list_view.index
+                if selected_index is not None and selected_index >= 0:
+                    # Get class name from the list of classes
+                    class_names = list(character_classes.keys())
+                    if selected_index < len(class_names):
+                        class_name = class_names[selected_index]
+                        self.char_selected_class = class_name
+                        self.update_character_preview_from_app()
+                        self.show_notification(f"✅ Selected class: {class_name}")
+                        print(f"DEBUG: Selected class: {class_name}")
+                        print(f"DEBUG: App now has char_selected_class: {self.char_selected_class}")
+            except Exception as e:
+                print(f"Error getting class selection: {e}")
+                self.show_notification(f"Error selecting class: {str(e)[:20]}...")
+                    
+        elif list_id == "background_list" and GAME_AVAILABLE:
+            try:
+                # Get the index of the selected item
+                selected_index = event.list_view.index
+                if selected_index is not None and selected_index >= 0:
+                    # Get background name from the list of backgrounds
+                    bg_names = list(character_backgrounds.keys())
+                    if selected_index < len(bg_names):
+                        bg_name = bg_names[selected_index]
+                        self.char_selected_background = bg_name
+                        self.update_character_preview_from_app()
+                        self.show_notification(f"✅ Selected background: {bg_name}")
+                        print(f"DEBUG: Selected background: {bg_name}")
+                        print(f"DEBUG: App now has char_selected_background: {self.char_selected_background}")
+            except Exception as e:
+                print(f"Error getting background selection: {e}")
+                self.show_notification(f"Error selecting background: {str(e)[:20]}...")
+    
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle input field changes"""
+        if event.input.id == "char_name_input":
+            self.char_character_name = event.value
+            self.update_character_preview_from_app()
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button clicks"""
         button_id = event.button.id
@@ -946,8 +1305,20 @@ class GalacticEmpireApp(App):
             self.show_notification("⚙️ Ship builder coming soon!")
         elif button_id == "character":
             self.action_show_character()
+        elif button_id == "new_character":
+            self.action_show_character_creation()
         elif button_id == "exit":
             self.exit()
+            
+        # Character creation buttons
+        elif button_id == "generate_stats":
+            self.handle_generate_stats()
+        elif button_id == "reroll_stats":
+            self.handle_reroll_stats()
+        elif button_id == "create_character":
+            self.handle_create_character()
+        elif button_id == "back_to_menu":
+            self.action_show_main_menu()
             
         # Navigation screen buttons
         elif button_id == "local_map":
@@ -1059,6 +1430,10 @@ class GalacticEmpireApp(App):
         """Show character screen"""
         self._switch_to_screen(CharacterScreen(game_instance=self.game_instance), "character")
         
+    def action_show_character_creation(self) -> None:
+        """Show character creation screen"""
+        self._switch_to_screen(CharacterCreationScreen(game_instance=self.game_instance), "character_creation")
+        
     def action_show_help(self) -> None:
         """Show help information"""
         help_text = """
@@ -1091,6 +1466,271 @@ class GalacticEmpireApp(App):
         """Show a temporary notification"""
         self.notify(message, title="System Message", timeout=3)
         
+    # Character creation handlers - store state in app
+    def handle_generate_stats(self):
+        """Generate random character stats"""
+        if GAME_AVAILABLE:
+            # Store stats on the app instance for now
+            self.char_generated_stats = create_character_stats()
+            self.update_character_preview_from_app()
+            self.show_notification("📊 Character stats generated!")
+        else:
+            self.show_notification("⚠️ Stats generation unavailable in demo mode")
+    
+    def handle_reroll_stats(self):
+        """Reroll character stats"""
+        if GAME_AVAILABLE and hasattr(self, 'char_generated_stats') and self.char_generated_stats:
+            self.char_generated_stats = create_character_stats()
+            self.update_character_preview_from_app()
+            self.show_notification("🎲 Stats rerolled!")
+        else:
+            self.show_notification("⚠️ Generate stats first")
+    
+    def handle_create_character(self):
+        """Create the character and apply to game"""
+        # Get character name from input
+        try:
+            name_input = self.query_one("#char_name_input")
+            self.char_character_name = name_input.value.strip()
+        except:
+            self.char_character_name = ""
+        
+        # Debug output
+        print(f"DEBUG: Character name: '{self.char_character_name}'")
+        print(f"DEBUG: Has class attr: {hasattr(self, 'char_selected_class')}")
+        print(f"DEBUG: Selected class: {getattr(self, 'char_selected_class', 'NONE')}")
+        print(f"DEBUG: Has background attr: {hasattr(self, 'char_selected_background')}")
+        print(f"DEBUG: Selected background: {getattr(self, 'char_selected_background', 'NONE')}")
+        print(f"DEBUG: Has stats attr: {hasattr(self, 'char_generated_stats')}")
+        print(f"DEBUG: Generated stats: {getattr(self, 'char_generated_stats', 'NONE')}")
+            
+        if not self.char_character_name:
+            self.show_notification("❌ Please enter a character name")
+            return
+            
+        if not hasattr(self, 'char_selected_class') or not self.char_selected_class:
+            self.show_notification("❌ Please select a character class first")
+            return
+            
+        if not hasattr(self, 'char_selected_background') or not self.char_selected_background:
+            self.show_notification("❌ Please select a character background")
+            return
+            
+        if not hasattr(self, 'char_generated_stats') or not self.char_generated_stats:
+            self.show_notification("❌ Please generate character stats")
+            return
+            
+        # Apply character to game instance
+        if GAME_AVAILABLE and self.game_instance:
+            try:
+                self.apply_character_to_game_direct()
+                self.show_notification(f"✅ Character '{self.char_character_name}' created!")
+                # Return to main menu after a brief delay
+                self.set_timer(2.0, self.action_show_main_menu)
+            except Exception as e:
+                self.show_notification(f"❌ Error creating character: {str(e)[:30]}...")
+        else:
+            self.show_notification("✅ Character created (demo mode)")
+            self.action_show_main_menu()
+    
+    def update_character_preview_from_app(self):
+        """Update the character preview display from app-level variables"""
+        try:
+            preview_widget = self.query_one("#char_preview")
+            
+            # Calculate starting credits
+            base_credits = 10000
+            class_credits = 0
+            bg_credits = 0
+            
+            if GAME_AVAILABLE and hasattr(self, 'char_selected_class') and self.char_selected_class:
+                class_data = character_classes.get(self.char_selected_class, {})
+                class_credits = class_data.get("starting_credits", 0)
+                
+            if GAME_AVAILABLE and hasattr(self, 'char_selected_background') and self.char_selected_background:
+                bg_data = character_backgrounds.get(self.char_selected_background, {})
+                bg_credits = bg_data.get("credit_bonus", 0) + bg_data.get("credit_penalty", 0)
+            
+            total_credits = base_credits + class_credits + bg_credits
+            
+            # Build stats text
+            stats_text = "Leadership: ?\nTechnical: ?\nCombat: ?\nDiplomacy: ?\nExploration: ?\nTrade: ?"
+            
+            if hasattr(self, 'char_generated_stats') and self.char_generated_stats:
+                stats_lines = []
+                for stat, value in self.char_generated_stats.items():
+                    stats_lines.append(f"{stat.title()}: {value}")
+                stats_text = "\n".join(stats_lines)
+            
+            char_name = getattr(self, 'char_character_name', '[Not Set]')
+            selected_class = getattr(self, 'char_selected_class', '[None Selected]')
+            selected_bg = getattr(self, 'char_selected_background', '[None Selected]')
+            
+            preview_text = f"""Name: {char_name}
+Class: {selected_class}
+Background: {selected_bg}
+
+📊 STATS:
+{stats_text}
+
+💰 STARTING RESOURCES:
+Credits: {total_credits:,}
+Ships: {class_data.get('starting_ships', ['TBD'])[0] if hasattr(self, 'char_selected_class') and self.char_selected_class and GAME_AVAILABLE else '[Based on class]'}
+
+🎯 CLASS BONUSES:
+{self.get_class_bonuses_text_from_app()}
+
+🌟 BACKGROUND TRAITS:
+{self.get_background_traits_text_from_app()}"""
+            
+            preview_widget.update(preview_text)
+        except Exception as e:
+            print(f"Error updating preview: {e}")
+    
+    def get_class_bonuses_text_from_app(self):
+        """Get formatted class bonuses text from app variables"""
+        if not GAME_AVAILABLE or not hasattr(self, 'char_selected_class') or not self.char_selected_class:
+            return "Select a class to see bonuses"
+            
+        class_data = character_classes.get(self.char_selected_class, {})
+        bonuses = class_data.get("bonuses", {})
+        
+        if not bonuses:
+            return "No special bonuses"
+            
+        bonus_lines = []
+        for bonus, value in bonuses.items():
+            if isinstance(value, float):
+                bonus_lines.append(f"• {bonus.replace('_', ' ').title()}: +{int(value*100)}%")
+            else:
+                bonus_lines.append(f"• {bonus.replace('_', ' ').title()}: {value}")
+        
+        return "\n".join(bonus_lines)
+    
+    def get_background_traits_text_from_app(self):
+        """Get formatted background traits text from app variables"""
+        if not GAME_AVAILABLE or not hasattr(self, 'char_selected_background') or not self.char_selected_background:
+            return "Select a background to see traits"
+            
+        bg_data = character_backgrounds.get(self.char_selected_background, {})
+        traits = bg_data.get("traits", [])
+        
+        if not traits:
+            return "No special traits"
+            
+        return "\n".join([f"• {trait}" for trait in traits])
+    
+    def apply_character_to_game_direct(self):
+        """Apply the created character directly from app variables to the game instance"""
+        if not self.game_instance:
+            return
+            
+        # Set basic character info
+        self.game_instance.player_name = self.char_character_name
+        self.game_instance.character_class = self.char_selected_class
+        self.game_instance.character_background = self.char_selected_background
+        self.game_instance.character_stats = self.char_generated_stats
+        
+        # Apply starting credits
+        class_data = character_classes.get(self.char_selected_class, {})
+        bg_data = character_backgrounds.get(self.char_selected_background, {})
+        
+        base_credits = 10000
+        class_credits = class_data.get("starting_credits", 0)
+        bg_credits = bg_data.get("credit_bonus", 0) + bg_data.get("credit_penalty", 0)
+        
+        self.game_instance.credits = base_credits + class_credits + bg_credits
+        
+        # Initialize profession system if available
+        if hasattr(self.game_instance, 'profession_system'):
+            self.game_instance.profession_system.character_profession = "Galactic " + self.char_selected_class
+    
+    def update_character_preview(self):
+        """Update the character preview display"""
+        try:
+            preview_widget = self.query_one("#char_preview")
+            
+            # Calculate starting credits
+            base_credits = 10000
+            class_credits = 0
+            bg_credits = 0
+            
+            if GAME_AVAILABLE and self.selected_class:
+                class_data = character_classes.get(self.selected_class, {})
+                class_credits = class_data.get("starting_credits", 0)
+                
+            if GAME_AVAILABLE and self.selected_background:
+                bg_data = character_backgrounds.get(self.selected_background, {})
+                bg_credits = bg_data.get("credit_bonus", 0) + bg_data.get("credit_penalty", 0)
+            
+            total_credits = base_credits + class_credits + bg_credits
+            
+            # Build preview text
+            stats_text = "?\n".join(["Leadership: ?", "Technical: ?", "Combat: ?", 
+                                   "Diplomacy: ?", "Exploration: ?", "Trade: ?"])
+            
+            if self.generated_stats:
+                stats_lines = []
+                for stat, value in self.generated_stats.items():
+                    stats_lines.append(f"{stat.title()}: {value}")
+                stats_text = "\n".join(stats_lines)
+            
+            preview_text = f"""Name: {self.character_name or '[Not Set]'}
+Class: {self.selected_class or '[None Selected]'}
+Background: {self.selected_background or '[None Selected]'}
+
+📊 STATS:
+{stats_text}
+
+💰 STARTING RESOURCES:
+Credits: {total_credits:,}
+Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and GAME_AVAILABLE else '[Based on class]'}
+
+🎯 CLASS BONUSES:
+{self.get_class_bonuses_text()}
+
+🌟 BACKGROUND TRAITS:
+{self.get_background_traits_text()}"""
+            
+            preview_widget.update(preview_text)
+        except Exception as e:
+            print(f"Error updating preview: {e}")
+    
+    def get_class_bonuses_text(self):
+        """Get formatted class bonuses text"""
+        if not GAME_AVAILABLE or not self.selected_class:
+            return "Select a class to see bonuses"
+            
+        class_data = character_classes.get(self.selected_class, {})
+        bonuses = class_data.get("bonuses", {})
+        
+        if not bonuses:
+            return "No special bonuses"
+            
+        bonus_lines = []
+        for bonus, value in bonuses.items():
+            if isinstance(value, float):
+                bonus_lines.append(f"• {bonus.replace('_', ' ').title()}: +{int(value*100)}%")
+            else:
+                bonus_lines.append(f"• {bonus.replace('_', ' ').title()}: {value}")
+        
+        return "\n".join(bonus_lines)
+    
+    def get_background_traits_text(self):
+        """Get formatted background traits text"""
+        if not GAME_AVAILABLE or not self.selected_background:
+            return "Select a background to see traits"
+            
+        bg_data = character_backgrounds.get(self.selected_background, {})
+        traits = bg_data.get("traits", [])
+        
+        if not traits:
+            return "No special traits"
+            
+        return "\n".join([f"• {trait}" for trait in traits])
+    
+
+
     def handle_archaeological_scan(self):
         """Handle archaeological site scanning"""
         if not self.game_instance or not hasattr(self.game_instance, 'galactic_history'):
