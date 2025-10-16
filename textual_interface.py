@@ -181,6 +181,18 @@ class MainMenu(Static):
             yield Button("📊 Character Profile", id="character", variant="primary")
             yield Button("🎭 New Character", id="new_character", variant="success")
             yield Button("💾 Save & Exit", id="exit", variant="warning")
+            
+        yield Static("═" * 80, classes="rule")
+        yield Static("SHIP MANAGEMENT", classes="section_header")
+        
+        # Ship management buttons
+        with Grid(id="ship_grid"):
+            yield Button("🛸 Ship Manager", id="ship_manager", variant="primary")
+            yield Button("🔧 Create Ship", id="create_ship", variant="success")
+            yield Button("📋 List Ships", id="list_ships", variant="primary")
+            yield Button("✏️ Edit Ship", id="edit_ship", variant="primary")
+            yield Button("🗑️ Delete Ship", id="delete_ship", variant="error")
+            yield Button("⭐ Set Active Ship", id="set_active_ship", variant="warning")
 
 class NavigationScreen(Static):
     """Space navigation interface with 3D map"""
@@ -603,6 +615,280 @@ class CharacterScreen(Static):
                     else:
                         yield Static("[red]Profession system unavailable[/red]", id="profession_info")
 
+class ShipManagerScreen(Static):
+    """Comprehensive ship management interface"""
+    
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
+        self.game_instance = game_instance
+        self.selected_ship = None
+        
+    def compose(self) -> ComposeResult:
+        yield Static("🛸 SHIP MANAGEMENT CENTER", classes="screen_title")
+        
+        with Horizontal():
+            # Left panel - Ship list and actions
+            with Vertical(id="ship_list_panel"):
+                yield Static("🚀 FLEET OVERVIEW", classes="section_header")
+                
+                # Ship list
+                with Container(id="ship_list_container"):
+                    ship_items = []
+                    
+                    if self.game_instance:
+                        # Add owned ships (predefined ships)
+                        for ship_name in getattr(self.game_instance, 'owned_ships', []):
+                            ship_items.append(ListItem(Label(f"🚢 {ship_name}")))
+                        
+                        # Add custom ships (player-built)
+                        for ship in getattr(self.game_instance, 'custom_ships', []):
+                            ship_name = ship.get('name', 'Unnamed Ship')
+                            ship_items.append(ListItem(Label(f"🛠️ {ship_name}")))
+                    
+                    if not ship_items:
+                        ship_items.append(ListItem(Label("📭 No ships available")))
+                    
+                    yield ListView(*ship_items, id="ship_list")
+                
+                # Ship action buttons
+                yield Static("⚙️ SHIP ACTIONS", classes="section_header")
+                with Vertical(id="ship_actions"):
+                    yield Button("🔧 Create New Ship", id="btn_create_ship", variant="success")
+                    yield Button("✏️ Edit Selected Ship", id="btn_edit_ship", variant="primary")
+                    yield Button("🗑️ Delete Selected Ship", id="btn_delete_ship", variant="error")
+                    yield Button("⭐ Set as Active Ship", id="btn_set_active", variant="warning")
+                    yield Button("🔄 Refresh Fleet", id="btn_refresh_fleet", variant="default")
+            
+            # Right panel - Ship details
+            with Vertical(id="ship_details_panel"):
+                yield Static("📋 SHIP DETAILS", classes="section_header")
+                
+                with Container(id="ship_info_display"):
+                    if self.game_instance and hasattr(self.game_instance.navigation, 'current_ship') and self.game_instance.navigation.current_ship:
+                        current_ship = self.game_instance.navigation.current_ship
+                        ship_info = f"""[bold cyan]═══ ACTIVE SHIP ═══[/bold cyan]
+                        
+[yellow]Name:[/yellow] [bold]{current_ship.name}[/bold]
+[yellow]Class:[/yellow] {getattr(current_ship, 'ship_class', 'Unknown')}
+[yellow]Location:[/yellow] ({current_ship.coordinates[0]}, {current_ship.coordinates[1]}, {current_ship.coordinates[2]})
+
+[green]Status:[/green] [bold]Active[/bold]"""
+                    else:
+                        ship_info = """[red]No active ship selected[/red]
+                        
+[dim]Select a ship from the fleet list to view details[/dim]"""
+                    
+                    yield Static(ship_info, id="active_ship_info")
+                
+                # Ship creation form (hidden by default)
+                with Container(id="ship_creation_form", classes="hidden"):
+                    yield Static("🔧 CREATE NEW SHIP", classes="section_header")
+                    yield Input(placeholder="Enter ship name...", id="new_ship_name")
+                    with Horizontal():
+                        yield Button("✅ Create", id="btn_confirm_create", variant="success")
+                        yield Button("❌ Cancel", id="btn_cancel_create", variant="error")
+
+    def on_mount(self) -> None:
+        """Bind events and ensure UI reflects current game state"""
+        # Ensure list and active ship display are up-to-date
+        self.refresh_ship_list()
+        self.refresh_active_ship_display()
+
+    def refresh_ship_list(self) -> None:
+        """Rebuild the ship list from game instance"""
+        try:
+            list_view = self.query_one("#ship_list", ListView)
+        except Exception:
+            return
+
+        list_view.clear()
+        items = []
+        if self.game_instance:
+            for ship_name in getattr(self.game_instance, 'owned_ships', []):
+                items.append(ListItem(Label(f"🚢 {ship_name}")))
+            for ship in getattr(self.game_instance, 'custom_ships', []):
+                items.append(ListItem(Label(f"🛠️ {ship.get('name', 'Unnamed Ship')}")))
+
+        if not items:
+            items = [ListItem(Label("📭 No ships available"))]
+
+        for it in items:
+            list_view.append(it)
+
+    def refresh_active_ship_display(self) -> None:
+        """Update the active ship details panel"""
+        try:
+            widget = self.query_one("#active_ship_info", Static)
+        except Exception:
+            return
+
+        if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
+            current_ship = self.game_instance.navigation.current_ship
+            info = f"""[bold cyan]═══ ACTIVE SHIP ═══[/bold cyan]
+
+[yellow]Name:[/yellow] [bold]{current_ship.name}[/bold]
+[yellow]Class:[/yellow] {getattr(current_ship, 'ship_class', 'Unknown')}
+[yellow]Location:[/yellow] ({current_ship.coordinates[0]}, {current_ship.coordinates[1]}, {current_ship.coordinates[2]})
+
+[green]Status:[/green] [bold]Active[/bold]"""
+        else:
+            info = """[red]No active ship selected[/red]
+
+[dim]Select a ship from the fleet list to view details[/dim]"""
+
+        try:
+            widget.update(info)
+        except Exception:
+            pass
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Store the name of the selected ship"""
+        try:
+            lv = event.list_view
+            idx = lv.index
+            # Map index back to ship names
+            all_names = []
+            if self.game_instance:
+                all_names.extend(getattr(self.game_instance, 'owned_ships', []))
+                all_names.extend([s.get('name', 'Unnamed Ship') for s in getattr(self.game_instance, 'custom_ships', [])])
+
+            if idx is not None and 0 <= idx < len(all_names):
+                self.selected_ship = all_names[idx]
+            else:
+                self.selected_ship = None
+        except Exception:
+            self.selected_ship = None
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle ship manager button presses"""
+        btn_id = event.button.id
+
+        if btn_id == "btn_refresh_fleet":
+            self.refresh_ship_list()
+            self.refresh_active_ship_display()
+            return
+
+        if btn_id == "btn_create_ship":
+            # Show creation form
+            try:
+                form = self.query_one("#ship_creation_form")
+                form.remove_class("hidden")
+            except Exception:
+                pass
+            return
+
+        if btn_id == "btn_cancel_create":
+            try:
+                form = self.query_one("#ship_creation_form")
+                form.add_class("hidden")
+            except Exception:
+                pass
+            return
+
+        if btn_id == "btn_confirm_create":
+            try:
+                name_input = self.query_one("#new_ship_name", Input)
+                ship_name = name_input.value.strip()
+                if not ship_name:
+                    # simple notify
+                    self.app.show_notification("❌ Enter a ship name")
+                    return
+
+                # Create a minimal custom ship entry and add to game
+                custom = {"name": ship_name, "role": "Custom"}
+                if self.game_instance is not None:
+                    self.game_instance.custom_ships.append(custom)
+                    self.app.show_notification(f"✅ Created ship: {ship_name}")
+                # hide form and refresh
+                form = self.query_one("#ship_creation_form")
+                form.add_class("hidden")
+                name_input.value = ""
+                self.refresh_ship_list()
+            except Exception as e:
+                print(f"Error creating ship: {e}")
+            return
+
+        if btn_id == "btn_set_active":
+            # Set currently selected ship as active
+            if not self.selected_ship:
+                self.app.show_notification("❌ No ship selected to activate")
+                return
+
+            # Determine if selected ship is owned or custom
+            try:
+                if self.game_instance:
+                    if self.selected_ship in self.game_instance.owned_ships:
+                        ship_class = self.selected_ship
+                    else:
+                        ship_class = "Custom Ship"
+
+                    from navigation import Ship
+                    self.game_instance.navigation.current_ship = Ship(self.selected_ship, ship_class)
+                    self.app.show_notification(f"⭐ Active ship set: {self.selected_ship}")
+                    self.refresh_active_ship_display()
+            except Exception as e:
+                print(f"Error setting active ship: {e}")
+            return
+
+        if btn_id == "btn_delete_ship":
+            if not self.selected_ship:
+                self.app.show_notification("❌ No ship selected to delete")
+                return
+
+            try:
+                # Try to remove from custom_ships first
+                if self.game_instance:
+                    removed = False
+                    for i, s in enumerate(self.game_instance.custom_ships):
+                        if s.get('name') == self.selected_ship:
+                            del self.game_instance.custom_ships[i]
+                            removed = True
+                            break
+
+                    if not removed and self.selected_ship in self.game_instance.owned_ships:
+                        # don't allow deleting built-in ships, but allow removing from owned list
+                        try:
+                            self.game_instance.owned_ships.remove(self.selected_ship)
+                            removed = True
+                        except ValueError:
+                            removed = False
+
+                    if removed:
+                        self.app.show_notification(f"🗑️ Deleted ship: {self.selected_ship}")
+                        # If deleted ship was active, clear current_ship
+                        if self.game_instance.navigation.current_ship and self.game_instance.navigation.current_ship.name == self.selected_ship:
+                            self.game_instance.navigation.current_ship = None
+                        self.selected_ship = None
+                        self.refresh_ship_list()
+                        self.refresh_active_ship_display()
+                    else:
+                        self.app.show_notification("❌ Unable to delete selected ship")
+            except Exception as e:
+                print(f"Error deleting ship: {e}")
+            return
+
+        if btn_id == "btn_edit_ship":
+            # For now, allow simple rename of custom ships via prompt in terminal (fallback)
+            if not self.selected_ship:
+                self.app.show_notification("❌ No ship selected to edit")
+                return
+
+            try:
+                # Only allow editing custom ships
+                for s in self.game_instance.custom_ships:
+                    if s.get('name') == self.selected_ship:
+                        # prompt in terminal (fallback) - keep non-blocking in UI
+                        new_name = s.get('name') + " Edited"
+                        s['name'] = new_name
+                        self.app.show_notification(f"✏️ Renamed ship to: {new_name}")
+                        self.refresh_ship_list()
+                        return
+
+                self.app.show_notification("⚠️ Only custom ships can be renamed in this demo")
+            except Exception as e:
+                print(f"Error editing ship: {e}")
+            return
+
 class ManufacturingScreen(Static):
     """Manufacturing platforms interface"""
     
@@ -889,6 +1175,15 @@ class GalacticEmpireApp(App):
         width: 100%;
     }
     
+    #ship_grid {
+        grid-size: 3 2;
+        grid-gutter: 1 2;
+        margin: 1;
+        padding: 1;
+        height: auto;
+        width: 100%;
+    }
+    
     #header {
         dock: top;
         height: 12;
@@ -1140,6 +1435,53 @@ class GalacticEmpireApp(App):
         text-align: left;
         padding: 1;
     }
+    
+    /* Ship Manager Styling */
+    #ship_list_panel {
+        width: 1fr;
+        padding: 1;
+    }
+    
+    #ship_details_panel {
+        width: 2fr;
+        padding: 1;
+    }
+    
+    #ship_list_container {
+        background: $panel;
+        border: solid cyan;
+        padding: 1;
+        margin: 1 0;
+        height: 15;
+    }
+    
+    #ship_info_display {
+        background: $panel;
+        border: solid green;
+        padding: 2;
+        margin: 1 0;
+        height: 15;
+    }
+    
+    #ship_actions {
+        margin: 1 0;
+    }
+    
+    #ship_creation_form {
+        background: $panel;
+        border: solid yellow;
+        padding: 2;
+        margin: 1 0;
+    }
+    
+    .hidden {
+        display: none;
+    }
+    
+    #active_ship_info {
+        text-align: left;
+        padding: 1;
+    }
     """
     
     BINDINGS = [
@@ -1205,6 +1547,19 @@ class GalacticEmpireApp(App):
         # Initialize profession system if available
         if hasattr(self.game_instance, 'profession_system'):
             self.game_instance.profession_system.character_profession = "Galactic Historian"
+        
+        # Initialize default ships
+        if not self.game_instance.owned_ships:
+            self.game_instance.owned_ships = ["Basic Transport", "Aurora Ascendant"]
+        
+        # Set up default active ship in navigation system
+        if hasattr(self.game_instance, 'navigation') and self.game_instance.navigation:
+            from navigation import Ship
+            if not self.game_instance.navigation.current_ship:
+                # Create the default ship instance
+                default_ship = Ship("Basic Transport", "Basic Transport")
+                self.game_instance.navigation.current_ship = default_ship
+                print(f"Initialized default ship: {default_ship.name}")
             
     def update_status_bar(self):
         """Update the status bar with current game state"""
@@ -1365,6 +1720,36 @@ class GalacticEmpireApp(App):
             self.show_notification("🤝 Opening trade interface with bot...")
         elif button_id == "track_bot":
             self.show_notification("📍 Tracking bot location...")
+            
+        # Ship management buttons
+        elif button_id == "ship_manager":
+            self.action_show_ship_manager()
+        elif button_id == "create_ship":
+            self.action_show_ship_manager()  # Will open to creation mode
+        elif button_id == "list_ships":
+            self.action_show_ship_manager()  # Will show ship list
+        elif button_id == "edit_ship":
+            self.show_notification("✏️ Edit ship functionality coming soon!")
+        elif button_id == "delete_ship":
+            self.show_notification("🗑️ Delete ship functionality coming soon!")
+        elif button_id == "set_active_ship":
+            self.show_notification("⭐ Set active ship functionality coming soon!")
+            
+        # Ship manager screen buttons
+        elif button_id == "btn_create_ship":
+            self.handle_show_ship_creation()
+        elif button_id == "btn_edit_ship":
+            self.handle_edit_selected_ship()
+        elif button_id == "btn_delete_ship":
+            self.handle_delete_selected_ship()
+        elif button_id == "btn_set_active":
+            self.handle_set_active_ship()
+        elif button_id == "btn_refresh_fleet":
+            self.handle_refresh_fleet()
+        elif button_id == "btn_confirm_create":
+            self.handle_confirm_ship_creation()
+        elif button_id == "btn_cancel_create":
+            self.handle_cancel_ship_creation()
     
     def _switch_to_screen(self, new_screen_widget, screen_name):
         """Safely switch to a new screen using container replacement"""
@@ -1433,6 +1818,10 @@ class GalacticEmpireApp(App):
     def action_show_character_creation(self) -> None:
         """Show character creation screen"""
         self._switch_to_screen(CharacterCreationScreen(game_instance=self.game_instance), "character_creation")
+    
+    def action_show_ship_manager(self) -> None:
+        """Show ship manager screen"""
+        self._switch_to_screen(ShipManagerScreen(game_instance=self.game_instance), "ship_manager")
         
     def action_show_help(self) -> None:
         """Show help information"""
@@ -1915,6 +2304,98 @@ Ships: {class_data.get('starting_ships', ['TBD'])[0] if self.selected_class and 
         self.game_instance.credits += total_income
         self.show_notification(f"💰 Sold {quantity} {commodity} for {total_income:,} credits!")
         self.update_status_bar()
+    
+    # Ship Management Handlers
+    def handle_show_ship_creation(self):
+        """Show ship creation form"""
+        try:
+            creation_form = self.query_one("#ship_creation_form")
+            creation_form.remove_class("hidden")
+            self.show_notification("🔧 Enter ship name and click Create")
+        except:
+            self.show_notification("❌ Could not open ship creation form")
+    
+    def handle_cancel_ship_creation(self):
+        """Cancel ship creation"""
+        try:
+            creation_form = self.query_one("#ship_creation_form")
+            creation_form.add_class("hidden")
+            name_input = self.query_one("#new_ship_name")
+            name_input.value = ""
+            self.show_notification("❌ Ship creation cancelled")
+        except:
+            pass
+    
+    def handle_confirm_ship_creation(self):
+        """Create a new ship"""
+        try:
+            name_input = self.query_one("#new_ship_name")
+            ship_name = name_input.value.strip()
+            
+            if not ship_name:
+                self.show_notification("❌ Please enter a ship name")
+                return
+                
+            if self.game_instance:
+                # Create a new custom ship
+                new_ship = {
+                    'name': ship_name,
+                    'type': 'Custom Ship',
+                    'health': 100,
+                    'fuel': 100,
+                    'components': []
+                }
+                
+                # Add to custom ships
+                if not hasattr(self.game_instance, 'custom_ships'):
+                    self.game_instance.custom_ships = []
+                
+                self.game_instance.custom_ships.append(new_ship)
+                
+                # Hide form and refresh display
+                self.handle_cancel_ship_creation()
+                self.handle_refresh_fleet()
+                
+                self.show_notification(f"✅ Ship '{ship_name}' created successfully!")
+            else:
+                self.show_notification("❌ Game instance not available")
+                
+        except Exception as e:
+            self.show_notification(f"❌ Error creating ship: {str(e)[:30]}...")
+    
+    def handle_edit_selected_ship(self):
+        """Edit the selected ship"""
+        self.show_notification("✏️ Ship editing coming soon!")
+    
+    def handle_delete_selected_ship(self):
+        """Delete the selected ship"""
+        self.show_notification("🗑️ Ship deletion coming soon!")
+    
+    def handle_set_active_ship(self):
+        """Set the selected ship as active"""
+        self.show_notification("⭐ Set active ship coming soon!")
+    
+    def handle_refresh_fleet(self):
+        """Refresh the fleet display"""
+        try:
+            # Get the ship list
+            ship_list = self.query_one("#ship_list")
+            ship_list.clear()
+            
+            if self.game_instance:
+                # Add owned ships
+                for ship_name in getattr(self.game_instance, 'owned_ships', []):
+                    ship_list.append(ListItem(Label(f"🚢 {ship_name}")))
+                
+                # Add custom ships
+                for ship in getattr(self.game_instance, 'custom_ships', []):
+                    ship_name = ship.get('name', 'Unnamed Ship')
+                    ship_list.append(ListItem(Label(f"🛠️ {ship_name}")))
+            
+            self.show_notification("🔄 Fleet list refreshed!")
+            
+        except Exception as e:
+            self.show_notification(f"❌ Error refreshing fleet: {str(e)[:30]}...")
 
 class HelpModal(ModalScreen):
     """Help screen modal"""
