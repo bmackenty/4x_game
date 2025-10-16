@@ -703,11 +703,11 @@ class ShipManagerScreen(Static):
 
         list_view.clear()
         items = []
+        
         if self.game_instance:
-            for ship_name in getattr(self.game_instance, 'owned_ships', []):
-                items.append(ListItem(Label(f"🚢 {ship_name}")))
-            for ship in getattr(self.game_instance, 'custom_ships', []):
-                items.append(ListItem(Label(f"🛠️ {ship.get('name', 'Unnamed Ship')}")))
+            ships = self.game_instance.get_all_ships()
+            for ship in ships:
+                items.append(ListItem(Label(ship['display'])))
 
         if not items:
             items = [ListItem(Label("📭 No ships available"))]
@@ -722,19 +722,24 @@ class ShipManagerScreen(Static):
         except Exception:
             return
 
-        if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
-            current_ship = self.game_instance.navigation.current_ship
-            info = f"""[bold cyan]═══ ACTIVE SHIP ═══[/bold cyan]
+        if self.game_instance:
+            ship_info = self.game_instance.get_active_ship_info()
+            if ship_info:
+                info = f"""[bold cyan]═══ ACTIVE SHIP ═══[/bold cyan]
 
-[yellow]Name:[/yellow] [bold]{current_ship.name}[/bold]
-[yellow]Class:[/yellow] {getattr(current_ship, 'ship_class', 'Unknown')}
-[yellow]Location:[/yellow] ({current_ship.coordinates[0]}, {current_ship.coordinates[1]}, {current_ship.coordinates[2]})
+[yellow]Name:[/yellow] [bold]{ship_info['name']}[/bold]
+[yellow]Class:[/yellow] {ship_info['class']}
+[yellow]Location:[/yellow] ({ship_info['coordinates'][0]}, {ship_info['coordinates'][1]}, {ship_info['coordinates'][2]})
+[yellow]Fuel:[/yellow] {ship_info['fuel']}/{ship_info['max_fuel']}
+[yellow]Cargo:[/yellow] {ship_info['cargo_used']}/{ship_info['cargo_max']}
 
 [green]Status:[/green] [bold]Active[/bold]"""
-        else:
-            info = """[red]No active ship selected[/red]
+            else:
+                info = """[red]No active ship selected[/red]
 
 [dim]Select a ship from the fleet list to view details[/dim]"""
+        else:
+            info = """[red]Game not available[/red]"""
 
         try:
             widget.update(info)
@@ -746,14 +751,13 @@ class ShipManagerScreen(Static):
         try:
             lv = event.list_view
             idx = lv.index
-            # Map index back to ship names
-            all_names = []
-            if self.game_instance:
-                all_names.extend(getattr(self.game_instance, 'owned_ships', []))
-                all_names.extend([s.get('name', 'Unnamed Ship') for s in getattr(self.game_instance, 'custom_ships', [])])
-
-            if idx is not None and 0 <= idx < len(all_names):
-                self.selected_ship = all_names[idx]
+            
+            if self.game_instance and idx is not None:
+                ships = self.game_instance.get_all_ships()
+                if 0 <= idx < len(ships):
+                    self.selected_ship = ships[idx]['name']
+                else:
+                    self.selected_ship = None
             else:
                 self.selected_ship = None
         except Exception:
@@ -789,45 +793,38 @@ class ShipManagerScreen(Static):
             try:
                 name_input = self.query_one("#new_ship_name", Input)
                 ship_name = name_input.value.strip()
-                if not ship_name:
-                    # simple notify
-                    self.app.show_notification("❌ Enter a ship name")
-                    return
-
-                # Create a minimal custom ship entry and add to game
-                custom = {"name": ship_name, "role": "Custom"}
-                if self.game_instance is not None:
-                    self.game_instance.custom_ships.append(custom)
-                    self.app.show_notification(f"✅ Created ship: {ship_name}")
-                # hide form and refresh
-                form = self.query_one("#ship_creation_form")
-                form.add_class("hidden")
-                name_input.value = ""
-                self.refresh_ship_list()
+                
+                if self.game_instance:
+                    success, message = self.game_instance.create_custom_ship(ship_name, "Custom")
+                    if success:
+                        self.app.show_notification(f"✅ {message}")
+                        # Hide form and refresh
+                        form = self.query_one("#ship_creation_form")
+                        form.add_class("hidden")
+                        name_input.value = ""
+                        self.refresh_ship_list()
+                    else:
+                        self.app.show_notification(f"❌ {message}")
+                else:
+                    self.app.show_notification("❌ Game not available")
             except Exception as e:
-                print(f"Error creating ship: {e}")
+                self.app.show_notification(f"❌ Error: {str(e)[:30]}...")
             return
 
         if btn_id == "btn_set_active":
-            # Set currently selected ship as active
             if not self.selected_ship:
                 self.app.show_notification("❌ No ship selected to activate")
                 return
 
-            # Determine if selected ship is owned or custom
-            try:
-                if self.game_instance:
-                    if self.selected_ship in self.game_instance.owned_ships:
-                        ship_class = self.selected_ship
-                    else:
-                        ship_class = "Custom Ship"
-
-                    from navigation import Ship
-                    self.game_instance.navigation.current_ship = Ship(self.selected_ship, ship_class)
-                    self.app.show_notification(f"⭐ Active ship set: {self.selected_ship}")
+            if self.game_instance:
+                success, message = self.game_instance.set_active_ship(self.selected_ship)
+                if success:
+                    self.app.show_notification(f"⭐ {message}")
                     self.refresh_active_ship_display()
-            except Exception as e:
-                print(f"Error setting active ship: {e}")
+                else:
+                    self.app.show_notification(f"❌ {message}")
+            else:
+                self.app.show_notification("❌ Game not available")
             return
 
         if btn_id == "btn_delete_ship":
@@ -835,58 +832,36 @@ class ShipManagerScreen(Static):
                 self.app.show_notification("❌ No ship selected to delete")
                 return
 
-            try:
-                # Try to remove from custom_ships first
-                if self.game_instance:
-                    removed = False
-                    for i, s in enumerate(self.game_instance.custom_ships):
-                        if s.get('name') == self.selected_ship:
-                            del self.game_instance.custom_ships[i]
-                            removed = True
-                            break
-
-                    if not removed and self.selected_ship in self.game_instance.owned_ships:
-                        # don't allow deleting built-in ships, but allow removing from owned list
-                        try:
-                            self.game_instance.owned_ships.remove(self.selected_ship)
-                            removed = True
-                        except ValueError:
-                            removed = False
-
-                    if removed:
-                        self.app.show_notification(f"🗑️ Deleted ship: {self.selected_ship}")
-                        # If deleted ship was active, clear current_ship
-                        if self.game_instance.navigation.current_ship and self.game_instance.navigation.current_ship.name == self.selected_ship:
-                            self.game_instance.navigation.current_ship = None
-                        self.selected_ship = None
-                        self.refresh_ship_list()
-                        self.refresh_active_ship_display()
-                    else:
-                        self.app.show_notification("❌ Unable to delete selected ship")
-            except Exception as e:
-                print(f"Error deleting ship: {e}")
+            if self.game_instance:
+                success, message = self.game_instance.delete_ship(self.selected_ship)
+                if success:
+                    self.app.show_notification(f"🗑️ {message}")
+                    self.selected_ship = None
+                    self.refresh_ship_list()
+                    self.refresh_active_ship_display()
+                else:
+                    self.app.show_notification(f"❌ {message}")
+            else:
+                self.app.show_notification("❌ Game not available")
             return
 
         if btn_id == "btn_edit_ship":
-            # For now, allow simple rename of custom ships via prompt in terminal (fallback)
             if not self.selected_ship:
                 self.app.show_notification("❌ No ship selected to edit")
                 return
 
-            try:
-                # Only allow editing custom ships
-                for s in self.game_instance.custom_ships:
-                    if s.get('name') == self.selected_ship:
-                        # prompt in terminal (fallback) - keep non-blocking in UI
-                        new_name = s.get('name') + " Edited"
-                        s['name'] = new_name
-                        self.app.show_notification(f"✏️ Renamed ship to: {new_name}")
-                        self.refresh_ship_list()
-                        return
-
-                self.app.show_notification("⚠️ Only custom ships can be renamed in this demo")
-            except Exception as e:
-                print(f"Error editing ship: {e}")
+            if self.game_instance:
+                # Simple demo rename - add " Mk2" suffix
+                new_name = self.selected_ship + " Mk2"
+                success, message = self.game_instance.rename_ship(self.selected_ship, new_name)
+                if success:
+                    self.app.show_notification(f"✏️ {message}")
+                    self.selected_ship = new_name  # Update selected ship name
+                    self.refresh_ship_list()
+                else:
+                    self.app.show_notification(f"❌ {message}")
+            else:
+                self.app.show_notification("❌ Game not available")
             return
 
 class ManufacturingScreen(Static):

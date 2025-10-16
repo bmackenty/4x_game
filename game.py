@@ -266,6 +266,151 @@ class Game:
             from navigation import Ship
             self.navigation.current_ship = Ship(ship_name, ship_class)
             print(f"\n[SHIP] Automatically selected ship: {ship_name}")
+    
+    # Ship Management Methods
+    def get_all_ships(self):
+        """Get list of all available ships (owned + custom)"""
+        ships = []
+        # Add owned ships
+        for ship_name in self.owned_ships:
+            ships.append({
+                'name': ship_name,
+                'type': 'owned',
+                'class': ship_name,
+                'display': f"🚢 {ship_name}"
+            })
+        
+        # Add custom ships
+        for ship in self.custom_ships:
+            ships.append({
+                'name': ship.get('name', 'Unnamed Ship'),
+                'type': 'custom',
+                'class': ship.get('role', 'Custom Ship'),
+                'display': f"🛠️ {ship.get('name', 'Unnamed Ship')}"
+            })
+        
+        return ships
+    
+    def get_active_ship_info(self):
+        """Get information about the currently active ship"""
+        if not self.navigation.current_ship:
+            return None
+        
+        ship = self.navigation.current_ship
+        return {
+            'name': ship.name,
+            'class': getattr(ship, 'ship_class', 'Unknown'),
+            'coordinates': ship.coordinates,
+            'fuel': ship.fuel,
+            'max_fuel': ship.max_fuel,
+            'cargo_used': sum(ship.cargo.values()) if ship.cargo else 0,
+            'cargo_max': ship.max_cargo
+        }
+    
+    def create_custom_ship(self, ship_name, ship_role="Custom Ship"):
+        """Create a new custom ship"""
+        if not ship_name or not ship_name.strip():
+            return False, "Ship name cannot be empty"
+        
+        ship_name = ship_name.strip()
+        
+        # Check if name already exists
+        for ship in self.custom_ships:
+            if ship.get('name') == ship_name:
+                return False, "Ship name already exists"
+        
+        if ship_name in self.owned_ships:
+            return False, "Ship name conflicts with owned ship"
+        
+        # Create new custom ship
+        new_ship = {
+            'name': ship_name,
+            'role': ship_role,
+            'created_by': 'player'
+        }
+        
+        self.custom_ships.append(new_ship)
+        return True, f"Successfully created ship: {ship_name}"
+    
+    def set_active_ship(self, ship_name):
+        """Set a ship as the active/current ship"""
+        # Find the ship in owned or custom ships
+        ship_class = None
+        found = False
+        
+        if ship_name in self.owned_ships:
+            ship_class = ship_name
+            found = True
+        else:
+            for ship in self.custom_ships:
+                if ship.get('name') == ship_name:
+                    ship_class = ship.get('role', 'Custom Ship')
+                    found = True
+                    break
+        
+        if not found:
+            return False, f"Ship '{ship_name}' not found"
+        
+        # Create and set as current ship
+        try:
+            from navigation import Ship
+            self.navigation.current_ship = Ship(ship_name, ship_class)
+            return True, f"Active ship set to: {ship_name}"
+        except Exception as e:
+            return False, f"Error setting active ship: {str(e)}"
+    
+    def delete_ship(self, ship_name):
+        """Delete a ship (custom ships only, owned ships can be removed from fleet)"""
+        # Try to remove from custom ships first
+        for i, ship in enumerate(self.custom_ships):
+            if ship.get('name') == ship_name:
+                del self.custom_ships[i]
+                # Clear active ship if it was the deleted one
+                if (self.navigation.current_ship and 
+                    self.navigation.current_ship.name == ship_name):
+                    self.navigation.current_ship = None
+                return True, f"Deleted custom ship: {ship_name}"
+        
+        # Try to remove from owned ships (remove from fleet, not delete ship class)
+        if ship_name in self.owned_ships:
+            self.owned_ships.remove(ship_name)
+            # Clear active ship if it was the removed one
+            if (self.navigation.current_ship and 
+                self.navigation.current_ship.name == ship_name):
+                self.navigation.current_ship = None
+            return True, f"Removed ship from fleet: {ship_name}"
+        
+        return False, f"Ship '{ship_name}' not found"
+    
+    def rename_ship(self, old_name, new_name):
+        """Rename a custom ship (owned ships cannot be renamed)"""
+        if not new_name or not new_name.strip():
+            return False, "New name cannot be empty"
+        
+        new_name = new_name.strip()
+        
+        # Check if new name already exists
+        for ship in self.custom_ships:
+            if ship.get('name') == new_name:
+                return False, "New name already exists"
+        
+        if new_name in self.owned_ships:
+            return False, "New name conflicts with owned ship"
+        
+        # Find and rename custom ship
+        for ship in self.custom_ships:
+            if ship.get('name') == old_name:
+                old_ship_name = ship['name']
+                ship['name'] = new_name
+                
+                # Update active ship if it was renamed
+                if (self.navigation.current_ship and 
+                    self.navigation.current_ship.name == old_ship_name):
+                    self.navigation.current_ship.name = new_name
+                
+                return True, f"Renamed ship from '{old_name}' to '{new_name}'"
+        
+        return False, f"Custom ship '{old_name}' not found (owned ships cannot be renamed)"
 
     def view_stations(self):
         print("\n" + "="*60)
