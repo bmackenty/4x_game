@@ -1,0 +1,7 @@
+# Modern ASCII Interface Requirements
+textual>=6.0.0
+rich>=14.0.0
+
+# Optional dependencies for enhanced features
+# numpy>=1.24.0  # For advanced mathematical operations
+# pillow>=9.0.0  # For image processing if needed

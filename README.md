@@ -20,11 +20,12 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 ## How to Play
 
 ### Quick Start
-1. Run the game:
+1. **Recommended**: Modern Interface with mouse support:
    ```bash
-   ./run_game.sh
+   ./run_ui.sh
    ```
-   Or directly with Python:
+   
+2. **Alternative**: Terminal-only interface:
    ```bash
    python3 game.py
    ```
@@ -203,8 +204,8 @@ Stay informed about galactic happenings through a comprehensive news network:
 - **Force Updates**: Manually trigger new events for testing and exploration
 
 ### How to Access News & Events
-1. **Simple Text Interface**: Run `python game.py` and select option 17 "Galactic News & Events"
-2. **ASCII Interface**: Run `python run_ascii_game.py` and select "Galactic News" from main menu
+1. **Modern Interface**: Run `./run_ui.sh` or `python textual_interface.py` for the full graphical experience
+2. **Terminal Interface**: Run `python game.py` and select "Galactic News & Events" from main menu
 3. **News Categories**: Browse by economic, political, scientific, military, travel, entertainment, or scandal news
 4. **Breaking News**: High-severity events automatically appear as breaking news
 5. **Travel Advisories**: Check for dangerous regions before navigating
@@ -393,8 +394,9 @@ Choose from 30+ unique sci-fi professions that shape your character's abilities 
 
 ## File Structure
 
-- `game.py` - Main game frontend and logic with simple text interface
-- `interface.py` - Advanced ASCII-based terminal interface system
+### Core Game Files
+- `game.py` - Main game logic with terminal-based interface
+- `textual_interface.py` - Modern ASCII interface using Textual framework
 - `events.py` - Dynamic galactic event system with 8 event types
 - `news_system.py` - Comprehensive news feed and reporting system
 - `professions.py` - 30+ sci-fi professions with experience and career progression
@@ -410,8 +412,10 @@ Choose from 30+ unique sci-fi professions that shape your character's abilities 
 - `ship_classes.py` - Starship class definitions
 - `space_stations.py` - Space station types
 - `galactic_history.py` - Archaeological sites and ancient civilizations
-- `run_game.sh` - Launcher script
-- `run_ascii_game.py` - ASCII interface launcher
+
+### Launcher Scripts
+- `run_ui.sh` - Modern interface launcher with mouse support
+- `requirements_ui.txt` - Dependencies for the modern interface
 
 ## Game World
 
@@ -434,7 +438,7 @@ The game now includes:
 - ✅ **Production Chains**: Manufacturing platforms and economic simulation
 - ✅ **AI Bot System**: 5 autonomous NPCs with unique personalities
 - ✅ **Archaeological System**: Ancient sites and civilizations to discover
-- ✅ **Dual Interface**: Simple text menu and advanced ASCII interface
+- ✅ **Modern Interface**: Textual-based retro ASCII interface with mouse support
 
 ## Future Expansion Ideas
 
