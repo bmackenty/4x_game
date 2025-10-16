@@ -98,8 +98,8 @@ class MainMenu(Static):
 class NavigationScreen(Static):
     """Space navigation interface with 3D map"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -190,10 +190,10 @@ Cargo: N/A"""
                 yield Static(map_display, id="space_map")
 
 class TradingScreen(Static):
-    """Market trading interface"""
+    """Trading and marketplace interface"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -260,8 +260,8 @@ class TradingScreen(Static):
 class ArchaeologyScreen(Static):
     """Archaeological discovery interface"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -340,14 +340,14 @@ Zenthorian Memory Core"""
                     hasattr(self.game_instance.character, 'excavation_progress')):
                     progress = self.game_instance.character.excavation_progress
                 
-                yield ProgressBar(total=100, progress=progress, id="excavation_progress")
+                yield ProgressBar(total=100, value=progress, id="excavation_progress")
                 yield Static(f"Excavation Progress: {progress}%", id="progress_text")
 
 class CharacterScreen(Static):
     """Character profile and progression"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -405,8 +405,8 @@ Stations Owned: {len(self.game_instance.owned_stations)}"""
 class ManufacturingScreen(Static):
     """Manufacturing platforms interface"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
         self.selected_platform = None
     
@@ -461,8 +461,8 @@ Your Platforms: {len(self.game_instance.owned_platforms) if self.game_instance e
 class StationScreen(Static):
     """Space station management interface"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -544,8 +544,8 @@ available stations for purchase."""
 class BotsScreen(Static):
     """AI Bots status and interaction interface"""
     
-    def __init__(self, game_instance=None):
-        super().__init__()
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
@@ -963,54 +963,67 @@ class GalacticEmpireApp(App):
     def _switch_to_screen(self, new_screen_widget, screen_name):
         """Safely switch to a new screen by removing the old one first"""
         try:
-            # Find and remove the existing main_content widget
-            existing = self.query_one("#main_content")
-            if existing:
-                existing.remove()
-        except Exception as e:
-            # No existing widget found or removal failed, that's fine
-            # We'll just mount the new one
+            # Find and remove ALL widgets with main_content ID
+            existing_widgets = self.query("#main_content")
+            for widget in existing_widgets:
+                try:
+                    widget.remove()
+                except Exception:
+                    pass
+        except Exception:
+            # No existing widgets found, that's fine
             pass
         
         try:
+            # Set the ID after removing old content
+            new_screen_widget.id = "main_content"
+            
             # Mount the new screen
             self.mount(new_screen_widget)
             self.current_content = screen_name
         except Exception as e:
             # If mounting fails, show an error notification
             self.show_notification(f"Error loading {screen_name} screen: {str(e)[:50]}...")
+            # Try to fall back to main menu
+            try:
+                fallback_menu = MainMenu()
+                fallback_menu.id = "main_content"
+                self.mount(fallback_menu)
+                self.current_content = "main_menu"
+            except Exception:
+                pass
         
     def action_show_main_menu(self) -> None:
         """Show main menu"""
-        self._switch_to_screen(MainMenu(id="main_content"), "main_menu")
+        self._switch_to_screen(MainMenu(), "main_menu")
         
     def action_show_navigation(self) -> None:
         """Show navigation screen"""
-        self._switch_to_screen(NavigationScreen(game_instance=self.game_instance, id="main_content"), "navigation")
+        self._switch_to_screen(NavigationScreen(game_instance=self.game_instance), "navigation")
         
     def action_show_trading(self) -> None:
         """Show trading screen"""
-        self._switch_to_screen(TradingScreen(game_instance=self.game_instance, id="main_content"), "trading")
+        self._switch_to_screen(TradingScreen(game_instance=self.game_instance), "trading")
         
     def action_show_archaeology(self) -> None:
         """Show archaeology screen"""
-        self._switch_to_screen(ArchaeologyScreen(game_instance=self.game_instance, id="main_content"), "archaeology")
+        self._switch_to_screen(ArchaeologyScreen(game_instance=self.game_instance), "archaeology")
         
     def action_show_manufacturing(self) -> None:
         """Show manufacturing screen"""
-        self._switch_to_screen(ManufacturingScreen(game_instance=self.game_instance, id="main_content"), "manufacturing")
+        self._switch_to_screen(ManufacturingScreen(game_instance=self.game_instance), "manufacturing")
         
     def action_show_stations(self) -> None:
         """Show station management screen"""
-        self._switch_to_screen(StationScreen(game_instance=self.game_instance, id="main_content"), "stations")
+        self._switch_to_screen(StationScreen(game_instance=self.game_instance), "stations")
         
     def action_show_bots(self) -> None:
         """Show AI bots screen"""
-        self._switch_to_screen(BotsScreen(game_instance=self.game_instance, id="main_content"), "bots")
+        self._switch_to_screen(BotsScreen(game_instance=self.game_instance), "bots")
         
     def action_show_character(self) -> None:
         """Show character screen"""
-        self._switch_to_screen(CharacterScreen(game_instance=self.game_instance, id="main_content"), "character")
+        self._switch_to_screen(CharacterScreen(game_instance=self.game_instance), "character")
         
     def action_show_help(self) -> None:
         """Show help information"""
