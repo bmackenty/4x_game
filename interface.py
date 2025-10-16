@@ -63,6 +63,7 @@ class GameScreen(Enum):
     ARCHAEOLOGY = "archaeology"
     BOT_INTERACTION = "bot_interaction"
     INVENTORY = "inventory"
+    NEWS = "news"
     HELP = "help"
 
 class InterfaceManager:
@@ -202,6 +203,8 @@ class InterfaceManager:
             self.draw_bot_interaction()
         elif self.current_screen == GameScreen.INVENTORY:
             self.draw_inventory()
+        elif self.current_screen == GameScreen.NEWS:
+            self.draw_news()
         elif self.current_screen == GameScreen.HELP:
             self.draw_help()
     
@@ -225,8 +228,9 @@ class InterfaceManager:
             "1. Start New Game",
             "2. Load Game (Coming Soon)",
             "3. Character Creation",
-            "4. Help",
-            "5. Quit"
+            "4. Galactic News",
+            "5. Help",
+            "6. Quit"
         ]
         
         start_y = menu_y + 2
@@ -248,7 +252,7 @@ class InterfaceManager:
         class_x = 5
         class_y = 5
         
-        self.draw_section_border(class_x, class_y, class_width, class_height, "CHARACTER CLASSES", Colors.CYAN)
+        self.draw_section_border(class_x, class_y, class_width, class_height, "CHARACTER CLASSES ", Colors.CYAN)
         
         classes = [
             ("1", "Merchant Captain", "Trade specialist with bonus credits"),
@@ -858,6 +862,140 @@ class InterfaceManager:
         
         self.print_at(5, 15, "1. Return to Main Menu", Colors.WHITE)
     
+    def draw_news(self):
+        """Draw galactic news screen"""
+        title = "GALACTIC NEWS"
+        title_x = (self.terminal_width - len(title)) // 2
+        self.print_at(title_x, 2, title, Colors.BRIGHT_CYAN + Colors.BOLD)
+        
+        # Check if game has news system
+        if not hasattr(self.game, 'news_system'):
+            self.print_at(5, 5, "News system not available", Colors.RED)
+            self.print_at(5, 7, "1. Return to Main Menu", Colors.WHITE)
+            return
+        
+        # News categories section
+        categories_width = 25
+        categories_height = 12
+        categories_x = 5
+        categories_y = 4
+        
+        self.draw_section_border(categories_x, categories_y, categories_width, categories_height, "NEWS CATEGORIES", Colors.CYAN)
+        
+        categories = [
+            ("1", "Breaking News"),
+            ("2", "Economic Reports"),
+            ("3", "Political Updates"),
+            ("4", "Scientific Discoveries"),
+            ("5", "Military Intelligence"),
+            ("6", "Travel Advisories"),
+            ("7", "Entertainment"),
+            ("8", "All News")
+        ]
+        
+        y = categories_y + 2
+        for num, category in categories:
+            self.print_at(categories_x + 3, y, f"{num}. {category}", Colors.WHITE)
+            y += 1
+        
+        # Recent news section
+        news_width = 50
+        news_height = 15
+        news_x = 35
+        news_y = 4
+        
+        self.draw_section_border(news_x, news_y, news_width, news_height, "RECENT NEWS", Colors.YELLOW)
+        
+        # Get breaking news
+        breaking_news = self.game.news_system.get_breaking_news()
+        if breaking_news:
+            self.print_at(news_x + 2, news_y + 2, "🚨 BREAKING NEWS:", Colors.BRIGHT_RED + Colors.BOLD)
+            y = news_y + 3
+            for news in breaking_news[:3]:  # Show top 3
+                headline = news['headline'][:45] + "..." if len(news['headline']) > 45 else news['headline']
+                self.print_at(news_x + 2, y, f"• {headline}", Colors.BRIGHT_RED)
+                y += 1
+            y += 1
+        
+        # Get recent news
+        recent_news = self.game.news_system.get_all_news(5)
+        if recent_news:
+            self.print_at(news_x + 2, y, "Recent Headlines:", Colors.BRIGHT_WHITE + Colors.BOLD)
+            y += 1
+            for news in recent_news[:5]:
+                headline = news['headline'][:45] + "..." if len(news['headline']) > 45 else news['headline']
+                # Color based on category
+                if news['category'] == 'economic':
+                    color = Colors.BRIGHT_GREEN
+                elif news['category'] == 'political':
+                    color = Colors.BRIGHT_BLUE
+                elif news['category'] == 'military':
+                    color = Colors.BRIGHT_RED
+                elif news['category'] == 'scientific':
+                    color = Colors.BRIGHT_MAGENTA
+                else:
+                    color = Colors.WHITE
+                
+                self.print_at(news_x + 2, y, f"• {headline}", color)
+                y += 1
+        
+        # News statistics section
+        stats_width = 25
+        stats_height = 8
+        stats_x = 5
+        stats_y = 17
+        
+        self.draw_section_border(stats_x, stats_y, stats_width, stats_height, "NEWS STATISTICS", Colors.GREEN)
+        
+        stats = self.game.news_system.get_news_statistics()
+        y = stats_y + 2
+        self.print_at(stats_x + 2, y, f"Total News Items: {stats['total_news_items']}", Colors.WHITE)
+        y += 1
+        self.print_at(stats_x + 2, y, f"Breaking News: {stats['breaking_news_count']}", Colors.BRIGHT_RED)
+        y += 1
+        self.print_at(stats_x + 2, y, f"Recent Activity: {stats['recent_activity']}", Colors.YELLOW)
+        y += 1
+        self.print_at(stats_x + 2, y, f"Active Events: {len(self.game.event_system.get_active_events())}", Colors.CYAN)
+        
+        # Travel advisories section
+        advisories_width = 50
+        advisories_height = 8
+        advisories_x = 35
+        advisories_y = 20
+        
+        self.draw_section_border(advisories_x, advisories_y, advisories_width, advisories_height, "TRAVEL ADVISORIES", Colors.RED)
+        
+        advisories = self.game.news_system.get_travel_advisories()
+        if advisories:
+            y = advisories_y + 2
+            for advisory in advisories[:3]:  # Show top 3
+                if advisory['type'] == 'dangerous_region':
+                    self.print_at(advisories_x + 2, y, f"⚠️  Dangerous Region at {advisory['location']}", Colors.BRIGHT_RED)
+                    y += 1
+                    self.print_at(advisories_x + 4, y, f"Threat Level: {advisory['threat_level']}/10", Colors.RED)
+                    y += 1
+                    self.print_at(advisories_x + 4, y, f"Recommendation: {advisory['recommendation']}", Colors.YELLOW)
+                    y += 2
+                elif advisory['type'] == 'event':
+                    self.print_at(advisories_x + 2, y, f"📢 {advisory['name']}", Colors.BRIGHT_YELLOW)
+                    y += 1
+                    self.print_at(advisories_x + 4, y, f"Recommendation: {advisory['recommendation']}", Colors.YELLOW)
+                    y += 2
+        else:
+            self.print_at(advisories_x + 2, advisories_y + 2, "No current travel advisories", Colors.GREEN)
+        
+        # Controls section
+        controls_width = 25
+        controls_height = 6
+        controls_x = 5
+        controls_y = 26
+        
+        self.draw_section_border(controls_x, controls_y, controls_width, controls_height, "CONTROLS", Colors.BRIGHT_WHITE)
+        
+        self.print_at(controls_x + 2, controls_y + 2, "1-8. View category", Colors.WHITE)
+        self.print_at(controls_x + 2, controls_y + 3, "r. Refresh news", Colors.WHITE)
+        self.print_at(controls_x + 2, controls_y + 4, "q/ESC. Main Menu", Colors.WHITE)
+    
     def draw_help(self):
         """Draw help screen"""
         title = "HELP"
@@ -929,28 +1067,42 @@ class InterfaceManager:
         if color is None:
             color = Colors.DIM + Colors.WHITE
         
-        # Calculate the content width (excluding border characters)
-        content_width = width - 2
+        # Ensure minimum sensible dimensions
+        if width < 2:
+            width = 2
+        if height < 1:
+            height = 1
         
-        # Top border with title
-        if title:
-            title_len = len(title)
-            if title_len + 4 <= content_width:
-                border = "┌─ " + title + " " + "─" * (content_width - title_len - 4) + "┐"
+        content_width = max(0, width - 2)  # inner width between corners
+        
+        # Top border with optional title centered-left with padding
+        if title and content_width >= 1:
+            # Build: ┌─ {title} ─────┐ ensuring total equals width
+            prefix = "┌─ "
+            suffix = " ┐"
+            base_len = len(prefix) + len(title) + len(suffix)
+            if base_len <= width:
+                dashes = width - base_len
+                border = prefix + title + ("─" * dashes) + suffix
             else:
-                border = "┌─ " + title[:content_width-4] + "─┐"
+                # Truncate title to fit
+                available = max(0, width - len(prefix) - len(suffix))
+                truncated = title[:available]
+                border = prefix + truncated + suffix
         else:
-            border = "┌" + "─" * content_width + "┐"
+            # Simple top border: ┌────┐ with total width
+            border = "┌" + ("─" * content_width) + "┐"
         
         self.print_at(x, y, border, color)
         
-        # Side borders
+        # Side borders (height defines interior height; bottom drawn separately)
         for i in range(1, height):
             self.print_at(x, y + i, "│", color)
             self.print_at(x + width - 1, y + i, "│", color)
         
-        # Bottom border
-        self.print_at(x, y + height, "└" + "─" * content_width + "┘", color)
+        # Bottom border: └────┘ with total width
+        bottom = "└" + ("─" * content_width) + "┘"
+        self.print_at(x, y + height, bottom, color)
     
     def draw_ascii_decoration(self):
         """Draw ASCII art decoration"""
@@ -1063,6 +1215,8 @@ class InterfaceManager:
                 self.set_screen(GameScreen.MAIN_MENU)
             elif self.current_screen == GameScreen.CHARACTER_CREATION:
                 self.set_screen(GameScreen.MAIN_MENU)
+            elif self.current_screen == GameScreen.NEWS:
+                self.set_screen(GameScreen.MAIN_MENU)
             elif self.current_screen in [GameScreen.GALAXY_MAP, GameScreen.SHIP_STATUS, 
                                        GameScreen.TRADING, GameScreen.SHIP_BUILDER,
                                        GameScreen.STATION_MANAGEMENT, GameScreen.FACTION_RELATIONS,
@@ -1079,8 +1233,10 @@ class InterfaceManager:
             elif key == "3":
                 self.set_screen(GameScreen.CHARACTER_CREATION)
             elif key == "4":
-                self.set_screen(GameScreen.HELP)
+                self.set_screen(GameScreen.NEWS)
             elif key == "5":
+                self.set_screen(GameScreen.HELP)
+            elif key == "6":
                 self.cleanup()
         
         elif self.current_screen == GameScreen.CHARACTER_CREATION:
@@ -1122,6 +1278,14 @@ class InterfaceManager:
                 self.set_screen(GameScreen.STATION_MANAGEMENT)
             elif key == "4":
                 self.set_screen(GameScreen.MAIN_MENU)
+        
+        elif self.current_screen == GameScreen.NEWS:
+            if key in "12345678":
+                # View specific news category
+                self.view_news_category(key)
+            elif key.lower() == "r":
+                # Refresh news
+                self.refresh_news()
         
         # Add more screen handlers as needed
     
@@ -1270,6 +1434,52 @@ class InterfaceManager:
     def select_ship(self):
         """Select a different ship"""
         self.show_message("Ship selection functionality - to be implemented")
+    
+    def view_news_category(self, category_key: str):
+        """View news for a specific category"""
+        category_map = {
+            "1": "breaking",
+            "2": "economic", 
+            "3": "political",
+            "4": "scientific",
+            "5": "military",
+            "6": "travel",
+            "7": "entertainment",
+            "8": "all"
+        }
+        
+        category = category_map.get(category_key, "all")
+        
+        if not hasattr(self.game, 'news_system'):
+            self.show_message("News system not available", Colors.RED)
+            return
+        
+        if category == "all":
+            news_items = self.game.news_system.get_all_news(20)
+        else:
+            news_items = self.game.news_system.get_category_news(category)
+        
+        if not news_items:
+            self.show_message(f"No news available for {category}", Colors.YELLOW)
+            return
+        
+        # Show news items (simplified for now)
+        self.show_message(f"Showing {len(news_items)} news items for {category}", Colors.GREEN)
+        
+        # For now, just show the first few items
+        for i, news in enumerate(news_items[:5]):
+            self.show_message(f"{i+1}. {news['headline']}", Colors.WHITE)
+    
+    def refresh_news(self):
+        """Refresh the news feed"""
+        if hasattr(self.game, 'news_system'):
+            # Force event system to update
+            if hasattr(self.game, 'event_system'):
+                self.game.event_system.update_events()
+            self.show_message("News refreshed!", Colors.GREEN)
+            self.needs_refresh = True
+        else:
+            self.show_message("News system not available", Colors.RED)
 
 # Input handling functions
 def get_input():

@@ -20,6 +20,8 @@ from ai_bots import BotManager
 from factions import FactionSystem
 from professions import ProfessionSystem
 from galactic_history import GalacticHistory
+from events import EventSystem
+from news_system import NewsSystem
 import threading
 import time
 
@@ -45,6 +47,8 @@ class Game:
         self.faction_system = FactionSystem()
         self.profession_system = ProfessionSystem()
         self.galactic_history = GalacticHistory()
+        self.event_system = EventSystem(self)
+        self.news_system = NewsSystem(self.event_system)
     
     def initialize_new_game(self, character_data):
         """Initialize a new game with character data"""
@@ -129,9 +133,10 @@ class Game:
             print("14. Profession & Career")
             print("15. Galactic History & Archaeology")
             print("16. Character Profile")
-            print("17. Save & Exit")
+            print("17. Galactic News & Events")
+            print("18. Save & Exit")
             
-            choice = input("\nEnter your choice (1-17): ").strip()
+            choice = input("\nEnter your choice (1-18): ").strip()
             
             if choice == "1":
                 self.browse_manufacturing()
@@ -166,6 +171,8 @@ class Game:
             elif choice == "16":
                 self.character_profile()
             elif choice == "17":
+                self.galactic_news_events_menu()
+            elif choice == "18":
                 self.save_and_exit()
                 break
             else:
@@ -1099,6 +1106,241 @@ class Game:
             print(f"  • {trait}")
         
         input("\nPress Enter to return to main menu...")
+
+    def galactic_news_events_menu(self):
+        """Display galactic news and events menu"""
+        while True:
+            print("\n" + "="*60)
+            print("           GALACTIC NEWS & EVENTS")
+            print("="*60)
+            
+            # Show current active events count
+            active_events = len(self.event_system.get_active_events())
+            print(f"Active Events: {active_events}")
+            
+            # Show breaking news count
+            breaking_news = self.news_system.get_breaking_news()
+            print(f"Breaking News: {len(breaking_news)}")
+            
+            print("\nNEWS & EVENTS MENU:")
+            print("1. View Breaking News")
+            print("2. View All Recent News")
+            print("3. View News by Category")
+            print("4. View Travel Advisories")
+            print("5. View Active Events")
+            print("6. View Market Analysis")
+            print("7. Generate News Summary")
+            print("8. Force Event Update")
+            print("9. Return to Main Menu")
+            
+            choice = input("\nEnter your choice (1-9): ").strip()
+            
+            if choice == "1":
+                self.view_breaking_news()
+            elif choice == "2":
+                self.view_all_news()
+            elif choice == "3":
+                self.view_news_by_category()
+            elif choice == "4":
+                self.view_travel_advisories()
+            elif choice == "5":
+                self.view_active_events()
+            elif choice == "6":
+                self.view_market_analysis()
+            elif choice == "7":
+                self.view_news_summary()
+            elif choice == "8":
+                self.force_event_update()
+            elif choice == "9":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                input("\nPress Enter to continue...")
+
+    def view_breaking_news(self):
+        """Display breaking news"""
+        print("\n" + "="*60)
+        print("           BREAKING NEWS")
+        print("="*60)
+        
+        breaking_news = self.news_system.get_breaking_news()
+        
+        if not breaking_news:
+            print("No breaking news at this time.")
+        else:
+            for i, news in enumerate(breaking_news, 1):
+                print(f"\n{i}. {news['headline']}")
+                print(f"   Source: {news['source']}")
+                print(f"   Severity: {news['severity']}/10")
+                print(f"   Description: {news['description']}")
+                if news['affected_systems']:
+                    print(f"   Affected Systems: {', '.join(news['affected_systems'])}")
+        
+        input("\nPress Enter to continue...")
+
+    def view_all_news(self):
+        """Display all recent news"""
+        print("\n" + "="*60)
+        print("           ALL RECENT NEWS")
+        print("="*60)
+        
+        all_news = self.news_system.get_all_news(20)
+        
+        if not all_news:
+            print("No news available at this time.")
+        else:
+            for i, news in enumerate(all_news, 1):
+                print(f"\n{i}. {news['headline']}")
+                print(f"   Category: {news['category'].title()}")
+                print(f"   Source: {news['source']}")
+                print(f"   Severity: {news['severity']}/10")
+                if news['is_breaking']:
+                    print("   🚨 BREAKING NEWS")
+        
+        input("\nPress Enter to continue...")
+
+    def view_news_by_category(self):
+        """Display news by category"""
+        print("\n" + "="*60)
+        print("           NEWS BY CATEGORY")
+        print("="*60)
+        
+        categories = {
+            "1": ("economic", "Economic Reports"),
+            "2": ("political", "Political Updates"),
+            "3": ("scientific", "Scientific Discoveries"),
+            "4": ("military", "Military Intelligence"),
+            "5": ("travel", "Travel Advisories"),
+            "6": ("entertainment", "Entertainment & Culture"),
+            "7": ("weather", "Space Weather")
+        }
+        
+        print("Select category:")
+        for key, (_, name) in categories.items():
+            print(f"{key}. {name}")
+        
+        choice = input("\nEnter your choice (1-7): ").strip()
+        
+        if choice in categories:
+            category, name = categories[choice]
+            print(f"\n{name.upper()}:")
+            print("="*40)
+            
+            category_news = self.news_system.get_category_news(category)
+            
+            if not category_news:
+                print(f"No {name.lower()} available at this time.")
+            else:
+                for i, news in enumerate(category_news, 1):
+                    print(f"\n{i}. {news['headline']}")
+                    print(f"   Source: {news['source']}")
+                    print(f"   Severity: {news['severity']}/10")
+        else:
+            print("Invalid choice.")
+        
+        input("\nPress Enter to continue...")
+
+    def view_travel_advisories(self):
+        """Display travel advisories"""
+        print("\n" + "="*60)
+        print("           TRAVEL ADVISORIES")
+        print("="*60)
+        
+        advisories = self.news_system.get_travel_advisories()
+        
+        if not advisories:
+            print("No current travel advisories. All regions are safe for travel.")
+        else:
+            for i, advisory in enumerate(advisories, 1):
+                print(f"\n{i}. {advisory['name'] if 'name' in advisory else 'Dangerous Region'}")
+                if advisory['type'] == 'dangerous_region':
+                    print(f"   Location: {advisory['location']}")
+                    print(f"   Threat Level: {advisory['threat_level']}/10")
+                    print(f"   Radius: {advisory['radius']} units")
+                print(f"   Recommendation: {advisory['recommendation']}")
+                if 'description' in advisory:
+                    print(f"   Details: {advisory['description']}")
+        
+        input("\nPress Enter to continue...")
+
+    def view_active_events(self):
+        """Display currently active events"""
+        print("\n" + "="*60)
+        print("           ACTIVE EVENTS")
+        print("="*60)
+        
+        active_events = self.event_system.get_active_events()
+        
+        if not active_events:
+            print("No active events at this time.")
+        else:
+            for i, event in enumerate(active_events, 1):
+                print(f"\n{i}. {event.name}")
+                print(f"   Type: {event.event_type.title()}")
+                print(f"   Severity: {event.severity}/10")
+                print(f"   Description: {event.description}")
+                if event.affected_systems:
+                    print(f"   Affected Systems: {', '.join(event.affected_systems)}")
+                if event.duration > 0:
+                    print(f"   Duration: {event.duration} hours")
+                else:
+                    print("   Duration: Permanent")
+        
+        input("\nPress Enter to continue...")
+
+    def view_market_analysis(self):
+        """Display market analysis based on current events"""
+        print("\n" + "="*60)
+        print("           MARKET ANALYSIS")
+        print("="*60)
+        
+        analysis = self.news_system.get_market_analysis()
+        
+        if not analysis:
+            print("No significant market trends detected at this time.")
+        else:
+            for i, item in enumerate(analysis, 1):
+                print(f"\n{i}. {item['type'].replace('_', ' ').title()}")
+                print(f"   Commodities: {item['commodities']}")
+                print(f"   Trend: {item['trend']}")
+                print(f"   Impact: {item['impact']}")
+                print(f"   Reason: {item['reason']}")
+        
+        input("\nPress Enter to continue...")
+
+    def view_news_summary(self):
+        """Display news summary"""
+        print("\n" + "="*60)
+        print("           NEWS SUMMARY")
+        print("="*60)
+        
+        summary = self.news_system.generate_news_summary()
+        print(summary)
+        
+        input("\nPress Enter to continue...")
+
+    def force_event_update(self):
+        """Force an event system update"""
+        print("\n" + "="*60)
+        print("           FORCE EVENT UPDATE")
+        print("="*60)
+        
+        print("Forcing event system update...")
+        self.event_system.update_events()
+        
+        # Generate a new event
+        new_event = self.event_system.generate_random_event()
+        if new_event:
+            self.event_system.add_event(new_event)
+            print(f"Generated new event: {new_event.name}")
+            print(f"Type: {new_event.event_type.title()}")
+            print(f"Severity: {new_event.severity}/10")
+        else:
+            print("No new events generated.")
+        
+        print(f"\nTotal active events: {len(self.event_system.get_active_events())}")
+        
+        input("\nPress Enter to continue...")
 
     def galactic_history_menu(self):
         """Galactic History and Archaeology menu interface"""
@@ -2428,11 +2670,13 @@ class Game:
         input("\nPress Enter to continue...")
 
     def start_bot_update_thread(self):
-        """Start the background thread for bot updates"""
+        """Start the background thread for bot updates and event system"""
         def bot_update_loop():
             while self.game_running:
                 if self.bot_manager:
                     self.bot_manager.update_all_bots()
+                if self.event_system:
+                    self.event_system.update_events()
                 time.sleep(5)  # Update every 5 seconds
         
         self.bot_update_thread = threading.Thread(target=bot_update_loop, daemon=True)

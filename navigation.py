@@ -138,6 +138,14 @@ class Ship:
             distance = galaxy.calculate_distance(self.coordinates, target_coords)
             fuel_needed = int(distance * 2)
             
+            # Check for dangerous regions
+            danger_warning = ""
+            if game and hasattr(game, 'event_system'):
+                if game.event_system.is_location_dangerous(target_coords):
+                    danger_warning = " WARNING: Entering dangerous region!"
+                    # Increase fuel cost in dangerous regions
+                    fuel_needed = int(fuel_needed * 1.5)
+            
             self.coordinates = target_coords
             self.fuel -= fuel_needed
             
@@ -149,7 +157,7 @@ class Ship:
                 if game and hasattr(game, 'economy') and system["name"] in game.economy.markets:
                     game.economy.update_market(system["name"])
             
-            return True, f"Jumped to {target_coords}. Used {fuel_needed} fuel."
+            return True, f"Jumped to {target_coords}. Used {fuel_needed} fuel.{danger_warning}"
         else:
             return False, "Cannot reach target coordinates."
     
@@ -287,6 +295,11 @@ class NavigationSystem:
                     sites = self.game.galactic_history.get_archaeological_sites_near(coords[0], coords[1], coords[2], radius=1)
                     if sites:
                         extra_info.append("🏛️")
+                
+                # Check for dangerous regions
+                if hasattr(self.game, 'event_system'):
+                    if self.game.event_system.is_location_dangerous(coords):
+                        extra_info.append("⚠️")
                 
                 extra_str = " ".join(extra_info)
                 if extra_str:
