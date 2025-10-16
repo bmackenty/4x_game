@@ -1212,14 +1212,15 @@ class Game:
             "4": ("military", "Military Intelligence"),
             "5": ("travel", "Travel Advisories"),
             "6": ("entertainment", "Entertainment & Culture"),
-            "7": ("weather", "Space Weather")
+            "7": ("weather", "Space Weather"),
+            "8": ("scandal", "Political Scandals")
         }
         
         print("Select category:")
         for key, (_, name) in categories.items():
             print(f"{key}. {name}")
         
-        choice = input("\nEnter your choice (1-7): ").strip()
+        choice = input("\nEnter your choice (1-8): ").strip()
         
         if choice in categories:
             category, name = categories[choice]

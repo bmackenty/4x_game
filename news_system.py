@@ -271,6 +271,83 @@ class NewsSystem:
                     'Crop Circles Spark Conspiracy Theories',
                     'Mysterious Crop Circles Puzzle Scientists'
                 ]
+            },
+            EventType.SCANDAL: {
+                'Diplomatic Hologram Leak': [
+                    'Embarrassing Holograms Leak from Diplomat\'s Private Messages!',
+                    'Diplomat\'s Underwear Practice Sessions Go Viral',
+                    'Space-Cat Arguments Exposed in Diplomatic Scandal'
+                ],
+                'Senator\'s Secret Hobby': [
+                    'Senator Caught Running Illegal Alien Petting Zoo!',
+                    'Basement Menagerie Scandal Rocks Political World',
+                    'Smuggled Creatures Found in Senator\'s Home'
+                ],
+                'Ambassador\'s Dating App Debacle': [
+                    'Ambassador\'s Dating Profile Creates Intergalactic Uproar!',
+                    'Photoshopped Dating Photos Expose Diplomatic Crisis',
+                    'Intergalactic Baggage Dating Bio Goes Viral'
+                ],
+                'Space Station Karaoke Scandal': [
+                    'Council Member\'s Naked Karaoke Session Leaked!',
+                    '3 AM Bathrobe Performance Shocks Galaxy',
+                    'Off-Key Space Oddity Performance Goes Viral'
+                ],
+                'Trade Minister\'s Crypto Scheme': [
+                    'Trade Minister Exposed in Quantum Coin Pyramid Scheme!',
+                    'Politicians Lose Life Savings in Crypto Scam',
+                    'Quantum Coins Scandal Rocks Financial World'
+                ],
+                'Fleet Admiral\'s Collectible Obsession': [
+                    'Fleet Admiral Uses Military to Hunt Trading Cards!',
+                    'Squadrons Deployed for Holographic Charizard Search',
+                    'Space Pokemon Card Scandal Exposed'
+                ],
+                'Diplomat\'s Food Delivery Addiction': [
+                    'Diplomat Spends Entire Budget on Alien Pizza!',
+                    '47 Different Pizza Types Ordered in One Week',
+                    'Food Delivery Scandal Exposes Expense Account Abuse'
+                ],
+                'Senator\'s Secret Fan Fiction': [
+                    'Senator\'s Steamy Fan Fiction About Rivals Leaked!',
+                    'Political Romance Novel Exposes Senator\'s Fantasies',
+                    'Dramatic Plot Twists in Senator\'s Secret Writing'
+                ],
+                'Ambassador\'s Gaming Addiction': [
+                    'Ambassador Plays Games During Peace Negotiations!',
+                    '2000-Hour Gaming Session Exposed During Diplomacy',
+                    'Galactic Civilization Addiction Derails Peace Talks'
+                ],
+                'Council Member\'s Social Media Meltdown': [
+                    'Council Member Rants About Neighbor\'s Space-Lawn!',
+                    'Official Account Accidentally Posts Personal Rant',
+                    'Space-Lawn Decoration Feud Goes Public'
+                ],
+                'Trade Representative\'s Side Hustle': [
+                    'Trade Rep Runs Space Uber with Government Vehicles!',
+                    '5-Star Rating on Illegal Government Transport Service',
+                    'Customer Reviews Expose Side Hustle Scandal'
+                ],
+                'Fleet Commander\'s Pet Project': [
+                    'Fleet Commander Uses Military AI for Dating Service!',
+                    'Perfect Dating Algorithm Created with Government Resources',
+                    'Matchmaking Service for Lonely Space Pilots Exposed'
+                ],
+                'Diplomat\'s Secret Identity': [
+                    'Diplomat Exposed as Anonymous Blog Author!',
+                    'Diplomatic Disasters Daily Blogger Revealed',
+                    'Colleague-Roasting Blog Scandal Shocks Galaxy'
+                ],
+                'Senator\'s Holographic Therapy Sessions': [
+                    'Senator\'s Space Pirate Role-Play Sessions Leaked!',
+                    'Therapy Sessions Reveal Pirate Fantasy Life',
+                    'Arrr Practice Sessions Exposed in Privacy Breach'
+                ],
+                'Ambassador\'s Competitive Eating Career': [
+                    'Ambassador Wins Galactic Hot Dog Championship!',
+                    'Secret Competitive Eating Career Exposed',
+                    'Three-Time Champion Revealed Under Alias'
+                ]
             }
         }
         
@@ -290,7 +367,8 @@ class NewsSystem:
             EventType.NATURAL: 'weather',
             EventType.SOCIAL: 'entertainment',
             EventType.TRAVEL: 'travel',
-            EventType.TABLOID: 'entertainment'
+            EventType.TABLOID: 'entertainment',
+            EventType.SCANDAL: 'entertainment'
         }
         return mapping.get(event_type, 'breaking')
     

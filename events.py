@@ -18,6 +18,7 @@ class EventType:
     SOCIAL = "social"
     TRAVEL = "travel"
     TABLOID = "tabloid"
+    SCANDAL = "scandal"
 
 class Event:
     """Represents a single galactic event"""
@@ -54,13 +55,14 @@ class EventSystem:
         
         # Event generation probabilities
         self.event_chances = {
-            EventType.ECONOMIC: 0.3,
-            EventType.POLITICAL: 0.2,
-            EventType.SCIENTIFIC: 0.15,
-            EventType.MILITARY: 0.1,
-            EventType.NATURAL: 0.1,
-            EventType.SOCIAL: 0.1,
-            EventType.TRAVEL: 0.05
+            EventType.ECONOMIC: 0.25,
+            EventType.POLITICAL: 0.15,
+            EventType.SCIENTIFIC: 0.12,
+            EventType.MILITARY: 0.08,
+            EventType.NATURAL: 0.08,
+            EventType.SOCIAL: 0.08,
+            EventType.TRAVEL: 0.04,
+            EventType.SCANDAL: 0.2
         }
         
         # Initialize with some starting events
@@ -93,6 +95,8 @@ class EventSystem:
             return self.generate_travel_event()
         elif event_type == EventType.TABLOID:
             return self.generate_tabloid_event()
+        elif event_type == EventType.SCANDAL:
+            return self.generate_scandal_event()
         
         return None
     
@@ -531,6 +535,172 @@ class EventSystem:
             severity=event_data['severity']
         )
     
+    def generate_scandal_event(self) -> Event:
+        """Generate political scandal events (PG-13 to R-rated humor)"""
+        scandals = [
+            {
+                'name': 'Diplomatic Hologram Leak',
+                'description': 'Embarrassing holographic messages from a high-ranking diplomat are leaked, showing them practicing speeches in their underwear while arguing with their pet space-cat.',
+                'effects': {
+                    'type': 'reputation_damage',
+                    'faction_relations': -10,
+                    'systems': self.get_random_systems(2, 4)
+                },
+                'severity': random.randint(3, 6)
+            },
+            {
+                'name': 'Senator\'s Secret Hobby',
+                'description': 'A prominent senator is caught running an illegal "Alien Petting Zoo" in their basement, complete with smuggled creatures from restricted worlds.',
+                'effects': {
+                    'type': 'corruption_scandal',
+                    'faction_relations': -15,
+                    'systems': self.get_random_systems(1, 3)
+                },
+                'severity': random.randint(4, 7)
+            },
+            {
+                'name': 'Ambassador\'s Dating App Debacle',
+                'description': 'An ambassador\'s dating profile is discovered, featuring photoshopped images and the bio "Looking for someone who can handle my intergalactic baggage."',
+                'effects': {
+                    'type': 'embarrassment',
+                    'faction_relations': -5,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(2, 4)
+            },
+            {
+                'name': 'Space Station Karaoke Scandal',
+                'description': 'Security footage reveals a council member performing terrible karaoke at 3 AM while wearing nothing but a bathrobe and singing "Space Oddity" off-key.',
+                'effects': {
+                    'type': 'humiliation',
+                    'faction_relations': -8,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(3, 5)
+            },
+            {
+                'name': 'Trade Minister\'s Crypto Scheme',
+                'description': 'A trade minister is exposed for running a pyramid scheme involving "Quantum Coins" and convincing other politicians to invest their life savings.',
+                'effects': {
+                    'type': 'financial_scandal',
+                    'faction_relations': -20,
+                    'systems': self.get_random_systems(3, 6)
+                },
+                'severity': random.randint(6, 8)
+            },
+            {
+                'name': 'Fleet Admiral\'s Collectible Obsession',
+                'description': 'A fleet admiral is caught using military resources to hunt down rare "Space Pokemon" trading cards, deploying entire squadrons to search for holographic Charizards.',
+                'effects': {
+                    'type': 'misuse_of_resources',
+                    'faction_relations': -12,
+                    'systems': self.get_random_systems(2, 4)
+                },
+                'severity': random.randint(4, 6)
+            },
+            {
+                'name': 'Diplomat\'s Food Delivery Addiction',
+                'description': 'A diplomat is discovered to have spent their entire expense account on intergalactic food delivery, ordering 47 different types of alien pizza in one week.',
+                'effects': {
+                    'type': 'expense_scandal',
+                    'faction_relations': -7,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(2, 4)
+            },
+            {
+                'name': 'Senator\'s Secret Fan Fiction',
+                'description': 'A senator\'s secret fan fiction about themselves and their political rivals is leaked, complete with steamy romance scenes and dramatic plot twists.',
+                'effects': {
+                    'type': 'embarrassment',
+                    'faction_relations': -10,
+                    'systems': self.get_random_systems(2, 3)
+                },
+                'severity': random.randint(4, 6)
+            },
+            {
+                'name': 'Ambassador\'s Gaming Addiction',
+                'description': 'An ambassador is caught playing "Galactic Civilization" during important diplomatic meetings, having achieved a 2000-hour playtime while supposedly negotiating peace treaties.',
+                'effects': {
+                    'type': 'neglect_of_duty',
+                    'faction_relations': -15,
+                    'systems': self.get_random_systems(2, 4)
+                },
+                'severity': random.randint(5, 7)
+            },
+            {
+                'name': 'Council Member\'s Social Media Meltdown',
+                'description': 'A council member goes on a social media rant about their neighbor\'s "stupid space-lawn decorations" and accidentally posts it to their official government account.',
+                'effects': {
+                    'type': 'unprofessional_behavior',
+                    'faction_relations': -8,
+                    'systems': self.get_random_systems(1, 3)
+                },
+                'severity': random.randint(3, 5)
+            },
+            {
+                'name': 'Trade Representative\'s Side Hustle',
+                'description': 'A trade representative is exposed for running a "Space Uber" service using government vehicles, complete with a 5-star rating and customer reviews.',
+                'effects': {
+                    'type': 'misuse_of_government_resources',
+                    'faction_relations': -12,
+                    'systems': self.get_random_systems(2, 3)
+                },
+                'severity': random.randint(4, 6)
+            },
+            {
+                'name': 'Fleet Commander\'s Pet Project',
+                'description': 'A fleet commander is caught using military AI to create a "perfect dating algorithm" and has been secretly running a matchmaking service for lonely space pilots.',
+                'effects': {
+                    'type': 'misuse_of_technology',
+                    'faction_relations': -10,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(3, 5)
+            },
+            {
+                'name': 'Diplomat\'s Secret Identity',
+                'description': 'A diplomat is revealed to be secretly running a popular anonymous blog called "Diplomatic Disasters Daily" where they roast their own colleagues.',
+                'effects': {
+                    'type': 'betrayal',
+                    'faction_relations': -18,
+                    'systems': self.get_random_systems(3, 5)
+                },
+                'severity': random.randint(6, 8)
+            },
+            {
+                'name': 'Senator\'s Holographic Therapy Sessions',
+                'description': 'A senator\'s private therapy sessions are leaked, revealing they have been role-playing as a "space pirate" to deal with stress and have been practicing their "arrr" in meetings.',
+                'effects': {
+                    'type': 'privacy_violation',
+                    'faction_relations': -6,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(2, 4)
+            },
+            {
+                'name': 'Ambassador\'s Competitive Eating Career',
+                'description': 'An ambassador is discovered to have a secret career as a competitive eater, having won the "Galactic Hot Dog Championship" three years running under an alias.',
+                'effects': {
+                    'type': 'secret_double_life',
+                    'faction_relations': -5,
+                    'systems': self.get_random_systems(1, 2)
+                },
+                'severity': random.randint(2, 3)
+            }
+        ]
+        
+        scandal_data = random.choice(scandals)
+        return Event(
+            event_type=EventType.SCANDAL,
+            name=scandal_data['name'],
+            description=scandal_data['description'],
+            effects=scandal_data['effects'],
+            duration=random.randint(48, 336),  # 2-14 days
+            affected_systems=scandal_data['effects'].get('systems', []),
+            severity=scandal_data['severity']
+        )
+    
     def get_random_systems(self, min_count: int, max_count: int) -> List[str]:
         """Get random system names from the galaxy"""
         if not hasattr(self.game, 'navigation') or not self.game.navigation.galaxy:
@@ -596,6 +766,11 @@ class EventSystem:
             self.apply_system_instability(effects)
         elif effects['type'] == 'faction_relations':
             self.apply_faction_relations_change(effects)
+        elif effects['type'] in ['reputation_damage', 'corruption_scandal', 'embarrassment', 'humiliation', 
+                                'financial_scandal', 'misuse_of_resources', 'expense_scandal', 'neglect_of_duty',
+                                'unprofessional_behavior', 'misuse_of_government_resources', 'misuse_of_technology',
+                                'betrayal', 'privacy_violation', 'secret_double_life']:
+            self.apply_scandal_effects(effects)
     
     def apply_supply_change(self, effects: Dict[str, Any], increase: bool):
         """Apply supply changes to markets"""
@@ -696,6 +871,22 @@ class EventSystem:
             if faction in self.game.faction_system.player_relations:
                 current_rep = self.game.faction_system.player_relations[faction]
                 self.game.faction_system.player_relations[faction] = max(-100, min(100, current_rep + change))
+    
+    def apply_scandal_effects(self, effects: Dict[str, Any]):
+        """Apply scandal effects to faction relations"""
+        if not hasattr(self.game, 'faction_system'):
+            return
+        
+        # Get random factions to affect (scandals affect multiple factions)
+        factions = self.get_random_factions(1, 3)
+        relation_change = effects.get('faction_relations', -10)
+        
+        for faction in factions:
+            if faction in self.game.faction_system.player_relations:
+                current_rep = self.game.faction_system.player_relations[faction]
+                # Scandals can have more dramatic effects
+                new_rep = max(-100, min(100, current_rep + relation_change))
+                self.game.faction_system.player_relations[faction] = new_rep
     
     def add_to_news_feed(self, event: Event):
         """Add event to news feed"""

@@ -13,6 +13,9 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 - **Space Stations**: Purchase and manage orbital installations throughout the galaxy
 - **Ship Upgrades**: Enhance your vessels with advanced components and systems
 - **Dynamic Economy**: Advanced supply/demand system with market fluctuations, production cycles, and economic events
+- **Galactic Events**: Dynamic event system generating random occurrences that affect markets, travel, and politics
+- **News System**: Comprehensive galactic news feed with breaking news, categorized reports, and travel advisories
+- **Political Scandals**: Humorous PG-13 to R-rated political scandal events that affect faction relations
 
 ## How to Play
 
@@ -55,6 +58,7 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 8. **Ship Upgrades** - Enhance ships with better engines, cargo systems, and defensive upgrades
 9. **Station Management** - Purchase, upgrade, and collect income from space stations
 10. **Manage Empire** - View your growing collection of assets and inventory
+11. **Galactic News & Events** - Stay informed about current events, scandals, and market conditions
 
 **Pricing:**
 - Commodities: 5 credits each (base price)
@@ -141,6 +145,100 @@ Random galaxy-wide events affect markets:
 - **Market Timing**: Wait for favorable events or price fluctuations
 - **Cargo Management**: Balance cargo space with profit margins
 - **Risk/Reward**: Higher profits often require longer, more dangerous routes
+
+## Galactic Event System
+
+Experience a dynamic galaxy where random events shape the political and economic landscape:
+
+### Event Types
+- **Economic Events**: Mining booms, agricultural crises, trade wars, technology breakthroughs, pirate raids, market crashes
+- **Political Events**: Diplomatic summits, government overthrows, trade agreements, embargo declarations
+- **Scientific Events**: Ancient technology discoveries, quantum anomalies, medical breakthroughs
+- **Military Events**: Border skirmishes, fleet mobilizations, peace treaties
+- **Natural Events**: Solar flares, asteroid impacts, nebula formations
+- **Social Events**: Cultural festivals, labor strikes, celebrity scandals
+- **Travel Events**: Pirate activity, navigation beacon failures, wormhole discoveries, space storms
+- **Political Scandals**: Humorous PG-13 to R-rated scandals affecting faction relations
+
+### Event Effects
+- **Market Impact**: Events alter supply, demand, and prices of commodities across affected systems
+- **Travel Hazards**: Dangerous regions increase fuel costs and create navigation warnings
+- **Faction Relations**: Political events and scandals affect diplomatic standing with multiple factions
+- **System Instability**: Events can increase threat levels and affect system security
+- **Duration**: Events last from hours to weeks, with some having permanent effects
+
+### Event Generation
+- **Automatic Updates**: Events generate automatically every 5 seconds in the background
+- **Probability System**: Different event types have varying chances of occurring
+- **Severity Levels**: Events range from 1-10 severity, with higher levels creating breaking news
+- **System Targeting**: Events can affect specific star systems or have galaxy-wide impact
+
+## News System
+
+Stay informed about galactic happenings through a comprehensive news network:
+
+### News Categories
+- **Breaking News**: High-severity events (6+ severity) requiring immediate attention
+- **Economic Reports**: Market trends, trade developments, and financial news
+- **Political Updates**: Diplomatic developments, government changes, and policy shifts
+- **Scientific Discoveries**: Research breakthroughs, technological advances, and discoveries
+- **Military Intelligence**: Conflict reports, fleet movements, and security updates
+- **Travel Advisories**: Dangerous regions, navigation hazards, and travel warnings
+- **Entertainment & Culture**: Celebrity news, cultural events, and social happenings
+- **Political Scandals**: Humorous political scandals and diplomatic embarrassments
+
+### News Features
+- **Real-time Updates**: News automatically updates as events occur
+- **Categorized Browsing**: Filter news by category for focused reading
+- **Travel Advisories**: Get warnings about dangerous regions before traveling
+- **Market Analysis**: View economic trends and their causes
+- **News Statistics**: Track total news items, breaking news count, and recent activity
+- **Multiple Sources**: News comes from various galactic news networks for authenticity
+
+### News Access
+- **Simple Text Interface**: Access news through the main menu (option 17)
+- **Category Browsing**: View specific types of news (economic, political, etc.)
+- **Breaking News Alerts**: High-severity events automatically become breaking news
+- **News Summary**: Get formatted overviews of current galactic happenings
+- **Force Updates**: Manually trigger new events for testing and exploration
+
+### How to Access News & Events
+1. **Simple Text Interface**: Run `python game.py` and select option 17 "Galactic News & Events"
+2. **ASCII Interface**: Run `python run_ascii_game.py` and select "Galactic News" from main menu
+3. **News Categories**: Browse by economic, political, scientific, military, travel, entertainment, or scandal news
+4. **Breaking News**: High-severity events automatically appear as breaking news
+5. **Travel Advisories**: Check for dangerous regions before navigating
+6. **Market Analysis**: View economic trends caused by current events
+
+## Political Scandal System
+
+Experience hilarious political scandals that add humor and affect faction relations:
+
+### Scandal Types
+- **Diplomatic Hologram Leak**: Embarrassing private messages and practice sessions
+- **Senator's Secret Hobby**: Illegal alien petting zoos and smuggled creatures
+- **Ambassador's Dating App Debacle**: Photoshopped dating profiles and awkward bios
+- **Space Station Karaoke Scandal**: Naked karaoke sessions and off-key performances
+- **Trade Minister's Crypto Scheme**: Quantum coin pyramid schemes and financial scams
+- **Fleet Admiral's Collectible Obsession**: Using military resources for trading cards
+- **Diplomat's Food Delivery Addiction**: Spending entire budgets on alien pizza
+- **Senator's Secret Fan Fiction**: Steamy romance stories about political rivals
+- **Ambassador's Gaming Addiction**: Playing games during peace negotiations
+- **Council Member's Social Media Meltdown**: Ranting about neighbor's space-lawn decorations
+
+### Scandal Effects
+- **Faction Relations**: Scandals damage relations with 1-3 random factions (-5 to -20 points)
+- **Severity Levels**: Scandals range from 2-8 severity, often becoming breaking news
+- **Duration**: Scandals last 2-14 days, longer than most other events
+- **News Coverage**: Each scandal generates multiple catchy headlines and media coverage
+- **Diplomatic Impact**: Affects your standing with multiple factions simultaneously
+
+### Scandal Features
+- **Humorous Content**: PG-13 to R-rated political humor and absurd situations
+- **Real Consequences**: Scandals have genuine gameplay effects on faction relations
+- **Variety**: 15+ unique scandal scenarios with different themes and effects
+- **News Integration**: Scandals appear in entertainment news with sensational headlines
+- **Automatic Generation**: Scandals occur naturally as part of the event system
 
 ## Ship Upgrades
 
@@ -295,7 +393,10 @@ Choose from 30+ unique sci-fi professions that shape your character's abilities 
 
 ## File Structure
 
-- `game.py` - Main game frontend and logic
+- `game.py` - Main game frontend and logic with simple text interface
+- `interface.py` - Advanced ASCII-based terminal interface system
+- `events.py` - Dynamic galactic event system with 8 event types
+- `news_system.py` - Comprehensive news feed and reporting system
 - `professions.py` - 30+ sci-fi professions with experience and career progression
 - `factions.py` - 30 galactic factions with diplomacy and territory systems
 - `ai_bots.py` - AI bot system with autonomous NPCs
@@ -308,7 +409,9 @@ Choose from 30+ unique sci-fi professions that shape your character's abilities 
 - `goods.py` - Commodity and resource catalog
 - `ship_classes.py` - Starship class definitions
 - `space_stations.py` - Space station types
+- `galactic_history.py` - Archaeological sites and ancient civilizations
 - `run_game.sh` - Launcher script
+- `run_ascii_game.py` - ASCII interface launcher
 
 ## Game World
 
@@ -320,17 +423,29 @@ Set in the far future where humanity has spread across the galaxy using advanced
 - **Interstellar Commerce**: Trade routes spanning multiple star systems
 - **Diverse Civilizations**: Various alien races and post-human societies
 
-## Expansion Ideas
+## Current Features
 
-This simple frontend provides a foundation that could be expanded with:
+The game now includes:
+- ✅ **Random Events and Encounters**: Dynamic event system with 8 event types
+- ✅ **Galactic News System**: Comprehensive news feed with breaking news and categories
+- ✅ **Political Scandals**: Humorous scandal system affecting faction relations
+- ✅ **Diplomatic Relations**: 30 factions with reputation and territory systems
+- ✅ **Galaxy Map and Exploration**: 3D navigation with 30-40 star systems
+- ✅ **Production Chains**: Manufacturing platforms and economic simulation
+- ✅ **AI Bot System**: 5 autonomous NPCs with unique personalities
+- ✅ **Archaeological System**: Ancient sites and civilizations to discover
+- ✅ **Dual Interface**: Simple text menu and advanced ASCII interface
+
+## Future Expansion Ideas
+
+Potential additions for future development:
 - Save/load game functionality
-- Random events and encounters
-- Combat system
+- Combat system with ship battles
 - Technology research trees
-- Diplomatic relations
-- Galaxy map and exploration
-- Production chains and automation
 - Multiplayer capabilities
+- Expanded event types and scenarios
+- More complex diplomatic negotiations
+- Player-created content and modding support
 
 ## Requirements
 
