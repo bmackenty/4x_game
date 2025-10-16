@@ -439,8 +439,23 @@ Zenthorian Memory Core"""
                     hasattr(self.game_instance.character, 'excavation_progress')):
                     progress = self.game_instance.character.excavation_progress
                 
-                yield ProgressBar(total=100, value=progress, id="excavation_progress")
+                progress_bar = ProgressBar(total=100, id="excavation_progress")
+                yield progress_bar
                 yield Static(f"Excavation Progress: {progress}%", id="progress_text")
+    
+    def on_mount(self) -> None:
+        """Update progress bar after mounting"""
+        progress = 0
+        if (self.game_instance and 
+            hasattr(self.game_instance, 'character') and 
+            hasattr(self.game_instance.character, 'excavation_progress')):
+            progress = self.game_instance.character.excavation_progress
+        
+        try:
+            progress_bar = self.query_one("#excavation_progress", ProgressBar)
+            progress_bar.update(progress=progress)
+        except Exception:
+            pass  # Progress bar not found or other error
 
 class CharacterScreen(Static):
     """Character profile and progression"""
@@ -545,30 +560,55 @@ class CharacterScreen(Static):
                     
                     if self.game_instance and self.game_instance.character_stats:
                         stats_display = ""
-                        stat_order = ['leadership', 'combat', 'engineering', 'navigation', 'diplomacy', 'trading']
                         
-                        for stat_name in stat_order:
-                            if stat_name in self.game_instance.character_stats:
-                                value = self.game_instance.character_stats[stat_name]
-                                # Create visual bar with colors based on value
-                                filled = "█" * value
-                                empty = "░" * (10 - value)
-                                
-                                # Color coding for stats
-                                if value >= 8:
-                                    color = "bright_green"
-                                elif value >= 6:
-                                    color = "green"  
-                                elif value >= 4:
-                                    color = "yellow"
-                                else:
-                                    color = "red"
-                                
-                                stats_display += f"[white]{stat_name.title()}:[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                        # Organize stats into categories
+                        stat_categories = {
+                            "🎖️ Command": ['leadership', 'charisma', 'strategy'],
+                            "⚔️ Military": ['combat', 'tactics', 'piloting'],
+                            "🔧 Technical": ['engineering', 'research', 'hacking'],
+                            "🤝 Social": ['diplomacy', 'trading', 'espionage'],
+                            "🗺️ Frontier": ['navigation', 'survival', 'archaeology']
+                        }
                         
-                        # Add any remaining stats not in the ordered list
+                        for category, stat_names in stat_categories.items():
+                            stats_display += f"[bold cyan]{category}[/bold cyan]\n"
+                            
+                            for stat_name in stat_names:
+                                if stat_name in self.game_instance.character_stats:
+                                    value = self.game_instance.character_stats[stat_name]
+                                    # Create visual bar with colors based on value
+                                    filled = "█" * value
+                                    empty = "░" * (10 - value)
+                                    
+                                    # Color coding for stats
+                                    if value >= 8:
+                                        color = "bright_green"
+                                    elif value >= 6:
+                                        color = "green"  
+                                    elif value >= 4:
+                                        color = "yellow"
+                                    else:
+                                        color = "red"
+                                    
+                                    # Pad stat name to 12 characters for alignment
+                                    padded_name = f"{stat_name.title()}:".ljust(12)
+                                    stats_display += f"  [white]{padded_name}[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                            
+                            stats_display += "\n"
+                        
+                        # Add any remaining stats not in categories
+                        all_categorized_stats = []
+                        for stat_list in stat_categories.values():
+                            all_categorized_stats.extend(stat_list)
+                        
+                        uncategorized_stats = []
                         for stat_name, value in self.game_instance.character_stats.items():
-                            if stat_name not in stat_order:
+                            if stat_name not in all_categorized_stats:
+                                uncategorized_stats.append((stat_name, value))
+                        
+                        if uncategorized_stats:
+                            stats_display += "[bold cyan]📊 Other[/bold cyan]\n"
+                            for stat_name, value in uncategorized_stats:
                                 filled = "█" * value
                                 empty = "░" * (10 - value)
                                 if value >= 6:
@@ -577,7 +617,10 @@ class CharacterScreen(Static):
                                     color = "yellow"
                                 else:
                                     color = "red"
-                                stats_display += f"[white]{stat_name.title()}:[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                                
+                                # Pad stat name to 12 characters for alignment
+                                padded_name = f"{stat_name.title()}:".ljust(12)
+                                stats_display += f"  [white]{padded_name}[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
                         
                         yield Static(stats_display.rstrip(), id="stats_display")
                     else:
@@ -1509,14 +1552,32 @@ class GalacticEmpireApp(App):
         self.game_instance.character_background = "Frontier Survivor"
         self.game_instance.credits = 15000
         
-        # Initialize character stats
+        # Initialize character stats with all new attributes
         self.game_instance.character_stats = {
+            # Core Command Attributes
             "leadership": 7,
-            "technical": 8,
+            "charisma": 6,
+            "strategy": 8,
+            
+            # Combat & Military
             "combat": 6,
+            "tactics": 7,
+            "piloting": 8,
+            
+            # Technical & Science
+            "engineering": 8,
+            "research": 9,
+            "hacking": 5,
+            
+            # Social & Economic
             "diplomacy": 7,
-            "exploration": 9,
-            "trade": 6
+            "trading": 6,
+            "espionage": 4,
+            
+            # Exploration & Survival
+            "navigation": 9,
+            "survival": 8,
+            "archaeology": 7
         }
         
         # Initialize profession system if available

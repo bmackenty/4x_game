@@ -111,12 +111,30 @@ def create_character_stats():
     import random
     
     stats = {
+        # Core Command Attributes
         "leadership": random.randint(1, 10),
-        "technical": random.randint(1, 10), 
-        "diplomacy": random.randint(1, 10),
+        "charisma": random.randint(1, 10),
+        "strategy": random.randint(1, 10),
+        
+        # Combat & Military
         "combat": random.randint(1, 10),
-        "exploration": random.randint(1, 10),
-        "trade": random.randint(1, 10)
+        "tactics": random.randint(1, 10),
+        "piloting": random.randint(1, 10),
+        
+        # Technical & Science
+        "engineering": random.randint(1, 10),
+        "research": random.randint(1, 10),
+        "hacking": random.randint(1, 10),
+        
+        # Social & Economic
+        "diplomacy": random.randint(1, 10),
+        "trading": random.randint(1, 10),
+        "espionage": random.randint(1, 10),
+        
+        # Exploration & Survival
+        "navigation": random.randint(1, 10),
+        "survival": random.randint(1, 10),
+        "archaeology": random.randint(1, 10)
     }
     
     return stats
