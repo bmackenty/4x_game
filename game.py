@@ -575,6 +575,37 @@ class Game:
         """Clear all log entries"""
         self.player_log = []
 
+    # Character Class Management Methods
+    def get_all_character_classes(self):
+        """Get all available character classes"""
+        return character_classes
+    
+    def get_character_class_info(self, class_name):
+        """Get detailed information about a specific character class"""
+        return character_classes.get(class_name, {})
+    
+    def get_character_class_list(self):
+        """Get a list of all character class names"""
+        return list(character_classes.keys())
+    
+    def get_character_bonuses(self, class_name=None):
+        """Get bonuses for current character or specified class"""
+        if class_name is None:
+            class_name = self.character_class
+        
+        if class_name and class_name in character_classes:
+            return character_classes[class_name].get('bonuses', {})
+        return {}
+    
+    def get_character_skills(self, class_name=None):
+        """Get skills for current character or specified class"""
+        if class_name is None:
+            class_name = self.character_class
+        
+        if class_name and class_name in character_classes:
+            return character_classes[class_name].get('skills', [])
+        return []
+
     def view_stations(self):
         print("\n" + "="*60)
         print("           SPACE STATIONS DIRECTORY")

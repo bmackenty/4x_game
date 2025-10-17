@@ -64,6 +64,62 @@ character_classes = {
             "technology_discount": 0.15
         },
         "skills": ["Quantum Physics", "Bioengineering", "Data Analysis"]
+    },
+    "Smuggler": {
+        "description": "A cunning operator working in the galaxy's shadows",
+        "starting_credits": 7500,
+        "starting_ships": ["Shadow Runner"],
+        "bonuses": {
+            "stealth_operations": 0.3,
+            "black_market_access": 0.25,
+            "contraband_profits": 0.2
+        },
+        "skills": ["Stealth Navigation", "Black Market Contacts", "Evasive Maneuvers"]
+    },
+    "Archaeologist": {
+        "description": "An expert in ancient civilizations and lost technologies",
+        "starting_credits": 8500,
+        "starting_ships": ["Deep Explorer"],
+        "bonuses": {
+            "artifact_discovery": 0.4,
+            "ancient_tech_bonus": 0.25,
+            "excavation_efficiency": 0.3
+        },
+        "skills": ["Xenoarchaeology", "Ancient Languages", "Artifact Analysis"]
+    },
+    "Corporate Spy": {
+        "description": "A master of espionage and information warfare",
+        "starting_credits": 11000,
+        "starting_ships": ["Phantom Interceptor"],
+        "bonuses": {
+            "intelligence_gathering": 0.35,
+            "sabotage_effectiveness": 0.25,
+            "infiltration_success": 0.3
+        },
+        "skills": ["Corporate Espionage", "Data Infiltration", "Social Engineering"]
+    },
+    "Bounty Hunter": {
+        "description": "A skilled tracker specializing in high-value targets",
+        "starting_credits": 9500,
+        "starting_ships": ["Pursuit Vessel"],
+        "bonuses": {
+            "tracking_ability": 0.35,
+            "combat_initiative": 0.2,
+            "capture_bonus": 0.25
+        },
+        "skills": ["Target Tracking", "Combat Tactics", "Prisoner Containment"]
+    },
+    "Terraformer": {
+        "description": "An environmental engineer transforming worlds",
+        "starting_credits": 13000,
+        "starting_ships": ["Genesis Transport"],
+        "starting_platforms": ["Atmospheric Processor"],
+        "bonuses": {
+            "terraforming_speed": 0.4,
+            "environmental_efficiency": 0.25,
+            "colony_development": 0.3
+        },
+        "skills": ["Atmospheric Engineering", "Ecosystem Design", "Planetary Geology"]
     }
 }
 

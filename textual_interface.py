@@ -136,24 +136,17 @@ class CharacterCreationScreen(Static):
             with Vertical(id="char_right_panel"):
                 yield Static("👤 CHARACTER PREVIEW", classes="section_header")
                 
-                preview_text = """Name: [Not Set]
-Class: [None Selected]
-Background: [None Selected]
+                preview_text = """[dim]👤 CHARACTER PREVIEW[/dim]
 
-📊 STATS:
-Leadership: ?
-Technical: ?
-Combat: ?
-Diplomacy: ?
-Exploration: ?
-Trade: ?
+🎯 [yellow]Start making some choices![/yellow]
 
-💰 STARTING RESOURCES:
-Credits: Calculate after selection
-Ships: [Based on class]
-Bonuses: [Based on class + background]
+1️⃣  Select a character class
+2️⃣  Choose a background
+3️⃣  Generate your stats
+4️⃣  Enter a name
 
-Select class and background to see details."""
+Your character preview will appear here
+as you make your selections."""
                 
                 yield Static(preview_text, id="char_preview")
                 
@@ -163,6 +156,10 @@ Select class and background to see details."""
 
 class MainMenu(Static):
     """Main menu with ASCII art header and navigation buttons"""
+    
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
+        self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
         # ASCII Art Header
@@ -204,7 +201,11 @@ class MainMenu(Static):
         # Character & Game Control
         yield Static("GAME CONTROL", classes="section_header")
         with Grid(id="control_grid"):
-            yield Button("🎭 New Character", id="new_character", variant="success")
+            # Check if character already exists
+            if self.game_instance and getattr(self.game_instance, 'character_created', False):
+                yield Button("👤 Character Exists", id="new_character", variant="default", disabled=True)
+            else:
+                yield Button("🎭 New Character", id="new_character", variant="success")
             yield Button("⏭️ End Turn", id="end_turn", variant="warning")
             yield Button("⚙️ Settings", id="game_settings", variant="default")
             yield Button("💾 Save & Exit", id="exit", variant="error")
@@ -515,7 +516,7 @@ class CharacterScreen(Static):
             with Vertical(id="char_info_column"):
                 # Character Portrait & Basic Info
                 with Container(id="character_portrait", classes="profile_section"):
-                    yield Static("🧑‍� COMMANDER PROFILE", classes="section_header")
+                    yield Static("🧑‍� COMMANDER PROFILE ", classes="section_header")
                     
                     if self.game_instance and self.game_instance.player_name:
                         commander_name = self.game_instance.player_name
@@ -2080,6 +2081,21 @@ class Game7019App(App):
         
     def action_show_character_creation(self) -> None:
         """Show character creation screen"""
+        # Check if a character has already been created
+        if self.game_instance and getattr(self.game_instance, 'character_created', False):
+            self.show_notification("❌ A character has already been created! Use Character Profile to view details.")
+            return
+        
+        # Reset character creation variables for a fresh start
+        if hasattr(self, 'char_selected_class'):
+            delattr(self, 'char_selected_class')
+        if hasattr(self, 'char_selected_background'):
+            delattr(self, 'char_selected_background')
+        if hasattr(self, 'char_generated_stats'):
+            delattr(self, 'char_generated_stats')
+        if hasattr(self, 'char_character_name'):
+            delattr(self, 'char_character_name')
+        
         self._switch_to_screen(CharacterCreationScreen(game_instance=self.game_instance), "character_creation")
     
     def action_show_player_log(self) -> None:
@@ -2198,25 +2214,48 @@ class Game7019App(App):
         try:
             preview_widget = self.query_one("#char_preview")
             
+            # Check if any selections have been made
+            has_class = hasattr(self, 'char_selected_class') and self.char_selected_class
+            has_background = hasattr(self, 'char_selected_background') and self.char_selected_background
+            has_stats = hasattr(self, 'char_generated_stats') and self.char_generated_stats
+            
+            # If no selections made, show placeholder message
+            if not has_class and not has_background and not has_stats:
+                placeholder_text = """[dim]👤 CHARACTER PREVIEW[/dim]
+
+🎯 [yellow]Start making some choices![/yellow]
+
+1️⃣ Select a character class
+2️⃣ Choose a background
+3️⃣ Generate your stats
+4️⃣ Enter a name
+
+Your character preview will appear here
+as you make your selections."""
+                
+                preview_widget.update(placeholder_text)
+                return
+            
             # Calculate starting credits
             base_credits = 10000
             class_credits = 0
             bg_credits = 0
+            class_data = {}  # Initialize class_data to prevent undefined reference
             
-            if GAME_AVAILABLE and hasattr(self, 'char_selected_class') and self.char_selected_class:
+            if GAME_AVAILABLE and has_class:
                 class_data = character_classes.get(self.char_selected_class, {})
                 class_credits = class_data.get("starting_credits", 0)
                 
-            if GAME_AVAILABLE and hasattr(self, 'char_selected_background') and self.char_selected_background:
+            if GAME_AVAILABLE and has_background:
                 bg_data = character_backgrounds.get(self.char_selected_background, {})
                 bg_credits = bg_data.get("credit_bonus", 0) + bg_data.get("credit_penalty", 0)
             
             total_credits = base_credits + class_credits + bg_credits
             
             # Build stats text
-            stats_text = "Leadership: ?\nTechnical: ?\nCombat: ?\nDiplomacy: ?\nExploration: ?\nTrade: ?"
+            stats_text = ""
             
-            if hasattr(self, 'char_generated_stats') and self.char_generated_stats:
+            if has_stats:
                 stats_lines = []
                 for stat, value in self.char_generated_stats.items():
                     stats_lines.append(f"{stat.title()}: {value}")
@@ -2235,7 +2274,7 @@ Background: {selected_bg}
 
 💰 STARTING RESOURCES:
 Credits: {total_credits:,}
-Ships: {class_data.get('starting_ships', ['TBD'])[0] if hasattr(self, 'char_selected_class') and self.char_selected_class and GAME_AVAILABLE else '[Based on class]'}
+Ships: {class_data.get('starting_ships', ['TBD'])[0] if has_class and GAME_AVAILABLE else '[Based on class]'}
 
 🎯 CLASS BONUSES:
 {self.get_class_bonuses_text_from_app()}
