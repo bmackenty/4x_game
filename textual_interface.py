@@ -203,7 +203,7 @@ class MainMenu(Static):
         with Grid(id="control_grid"):
             # Check if character already exists
             if self.game_instance and getattr(self.game_instance, 'character_created', False):
-                yield Button("👤 Character Exists", id="new_character", variant="default", disabled=True)
+                yield Button("👤 Character Created", id="new_character", variant="default")
             else:
                 yield Button("🎭 New Character", id="new_character", variant="success")
             yield Button("⏭️ End Turn", id="end_turn", variant="warning")
@@ -1512,12 +1512,19 @@ class Game7019App(App):
         margin: 1;
     }
     
-    /* Notification styling - make it more readable */
+    /* Notification styling - make it more readable and closable */
     Notification {
         background: $primary;
         color: white;
         text-style: bold;
         border: thick white;
+        padding: 1;
+        margin: 0 1;
+    }
+    
+    Notification:hover {
+        background: $accent;
+        border: thick $accent;
     }
     
     .notification {
@@ -1525,6 +1532,13 @@ class Game7019App(App):
         color: white;
         text-style: bold;
         border: solid white;
+        padding: 1;
+        margin: 0 1;
+    }
+    
+    .notification:hover {
+        background: $accent;
+        border: solid $accent;
     }
     
     Toast {
@@ -1532,6 +1546,13 @@ class Game7019App(App):
         color: white;
         text-style: bold;
         border: solid white;
+        padding: 1;
+        margin: 0 1;
+    }
+    
+    Toast:hover {
+        background: $accent;
+        border: solid $accent;
     }
     
     /* Additional notification system styling */
@@ -1545,6 +1566,13 @@ class Game7019App(App):
         background: $primary;
         text-style: bold;
         border: solid white;
+        padding: 1;
+        margin: 0 1;
+    }
+    
+    .toast:hover {
+        background: $accent;
+        border: solid $accent;
     }
     
     /* Textual's notification widget styling */
@@ -1558,63 +1586,90 @@ class Game7019App(App):
         text-style: bold;
     }
     
+    /* Custom notification close button styling */
+    .notification-close {
+        dock: right;
+        width: 3;
+        height: 1;
+        content-align: center middle;
+        background: red;
+        color: white;
+        text-style: bold;
+    }
+    
+    .notification-close:hover {
+        background: ansi_bright_red;
+        text-style: bold;
+    }
+    
     /* Character Profile Styling */
     #char_info_column {
         width: 1fr;
-        padding: 1;
+        padding: 0 1 0 0;
+        margin: 0;
     }
     
     #stats_column {
         width: 1fr;
-        padding: 1;
+        padding: 0 0 0 1;
+        margin: 0;
     }
     
     .profile_section {
         background: $boost;
         border: thick $primary;
-        padding: 1 2;
-        margin: 1 0;
+        padding: 1;
+        margin: 1;
         min-height: 10;
+        box-sizing: border-box;
     }
     
     #character_portrait {
         background: $panel;
         border: thick cyan;
+        margin: 1 1 0 1;
     }
     
     #wealth_section {
         background: $panel;
         border: thick green;
+        margin: 1;
     }
     
     #stats_section {
         background: $panel;
         border: thick yellow;
+        margin: 1 1 0 1;
     }
     
     #profession_section {
         background: $panel;  
         border: thick purple;
+        margin: 1;
     }
     
     #profile_info {
         text-align: center;
-        padding: 1;
+        padding: 0;
+        margin: 0;
     }
     
     #wealth_info {
         text-align: left;
-        padding: 1;
+        padding: 0;
+        margin: 0;
     }
     
     #stats_display {
         text-align: left;
-        padding: 1;
+        padding: 0;
+        margin: 0;
     }
     
     #profession_info {
         text-align: left;
-        padding: 1;
+        padding: 0;
+        margin: 0;
     }
     
     /* Ship Manager Styling */
@@ -1676,6 +1731,7 @@ class Game7019App(App):
         Binding("s", "show_stations", "Stations"),
         Binding("b", "show_bots", "AI Bots"),
         Binding("f1", "show_help", "Help"),
+        Binding("escape", "dismiss_notifications", "Dismiss Messages"),
     ]
     
     def __init__(self):
@@ -1695,7 +1751,7 @@ class Game7019App(App):
         yield StatusBar()
         # Create a container that will hold the main content
         with Container(id="main_container"):
-            yield MainMenu(id="main_menu_initial")
+            yield MainMenu(game_instance=self.game_instance, id="main_menu_initial")
         yield Footer()
         
     def on_mount(self) -> None:
@@ -1703,6 +1759,26 @@ class Game7019App(App):
         self.title = "7019 Management System"
         self.sub_title = "4X Space Strategy Game"
         self.update_status_bar()
+        
+    def on_click(self, event) -> None:
+        """Handle click events, including notification dismissal"""
+        try:
+            # Check if the click was on a notification
+            if hasattr(event, 'widget') and event.widget:
+                widget = event.widget
+                # Check for notification-related widgets
+                if (hasattr(widget, 'classes') and 
+                    ('notification' in str(widget.classes) or 
+                     'toast' in str(widget.classes) or
+                     widget.__class__.__name__ in ['Notification', 'Toast'])):
+                    # Dismiss the notification
+                    try:
+                        widget.remove()
+                    except:
+                        pass
+                    event.stop()
+        except Exception:
+            pass
         
     def initialize_game(self):
         """Initialize the game with default settings for interface mode"""
@@ -2039,7 +2115,7 @@ class Game7019App(App):
                 container = self.query_one("#main_container")
                 container.remove_children()
                 unique_fallback_id = f"main_menu_{int(time.time() * 1000000) % 1000000}"
-                fallback = MainMenu(id=unique_fallback_id)
+                fallback = MainMenu(game_instance=self.game_instance, id=unique_fallback_id)
                 container.mount(fallback)
                 self.current_content = "main_menu"
             except Exception:
@@ -2047,7 +2123,7 @@ class Game7019App(App):
         
     def action_show_main_menu(self) -> None:
         """Show main menu"""
-        self._switch_to_screen(MainMenu(), "main_menu")
+        self._switch_to_screen(MainMenu(game_instance=self.game_instance), "main_menu")
         # Update status bar when returning to main menu
         self.update_status_bar()
         
@@ -2115,6 +2191,7 @@ class Game7019App(App):
 - Click buttons to navigate
 - Drag to scroll content
 - Right-click for context menus
+- Click notifications to dismiss them
 
 ## Keyboard Shortcuts  
 - **Q**: Quit application
@@ -2123,6 +2200,7 @@ class Game7019App(App):
 - **T**: Trading
 - **A**: Archaeology
 - **C**: Character Profile
+- **ESC**: Dismiss all notifications
 - **F1**: This help screen
 
 ## Game Features
@@ -2134,9 +2212,35 @@ class Game7019App(App):
         """
         self.push_screen(HelpModal(help_text))
         
-    def show_notification(self, message: str) -> None:
-        """Show a temporary notification"""
-        self.notify(message, title="System Message", timeout=3)
+    def action_dismiss_notifications(self) -> None:
+        """Dismiss all notifications"""
+        try:
+            # Clear all existing notifications
+            self.clear_notifications()
+            self.show_notification("✅ All messages dismissed", timeout=2.0)
+        except Exception as e:
+            pass
+        
+    def show_notification(self, message: str, timeout: float = 5.0) -> None:
+        """Show a dismissable notification with close hint"""
+        # Add close instructions and visual styling
+        enhanced_message = f"[bold]{message}[/bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
+        self.notify(enhanced_message, title="📢 System Message", timeout=timeout)
+        
+    def show_persistent_notification(self, message: str) -> None:
+        """Show a notification that doesn't auto-dismiss"""
+        enhanced_message = f"[bold]{message}[/bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
+        self.notify(enhanced_message, title="📢 System Message", timeout=0)
+        
+    def show_error_notification(self, message: str) -> None:
+        """Show an error notification"""
+        enhanced_message = f"[red bold]{message}[/red bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
+        self.notify(enhanced_message, title="⚠️ Error", timeout=8.0)
+        
+    def show_success_notification(self, message: str) -> None:
+        """Show a success notification"""
+        enhanced_message = f"[green bold]{message}[/green bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
+        self.notify(enhanced_message, title="✅ Success", timeout=4.0)
         
     # Character creation handlers - store state in app
     def handle_generate_stats(self):
