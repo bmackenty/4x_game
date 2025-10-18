@@ -16,6 +16,9 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 - **Galactic Events**: Dynamic event system generating random occurrences that affect markets, travel, and politics
 - **News System**: Comprehensive galactic news feed with breaking news, categorized reports, and travel advisories
 - **Political Scandals**: Humorous PG-13 to R-rated political scandal events that affect faction relations
+- **Species System**: 14 unique alien species with distinct biology, cognition, and cultural frameworks
+- **Energy Systems**: 49 energy types across 7 categories powering ships, stations, and advanced technologies
+- **Research System**: 78 research fields across 10 categories unlocking technological advances
 
 ## How to Play
 
@@ -241,6 +244,265 @@ Experience hilarious political scandals that add humor and affect faction relati
 - **News Integration**: Scandals appear in entertainment news with sensational headlines
 - **Automatic Generation**: Scandals occur naturally as part of the event system
 
+## Species System
+
+Experience the rich diversity of sentient life in the galaxy of 7019:
+
+### Playable Species
+- **Terran**: Human descendants with technological mastery and diplomatic skills
+  - Starting bonuses: +1000 credits, +5 reputation with all factions, +10% technology research
+  - Special traits: Adaptability, Technological Innovation, Diplomatic Skills
+  - Homeworld: Earth (Sol System)
+
+### Non-Playable Species
+The galaxy contains 13 other major species, each with unique characteristics:
+
+#### **Plant-Based Sentients**
+- **Silvan**: Photosynthetic organisms with decentralized cognition and ecosystem integration
+- **Mycelioid**: Vast fungal intellects spanning entire moons with network consciousness
+
+#### **Energy Beings**
+- **Auroran**: Pure energy entities with quantum thought processes and instant communication
+- **Luminaut**: Light-manipulating organisms with photonic biology and holographic memory
+
+#### **Adaptive Humanoids**
+- **Zentari**: Amphibious beings with fluid social systems and shape-shifting capabilities
+- **Synthetix**: Post-organic AI consciousnesses with perfect memory and logical analysis
+
+#### **Ancient Civilizations**
+- **Gaian**: Rock-formed life with tectonic-scale communication and geological mastery
+- **Eternal**: Immortal beings existing across eons with ancient wisdom and long-term perspective
+
+#### **Temporal & Dimensional**
+- **Chronaut**: Entities existing both within and outside linear time with temporal awareness
+- **Umbraxian**: Dark matter beings barely perceivable with stealth mastery
+
+#### **Advanced Entities**
+- **Xha'reth**: Highly advanced Ether manipulators with reality manipulation abilities
+- **Denebian**: Pacifist refugees from destroyed homeworld with healing abilities
+- **Zyxera**: Resonant beings interpreting the universe as vibration with cosmic harmony
+
+### Species Characteristics
+Each species includes detailed information about:
+- **Biology**: Unique physiological characteristics and biochemistry
+- **Cognition**: How they think, perceive reality, and process information
+- **Culture**: Social structures, values, and cultural frameworks
+- **Technology**: Specialized technological approaches and capabilities
+- **Homeworld**: Origin planet or system
+- **Alliance Status**: Relationship with the Celestial Alliance
+- **Population**: Estimated numbers across the galaxy
+- **Special Traits**: Unique abilities and characteristics
+- **Diplomacy Modifier**: How they affect diplomatic relations
+
+### Species Integration
+- **Character Creation**: Species selection is the first step in character creation
+- **Species Bonuses**: Each species provides unique starting bonuses and abilities
+- **Diplomatic Effects**: Species traits affect faction relations and negotiations
+- **Cultural Diversity**: Rich lore and background for each species
+- **Scientific Accuracy**: Species represent truly distinct forms of sentient life
+
+## Energy Systems
+
+Power your ships, stations, and technologies with 49 unique energy types across 7 categories:
+
+### Energy Categories
+
+#### **⚡ Physical & Technological Energies**
+- **Kinetic Energy**: Motion-based power for weapons and propulsion (80% efficiency)
+- **Thermal Energy**: Harvested from planetary cores and stars (70% efficiency)
+- **Gravitational Energy**: Used for artificial gravity and planetary manipulation (60% efficiency)
+- **Nuclear Energy**: Fission/fusion reactions for high-power applications (90% efficiency)
+- **Electromagnetic Energy**: EM spectrum for communications, sensors, and shields (85% efficiency)
+- **Plasma Energy**: High-temperature ionized gas for weapons and engines (80% efficiency)
+- **Zero-Point Energy**: Vacuum baseline energy for advanced civilizations (95% efficiency)
+- **Quantum Flux**: Unstable but potent for teleportation and reality manipulation (70% efficiency)
+- **Dark Matter Energy**: Exotic particles for stealth and shadow technology (60% efficiency)
+- **Antimatter**: Dangerous but powerful for high-yield reactors (100% efficiency)
+- **Neutrino Energy**: Clean, undetectable power for covert operations (40% efficiency)
+
+#### **🔮 Mystical & Etheric Energies**
+- **Etheric Energy**: Fundamental magical force woven into the universe (90% efficiency)
+- **Leyline Currents**: Flowing mystical energies connecting worlds (80% efficiency)
+- **Soul Energy**: Life-force power for healing and necromancy (60% efficiency)
+- **Aether Flames**: Energetic wisps for spiritual and combat rituals (70% efficiency)
+- **Astral Energy**: Drawn from the astral plane for divination (50% efficiency)
+- **Mana**: Classic magical reservoir for spellcasting (80% efficiency)
+- **Chrono-Energy**: Temporal power for time manipulation (60% efficiency)
+- **Void Essence**: Dark, forbidden energy from reality's edge (90% efficiency)
+- **Divine Light**: Sacred energy tied to celestial entities (95% efficiency)
+- **Shadow Flux**: Opposing Divine Light for stealth magic (80% efficiency)
+
+#### **🧠 Psychic & Consciousness-Based Energies**
+- **Psionic Energy**: Mental power for telepathy and telekinesis (70% efficiency)
+- **Empathic Resonance**: Emotional field energy for diplomacy (60% efficiency)
+- **Noospheric Energy**: Collective consciousness field (80% efficiency)
+- **Dream Energy**: Manifested in dreamscapes for illusion magic (50% efficiency)
+- **Cognitive Pulse**: Focus-based energy for mental networks (60% efficiency)
+- **Neural Sync Fields**: Required for AI-organic communication (80% efficiency)
+
+#### **🌌 Exotic & Speculative Energies**
+- **Hyperdimensional Energy**: Accessed from other dimensions (90% efficiency)
+- **Tachyonic Currents**: FTL communication and predictive algorithms (70% efficiency)
+- **Chrono-Synthetic Flux**: Time-distorted regions affecting travel (60% efficiency)
+- **Anima Energy**: Linked to planetary consciousness (70% efficiency)
+- **Phantom Energy**: Hypothetical universe expansion energy (80% efficiency)
+- **Entropy Reversal Fields**: Anti-aging and decay reversal (60% efficiency)
+- **Echo Energy**: Residual power from lost civilizations (50% efficiency)
+- **Mythic Resonance**: Belief-based symbolic energy (40% efficiency)
+- **Probability Fields**: Outcome manipulation energy (70% efficiency)
+- **Singularity Energy**: Tapped from black holes (95% efficiency)
+
+#### **🛠️ Utility & Industrial Energies**
+- **Synthetic Bio-Energy**: Engineered biological energy (70% efficiency)
+- **Geo-Energy**: Planet-based renewable energy (60% efficiency)
+- **Photonic Power**: Clean light-based energy (80% efficiency)
+- **Cryo-Energy**: Stored cold for temperature regulation (60% efficiency)
+- **Chemical Energy**: Traditional biochemical systems (50% efficiency)
+- **Molecular Torque**: Nanotech molecular friction (80% efficiency)
+
+#### **🛸 Faction-Specific Energies**
+- **Concordant Harmony**: Harmonic Resonance Collective balance energy (80% efficiency)
+- **Veritas Pulse**: Veritas Covenant truth-aligned energy (90% efficiency)
+- **Technotheos Charge**: Sacred techno-religious energy (70% efficiency)
+- **Silvan Bloomforce**: Bio-mystical forest energy (80% efficiency)
+- **Quantum Choir**: AI collective harmonic energy (90% efficiency)
+
+#### **💥 Chaotic & Unstable Energies**
+- **Chaotic Potential**: Highly volatile disorder-based energy (100% efficiency, 5% stability)
+- **Warning**: Banned by Icaron Collective after three moons vanished during experiments
+
+### Energy Properties
+Each energy type includes:
+- **Efficiency**: Power output percentage (40%-100%)
+- **Stability**: Reliability rating (5%-95%)
+- **Safety Level**: Safe, Caution, Dangerous, Extremely Dangerous, Forbidden
+- **Cost Multiplier**: Operational cost factor (0.7x-8.0x)
+- **Applications**: Specific uses (Weapons, Propulsion, Communications, etc.)
+- **Environmental Impact**: None, Low, Medium, High, Catastrophic, Unknown
+
+### Energy Integration
+- **Ship Energy Systems**: Configure energy types for ships through Ship Builder
+- **Station Energy Systems**: Install energy systems through Station Management
+- **Energy Database**: Browse all 49 energy types by category
+- **Safety Filtering**: Only safe energy types recommended for ships/stations
+- **Efficiency Calculations**: Real-time power output and cost calculations
+- **Compatibility Checks**: Energy type compatibility with ship/station types
+
+### Energy Applications
+- **Propulsion**: Kinetic, Plasma, Antimatter, Quantum Flux
+- **Weapons**: Nuclear, Plasma, Antimatter, Void Essence, Chaotic Potential
+- **Shields**: Electromagnetic, Plasma, Etheric, Shadow Flux
+- **Communications**: Electromagnetic, Tachyonic, Psionic, Neural Sync
+- **Stealth**: Dark Matter, Neutrino, Shadow Flux, Umbraxian tech
+- **Healing**: Soul Energy, Divine Light, Empathic Resonance
+- **Time Manipulation**: Chrono-Energy, Chrono-Synthetic Flux, Tachyonic
+- **Reality Manipulation**: Quantum Flux, Hyperdimensional, Void Essence
+
+## Research & Development System
+
+Advance your civilization through 78 research fields spanning the pinnacle of 7019 scientific understanding:
+
+### Research Categories
+
+#### **⚛️ Quantum and Transdimensional Sciences** (10 fields)
+- **Quantum Temporal Dynamics**: Manipulate time through quantum states
+- **Multiverse Navigation**: Traverse alternate universes and parallel realities
+- **Null Space Exploration**: Research void realms beyond space and time
+- **Timefold Catalysis**: Use compressed time as high-density energy sources
+- **Temporal Entropy Compression**: Condense time's decay into usable energy
+
+#### **🌌 Etheric and Cosmic Sciences** (10 fields)
+- **Advanced Etheric Weaving**: Blend Ether Magic with physics to shape reality
+- **Dark Energy and Negative Mass Mechanics**: Generate wormholes and manipulate gravity
+- **Primordial Ether Research**: Study Etheric Energy predating the universe
+- **Cosmic Entropy Reversal**: Reverse universal heat death
+- **Dimensional Energy Confluence**: Harness reality bleed points
+
+#### **🧬 Biological, Xenogenetic, and Post-Biological Sciences** (9 fields)
+- **Trans-Phasic Genetics**: Engineer genomes that adapt across dimensions
+- **Bioenergetic Ascension Theory**: Transform organic life into energy-based existence
+- **Self-Evolving Biomes**: Design ecosystems that evolve autonomously
+- **Bio-Digital Symbiosis**: Integrate biology with digital consciousness
+- **Photosynthetic Etheric Modulation**: Enable plants to thrive in antimatter regions
+
+#### **🧠 Existential and Metaconscious Sciences** (10 fields)
+- **Collective Metaconsciousness Networks**: Expand shared consciousness fields
+- **Quantum Soul Theory**: Investigate consciousness persistence beyond death
+- **Threshold Consciousness Research**: Explore intelligence emergence in complex systems
+- **Artificial Existence Cultivation**: Create simulated realities with sentient life
+- **Memory-Energy Conversion Studies**: Convert emotions into usable energy
+
+#### **⚙️ Engineering and Applied Etheric Sciences** (11 fields)
+- **Sentient Architecture**: Create self-aware buildings and starships
+- **Quantum Crystalized Matter Engineering**: Design quantum computing crystals
+- **Zero-Point Energy Architecture**: Capture infinite energy from vacuum fluctuations
+- **Microcosmic Engine Design**: Engineer artificial micro-universes as power sources
+- **Frictionless Energy Systems**: Develop near-infinite efficiency propulsion
+
+#### **💻 Computational and Predictive Sciences** (6 fields)
+- **Hyperdimensional Simulation Theory**: Simulate events across alternate timelines
+- **Quantum Algorithmic Foreknowledge**: Compute future possibilities
+- **Self-Evolving Computation**: Create systems that upgrade autonomously
+- **Etheric Network Consciousness**: Develop sentient AI networks
+- **Multiversal Probability Analysis**: Predict interdimensional events
+
+#### **🌍 Planetary, Stellar, and Environmental Sciences** (7 fields)
+- **Planetary Rejuvenation Protocols**: Restore dying planets to thriving ecosystems
+- **Artificial Stellar Ignition**: Create and control stars
+- **Black Hole Stabilization**: Control black holes to prevent cosmic disasters
+- **Star-Shepherding Operations**: Move stars for cosmic balance
+- **Dark Matter Biogeochemistry**: Explore dark matter-ecosystem interactions
+
+#### **📜 Ethics, Philosophy, and Intercultural Sciences** (7 fields)
+- **Post-Temporal Ethics**: Address moral implications of time manipulation
+- **Multiversal Diplomacy**: Develop frameworks for alternate-reality civilizations
+- **Synthetic Sentience Rights**: Explore AI and digital consciousness rights
+- **Energetic Consent Theory**: Examine ethics of using living energy beings
+- **The Energy-Self Continuum**: Study identity transformation as energy
+
+#### **⚕️ Health, Medicine, and Post-Mortality Sciences** (5 fields)
+- **Etheric Regeneration Therapy**: Heal tissues using Etheric Energy fields
+- **Immortality Stasis Protocols**: Prolong consciousness through temporal stasis
+- **Multidimensional Pathogen Research**: Neutralize cross-dimensional pathogens
+- **Post-Mortality Cognitive Preservation**: Embed consciousness in synthetic mediums
+- **Lightform Synthesis Medicine**: Treat diseases via light-energy conversion
+
+#### **🔬 Theoretical and Foundational Sciences** (3 fields)
+- **Existential Substrate Theory**: Research the underlying substrate of existence
+- **Conscious Matter Emergence**: Study intelligence manifestation in matter
+- **The Nexus Principle**: Investigate transcendence phenomena
+
+### Research Properties
+Each research field includes:
+- **Difficulty**: Complexity rating (1-10)
+- **Research Cost**: Credits required to begin (300k-1M+)
+- **Research Time**: Days required to complete (120-320 days)
+- **Prerequisites**: Required completed research
+- **Unlocks**: Technologies and capabilities gained
+- **Related Energy**: Associated energy type from energy systems
+
+### Research Mechanics
+- **Progressive Unlocking**: Complete prerequisites to unlock advanced research
+- **Active Research**: One research project active at a time
+- **Research Progress**: Tracks days spent on current research
+- **Completion Tracking**: View all completed research and unlocked technologies
+- **Research Tree**: Visualize dependencies and prerequisites
+- **Category Browsing**: Explore research by scientific category
+
+### Research Integration
+- **Technology Unlocks**: Research unlocks new ship systems, weapons, and capabilities
+- **Energy Synergy**: Research fields tied to specific energy types
+- **Prerequisite Chains**: Advanced research requires foundational discoveries
+- **Cost Scaling**: Higher difficulty research costs more credits and time
+- **Strategic Planning**: Choose research paths based on civilization goals
+
+### Example Research Paths
+- **Time Mastery**: Quantum Temporal Dynamics → Timefold Catalysis → Temporal Entropy Compression
+- **Reality Manipulation**: Advanced Etheric Weaving → Primordial Ether Research → Existential Substrate Theory
+- **Consciousness Evolution**: Quantum Soul Theory → Post-Mortality Cognitive Preservation → The Energy-Self Continuum
+- **Cosmic Engineering**: Artificial Stellar Ignition → Star-Shepherding Operations → Black Hole Stabilization
+- **Ultimate Power**: Zero-Point Energy Architecture → Microcosmic Engine Design → Singularity Energy mastery
+
 ## Ship Upgrades
 
 Enhance your ships with advanced technology at specialized stations:
@@ -399,6 +661,9 @@ Choose from 30+ unique sci-fi professions that shape your character's abilities 
 - `textual_interface.py` - Modern ASCII interface using Textual framework
 - `events.py` - Dynamic galactic event system with 8 event types
 - `news_system.py` - Comprehensive news feed and reporting system
+- `species.py` - 14 unique alien species with distinct biology and culture
+- `energies.py` - 49 energy types across 7 categories for ships and stations
+- `research.py` - 78 research fields across 10 categories for technological advancement
 - `professions.py` - 30+ sci-fi professions with experience and career progression
 - `factions.py` - 30 galactic factions with diplomacy and territory systems
 - `ai_bots.py` - AI bot system with autonomous NPCs
@@ -433,6 +698,9 @@ The game now includes:
 - ✅ **Random Events and Encounters**: Dynamic event system with 8 event types
 - ✅ **Galactic News System**: Comprehensive news feed with breaking news and categories
 - ✅ **Political Scandals**: Humorous scandal system affecting faction relations
+- ✅ **Species System**: 14 unique alien species with distinct biology and culture
+- ✅ **Energy Systems**: 49 energy types across 7 categories for ships and stations
+- ✅ **Research System**: 78 research fields across 10 categories for technological advancement
 - ✅ **Diplomatic Relations**: 30 factions with reputation and territory systems
 - ✅ **Galaxy Map and Exploration**: 3D navigation with 30-40 star systems
 - ✅ **Production Chains**: Manufacturing platforms and economic simulation

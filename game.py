@@ -12,6 +12,9 @@ from goods import commodities
 from ship_classes import ship_classes
 from space_stations import space_stations
 from characters import character_classes, character_backgrounds, create_character_stats
+from species import species_database, get_playable_species
+from energies import all_energies, get_safe_energies, get_energy_efficiency, get_energy_cost_multiplier
+from research import all_research, research_categories, get_research_by_category, get_available_research
 from ship_builder import ship_components, ship_templates, calculate_ship_stats
 from navigation import NavigationSystem
 from economy import EconomicSystem
@@ -30,8 +33,14 @@ class Game:
         self.player_name = ""
         self.character_class = ""
         self.character_background = ""
+        self.character_species = ""
         self.character_stats = {}
         self.credits = 10000
+        
+        # Research system
+        self.completed_research = []
+        self.active_research = None
+        self.research_progress = 0
         self.inventory = {}
         self.owned_ships = []
         self.custom_ships = []  # Player-built ships
@@ -68,6 +77,7 @@ class Game:
             self.player_name = character_data.get('name', 'Captain')
             self.character_class = character_data.get('class_name', 'Explorer')
             self.character_background = character_data.get('background_name', 'Frontier Survivor')
+            self.character_species = character_data.get('species_name', 'Terran')
             
             # Create character stats based on class and background
             from characters import create_character_stats
@@ -89,7 +99,7 @@ class Game:
         print("="*60)
         print(f"Commander: {self.player_name}")
         if self.character_class:
-            print(f"Class: {self.character_class} | Background: {self.character_background}")
+            print(f"Species: {self.character_species} | Class: {self.character_class} | Background: {self.character_background}")
         print(f"Credits: {self.credits:,}")
         
         # Display current ship information
@@ -145,9 +155,11 @@ class Game:
             print("15. Galactic History & Archaeology")
             print("16. Character Profile")
             print("17. Galactic News & Events")
-            print("18. Save & Exit")
+            print("18. Energy Systems Database")
+            print("19. Research & Development")
+            print("20. Save & Exit")
             
-            choice = input("\nEnter your choice (1-18): ").strip()
+            choice = input("\nEnter your choice (1-20): ").strip()
             
             if choice == "1":
                 self.browse_manufacturing()
@@ -184,6 +196,10 @@ class Game:
             elif choice == "17":
                 self.galactic_news_events_menu()
             elif choice == "18":
+                self.view_energy_systems()
+            elif choice == "19":
+                self.research_menu()
+            elif choice == "20":
                 self.save_and_exit()
                 break
             else:
@@ -605,6 +621,345 @@ class Game:
         if class_name and class_name in character_classes:
             return character_classes[class_name].get('skills', [])
         return []
+    
+    def get_species_info(self, species_name=None):
+        """Get detailed information about a specific species"""
+        if species_name is None:
+            species_name = self.character_species
+        return species_database.get(species_name, {})
+    
+    def get_species_traits(self, species_name=None):
+        """Get the special traits of a specific species"""
+        if species_name is None:
+            species_name = self.character_species
+        species = species_database.get(species_name)
+        return species.get("special_traits", []) if species else []
+    
+    def get_species_diplomacy_modifier(self, species_name=None):
+        """Get the diplomacy modifier for a specific species"""
+        if species_name is None:
+            species_name = self.character_species
+        species = species_database.get(species_name)
+        return species.get("diplomacy_modifier", 0.0) if species else 0.0
+    
+    def get_energy_info(self, energy_name):
+        """Get detailed information about a specific energy type"""
+        return all_energies.get(energy_name, {})
+    
+    def get_safe_energy_types(self):
+        """Get all safe energy types for ships and stations"""
+        return get_safe_energies()
+    
+    def calculate_energy_efficiency(self, energy_name, base_power):
+        """Calculate power output based on energy efficiency"""
+        efficiency = get_energy_efficiency(energy_name)
+        return base_power * efficiency
+    
+    def calculate_energy_cost(self, energy_name, base_cost):
+        """Calculate energy cost based on cost multiplier"""
+        multiplier = get_energy_cost_multiplier(energy_name)
+        return base_cost * multiplier
+    
+    def get_energy_applications(self, energy_name):
+        """Get applications for a specific energy type"""
+        energy = all_energies.get(energy_name)
+        return energy.get("applications", []) if energy else []
+    
+    def view_energy_systems(self):
+        """Display available energy systems"""
+        print("\n" + "="*60)
+        print("           ENERGY SYSTEMS DATABASE")
+        print("="*60)
+        
+        print("\nENERGY CATEGORIES:")
+        categories = ["Physical", "Mystical", "Psychic", "Exotic", "Utility", "Faction-Specific", "Chaotic"]
+        for i, category in enumerate(categories, 1):
+            print(f"{i}. {category}")
+        
+        try:
+            choice = int(input("\nEnter category number (1-7): ")) - 1
+            if 0 <= choice < len(categories):
+                category = categories[choice]
+                self.view_energy_category(category)
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+    
+    def view_energy_category(self, category):
+        """View energies in a specific category"""
+        from energies import get_energy_by_category
+        
+        energies = get_energy_by_category(category)
+        if not energies:
+            print(f"\nNo energies found in {category} category.")
+            return
+        
+        print(f"\n{category.upper()} ENERGIES:")
+        print("="*60)
+        
+        for energy_name, energy_data in energies.items():
+            print(f"\n{energy_name}")
+            print(f"  Description: {energy_data['description']}")
+            print(f"  Efficiency: {energy_data['efficiency']:.1%}")
+            print(f"  Stability: {energy_data['stability']:.1%}")
+            print(f"  Safety Level: {energy_data['safety_level']}")
+            print(f"  Cost Multiplier: {energy_data['cost_multiplier']:.1f}x")
+            print(f"  Applications: {', '.join(energy_data['applications'])}")
+            
+            if 'warning' in energy_data:
+                print(f"  ⚠️  WARNING: {energy_data['warning']}")
+            
+            if 'banned_by' in energy_data:
+                print(f"  🚫 BANNED BY: {', '.join(energy_data['banned_by'])}")
+        
+        input("\nPress Enter to continue...")
+    
+    def research_menu(self):
+        """Research and Development menu"""
+        while True:
+            print("\n" + "="*60)
+            print("           RESEARCH & DEVELOPMENT")
+            print("="*60)
+            
+            # Show active research
+            if self.active_research:
+                research_data = all_research.get(self.active_research)
+                if research_data:
+                    progress = (self.research_progress / research_data['research_time']) * 100
+                    print(f"\nActive Research: {self.active_research}")
+                    print(f"Progress: {progress:.1f}% ({self.research_progress}/{research_data['research_time']} days)")
+            else:
+                print("\nNo active research")
+            
+            print(f"\nCompleted Research: {len(self.completed_research)}")
+            print(f"Total Research Fields: {len(all_research)}")
+            
+            print("\nRESEARCH MENU:")
+            print("1. Browse Research Fields")
+            print("2. View Available Research")
+            print("3. Start New Research")
+            print("4. View Completed Research")
+            print("5. Research by Category")
+            print("6. View Research Tree")
+            print("7. Back to Main Menu")
+            
+            choice = input("\nEnter your choice (1-7): ").strip()
+            
+            if choice == "1":
+                self.browse_all_research()
+            elif choice == "2":
+                self.view_available_research()
+            elif choice == "3":
+                self.start_research()
+            elif choice == "4":
+                self.view_completed_research()
+            elif choice == "5":
+                self.browse_research_by_category()
+            elif choice == "6":
+                self.view_research_tree()
+            elif choice == "7":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                input("\nPress Enter to continue...")
+    
+    def browse_all_research(self):
+        """Browse all research fields"""
+        print("\n" + "="*60)
+        print("           ALL RESEARCH FIELDS")
+        print("="*60)
+        
+        print(f"\nTotal Fields: {len(all_research)}")
+        print("\nResearch Categories:")
+        categories = list(research_categories.keys())
+        for i, category in enumerate(categories, 1):
+            count = len(research_categories[category])
+            print(f"{i}. {category} ({count} fields)")
+        
+        try:
+            choice = int(input("\nSelect category to view (number): ")) - 1
+            if 0 <= choice < len(categories):
+                category = categories[choice]
+                self.view_research_category_details(category)
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_research_category_details(self, category):
+        """View detailed research fields in a category"""
+        research_fields = get_research_by_category(category)
+        
+        print(f"\n{category.upper()} RESEARCH FIELDS:")
+        print("="*60)
+        
+        for research_name, research_data in research_fields.items():
+            completed = "✓" if research_name in self.completed_research else " "
+            print(f"\n[{completed}] {research_name}")
+            print(f"    {research_data['description']}")
+            print(f"    Difficulty: {research_data['difficulty']}/10")
+            print(f"    Cost: {research_data['research_cost']:,} credits")
+            print(f"    Time: {research_data['research_time']} days")
+            print(f"    Related Energy: {research_data['related_energy']}")
+            
+            if research_data['prerequisites']:
+                print(f"    Prerequisites: {', '.join(research_data['prerequisites'])}")
+            
+            if research_data['unlocks']:
+                print(f"    Unlocks: {', '.join(research_data['unlocks'])}")
+    
+    def view_available_research(self):
+        """View research fields available to start"""
+        print("\n" + "="*60)
+        print("           AVAILABLE RESEARCH")
+        print("="*60)
+        
+        available = get_available_research(self.completed_research)
+        affordable = {name: data for name, data in available.items() 
+                     if data['research_cost'] <= self.credits}
+        
+        print(f"\nAvailable Research: {len(available)}")
+        print(f"Affordable Research: {len(affordable)}")
+        
+        if not available:
+            print("\nNo research currently available.")
+            print("Complete prerequisites to unlock more research fields.")
+        else:
+            print("\nAffordable Research Fields:")
+            for i, (name, data) in enumerate(affordable.items(), 1):
+                print(f"\n{i}. {name}")
+                print(f"   Cost: {data['research_cost']:,} credits")
+                print(f"   Time: {data['research_time']} days")
+                print(f"   Difficulty: {data['difficulty']}/10")
+        
+        input("\nPress Enter to continue...")
+    
+    def start_research(self):
+        """Start a new research project"""
+        print("\n" + "="*60)
+        print("           START RESEARCH")
+        print("="*60)
+        
+        if self.active_research:
+            print(f"\nYou already have active research: {self.active_research}")
+            print("Complete or cancel current research before starting new research.")
+            input("\nPress Enter to continue...")
+            return
+        
+        available = get_available_research(self.completed_research)
+        affordable = {name: data for name, data in available.items() 
+                     if data['research_cost'] <= self.credits}
+        
+        if not affordable:
+            print("\nNo affordable research available.")
+            print(f"Your credits: {self.credits:,}")
+            input("\nPress Enter to continue...")
+            return
+        
+        print("\nAffordable Research:")
+        research_list = list(affordable.items())
+        for i, (name, data) in enumerate(research_list, 1):
+            print(f"\n{i}. {name}")
+            print(f"   {data['description']}")
+            print(f"   Cost: {data['research_cost']:,} credits")
+            print(f"   Time: {data['research_time']} days")
+            print(f"   Difficulty: {data['difficulty']}/10")
+        
+        try:
+            choice = int(input("\nSelect research to start (number): ")) - 1
+            if 0 <= choice < len(research_list):
+                research_name, research_data = research_list[choice]
+                
+                print(f"\nStarting research: {research_name}")
+                print(f"Cost: {research_data['research_cost']:,} credits")
+                
+                confirm = input("Confirm research start? (y/n): ").lower()
+                if confirm == 'y':
+                    self.credits -= research_data['research_cost']
+                    self.active_research = research_name
+                    self.research_progress = 0
+                    print(f"\nResearch started: {research_name}")
+                    print("Research will progress over time.")
+                else:
+                    print("Research cancelled.")
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_completed_research(self):
+        """View all completed research"""
+        print("\n" + "="*60)
+        print("           COMPLETED RESEARCH")
+        print("="*60)
+        
+        if not self.completed_research:
+            print("\nNo research completed yet.")
+        else:
+            print(f"\nCompleted: {len(self.completed_research)} fields")
+            for research_name in self.completed_research:
+                research_data = all_research.get(research_name)
+                if research_data:
+                    print(f"\n✓ {research_name}")
+                    print(f"  {research_data['description']}")
+                    print(f"  Unlocked: {', '.join(research_data['unlocks'])}")
+        
+        input("\nPress Enter to continue...")
+    
+    def browse_research_by_category(self):
+        """Browse research by category"""
+        print("\n" + "="*60)
+        print("           RESEARCH BY CATEGORY")
+        print("="*60)
+        
+        categories = list(research_categories.keys())
+        print("\nResearch Categories:")
+        for i, category in enumerate(categories, 1):
+            count = len(research_categories[category])
+            completed_in_cat = sum(1 for r in research_categories[category] if r in self.completed_research)
+            print(f"{i}. {category} ({completed_in_cat}/{count} completed)")
+        
+        try:
+            choice = int(input("\nSelect category (number): ")) - 1
+            if 0 <= choice < len(categories):
+                category = categories[choice]
+                self.view_research_category_details(category)
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def view_research_tree(self):
+        """View research prerequisites and dependencies"""
+        print("\n" + "="*60)
+        print("           RESEARCH TREE")
+        print("="*60)
+        
+        print("\nResearch with Prerequisites:")
+        has_prereqs = {name: data for name, data in all_research.items() 
+                      if data['prerequisites']}
+        
+        for research_name, research_data in has_prereqs.items():
+            completed = "✓" if research_name in self.completed_research else " "
+            print(f"\n[{completed}] {research_name}")
+            print(f"    Requires: {', '.join(research_data['prerequisites'])}")
+            
+            # Check if prerequisites are met
+            prereqs_met = all(p in self.completed_research for p in research_data['prerequisites'])
+            if prereqs_met:
+                print("    Status: Available")
+            else:
+                missing = [p for p in research_data['prerequisites'] if p not in self.completed_research]
+                print(f"    Missing: {', '.join(missing)}")
+        
+        input("\nPress Enter to continue...")
 
     def view_stations(self):
         print("\n" + "="*60)
@@ -1253,6 +1608,44 @@ class Game:
         print("           CHARACTER CREATION")
         print("="*60)
         
+        # Choose species
+        print("\nSelect your species:")
+        playable_species = get_playable_species()
+        species_list = list(playable_species.keys())
+        
+        for i, species_name in enumerate(species_list, 1):
+            species_info = playable_species[species_name]
+            print(f"{i}. {species_name}")
+            print(f"   {species_info['description']}")
+            print(f"   Biology: {species_info['biology']}")
+            print(f"   Special Traits: {', '.join(species_info['special_traits'])}")
+            print()
+        
+        try:
+            choice = int(input("Enter species number: ")) - 1
+            if 0 <= choice < len(species_list):
+                self.character_species = species_list[choice]
+                species_info = playable_species[self.character_species]
+                
+                # Apply species bonuses
+                if "starting_bonuses" in species_info:
+                    bonuses = species_info["starting_bonuses"]
+                    if "credits" in bonuses:
+                        self.credits += bonuses["credits"]
+                    if "reputation" in bonuses:
+                        # Apply reputation bonus to all factions
+                        for faction in self.faction_system.player_relations:
+                            self.faction_system.player_relations[faction] += bonuses["reputation"]
+                
+                print(f"\nSelected: {self.character_species}")
+                print(f"Species Description: {species_info['description']}")
+            else:
+                print("Invalid selection.")
+                return self.character_creation()
+        except ValueError:
+            print("Invalid input.")
+            return self.character_creation()
+        
         # Choose character class
         print("\nSelect your character class:")
         classes = list(character_classes.keys())
@@ -1412,9 +1805,22 @@ class Game:
             return
         
         print(f"Commander: {self.player_name}")
+        print(f"Species: {self.character_species}")
         print(f"Class: {self.character_class}")
         print(f"Background: {self.character_background}")
         print(f"Credits: {self.credits:,}")
+        
+        # Show species info
+        if self.character_species and self.character_species in species_database:
+            species_info = species_database[self.character_species]
+            print(f"\nSPECIES INFORMATION:")
+            print(f"Biology: {species_info['biology']}")
+            print(f"Cognition: {species_info['cognition']}")
+            print(f"Culture: {species_info['culture']}")
+            print(f"Special Traits: {', '.join(species_info['special_traits'])}")
+            print(f"Homeworld: {species_info['homeworld']}")
+            print(f"Alliance Status: {species_info['alliance_status']}")
+            print(f"Population: {species_info['population']}")
         
         # Show profession info
         if self.profession_system.character_profession:
@@ -1933,9 +2339,10 @@ class Game:
         print("2. Use Ship Template")
         print("3. View Ship Components")
         print("4. View Your Custom Ships")
-        print("5. Back to Main Menu")
+        print("5. Energy Systems Integration")
+        print("6. Back to Main Menu")
         
-        choice = input("\nEnter your choice (1-5): ").strip()
+        choice = input("\nEnter your choice (1-6): ").strip()
         
         if choice == "1":
             self.build_custom_ship()
@@ -1946,6 +2353,8 @@ class Game:
         elif choice == "4":
             self.view_custom_ships()
         elif choice == "5":
+            self.ship_energy_integration()
+        elif choice == "6":
             return
         else:
             print("Invalid choice.")
@@ -2315,6 +2724,82 @@ class Game:
         
         input("\nPress Enter to continue...")
 
+    def ship_energy_integration(self):
+        """Ship energy systems integration interface"""
+        print("\n" + "="*60)
+        print("           SHIP ENERGY SYSTEMS INTEGRATION")
+        print("="*60)
+        
+        if not self.owned_ships and not self.custom_ships:
+            print("No ships available for energy integration.")
+            print("Build or purchase a ship first.")
+            input("\nPress Enter to continue...")
+            return
+        
+        # Show available ships
+        all_ships = self.owned_ships + [ship.get('name', 'Unknown') for ship in self.custom_ships]
+        print("\nAvailable Ships:")
+        for i, ship_name in enumerate(all_ships, 1):
+            print(f"{i}. {ship_name}")
+        
+        try:
+            choice = int(input("\nSelect ship for energy integration (number): ")) - 1
+            if 0 <= choice < len(all_ships):
+                selected_ship = all_ships[choice]
+                self.configure_ship_energy(selected_ship)
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def configure_ship_energy(self, ship_name):
+        """Configure energy systems for a specific ship"""
+        print(f"\nEnergy Configuration for: {ship_name}")
+        print("="*50)
+        
+        # Show safe energy types
+        safe_energies = self.get_safe_energy_types()
+        
+        print("\nRecommended Energy Systems:")
+        for i, (energy_name, energy_data) in enumerate(safe_energies.items(), 1):
+            print(f"{i}. {energy_name}")
+            print(f"   Efficiency: {energy_data['efficiency']:.1%}")
+            print(f"   Stability: {energy_data['stability']:.1%}")
+            print(f"   Cost: {energy_data['cost_multiplier']:.1f}x base")
+            print(f"   Applications: {', '.join(energy_data['applications'][:3])}")
+            print()
+        
+        try:
+            choice = int(input("Select energy system (number): ")) - 1
+            energy_list = list(safe_energies.keys())
+            if 0 <= choice < len(energy_list):
+                selected_energy = energy_list[choice]
+                energy_info = safe_energies[selected_energy]
+                
+                print(f"\nSelected: {selected_energy}")
+                print(f"Description: {energy_info['description']}")
+                print(f"Efficiency: {energy_info['efficiency']:.1%}")
+                print(f"Stability: {energy_info['stability']:.1%}")
+                print(f"Safety Level: {energy_info['safety_level']}")
+                
+                # Calculate power output example
+                base_power = 1000  # Example base power
+                actual_power = self.calculate_energy_efficiency(selected_energy, base_power)
+                print(f"Power Output Example: {actual_power:.0f} units (from {base_power} base)")
+                
+                confirm = input("\nInstall this energy system? (y/n): ").lower()
+                if confirm == 'y':
+                    print(f"Energy system {selected_energy} installed on {ship_name}!")
+                    # Here you could store the energy system in ship data
+                else:
+                    print("Installation cancelled.")
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+
     def station_management_menu(self):
         """Space station management interface"""
         while True:
@@ -2332,9 +2817,10 @@ class Game:
             print("3. Manage Owned Stations")
             print("4. Collect Station Income")
             print("5. Upgrade Station")
-            print("6. Back to Main Menu")
+            print("6. Station Energy Systems")
+            print("7. Back to Main Menu")
             
-            choice = input("\nEnter your choice (1-6): ").strip()
+            choice = input("\nEnter your choice (1-7): ").strip()
             
             if choice == "1":
                 self.view_all_stations()
@@ -2347,6 +2833,8 @@ class Game:
             elif choice == "5":
                 self.upgrade_owned_station()
             elif choice == "6":
+                self.station_energy_systems()
+            elif choice == "7":
                 break
             else:
                 print("Invalid choice.")
@@ -2512,6 +3000,105 @@ class Game:
             print("Invalid input.")
         
         input("\nPress Enter to continue...")
+
+    def station_energy_systems(self):
+        """Station energy systems management interface"""
+        print("\n" + "="*60)
+        print("           STATION ENERGY SYSTEMS")
+        print("="*60)
+        
+        if not self.owned_stations:
+            print("No stations available for energy configuration.")
+            print("Purchase a station first.")
+            input("\nPress Enter to continue...")
+            return
+        
+        # Show owned stations
+        print("\nYour Stations:")
+        for i, station_name in enumerate(self.owned_stations, 1):
+            print(f"{i}. {station_name}")
+        
+        try:
+            choice = int(input("\nSelect station for energy configuration (number): ")) - 1
+            if 0 <= choice < len(self.owned_stations):
+                selected_station = self.owned_stations[choice]
+                self.configure_station_energy(selected_station)
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
+        
+        input("\nPress Enter to continue...")
+    
+    def configure_station_energy(self, station_name):
+        """Configure energy systems for a specific station"""
+        print(f"\nEnergy Configuration for: {station_name}")
+        print("="*50)
+        
+        # Show utility and safe energy types for stations
+        from energies import utility_energies, get_safe_energies
+        
+        print("\nRecommended Station Energy Systems:")
+        print("\nUTILITY ENERGIES (Best for Stations):")
+        for i, (energy_name, energy_data) in enumerate(utility_energies.items(), 1):
+            print(f"{i}. {energy_name}")
+            print(f"   Efficiency: {energy_data['efficiency']:.1%}")
+            print(f"   Stability: {energy_data['stability']:.1%}")
+            print(f"   Cost: {energy_data['cost_multiplier']:.1f}x base")
+            print(f"   Applications: {', '.join(energy_data['applications'][:2])}")
+            print()
+        
+        print("\nSAFE ENERGY SYSTEMS:")
+        safe_energies = get_safe_energies()
+        for i, (energy_name, energy_data) in enumerate(safe_energies.items(), len(utility_energies) + 1):
+            if energy_name not in utility_energies:  # Don't duplicate utility energies
+                print(f"{i}. {energy_name}")
+                print(f"   Efficiency: {energy_data['efficiency']:.1%}")
+                print(f"   Stability: {energy_data['stability']:.1%}")
+                print(f"   Cost: {energy_data['cost_multiplier']:.1f}x base")
+                print(f"   Applications: {', '.join(energy_data['applications'][:2])}")
+                print()
+        
+        try:
+            choice = int(input("Select energy system (number): ")) - 1
+            all_energies = list(utility_energies.keys()) + [name for name in safe_energies.keys() if name not in utility_energies]
+            
+            if 0 <= choice < len(all_energies):
+                selected_energy = all_energies[choice]
+                
+                # Get energy info from appropriate source
+                if selected_energy in utility_energies:
+                    energy_info = utility_energies[selected_energy]
+                else:
+                    energy_info = safe_energies[selected_energy]
+                
+                print(f"\nSelected: {selected_energy}")
+                print(f"Description: {energy_info['description']}")
+                print(f"Efficiency: {energy_info['efficiency']:.1%}")
+                print(f"Stability: {energy_info['stability']:.1%}")
+                print(f"Safety Level: {energy_info['safety_level']}")
+                
+                # Calculate power output example for station
+                base_power = 5000  # Example base power for station
+                actual_power = self.calculate_energy_efficiency(selected_energy, base_power)
+                print(f"Station Power Output: {actual_power:.0f} units (from {base_power} base)")
+                
+                # Calculate operational cost
+                base_cost = 1000  # Example base cost
+                actual_cost = self.calculate_energy_cost(selected_energy, base_cost)
+                print(f"Operational Cost: {actual_cost:.0f} credits/day (from {base_cost} base)")
+                
+                confirm = input("\nInstall this energy system? (y/n): ").lower()
+                if confirm == 'y':
+                    print(f"Energy system {selected_energy} installed on {station_name}!")
+                    print("Station efficiency and power output improved!")
+                    # Here you could store the energy system in station data
+                else:
+                    print("Installation cancelled.")
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input.")
 
     def navigation_menu(self):
         """Space navigation and flight interface"""
