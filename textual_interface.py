@@ -3624,3 +3624,7 @@ class HelpModal(ModalScreen):
 if __name__ == "__main__":
     app = Game7019App()
     app.run()
+
+# Backward compatibility alias for tests and external imports
+# Some scripts expect `GalacticEmpireApp` to be the main App class
+GalacticEmpireApp = Game7019App
