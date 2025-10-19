@@ -76,83 +76,413 @@ class StatusBar(Static):
         """Update with a custom message"""
         self.query_one(Label).update(message)
 
-class CharacterCreationScreen(Static):
-    """Character creation interface"""
+# Character Creation Step Classes
+class CharacterCreationCoordinator(Static):
+    """Coordinates the multi-step character creation process"""
     
     def __init__(self, game_instance=None, **kwargs):
         super().__init__(**kwargs)
         self.game_instance = game_instance
-        self.selected_class = None
-        self.selected_background = None
-        self.character_name = ""
-        self.generated_stats = None
-        
+        self.current_step = 0
+        self.character_data = {
+            'name': '',
+            'species': '',
+            'background': '', 
+            'faction': '',
+            'character_class': '',
+            'research_paths': [],
+            'stats': None
+        }
+        self.steps = [
+            ('species', '🧬 Choose Species'),
+            ('background', '🏛️ Choose Background'),
+            ('faction', '⚔️ Choose Faction'),
+            ('class', '🎯 Choose Class'),
+            ('research', '🔬 Select Research Paths'),
+            ('stats', '🎲 Roll Stats'),
+            ('name', '📝 Enter Name'),
+            ('confirm', '✅ Confirm Character')
+        ]
+    
     def compose(self) -> ComposeResult:
         yield Static("🎭 CHARACTER CREATION", classes="screen_title")
         
-        with Horizontal():
-            # Left panel - Name and Class selection
-            with Vertical(id="char_left_panel"):
-                yield Static("📝 CHARACTER DETAILS", classes="section_header")
+        # Progress indicator
+        with Horizontal(id="progress_bar"):
+            for i, (step_id, step_name) in enumerate(self.steps):
+                status = "✅" if i < self.current_step else "⏳" if i == self.current_step else "⭕"
+                yield Static(f"{status} {step_name}", classes="progress_step")
+        
+        # Current step content area
+        with ScrollableContainer(id="step_content_area"):
+            yield Static("", id="step_content")
+            # Container for interactive elements
+            with Vertical(id="interactive_content"):
+                # Name input
+                yield Input(placeholder="Enter your character name...", id="name_input", classes="hidden")
+                # Stats buttons
+                yield Button("🎲 Generate Stats", id="generate_stats_step", variant="primary", classes="hidden")
+                yield Button("🔄 Reroll Stats", id="reroll_stats_step", variant="warning", classes="hidden")
+                # Selection buttons (will be populated dynamically)
+                with Vertical(id="selection_buttons", classes="hidden"):
+                    pass
+        
+        # Navigation buttons
+        with Horizontal(id="nav_buttons"):
+            yield Button("⬅️ Back", id="step_back", variant="warning")
+            yield Button("➡️ Next", id="step_next", variant="primary")
+            yield Button("🏠 Cancel", id="cancel_creation", variant="error")
+    
+    def on_mount(self):
+        """Initialize the display when mounted"""
+        self.update_step_display()
+    
+    def update_step_display(self):
+        """Update the display for the current step"""
+        if self.current_step >= len(self.steps):
+            return
+            
+        step_id, step_name = self.steps[self.current_step]
+        content_widget = self.query_one("#step_content")
+        
+        # Hide all special widgets first
+        try:
+            self.query_one("#name_input").add_class("hidden")
+            self.query_one("#generate_stats_step").add_class("hidden") 
+            self.query_one("#reroll_stats_step").add_class("hidden")
+            self.query_one("#selection_buttons").add_class("hidden")
+        except:
+            pass
+        
+        # Clear any existing selection buttons
+        try:
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_children()
+        except:
+            pass
+        
+        if step_id == 'species':
+            content_widget.update("🧬 Choose your species:")
+            self.create_species_buttons()
+        elif step_id == 'background':
+            content_widget.update("🏛️ Choose your character background:")
+            self.create_background_buttons()
+        elif step_id == 'faction':
+            content_widget.update("⚔️ Choose your starting faction allegiance:")
+            self.create_faction_buttons()
+        elif step_id == 'class':
+            content_widget.update("🎯 Choose your character class:")
+            self.create_class_buttons()
+        elif step_id == 'research':
+            content_widget.update("🔬 Select starting research interests (choose up to 3):")
+            self.create_research_buttons()
+        elif step_id == 'stats':
+            content_widget.update(self.get_stats_content())
+            # Show stats generation buttons
+            try:
+                self.query_one("#generate_stats_step").remove_class("hidden")
+                if self.character_data['stats']:
+                    self.query_one("#reroll_stats_step").remove_class("hidden")
+            except:
+                pass
+        elif step_id == 'name':
+            content_widget.update(self.get_name_content())
+            # Show name input
+            try:
+                name_input = self.query_one("#name_input")
+                name_input.remove_class("hidden")
+                name_input.value = self.character_data['name']
+            except:
+                pass
+        elif step_id == 'confirm':
+            content_widget.update(self.get_confirm_content())
+    
+    def create_species_buttons(self):
+        """Create buttons for species selection"""
+        if not GAME_AVAILABLE:
+            return
+        
+        try:
+            from species import species_database, get_playable_species
+            playable_species = get_playable_species()
+            
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_class("hidden")
+            
+            for species_name in playable_species.keys():
+                variant = "success" if species_name == self.character_data['species'] else "primary"
+                btn = Button(f"🧬 {species_name}", id=f"select_species_{species_name}", variant=variant)
+                selection_container.mount(btn)
+        except Exception as e:
+            pass
+    
+    def create_background_buttons(self):
+        """Create buttons for background selection"""
+        if not GAME_AVAILABLE:
+            return
+        
+        try:
+            from characters import character_backgrounds
+            
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_class("hidden")
+            
+            for bg_name in character_backgrounds.keys():
+                variant = "success" if bg_name == self.character_data['background'] else "primary"
+                btn = Button(f"🏛️ {bg_name}", id=f"select_background_{bg_name}", variant=variant)
+                selection_container.mount(btn)
+        except Exception as e:
+            pass
+    
+    def create_faction_buttons(self):
+        """Create buttons for faction selection"""
+        if not GAME_AVAILABLE:
+            return
+        
+        try:
+            from factions import factions
+            
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_class("hidden")
+            
+            # Show first 6 factions
+            for faction_name in list(factions.keys())[:6]:
+                variant = "success" if faction_name == self.character_data['faction'] else "primary"
+                btn = Button(f"⚔️ {faction_name}", id=f"select_faction_{faction_name}", variant=variant)
+                selection_container.mount(btn)
+        except Exception as e:
+            pass
+    
+    def create_class_buttons(self):
+        """Create buttons for class selection"""
+        if not GAME_AVAILABLE:
+            return
+        
+        try:
+            from characters import character_classes
+            
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_class("hidden")
+            
+            for class_name in character_classes.keys():
+                variant = "success" if class_name == self.character_data['character_class'] else "primary"
+                btn = Button(f"🎯 {class_name}", id=f"select_class_{class_name}", variant=variant)
+                selection_container.mount(btn)
+        except Exception as e:
+            pass
+    
+    def create_research_buttons(self):
+        """Create buttons for research path selection"""
+        if not GAME_AVAILABLE:
+            return
+        
+        try:
+            from research import research_categories
+            
+            selection_container = self.query_one("#selection_buttons")
+            selection_container.remove_class("hidden")
+            
+            # Show first 6 research categories
+            for category in list(research_categories.keys())[:6]:
+                selected = category in self.character_data['research_paths']
+                variant = "success" if selected else "primary"
+                icon = "✅" if selected else "⭕"
+                btn = Button(f"{icon} {category}", id=f"toggle_research_{category}", variant=variant)
+                selection_container.mount(btn)
                 
-                # Character name input
-                yield Static("Character Name:", classes="label")
-                yield Input(placeholder="Enter your character name...", id="char_name_input")
-                
-                yield Static("─" * 30, classes="rule")
-                yield Static("🎯 CHARACTER CLASS", classes="section_header")
-                
-                # Character classes
-                if GAME_AVAILABLE:
-                    class_items = []
-                    for class_name, class_data in character_classes.items():
-                        class_items.append(ListItem(Label(f"⚡ {class_name}")))
-                    class_list = ListView(*class_items, id="class_list")
-                else:
-                    class_list = ListView(ListItem(Label("Demo mode - no classes available")))
-                
-                yield class_list
-                
-            # Middle panel - Background selection
-            with Vertical(id="char_middle_panel"):
-                yield Static("🏛️ CHARACTER BACKGROUND", classes="section_header")
-                
-                # Character backgrounds
-                if GAME_AVAILABLE:
-                    bg_items = []
-                    for bg_name, bg_data in character_backgrounds.items():
-                        bg_items.append(ListItem(Label(f"🌟 {bg_name}")))
-                    bg_list = ListView(*bg_items, id="background_list")
-                else:
-                    bg_list = ListView(ListItem(Label("Demo mode - no backgrounds available")))
-                
-                yield bg_list
-                
-                yield Static("─" * 30, classes="rule")
-                yield Button("🎲 Generate Random Stats", id="generate_stats", variant="primary")
-                yield Button("🔄 Reroll Stats", id="reroll_stats", variant="warning")
-                
-            # Right panel - Character preview
-            with Vertical(id="char_right_panel"):
-                yield Static("👤 CHARACTER PREVIEW", classes="section_header")
-                
-                preview_text = """[dim]👤 CHARACTER PREVIEW[/dim]
+            # Add status display
+            status_text = f"Selected: {len(self.character_data['research_paths'])}/3"
+            status_label = Static(status_text, id="research_status")
+            selection_container.mount(status_label)
+        except Exception as e:
+            pass
+    
+    def get_species_content(self):
+        if not GAME_AVAILABLE:
+            return "Demo mode - species selection unavailable"
+        
+        from species import species_database, get_playable_species
+        playable_species = get_playable_species()
+        
+        content = "🧬 Choose your species:\n\n"
+        for species_name, species_data in playable_species.items():
+            selected = "👉 " if species_name == self.character_data['species'] else "   "
+            content += f"{selected}{species_name}: {species_data['description'][:60]}...\n"
+        
+        content += "\n💡 Click a species name to select it"
+        return content
+    
+    def get_background_content(self):
+        if not GAME_AVAILABLE:
+            return "Demo mode - background selection unavailable"
+        
+        content = "🏛️ Choose your character background:\n\n"
+        for bg_name, bg_data in character_backgrounds.items():
+            selected = "👉 " if bg_name == self.character_data['background'] else "   "
+            content += f"{selected}{bg_name}: {bg_data['description'][:60]}...\n"
+        
+        content += "\n💡 Click a background name to select it"
+        return content
+    
+    def get_faction_content(self):
+        if not GAME_AVAILABLE:
+            return "Demo mode - faction selection unavailable"
+        
+        from factions import factions
+        content = "⚔️ Choose your starting faction allegiance:\n\n"
+        
+        for faction_name, faction_data in list(factions.items())[:6]:  # Show first 6
+            selected = "👉 " if faction_name == self.character_data['faction'] else "   "
+            content += f"{selected}{faction_name}: {faction_data['description'][:50]}...\n"
+        
+        content += "\n💡 Click a faction name to select it"
+        return content
+    
+    def get_class_content(self):
+        if not GAME_AVAILABLE:
+            return "Demo mode - class selection unavailable"
+        
+        content = "🎯 Choose your character class:\n\n"
+        for class_name, class_data in character_classes.items():
+            selected = "👉 " if class_name == self.character_data['character_class'] else "   "
+            content += f"{selected}{class_name}: {class_data['description'][:60]}...\n"
+        
+        content += "\n💡 Click a class name to select it"
+        return content
+    
+    def get_research_content(self):
+        if not GAME_AVAILABLE:
+            return "Demo mode - research selection unavailable"
+        
+        from research import research_categories
+        content = "🔬 Select starting research interests (choose up to 3):\n\n"
+        
+        for category in list(research_categories.keys())[:6]:  # Show first 6 categories
+            selected = "✅ " if category in self.character_data['research_paths'] else "☐ "
+            content += f"{selected}{category}\n"
+        
+        content += f"\nSelected: {len(self.character_data['research_paths'])}/3"
+        content += "\n💡 Click categories to toggle selection"
+        return content
+    
+    def get_stats_content(self):
+        content = "🎲 Generate your character stats:\n\n"
+        
+        if self.character_data['stats']:
+            content += "Current stats:\n"
+            for stat, value in self.character_data['stats'].items():
+                content += f"{stat}: {value}\n"
+            content += "\n🔄 Click 'Reroll' to generate new stats"
+        else:
+            content += "Click 'Generate Stats' to create your character's attributes"
+        
+        return content
+    
+    def get_name_content(self):
+        content = "📝 Enter your character name:\n\n"
+        if self.character_data['name']:
+            content += f"Current name: {self.character_data['name']}\n\n"
+        content += "� Enter your name in the input field below"
+        return content
+    
+    def get_confirm_content(self):
+        content = "✅ Confirm your character:\n\n"
+        content += f"Name: {self.character_data['name']}\n"
+        content += f"Species: {self.character_data['species']}\n"
+        content += f"Background: {self.character_data['background']}\n"
+        content += f"Faction: {self.character_data['faction']}\n"
+        content += f"Class: {self.character_data['character_class']}\n"
+        content += f"Research Paths: {', '.join(self.character_data['research_paths'])}\n\n"
+        
+        if self.character_data['stats']:
+            content += "Stats:\n"
+            for stat, value in self.character_data['stats'].items():
+                content += f"  {stat}: {value}\n"
+        
+        content += "\n🎉 Ready to create your character!"
+        return content
+    
+    def on_click(self, event):
+        """Handle clicks on text content for selections"""
+        # This is a simplified approach - in a full implementation, you'd use 
+        # more sophisticated widgets like ListView or custom clickable widgets
+        pass
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button clicks within the coordinator"""
+        button_id = event.button.id
+        
+        if button_id == "generate_stats_step":
+            self.generate_character_stats()
+        elif button_id == "reroll_stats_step":
+            self.generate_character_stats()
+        elif button_id.startswith("select_species_"):
+            species_name = button_id.replace("select_species_", "")
+            self.select_species(species_name)
+        elif button_id.startswith("select_background_"):
+            background_name = button_id.replace("select_background_", "")
+            self.select_background(background_name)
+        elif button_id.startswith("select_faction_"):
+            faction_name = button_id.replace("select_faction_", "")
+            self.select_faction(faction_name)
+        elif button_id.startswith("select_class_"):
+            class_name = button_id.replace("select_class_", "")
+            self.select_class(class_name)
+        elif button_id.startswith("toggle_research_"):
+            research_path = button_id.replace("toggle_research_", "")
+            self.toggle_research_path(research_path)
+    
+    def on_input_changed(self, event) -> None:
+        """Handle input changes within the coordinator"""
+        if event.input.id == "name_input":
+            self.character_data['name'] = event.value
+            self.update_step_display()
+    
+    def generate_character_stats(self):
+        """Generate character stats"""
+        if GAME_AVAILABLE:
+            from characters import create_character_stats
+            self.character_data['stats'] = create_character_stats()
+            self.update_step_display()
+    
+    def select_species(self, species_name):
+        """Select a species"""
+        self.character_data['species'] = species_name
+        self.update_step_display()
+    
+    def select_background(self, background_name):
+        """Select a background"""
+        self.character_data['background'] = background_name  
+        self.update_step_display()
+    
+    def select_faction(self, faction_name):
+        """Select a faction"""
+        self.character_data['faction'] = faction_name
+        self.update_step_display()
+    
+    def select_class(self, class_name):
+        """Select a character class"""
+        self.character_data['character_class'] = class_name
+        self.update_step_display()
+    
+    def toggle_research_path(self, research_path):
+        """Toggle a research path selection"""
+        if research_path in self.character_data['research_paths']:
+            self.character_data['research_paths'].remove(research_path)
+        else:
+            if len(self.character_data['research_paths']) < 3:
+                self.character_data['research_paths'].append(research_path)
+        self.update_step_display()
 
-🎯 [yellow]Start making some choices![/yellow]
-
-1️⃣  Select a character class
-2️⃣  Choose a background
-3️⃣  Generate your stats
-4️⃣  Enter a name
-
-Your character preview will appear here
-as you make your selections."""
-                
-                yield Static(preview_text, id="char_preview")
-                
-                yield Static("─" * 40, classes="rule")
-                yield Button("✅ Create Character", id="create_character", variant="success")
-                yield Button("🏠 Back to Main Menu", id="back_to_menu", variant="error")
+class CharacterCreationScreen(Static):
+    """Legacy character creation interface - now redirects to new system"""
+    
+    def __init__(self, game_instance=None, **kwargs):
+        super().__init__(**kwargs)
+        self.game_instance = game_instance
+        
+    def compose(self) -> ComposeResult:
+        yield CharacterCreationCoordinator(game_instance=self.game_instance)
 
 class MainMenu(Static):
     """Main menu with ASCII art header and navigation buttons"""
@@ -1980,16 +2310,32 @@ class Game7019App(App):
             self.action_show_player_log()
         elif button_id == "new_character":
             self.action_show_character_creation()
-        elif button_id == "exit":
-            self.exit()
-            
-        # Character creation buttons
         elif button_id == "generate_stats":
             self.handle_generate_stats()
         elif button_id == "reroll_stats":
             self.handle_reroll_stats()
+        elif button_id == "exit":
+            self.exit()
+            
+        # Character creation buttons
         elif button_id == "create_character":
             self.handle_create_character()
+        elif button_id == "step_next":
+            self.handle_step_next()
+        elif button_id == "step_back":
+            self.handle_step_back()
+        elif button_id == "cancel_creation":
+            self.action_show_main_menu()
+        # Handle character creation coordinator buttons
+        elif (button_id.startswith("select_") or button_id.startswith("toggle_") or 
+              button_id == "generate_stats_step" or button_id == "reroll_stats_step"):
+            # Let the coordinator handle these
+            try:
+                coordinator = self.query_one(CharacterCreationCoordinator)
+                # The coordinator's on_button_pressed will handle this
+                coordinator.on_button_pressed(event)
+            except:
+                pass
         elif button_id == "back_to_menu":
             self.action_show_main_menu()
         
@@ -2262,55 +2608,125 @@ class Game7019App(App):
         else:
             self.show_notification("⚠️ Generate stats first")
     
-    def handle_create_character(self):
-        """Create the character and apply to game"""
-        # Get character name from input
+    def handle_step_next(self):
+        """Handle next step in character creation"""
         try:
-            name_input = self.query_one("#char_name_input")
-            self.char_character_name = name_input.value.strip()
-        except:
-            self.char_character_name = ""
-        
-        # Debug output
-        print(f"DEBUG: Character name: '{self.char_character_name}'")
-        print(f"DEBUG: Has class attr: {hasattr(self, 'char_selected_class')}")
-        print(f"DEBUG: Selected class: {getattr(self, 'char_selected_class', 'NONE')}")
-        print(f"DEBUG: Has background attr: {hasattr(self, 'char_selected_background')}")
-        print(f"DEBUG: Selected background: {getattr(self, 'char_selected_background', 'NONE')}")
-        print(f"DEBUG: Has stats attr: {hasattr(self, 'char_generated_stats')}")
-        print(f"DEBUG: Generated stats: {getattr(self, 'char_generated_stats', 'NONE')}")
+            coordinator = self.query_one(CharacterCreationCoordinator)
             
-        if not self.char_character_name:
-            self.show_notification("❌ Please enter a character name")
-            return
+            # Validate current step before proceeding
+            step_id, step_name = coordinator.steps[coordinator.current_step]
             
-        if not hasattr(self, 'char_selected_class') or not self.char_selected_class:
-            self.show_notification("❌ Please select a character class first")
-            return
+            if step_id == 'species' and not coordinator.character_data['species']:
+                self.show_notification("❌ Please select a species")
+                return
+            elif step_id == 'background' and not coordinator.character_data['background']:
+                self.show_notification("❌ Please select a background")
+                return
+            elif step_id == 'faction' and not coordinator.character_data['faction']:
+                self.show_notification("❌ Please select a faction")
+                return
+            elif step_id == 'class' and not coordinator.character_data['character_class']:
+                self.show_notification("❌ Please select a character class")
+                return
+            elif step_id == 'research' and len(coordinator.character_data['research_paths']) == 0:
+                self.show_notification("❌ Please select at least one research path")
+                return
+            elif step_id == 'stats' and not coordinator.character_data['stats']:
+                self.show_notification("❌ Please generate character stats")
+                return
+            elif step_id == 'name' and not coordinator.character_data['name']:
+                self.show_notification("❌ Please enter a character name")
+                return
+            elif step_id == 'confirm':
+                self.handle_create_character_from_coordinator(coordinator)
+                return
             
-        if not hasattr(self, 'char_selected_background') or not self.char_selected_background:
-            self.show_notification("❌ Please select a character background")
-            return
+            # Move to next step
+            coordinator.current_step += 1
+            coordinator.update_step_display()
             
-        if not hasattr(self, 'char_generated_stats') or not self.char_generated_stats:
-            self.show_notification("❌ Please generate character stats")
-            return
+            # Update button states
+            self.update_navigation_buttons(coordinator)
             
-        # Apply character to game instance
+        except Exception as e:
+            self.show_notification(f"Error: {str(e)}")
+    
+    def handle_step_back(self):
+        """Handle previous step in character creation"""
+        try:
+            coordinator = self.query_one(CharacterCreationCoordinator)
+            
+            if coordinator.current_step > 0:
+                coordinator.current_step -= 1
+                coordinator.update_step_display()
+                self.update_navigation_buttons(coordinator)
+            else:
+                self.action_show_main_menu()
+                
+        except Exception as e:
+            self.show_notification(f"Error: {str(e)}")
+    
+    def update_navigation_buttons(self, coordinator):
+        """Update navigation button states"""
+        try:
+            back_btn = self.query_one("#step_back")
+            next_btn = self.query_one("#step_next")
+            
+            # Update button text based on current step
+            if coordinator.current_step == 0:
+                back_btn.label = "🏠 Main Menu"
+            else:
+                back_btn.label = "⬅️ Back"
+                
+            if coordinator.current_step == len(coordinator.steps) - 1:
+                next_btn.label = "🎉 Create!"
+            else:
+                next_btn.label = "➡️ Next"
+                
+        except Exception as e:
+            pass
+    
+    def handle_create_character_from_coordinator(self, coordinator):
+        """Create character from the coordinator's data"""
         if GAME_AVAILABLE and self.game_instance:
             try:
-                self.apply_character_to_game_direct()
-                # Mark that a character has been properly created
+                # Apply character data to game
+                char_data = coordinator.character_data
+                self.game_instance.player_name = char_data['name']
+                self.game_instance.character_species = char_data['species']
+                self.game_instance.character_background = char_data['background']
+                self.game_instance.character_class = char_data['character_class']
+                self.game_instance.character_stats = char_data['stats']
+                
+                # Set starting faction reputation bonus
+                if hasattr(self.game_instance, 'faction_system') and char_data['faction']:
+                    self.game_instance.faction_system.modify_reputation(
+                        char_data['faction'], 25, "Starting faction allegiance"
+                    )
+                
+                # Mark character as created
                 self.game_instance.character_created = True
-                # Update status bar immediately after character creation
+                
+                # Update status bar
                 self.update_status_bar()
-                self.show_notification(f"✅ Character '{self.char_character_name}' created!")
-                # Return to main menu after a brief delay
+                
+                self.show_notification(f"✅ Character '{char_data['name']}' created successfully!")
                 self.set_timer(2.0, self.action_show_main_menu)
+                
             except Exception as e:
-                self.show_notification(f"❌ Error creating character: {str(e)[:30]}...")
+                self.show_notification(f"❌ Error creating character: {str(e)[:50]}...")
         else:
             self.show_notification("✅ Character created (demo mode)")
+            self.action_show_main_menu()
+    
+    def handle_create_character(self):
+        """Legacy character creation handler - now handles coordinator workflow"""
+        try:
+            coordinator = self.query_one(CharacterCreationCoordinator)
+            self.handle_create_character_from_coordinator(coordinator)
+        except:
+            # Fallback to old system if coordinator not found
+            self.show_notification("❌ Character creation error - please try again")
             self.action_show_main_menu()
     
     def update_character_preview_from_app(self):

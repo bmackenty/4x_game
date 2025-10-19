@@ -34,7 +34,10 @@ class Game:
         self.character_class = ""
         self.character_background = ""
         self.character_species = ""
+        self.character_faction = ""
+        self.character_research_paths = []
         self.character_stats = {}
+        self.character_created = False
         self.credits = 10000
         
         # Research system
@@ -75,23 +78,69 @@ class Game:
         try:
             # Set character data
             self.player_name = character_data.get('name', 'Captain')
-            self.character_class = character_data.get('class_name', 'Explorer')
-            self.character_background = character_data.get('background_name', 'Frontier Survivor')
-            self.character_species = character_data.get('species_name', 'Terran')
+            self.character_class = character_data.get('character_class', 'Explorer')
+            self.character_background = character_data.get('background', 'Frontier Survivor')
+            self.character_species = character_data.get('species', 'Terran')
+            self.character_faction = character_data.get('faction', '')
+            self.character_research_paths = character_data.get('research_paths', [])
             
-            # Create character stats based on class and background
-            from characters import create_character_stats
-            self.character_stats = create_character_stats(
-                character_data.get('class', '1'), 
-                character_data.get('background', 'a')
-            )
+            # Use provided stats or create new ones
+            if 'stats' in character_data and character_data['stats']:
+                self.character_stats = character_data['stats']
+            else:
+                # Create character stats based on class and background
+                from characters import create_character_stats
+                self.character_stats = create_character_stats(
+                    character_data.get('class', '1'), 
+                    character_data.get('background', 'a')
+                )
+            
+            # Mark character as created
+            self.character_created = True
+            
+            # Apply faction reputation bonus if applicable
+            if self.character_faction and hasattr(self, 'faction_system'):
+                self.faction_system.modify_reputation(
+                    self.character_faction, 25, "Starting faction allegiance"
+                )
+            
+            # Apply species bonuses if applicable
+            if self.character_species:
+                self.apply_species_bonuses()
             
             print(f"Character initialized: {self.player_name} ({self.character_class})")
+            print(f"Species: {self.character_species}, Faction: {self.character_faction}")
+            print(f"Research Paths: {', '.join(self.character_research_paths)}")
             return True
             
         except Exception as e:
             print(f"Error initializing character: {e}")
             return False
+    
+    def apply_species_bonuses(self):
+        """Apply species-specific starting bonuses"""
+        try:
+            from species import species_database
+            
+            if self.character_species in species_database:
+                species_data = species_database[self.character_species]
+                bonuses = species_data.get('starting_bonuses', {})
+                
+                # Apply credit bonus
+                if 'credits' in bonuses:
+                    self.credits += bonuses['credits']
+                    print(f"Applied species credit bonus: +{bonuses['credits']} credits")
+                
+                # Apply reputation bonus (to all factions)
+                if 'reputation' in bonuses and hasattr(self, 'faction_system'):
+                    rep_bonus = bonuses['reputation']
+                    for faction_name in self.faction_system.player_relations.keys():
+                        self.faction_system.modify_reputation(
+                            faction_name, rep_bonus, f"{self.character_species} species bonus"
+                        )
+                
+        except Exception as e:
+            print(f"Error applying species bonuses: {e}")
         
     def display_header(self):
         print("\n" + "="*60)
