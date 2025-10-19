@@ -18,6 +18,7 @@ from textual.reactive import reactive
 from textual.message import Message
 import asyncio
 from typing import Dict, List, Optional, Any
+import re
 from rich.text import Text
 from rich.table import Table
 from rich.panel import Panel
@@ -77,7 +78,7 @@ class StatusBar(Static):
         self.query_one(Label).update(message)
 
 # Character Creation Step Classes
-class CharacterCreationCoordinator(Static):
+class CharacterCreationCoordinator(Container):
     """Coordinates the multi-step character creation process"""
     
     def __init__(self, game_instance=None, **kwargs):
@@ -103,9 +104,22 @@ class CharacterCreationCoordinator(Static):
             ('name', '📝 Enter Name'),
             ('confirm', '✅ Confirm Character')
         ]
+        # Map button ids back to original names (handles spaces/symbols)
+        self._id_map: Dict[str, str] = {}
+
+    def _slug(self, text: str) -> str:
+        return re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
+
+    def _make_id(self, prefix: str, label: str) -> str:
+        bid = f"{prefix}{self._slug(label)}"
+        self._id_map[bid] = label
+        return bid
     
     def compose(self) -> ComposeResult:
         yield Static("🎭 CHARACTER CREATION", classes="screen_title")
+        
+        # Step counter
+        yield Static("Step 1 of 8", id="step_counter", classes="step_counter")
         
         # Progress indicator
         with Horizontal(id="progress_bar"):
@@ -116,16 +130,14 @@ class CharacterCreationCoordinator(Static):
         # Current step content area
         with ScrollableContainer(id="step_content_area"):
             yield Static("", id="step_content")
-            # Container for interactive elements
-            with Vertical(id="interactive_content"):
-                # Name input
-                yield Input(placeholder="Enter your character name...", id="name_input", classes="hidden")
-                # Stats buttons
-                yield Button("🎲 Generate Stats", id="generate_stats_step", variant="primary", classes="hidden")
-                yield Button("🔄 Reroll Stats", id="reroll_stats_step", variant="warning", classes="hidden")
-                # Selection buttons (will be populated dynamically)
-                with Vertical(id="selection_buttons", classes="hidden"):
-                    pass
+            # Name input
+            yield Input(placeholder="Enter your character name...", id="name_input", classes="hidden")
+            # Stats buttons
+            yield Button("🎲 Generate Stats", id="generate_stats_step", variant="primary", classes="hidden")
+            yield Button("🔄 Reroll Stats", id="reroll_stats_step", variant="warning", classes="hidden")
+            # Selection buttons (will be populated dynamically)
+            with Vertical(id="selection_buttons"):
+                pass
         
         # Navigation buttons
         with Horizontal(id="nav_buttons"):
@@ -136,6 +148,11 @@ class CharacterCreationCoordinator(Static):
     def on_mount(self):
         """Initialize the display when mounted"""
         self.update_step_display()
+        # Ensure progress UI is initialized
+        try:
+            self.update_progress_bar()
+        except Exception:
+            pass
     
     def update_step_display(self):
         """Update the display for the current step"""
@@ -150,7 +167,6 @@ class CharacterCreationCoordinator(Static):
             self.query_one("#name_input").add_class("hidden")
             self.query_one("#generate_stats_step").add_class("hidden") 
             self.query_one("#reroll_stats_step").add_class("hidden")
-            self.query_one("#selection_buttons").add_class("hidden")
         except:
             pass
         
@@ -162,19 +178,44 @@ class CharacterCreationCoordinator(Static):
             pass
         
         if step_id == 'species':
-            content_widget.update("🧬 Choose your species:")
+            current = f" (Currently: {self.character_data['species']})" if self.character_data['species'] else ""
+            content_widget.update(f"🧬 Choose your species{current}:")
+            try:
+                self.query_one("#selection_buttons").remove_class("hidden")
+            except Exception:
+                pass
             self.create_species_buttons()
         elif step_id == 'background':
-            content_widget.update("🏛️ Choose your character background:")
+            current = f" (Currently: {self.character_data['background']})" if self.character_data['background'] else ""
+            content_widget.update(f"🏛️ Choose your character background{current}:")
+            try:
+                self.query_one("#selection_buttons").remove_class("hidden")
+            except Exception:
+                pass
             self.create_background_buttons()
         elif step_id == 'faction':
-            content_widget.update("⚔️ Choose your starting faction allegiance:")
+            current = f" (Currently: {self.character_data['faction']})" if self.character_data['faction'] else ""
+            content_widget.update(f"⚔️ Choose your starting faction allegiance{current}:")
+            try:
+                self.query_one("#selection_buttons").remove_class("hidden")
+            except Exception:
+                pass
             self.create_faction_buttons()
         elif step_id == 'class':
-            content_widget.update("🎯 Choose your character class:")
+            current = f" (Currently: {self.character_data['character_class']})" if self.character_data['character_class'] else ""
+            content_widget.update(f"🎯 Choose your character class{current}:")
+            try:
+                self.query_one("#selection_buttons").remove_class("hidden")
+            except Exception:
+                pass
             self.create_class_buttons()
         elif step_id == 'research':
-            content_widget.update("🔬 Select starting research interests (choose up to 3):")
+            count = len(self.character_data['research_paths'])
+            content_widget.update(f"🔬 Select starting research interests ({count}/3 selected):")
+            try:
+                self.query_one("#selection_buttons").remove_class("hidden")
+            except Exception:
+                pass
             self.create_research_buttons()
         elif step_id == 'stats':
             content_widget.update(self.get_stats_content())
@@ -207,14 +248,25 @@ class CharacterCreationCoordinator(Static):
             playable_species = get_playable_species()
             
             selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_class("hidden")
+            selection_container.remove_children()  # Clear old buttons
+            try:
+                selection_container.remove_class("hidden")
+            except Exception:
+                pass
+            
+            # If only one playable species and none selected, preselect it
+            if not self.character_data['species'] and len(playable_species) == 1:
+                self.character_data['species'] = list(playable_species.keys())[0]
+
+            self.app.log(f"Creating {len(playable_species)} species buttons")
             
             for species_name in playable_species.keys():
                 variant = "success" if species_name == self.character_data['species'] else "primary"
-                btn = Button(f"🧬 {species_name}", id=f"select_species_{species_name}", variant=variant)
+                btn_id = self._make_id("select_species_", species_name)
+                btn = Button(f"🧬 {species_name}", id=btn_id, variant=variant)
                 selection_container.mount(btn)
         except Exception as e:
-            pass
+            self.app.log(f"Error creating species buttons: {e}")
     
     def create_background_buttons(self):
         """Create buttons for background selection"""
@@ -225,14 +277,17 @@ class CharacterCreationCoordinator(Static):
             from characters import character_backgrounds
             
             selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_class("hidden")
+            selection_container.remove_children()  # Clear old buttons
+            
+            self.app.log(f"Creating {len(character_backgrounds)} background buttons")
             
             for bg_name in character_backgrounds.keys():
                 variant = "success" if bg_name == self.character_data['background'] else "primary"
-                btn = Button(f"🏛️ {bg_name}", id=f"select_background_{bg_name}", variant=variant)
+                btn_id = self._make_id("select_background_", bg_name)
+                btn = Button(f"🏛️ {bg_name}", id=btn_id, variant=variant)
                 selection_container.mount(btn)
         except Exception as e:
-            pass
+            self.app.log(f"Error creating background buttons: {e}")
     
     def create_faction_buttons(self):
         """Create buttons for faction selection"""
@@ -243,15 +298,19 @@ class CharacterCreationCoordinator(Static):
             from factions import factions
             
             selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_class("hidden")
+            selection_container.remove_children()  # Clear old buttons
+            
+            faction_list = list(factions.keys())[:6]
+            self.app.log(f"Creating {len(faction_list)} faction buttons")
             
             # Show first 6 factions
-            for faction_name in list(factions.keys())[:6]:
+            for faction_name in faction_list:
                 variant = "success" if faction_name == self.character_data['faction'] else "primary"
-                btn = Button(f"⚔️ {faction_name}", id=f"select_faction_{faction_name}", variant=variant)
+                btn_id = self._make_id("select_faction_", faction_name)
+                btn = Button(f"⚔️ {faction_name}", id=btn_id, variant=variant)
                 selection_container.mount(btn)
         except Exception as e:
-            pass
+            self.app.log(f"Error creating faction buttons: {e}")
     
     def create_class_buttons(self):
         """Create buttons for class selection"""
@@ -262,14 +321,17 @@ class CharacterCreationCoordinator(Static):
             from characters import character_classes
             
             selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_class("hidden")
+            selection_container.remove_children()  # Clear old buttons
+            
+            self.app.log(f"Creating {len(character_classes)} class buttons")
             
             for class_name in character_classes.keys():
                 variant = "success" if class_name == self.character_data['character_class'] else "primary"
-                btn = Button(f"🎯 {class_name}", id=f"select_class_{class_name}", variant=variant)
+                btn_id = self._make_id("select_class_", class_name)
+                btn = Button(f"🎯 {class_name}", id=btn_id, variant=variant)
                 selection_container.mount(btn)
         except Exception as e:
-            pass
+            self.app.log(f"Error creating class buttons: {e}")
     
     def create_research_buttons(self):
         """Create buttons for research path selection"""
@@ -280,14 +342,18 @@ class CharacterCreationCoordinator(Static):
             from research import research_categories
             
             selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_class("hidden")
+            selection_container.remove_children()  # Clear old buttons
+            
+            research_list = list(research_categories.keys())[:6]
+            self.app.log(f"Creating {len(research_list)} research buttons")
             
             # Show first 6 research categories
-            for category in list(research_categories.keys())[:6]:
+            for category in research_list:
                 selected = category in self.character_data['research_paths']
                 variant = "success" if selected else "primary"
                 icon = "✅" if selected else "⭕"
-                btn = Button(f"{icon} {category}", id=f"toggle_research_{category}", variant=variant)
+                btn_id = self._make_id("toggle_research_", category)
+                btn = Button(f"{icon} {category}", id=btn_id, variant=variant)
                 selection_container.mount(btn)
                 
             # Add status display
@@ -295,7 +361,7 @@ class CharacterCreationCoordinator(Static):
             status_label = Static(status_text, id="research_status")
             selection_container.mount(status_label)
         except Exception as e:
-            pass
+            self.app.log(f"Error creating research buttons: {e}")
     
     def get_species_content(self):
         if not GAME_AVAILABLE:
@@ -412,31 +478,72 @@ class CharacterCreationCoordinator(Static):
         """Handle button clicks within the coordinator"""
         button_id = event.button.id
         
+        # Debug logging
+        try:
+            self.app.log(f"Coordinator button pressed: {button_id}")
+        except Exception:
+            pass
+        
+        handled = False
+        
+        # Stats buttons
         if button_id == "generate_stats_step":
             self.generate_character_stats()
+            handled = True
         elif button_id == "reroll_stats_step":
             self.generate_character_stats()
+            handled = True
+        
+        # Selection buttons (IDs may be slugified; map back to labels)
         elif button_id.startswith("select_species_"):
-            species_name = button_id.replace("select_species_", "")
+            species_name = self._id_map.get(button_id, button_id.replace("select_species_", ""))
+            try:
+                self.app.log(f"Selecting species: {species_name}")
+            except Exception:
+                pass
             self.select_species(species_name)
+            handled = True
         elif button_id.startswith("select_background_"):
-            background_name = button_id.replace("select_background_", "")
+            background_name = self._id_map.get(button_id, button_id.replace("select_background_", ""))
+            try:
+                self.app.log(f"Selecting background: {background_name}")
+            except Exception:
+                pass
             self.select_background(background_name)
+            handled = True
         elif button_id.startswith("select_faction_"):
-            faction_name = button_id.replace("select_faction_", "")
+            faction_name = self._id_map.get(button_id, button_id.replace("select_faction_", ""))
+            try:
+                self.app.log(f"Selecting faction: {faction_name}")
+            except Exception:
+                pass
             self.select_faction(faction_name)
+            handled = True
         elif button_id.startswith("select_class_"):
-            class_name = button_id.replace("select_class_", "")
+            class_name = self._id_map.get(button_id, button_id.replace("select_class_", ""))
+            try:
+                self.app.log(f"Selecting class: {class_name}")
+            except Exception:
+                pass
             self.select_class(class_name)
+            handled = True
         elif button_id.startswith("toggle_research_"):
-            research_path = button_id.replace("toggle_research_", "")
+            research_path = self._id_map.get(button_id, button_id.replace("toggle_research_", ""))
+            try:
+                self.app.log(f"Toggling research path: {research_path}")
+            except Exception:
+                pass
             self.toggle_research_path(research_path)
+            handled = True
+        
+        # Stop event propagation if we handled it
+        if handled:
+            event.stop()
     
     def on_input_changed(self, event) -> None:
         """Handle input changes within the coordinator"""
         if event.input.id == "name_input":
             self.character_data['name'] = event.value
-            self.update_step_display()
     
     def generate_character_stats(self):
         """Generate character stats"""
@@ -444,38 +551,89 @@ class CharacterCreationCoordinator(Static):
             from characters import create_character_stats
             self.character_data['stats'] = create_character_stats()
             self.update_step_display()
+            self.update_progress_bar()
     
     def select_species(self, species_name):
         """Select a species"""
         self.character_data['species'] = species_name
         self.update_step_display()
+        self.update_progress_bar()
+        try:
+            self.app.show_notification(f"✅ Selected species: {species_name}", timeout=2.0)
+        except:
+            pass
     
     def select_background(self, background_name):
         """Select a background"""
         self.character_data['background'] = background_name  
         self.update_step_display()
+        self.update_progress_bar()
+        try:
+            self.app.show_notification(f"✅ Selected background: {background_name}", timeout=2.0)
+        except:
+            pass
     
     def select_faction(self, faction_name):
         """Select a faction"""
         self.character_data['faction'] = faction_name
         self.update_step_display()
+        self.update_progress_bar()
+        try:
+            self.app.show_notification(f"✅ Selected faction: {faction_name}", timeout=2.0)
+        except:
+            pass
     
     def select_class(self, class_name):
         """Select a character class"""
         self.character_data['character_class'] = class_name
         self.update_step_display()
+        self.update_progress_bar()
+        try:
+            self.app.show_notification(f"✅ Selected class: {class_name}", timeout=2.0)
+        except:
+            pass
     
     def toggle_research_path(self, research_path):
         """Toggle a research path selection"""
         if research_path in self.character_data['research_paths']:
             self.character_data['research_paths'].remove(research_path)
+            msg = f"❌ Removed: {research_path}"
         else:
             if len(self.character_data['research_paths']) < 3:
                 self.character_data['research_paths'].append(research_path)
+                msg = f"✅ Added: {research_path}"
+            else:
+                msg = "⚠️ Maximum 3 research paths selected"
         self.update_step_display()
+        self.update_progress_bar()
+        try:
+            self.app.show_notification(msg, timeout=2.0)
+        except:
+            pass
+    
+    def update_progress_bar(self):
+        """Update the progress bar display"""
+        try:
+            # Update step counter
+            step_counter = self.query_one("#step_counter")
+            current = self.current_step + 1
+            total = len(self.steps)
+            step_name = self.steps[self.current_step][1] if self.current_step < total else ""
+            step_counter.update(f"Step {current} of {total}: {step_name}")
+            
+            # Update progress bar
+            progress_bar = self.query_one("#progress_bar")
+            progress_bar.remove_children()
+            
+            for i, (step_id, step_name) in enumerate(self.steps):
+                status = "✅" if i < self.current_step else "⏳" if i == self.current_step else "⭕"
+                step_widget = Static(f"{status} {step_name}", classes="progress_step")
+                progress_bar.mount(step_widget)
+        except Exception as e:
+            pass
 
-class CharacterCreationScreen(Static):
-    """Legacy character creation interface - now redirects to new system"""
+class CharacterCreationScreen(Container):
+    """Character creation interface container"""
     
     def __init__(self, game_instance=None, **kwargs):
         super().__init__(**kwargs)
@@ -1631,6 +1789,15 @@ class Game7019App(App):
         background: blue 10%;
     }
     
+    .step_counter {
+        dock: top;
+        height: 2;
+        content-align: center middle;
+        text-style: bold;
+        color: yellow;
+        background: blue 15%;
+    }
+    
     .section_header {
         height: 1;
         text-style: bold;
@@ -1711,18 +1878,116 @@ class Game7019App(App):
     Button {
         min-height: 3;
         height: 3;
-        min-width: 15;
-        width: 100%;
+        min-width: 10;
+        width: auto;
         margin: 0 1;
         padding: 0 1;
         content-align: center middle;
         text-style: none;
     }
     
+    #selection_buttons Button {
+        width: 100%;
+        min-width: 20;
+    }
+    
     Button:focus {
         text-style: none;
         background: $primary;
         color: white;
+    }
+    
+    #progress_bar {
+        dock: top;
+        height: 3;
+        width: 100%;
+        background: blue 20%;
+        border: solid cyan;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    
+    .progress_step {
+        width: auto;
+        min-width: 20;
+        height: 3;
+        padding: 0 1;
+        margin: 0;
+        content-align: center middle;
+        color: yellow;
+    }
+    
+    #step_content_area {
+        height: 1fr;
+        width: 100%;
+        border: solid green;
+        padding: 1;
+        overflow-y: auto;
+    }
+    
+    #step_content {
+        width: 100%;
+        height: auto;
+        color: cyan;
+        text-style: bold;
+        padding: 1;
+    }
+    
+    #interactive_content {
+        width: 100%;
+        height: auto;
+        padding: 1;
+    }
+    
+    #selection_buttons {
+        width: 100%;
+        height: auto;
+        padding: 1;
+        layout: vertical;
+    }
+    
+    #selection_buttons Button {
+        width: 100%;
+        min-width: 20;
+        margin: 1 0;
+    }
+    
+    CharacterCreationScreen {
+        height: 100%;
+        width: 100%;
+    }
+    
+    CharacterCreationCoordinator {
+        height: 100%;
+        width: 100%;
+        layout: vertical;
+    }
+    
+    #nav_buttons {
+        dock: bottom;
+        height: 3;
+        width: 100%;
+        background: blue 20%;
+        align: center middle;
+    }
+    
+    #nav_buttons Button {
+        min-height: 3;
+        height: 3;
+        min-width: 10;
+        max-width: 20;
+        width: auto;
+        margin: 0 1;
+    }
+    
+    .hidden {
+        display: none;
+    }
+    
+    #name_input {
+        width: 100%;
+        height: 3;
+        margin: 1 0;
     }
     
     Button:hover {
@@ -2326,16 +2591,8 @@ class Game7019App(App):
             self.handle_step_back()
         elif button_id == "cancel_creation":
             self.action_show_main_menu()
-        # Handle character creation coordinator buttons
-        elif (button_id.startswith("select_") or button_id.startswith("toggle_") or 
-              button_id == "generate_stats_step" or button_id == "reroll_stats_step"):
-            # Let the coordinator handle these
-            try:
-                coordinator = self.query_one(CharacterCreationCoordinator)
-                # The coordinator's on_button_pressed will handle this
-                coordinator.on_button_pressed(event)
-            except:
-                pass
+        # Note: Character creation coordinator buttons (select_*, toggle_*, etc.) 
+        # are handled directly by the CharacterCreationCoordinator's on_button_pressed
         elif button_id == "back_to_menu":
             self.action_show_main_menu()
         
@@ -2644,9 +2901,13 @@ class Game7019App(App):
             # Move to next step
             coordinator.current_step += 1
             coordinator.update_step_display()
+            coordinator.update_progress_bar()
             
             # Update button states
             self.update_navigation_buttons(coordinator)
+            
+            # Show feedback
+            self.show_notification("✅ Moving to next step", timeout=2.0)
             
         except Exception as e:
             self.show_notification(f"Error: {str(e)}")
@@ -2659,6 +2920,7 @@ class Game7019App(App):
             if coordinator.current_step > 0:
                 coordinator.current_step -= 1
                 coordinator.update_step_display()
+                coordinator.update_progress_bar()
                 self.update_navigation_buttons(coordinator)
             else:
                 self.action_show_main_menu()
