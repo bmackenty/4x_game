@@ -650,7 +650,7 @@ class MainMenu(Static):
         self.game_instance = game_instance
     
     def compose(self) -> ComposeResult:
-        # ASCII Art Header
+        # ASCII Art Header (kept as a welcome screen)
         header_text = """
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                              7019 MANAGEMENT SYSTEM                            ║
@@ -666,37 +666,20 @@ class MainMenu(Static):
         yield Static(header_text, id="header")
         yield Static("═" * 80, classes="rule")
         
-        # Core Game Actions
-        yield Static("CORE SYSTEMS", classes="section_header")
-        with Grid(id="core_grid"):
-            yield Button("🚀 Navigation", id="navigation", variant="primary")
-            yield Button("📈 Trading", id="trading", variant="primary")
-            yield Button("🏭 Manufacturing", id="manufacturing", variant="primary")
-            yield Button("🏗️ Stations", id="stations", variant="primary")
-            yield Button("🛸 Ships", id="ship_manager", variant="primary")
-            yield Button("🏛️ Archaeology", id="archaeology", variant="primary")
-        
-        # Management & Information
-        yield Static("MANAGEMENT", classes="section_header")
-        with Grid(id="management_grid"):
-            yield Button("🤖 AI Bots", id="bots", variant="primary")
-            yield Button("⚔️ Factions", id="factions", variant="primary")
-            yield Button("🎓 Professions", id="professions", variant="primary")
-            yield Button("� News", id="news", variant="primary")
-            yield Button("📊 Character", id="character", variant="primary")
-            yield Button("� Activity Log", id="player_log", variant="primary")
-        
-        # Character & Game Control
-        yield Static("GAME CONTROL", classes="section_header")
-        with Grid(id="control_grid"):
-            # Check if character already exists
-            if self.game_instance and getattr(self.game_instance, 'character_created', False):
-                yield Button("👤 Character Created", id="new_character", variant="default")
-            else:
-                yield Button("🎭 New Character", id="new_character", variant="success")
-            yield Button("⏭️ End Turn", id="end_turn", variant="warning")
-            yield Button("⚙️ Settings", id="game_settings", variant="default")
-            yield Button("💾 Save & Exit", id="exit", variant="error")
+        # Welcome text instead of large button grids (navigation now in left sidebar)
+        yield Static("WELCOME", classes="section_header")
+        welcome_text = (
+            "Use the left sidebar to navigate the game.\n\n"
+            "- 🚀 Navigation: Manage ships and travel\n"
+            "- 📈 Trading: Buy and sell commodities\n"
+            "- 🏭 Manufacturing: Platforms and production\n"
+            "- 🏗️ Stations: Buy and manage stations\n"
+            "- 🛸 Ships: Manage your fleet\n"
+            "- 🏛️ Archaeology: Explore ancient sites\n"
+            "- 📊 Character: View your commander\n"
+            "- 🎭 New Character: Start character creation\n"
+        )
+        yield Static(welcome_text)
 
 class NavigationScreen(Static):
     """Space navigation interface with 3D map"""
@@ -1779,6 +1762,65 @@ class Game7019App(App):
         background: black;
         color: green;
     }
+    /* Layout: sidebar + main content */
+    #root_layout {
+        height: 1fr;
+        width: 100%;
+    }
+    
+    #sidebar {
+        width: 22;
+        min-width: 20;
+        max-width: 28;
+        padding: 0;
+        border: solid cyan;
+        background: #001b29;
+        layout: vertical;
+        text-align: left;
+    }
+    
+    #sidebar .nav_header {
+        height: 2;
+        content-align: left middle;
+        text-style: bold;
+        color: white;
+        background: blue 10%;
+        margin: 0 0 1 0;
+    }
+    
+    #sidebar Button {
+        width: 100%;
+        height: 1;
+        min-height: 1;
+        margin: 0 0 1 0;  /* small space between items */
+        padding: 0;
+        background: transparent;
+        color: white;
+        text-style: none;
+        content-align: left middle;
+        text-align: left;
+        border: none;
+    }
+
+    /* Ensure default variant also renders visibly in sidebar */
+    #sidebar Button.-default {
+        background: transparent;
+        color: white;
+        text-style: none;
+        margin: 0 0 1 0;
+        text-align: left;
+    }
+    
+    #sidebar Button:hover {
+        background: blue 30%;
+        color: white;
+        text-style: none;
+    }
+    
+    #main_container {
+        width: 1fr;
+        padding: 0 0 0 1;
+    }
     
     .screen_title {
         dock: top;
@@ -2313,6 +2355,15 @@ class Game7019App(App):
         text-align: left;
         padding: 1;
     }
+
+    /* Ensure sidebar nav items are left-aligned even if global Button styles change */
+    #sidebar {
+        align: left top;
+    }
+    #sidebar Button {
+        content-align: left middle;
+        padding-left: 0;
+    }
     """
     
     BINDINGS = [
@@ -2341,12 +2392,30 @@ class Game7019App(App):
             self.game_instance = None
             
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
+        """Create child widgets for the app with a left sidebar."""
         yield Header(show_clock=True)
         yield StatusBar()
-        # Create a container that will hold the main content
-        with Container(id="main_container"):
-            yield MainMenu(game_instance=self.game_instance, id="main_menu_initial")
+        with Horizontal(id="root_layout"):
+            # Left navigation sidebar
+            with Vertical(id="sidebar"):
+                yield Static("MENU", classes="nav_header")
+                yield Button("🏠 Main Menu", id="back_to_menu", variant="default")
+                yield Button("🎭 New Character", id="new_character", variant="default")
+                yield Button("📊 Character", id="character", variant="default")
+                yield Button("🚀 Navigation", id="navigation", variant="default")
+                yield Button("📈 Trading", id="trading", variant="default")
+                yield Button("🏭 Manufacturing", id="manufacturing", variant="default")
+                yield Button("🏗️ Stations", id="stations", variant="default")
+                yield Button("🛸 Ships", id="ship_manager", variant="default")
+                yield Button("🏛️ Archaeology", id="archaeology", variant="default")
+                yield Button("🤖 AI Bots", id="bots", variant="default")
+                yield Button("📜 Player Log", id="player_log", variant="default")
+                yield Button("⏭️ End Turn", id="end_turn", variant="warning")
+                yield Button("⚙️ Settings", id="game_settings", variant="default")
+                yield Button("💾 Save & Exit", id="exit", variant="error")
+            # Main content area
+            with Container(id="main_container"):
+                yield MainMenu(game_instance=self.game_instance, id="main_menu_initial")
         yield Footer()
         
     def on_mount(self) -> None:
