@@ -643,7 +643,7 @@ class CharacterCreationScreen(Container):
         yield CharacterCreationCoordinator(game_instance=self.game_instance)
 
 class MainMenu(Static):
-    """Main menu with ASCII art header and navigation buttons"""
+    """Main menu content area (welcome screen). Use left sidebar for navigation."""
     
     def __init__(self, game_instance=None, **kwargs):
         super().__init__(**kwargs)
@@ -666,7 +666,7 @@ class MainMenu(Static):
         yield Static(header_text, id="header")
         yield Static("═" * 80, classes="rule")
         
-        # Welcome text instead of large button grids (navigation now in left sidebar)
+        # Welcome text; navigation is via left sidebar only
         yield Static("WELCOME", classes="section_header")
         welcome_text = (
             "Use the left sidebar to navigate the game.\n\n"
@@ -680,6 +680,79 @@ class MainMenu(Static):
             "- 🎭 New Character: Start character creation\n"
         )
         yield Static(welcome_text)
+
+    def on_mount(self) -> None:
+        # No keyboard navigation here; sidebar handles navigation
+        pass
+
+    def on_key(self, event) -> None:
+        # No-op; prevent duplicate menus
+        pass
+
+class SidebarNav(Vertical):
+    """Left sidebar that supports arrow-key navigation with wrap-around and Enter to activate."""
+    can_focus = True
+
+    def on_mount(self) -> None:
+        # Keep focus on the sidebar container; App bindings will move to buttons
+        try:
+            self.focus()
+        except Exception:
+            pass
+
+    def _get_buttons(self):
+        try:
+            # Only direct Button children inside the sidebar container
+            return [w for w in self.children if isinstance(w, Button)]
+        except Exception:
+            return []
+
+    def _focus_button(self, index: int) -> None:
+        buttons = self._get_buttons()
+        if not buttons:
+            return
+        index = index % len(buttons)
+        try:
+            buttons[index].focus()
+        except Exception:
+            pass
+
+    def _current_index(self) -> int:
+        buttons = self._get_buttons()
+        if not buttons:
+            return 0
+        focused = self.screen.focused
+        try:
+            return buttons.index(focused) if focused in buttons else 0
+        except Exception:
+            return 0
+
+    def on_key(self, event) -> None:
+        try:
+            key = getattr(event, 'key', '').lower()
+            buttons = self._get_buttons()
+            if not buttons:
+                return
+            idx = self._current_index()
+            if key in ('up', 'left'):
+                self._focus_button(idx - 1)
+                event.stop()
+            elif key in ('down', 'right'):
+                self._focus_button(idx + 1)
+                event.stop()
+            elif key in ('enter', 'return'):
+                # Activate the focused button
+                focused = self.screen.focused
+                if focused in buttons:
+                    try:
+                        focused.press()
+                    except Exception:
+                        # Fallback: post a pressed message
+                        from textual.widgets import Button as _Btn
+                        self.post_message(_Btn.Pressed(focused))
+                    event.stop()
+        except Exception:
+            pass
 
 class NavigationScreen(Container):
     """Space navigation interface with hex-based ASCII map"""
@@ -2087,6 +2160,13 @@ class Game7019App(App):
         color: white;
         text-style: none;
     }
+
+    /* Make focused sidebar item visibly highlighted (higher specificity than Button:focus) */
+    #sidebar Button:focus {
+        background: $primary;
+        color: white;
+        text-style: bold;
+    }
     
     #main_container {
         width: 1fr;
@@ -2715,6 +2795,13 @@ class Game7019App(App):
         Binding("b", "show_bots", "AI Bots"),
         Binding("f1", "show_help", "Help"),
         Binding("escape", "dismiss_notifications", "Dismiss Messages"),
+        # Global sidebar navigation bindings (high priority)
+        Binding("up", "sidebar_prev", show=False, priority=True),
+        Binding("down", "sidebar_next", show=False, priority=True),
+        Binding("left", "sidebar_prev", show=False, priority=True),
+        Binding("right", "sidebar_next", show=False, priority=True),
+    Binding("enter", "sidebar_activate", show=False, priority=True),
+    Binding("return", "sidebar_activate", show=False, priority=True),
     ]
     
     def __init__(self):
@@ -2733,8 +2820,8 @@ class Game7019App(App):
         yield Header(show_clock=True)
         yield StatusBar()
         with Horizontal(id="root_layout"):
-            # Left navigation sidebar
-            with Vertical(id="sidebar"):
+            # Left navigation sidebar with arrow-key navigation
+            with SidebarNav(id="sidebar"):
                 yield Static("MENU", classes="nav_header")
                 yield Button("🏠 Main Menu", id="back_to_menu", variant="default")
                 yield Button("🎭 New Character", id="new_character", variant="default")
@@ -2750,9 +2837,9 @@ class Game7019App(App):
                 yield Button("⏭️ End Turn", id="end_turn", variant="warning")
                 yield Button("⚙️ Settings", id="game_settings", variant="default")
                 yield Button("💾 Save & Exit", id="exit", variant="error")
-            # Main content area
+            # Main content area (start empty; use left sidebar to choose screens)
             with Container(id="main_container"):
-                yield MainMenu(game_instance=self.game_instance, id="main_menu_initial")
+                pass
         yield Footer()
         
     def on_mount(self) -> None:
@@ -2760,6 +2847,87 @@ class Game7019App(App):
         self.title = "7019 Management System"
         self.sub_title = "4X Space Strategy Game"
         self.update_status_bar()
+        # Ensure the left sidebar (main menu) has focus so arrow keys work immediately
+        try:
+            sidebar = self.query_one("#sidebar")
+            self.set_focus(sidebar)
+        except Exception:
+            pass
+
+    # --- Sidebar keyboard navigation actions (global bindings) ---
+    def _get_sidebar_and_buttons(self):
+        try:
+            sidebar = self.query_one("#sidebar")
+            buttons = [w for w in sidebar.children if isinstance(w, Button)]
+            return sidebar, buttons
+        except Exception:
+            return None, []
+
+    def _focused_index_in_sidebar(self, buttons):
+        try:
+            focused = self.focused
+            if focused in buttons:
+                return buttons.index(focused)
+        except Exception:
+            pass
+        return -1
+
+    def action_sidebar_prev(self) -> None:
+        """Move focus to previous sidebar button (wrap-around)."""
+        # Don't hijack keys while typing
+        if isinstance(self.focused, (Input, TextArea)):
+            return
+        sidebar, buttons = self._get_sidebar_and_buttons()
+        if not buttons:
+            return
+        idx = self._focused_index_in_sidebar(buttons)
+        # Only act if focus is in sidebar or sidebar itself is focused
+        if idx == -1 and self.focused is not sidebar:
+            return
+        new_idx = (idx - 1) % len(buttons) if idx != -1 else 0
+        try:
+            buttons[new_idx].focus()
+        except Exception:
+            pass
+
+    def action_sidebar_next(self) -> None:
+        """Move focus to next sidebar button (wrap-around)."""
+        if isinstance(self.focused, (Input, TextArea)):
+            return
+        sidebar, buttons = self._get_sidebar_and_buttons()
+        if not buttons:
+            return
+        idx = self._focused_index_in_sidebar(buttons)
+        if idx == -1 and self.focused is not sidebar:
+            return
+        new_idx = (idx + 1) % len(buttons) if idx != -1 else 0
+        try:
+            buttons[new_idx].focus()
+        except Exception:
+            pass
+
+    def action_sidebar_activate(self) -> None:
+        """Activate the currently focused sidebar button."""
+        if isinstance(self.focused, (Input, TextArea)):
+            return
+        sidebar, buttons = self._get_sidebar_and_buttons()
+        if not buttons:
+            return
+        idx = self._focused_index_in_sidebar(buttons)
+        if idx == -1:
+            # If sidebar itself is focused, use the first button
+            if self.focused is sidebar:
+                idx = 0
+            else:
+                return
+        try:
+            buttons[idx].press()
+        except Exception:
+            # Fallback: post a pressed event
+            try:
+                self.post_message(Button.Pressed(buttons[idx]))
+            except Exception:
+                pass
         
     def on_click(self, event) -> None:
         """Handle click events, including notification dismissal"""
@@ -2778,6 +2946,28 @@ class Game7019App(App):
                     except:
                         pass
                     event.stop()
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:
+        """Global key handler to ensure sidebar navigation works even if a widget consumes arrows.
+
+        Skips when user is typing in an input or textarea.
+        """
+        try:
+            key = getattr(event, 'key', '').lower()
+            # Ignore when typing in input fields
+            if isinstance(self.focused, (Input, TextArea)):
+                return
+            if key in ("up", "left"):
+                self.action_sidebar_prev()
+                event.stop()
+            elif key in ("down", "right"):
+                self.action_sidebar_next()
+                event.stop()
+            elif key in ("enter", "return"):
+                self.action_sidebar_activate()
+                event.stop()
         except Exception:
             pass
         
@@ -3123,18 +3313,32 @@ class Game7019App(App):
                 # Get container and reset to main menu
                 container = self.query_one("#main_container")
                 container.remove_children()
-                unique_fallback_id = f"main_menu_{int(time.time() * 1000000) % 1000000}"
-                fallback = MainMenu(game_instance=self.game_instance, id=unique_fallback_id)
-                container.mount(fallback)
-                self.current_content = "main_menu"
+                # Fallback to a minimal placeholder message rather than a main menu
+                from textual.widgets import Static as _Static
+                placeholder = _Static("Select an option from the left sidebar.", id="home_placeholder")
+                container.mount(placeholder)
+                self.current_content = "home"
             except Exception:
                 pass
         
     def action_show_main_menu(self) -> None:
-        """Show main menu"""
-        self._switch_to_screen(MainMenu(game_instance=self.game_instance), "main_menu")
-        # Update status bar when returning to main menu
-        self.update_status_bar()
+        """Show an empty home placeholder (no main menu)."""
+        try:
+            container = self.query_one("#main_container")
+            container.remove_children()
+            from textual.widgets import Static as _Static
+            container.mount(_Static("Select an option from the left sidebar.", id="home_placeholder"))
+            self.current_content = "home"
+            self.update_status_bar()
+            # Ensure sidebar receives focus so arrow keys work immediately
+            try:
+                sidebar = self.query_one("#sidebar")
+                # Focus the sidebar container and its first button if available
+                self.set_focus(sidebar)
+            except Exception:
+                pass
+        except Exception as e:
+            self.show_notification(f"Home view error: {e}")
         
     def action_show_navigation(self) -> None:
         """Show navigation screen"""
@@ -3170,7 +3374,7 @@ class Game7019App(App):
         if self.game_instance and getattr(self.game_instance, 'character_created', False):
             self.show_notification("❌ A character has already been created! Use Character Profile to view details.")
             return
-        
+
         # Reset character creation variables for a fresh start
         if hasattr(self, 'char_selected_class'):
             delattr(self, 'char_selected_class')
@@ -3180,17 +3384,17 @@ class Game7019App(App):
             delattr(self, 'char_generated_stats')
         if hasattr(self, 'char_character_name'):
             delattr(self, 'char_character_name')
-        
+
         self._switch_to_screen(CharacterCreationScreen(game_instance=self.game_instance), "character_creation")
-    
+
     def action_show_player_log(self) -> None:
         """Show player log screen"""
         self._switch_to_screen(PlayerLogScreen(game_instance=self.game_instance), "player_log")
-    
+
     def action_show_ship_manager(self) -> None:
         """Show ship manager screen"""
         self._switch_to_screen(ShipManagerScreen(game_instance=self.game_instance), "ship_manager")
-        
+
     def action_show_help(self) -> None:
         """Show help information"""
         help_text = """
@@ -3203,14 +3407,14 @@ class Game7019App(App):
 - Click notifications to dismiss them
 
 ## Keyboard Shortcuts  
-- **Q**: Quit application
-- **M**: Main Menu
-- **N**: Navigation
-- **T**: Trading
-- **A**: Archaeology
-- **C**: Character Profile
-- **ESC**: Dismiss all notifications
-- **F1**: This help screen
+- Q: Quit application
+- M: Main Menu
+- N: Navigation
+- T: Trading
+- A: Archaeology
+- C: Character Profile
+- ESC: Dismiss all notifications
+- F1: This help screen
 
 ## Game Features
 - Build and manage your interstellar corporation
@@ -3220,32 +3424,32 @@ class Game7019App(App):
 - Interact with AI bots and factions
         """
         self.push_screen(HelpModal(help_text))
-        
+
     def action_dismiss_notifications(self) -> None:
         """Dismiss all notifications"""
         try:
             # Clear all existing notifications
             self.clear_notifications()
             self.show_notification("✅ All messages dismissed", timeout=2.0)
-        except Exception as e:
+        except Exception:
             pass
-        
+
     def show_notification(self, message: str, timeout: float = 5.0) -> None:
         """Show a dismissable notification with close hint"""
         # Add close instructions and visual styling
         enhanced_message = f"[bold]{message}[/bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
         self.notify(enhanced_message, title="📢 System Message", timeout=timeout)
-        
+
     def show_persistent_notification(self, message: str) -> None:
         """Show a notification that doesn't auto-dismiss"""
         enhanced_message = f"[bold]{message}[/bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
         self.notify(enhanced_message, title="📢 System Message", timeout=0)
-        
+
     def show_error_notification(self, message: str) -> None:
         """Show an error notification"""
         enhanced_message = f"[red bold]{message}[/red bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
         self.notify(enhanced_message, title="⚠️ Error", timeout=8.0)
-        
+
     def show_success_notification(self, message: str) -> None:
         """Show a success notification"""
         enhanced_message = f"[green bold]{message}[/green bold]\n[dim italic]💡 Click to dismiss • ESC to clear all[/dim italic]"
