@@ -681,99 +681,370 @@ class MainMenu(Static):
         )
         yield Static(welcome_text)
 
-class NavigationScreen(Static):
-    """Space navigation interface with 3D map"""
+class NavigationScreen(Container):
+    """Space navigation interface with hex-based ASCII map"""
+    
+    BINDINGS = [
+        ("z", "zoom_in", "Zoom In"),
+        ("x", "zoom_out", "Zoom Out"),
+    ]
+    
+    # Make the container focusable so it can receive key events
+    can_focus = True
     
     def __init__(self, game_instance=None, **kwargs):
         super().__init__(**kwargs)
         self.game_instance = game_instance
+        self.map_width = 120  # Will be dynamic based on terminal
+        self.map_height = 50  # Will be dynamic based on terminal
+        self.zoom_level = 8   # units per cell (lower = more zoomed in)
+        self.min_zoom = 2     # Maximum zoom in
+        self.max_zoom = 20    # Maximum zoom out
+    
+    def render_hex_map(self):
+        """Render a simple top-down map of the galaxy"""
+        if not self.game_instance or not hasattr(self.game_instance, 'navigation') or not self.game_instance.navigation.current_ship:
+            return "[red]No ship selected for navigation[/red]"
+        
+        import math
+        nav = self.game_instance.navigation
+        ship = nav.current_ship
+        ship_x, ship_y, ship_z = ship.coordinates
+        
+        # Create empty map grid filled with dots for open space
+        map_grid = [['.' for _ in range(self.map_width)] for _ in range(self.map_height)]
+        color_grid = [['dim' for _ in range(self.map_width)] for _ in range(self.map_height)]
+        
+        # Calculate viewport boundaries (centered on ship)
+        view_range_x = (self.zoom_level * self.map_width) // 2
+        view_range_y = (self.zoom_level * self.map_height) // 2
+        min_x = ship_x - view_range_x
+        min_y = ship_y - view_range_y
+        
+        # Convert world coords to map position
+        def world_to_map(wx, wy):
+            map_x = int((wx - min_x) / self.zoom_level)
+            map_y = int((wy - min_y) / self.zoom_level)
+            if 0 <= map_x < self.map_width and 0 <= map_y < self.map_height:
+                return map_x, map_y
+            return None, None
+        
+        # Draw star systems
+        for coords, system in nav.galaxy.systems.items():
+            sx, sy, sz = coords
+            # Only show systems in roughly the same Z-plane (within 5 units)
+            if abs(sz - ship_z) <= 5:
+                mx, my = world_to_map(sx, sy)
+                if mx is not None:
+                    symbol = '★' if system.get('visited', False) else '✦'
+                    obj_color = 'green' if system.get('visited', False) else 'white'
+                    
+                    # Check for special objects
+                    if hasattr(self.game_instance, 'station_manager') and self.game_instance.station_manager:
+                        if self.game_instance.station_manager.get_station_at_location(coords):
+                            symbol = '◉'
+                            obj_color = 'cyan'
+                    
+                    if symbol != '◉' and hasattr(self.game_instance, 'bot_manager') and self.game_instance.bot_manager:
+                        if self.game_instance.bot_manager.get_bot_at_location(coords):
+                            symbol = '◆'
+                            obj_color = 'magenta'
+                    
+                    if symbol not in ['◉', '◆'] and hasattr(self.game_instance, 'galactic_history'):
+                        sites = self.game_instance.galactic_history.get_archaeological_sites_near(sx, sy, sz, radius=1)
+                        if sites:
+                            symbol = '◈'
+                            obj_color = 'yellow'
+                    
+                    map_grid[my][mx] = symbol
+                    color_grid[my][mx] = obj_color
+        
+        # Draw ship at center
+        center_x = self.map_width // 2
+        center_y = self.map_height // 2
+        map_grid[center_y][center_x] = '▲'
+        color_grid[center_y][center_x] = 'bright_cyan'
+        
+        # Draw jump range circle
+        jump_range = ship.jump_range
+        for angle in range(0, 360, 15):
+            rad = math.radians(angle)
+            jx = int(ship_x + jump_range * math.cos(rad))
+            jy = int(ship_y + jump_range * math.sin(rad))
+            mx, my = world_to_map(jx, jy)
+            if mx is not None and map_grid[my][mx] == '.':
+                map_grid[my][mx] = '·'
+                color_grid[my][mx] = 'blue'
+        
+        # Convert grid to Rich Text object
+        from rich.text import Text as RichText
+        result = RichText()
+        for row_idx, row in enumerate(map_grid):
+            for col_idx, char in enumerate(row):
+                color = color_grid[row_idx][col_idx]
+                if color:
+                    result.append(char, style=color)
+                else:
+                    result.append(char)
+            if row_idx < len(map_grid) - 1:
+                result.append("\n")
+        
+        return result
     
     def compose(self) -> ComposeResult:
-        yield Static("╔═══ NAVIGATION CONTROL ═══╗", id="nav_header")
+        yield Static("🌌 HEX MAP - NAVIGATION", classes="section_header")
         
+        # Check if ship is available
+        if not self.game_instance or not hasattr(self.game_instance, 'navigation') or not self.game_instance.navigation.current_ship:
+            yield Static("\n\n[yellow]⚠️  NO ACTIVE SHIP[/yellow]\n\n"
+                        "You need to activate a ship before you can navigate.\n\n"
+                        "Please select a ship from the Ship Builder or activate an existing ship.",
+                        id="no_ship_message", markup=True)
+            return
+        
+        # Ship status bar
+        ship_info = "No ship selected"
+        yield Static(ship_info, id="ship_status_bar", markup=True)
+        
+        # Main layout: map on left, controls on right
         with Horizontal():
-            # Left panel - Ship status and controls
-            with Vertical(id="nav_left"):
-                yield Static("🚀 SHIP STATUS", classes="section_header")
-                
-                # Get real ship data
-                if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
-                    ship = self.game_instance.navigation.current_ship
-                    ship_info = f"""Ship: {ship.name}
-Class: {ship.ship_class}
-Fuel: {ship.fuel}/{ship.max_fuel}
-Location: {ship.coordinates}
-Cargo: {sum(ship.cargo.values()) if ship.cargo else 0}/{ship.max_cargo}"""
+            # Hex Map (fills most space)
+            with ScrollableContainer(id="hex_map_container"):
+                yield Static("Loading map...", id="ascii_map", markup=True)
+            
+            # Ship controls panel on the right
+            with Vertical(id="nav_controls"):
+                yield Static("🎮 SHIP CONTROLS", classes="section_header")
+                yield Button("🚀 Jump to System", id="jump_system_btn", variant="primary")
+                yield Button("📍 Set Course (X,Y,Z)", id="set_course_btn", variant="default")
+                yield Button("⛽ Refuel", id="refuel_btn", variant="success")
+                yield Button("🔍 Scan Area", id="scan_area_btn", variant="default")
+                yield Button("📡 Nearby Systems", id="nearby_systems_btn", variant="default")
+                yield Static("─" * 20, classes="rule")
+                yield Static("📊 NAVIGATION INFO", classes="section_header")
+                yield Static("", id="nav_info", markup=True)
+        
+        # Compact legend at bottom
+        legend = "▲=Ship ★=Visited ✦=New ◉=Station ◆=Bot ◈=Ruins ·=Range .=Space | [bold]Z[/bold]=Zoom In [bold]X[/bold]=Zoom Out"
+        yield Static(legend, id="nav_legend", markup=True)
+    
+    def on_mount(self) -> None:
+        """Update the map display after mounting"""
+        # Only update if we have a ship
+        if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
+            self.update_display()
+        # Set focus to this container so it can receive key events
+        self.focus()
+    
+    def update_display(self) -> None:
+        """Refresh the map and status displays"""
+        # Update ship status
+        if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
+            ship = self.game_instance.navigation.current_ship
+            x, y, z = ship.coordinates
+            ship_info = f"Ship: {ship.name} ({ship.ship_class}) | Fuel: {ship.fuel}/{ship.max_fuel} | Loc: ({x},{y},{z}) | Range: {ship.jump_range}u | Zoom: {self.zoom_level}u/cell [Z/X]"
+            status_widget = self.query_one("#ship_status_bar", Static)
+            status_widget.update(ship_info)
+            
+            # Update navigation info panel
+            nav_info = self._get_navigation_info()
+            info_widget = self.query_one("#nav_info", Static)
+            info_widget.update(nav_info)
+        
+        # Update hex map
+        map_display = self.render_hex_map()
+        map_widget = self.query_one("#ascii_map", Static)
+        map_widget.update(map_display)
+    
+    def _get_navigation_info(self) -> str:
+        """Get navigation information for the info panel"""
+        if not self.game_instance or not hasattr(self.game_instance, 'navigation'):
+            return "No navigation data"
+        
+        nav = self.game_instance.navigation
+        ship = nav.current_ship
+        x, y, z = ship.coordinates
+        
+        # Get nearby systems
+        nearby = nav.galaxy.get_nearby_systems(x, y, z, range_limit=ship.jump_range)
+        
+        info_lines = [
+            f"[bold]Current Location[/bold]",
+            f"Coordinates: ({x}, {y}, {z})",
+            f"",
+            f"[bold]Systems in Range[/bold]",
+            f"Found: {len(nearby)} systems"
+        ]
+        
+        # Show closest 3 systems
+        if nearby:
+            for system, dist in nearby[:3]:
+                name = system.get('name', 'Unknown')
+                coords = system.get('coordinates', (0, 0, 0))
+                visited = "✓" if system.get('visited', False) else " "
+                info_lines.append(f"[{visited}] {name[:15]:<15} {dist:>4.1f}u")
+        
+        return "\n".join(info_lines)
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle navigation control button presses"""
+        button_id = event.button.id
+        
+        if button_id == "jump_system_btn":
+            self._jump_to_system()
+        elif button_id == "set_course_btn":
+            self._set_course()
+        elif button_id == "refuel_btn":
+            self._refuel()
+        elif button_id == "scan_area_btn":
+            self._scan_area()
+        elif button_id == "nearby_systems_btn":
+            self._show_nearby_systems()
+    
+    def _jump_to_system(self) -> None:
+        """Handle jump to system"""
+        self.app.push_screen(MessageScreen(
+            "Jump Navigation",
+            "Feature coming soon: Select a system from the list to jump to.\n\n"
+            "For now, use the nearby systems list to see what's in range."
+        ))
+    
+    def _set_course(self) -> None:
+        """Handle set course by coordinates"""
+        self.app.push_screen(MessageScreen(
+            "Set Course",
+            "Feature coming soon: Enter X, Y, Z coordinates to plot a course.\n\n"
+            "The ship will calculate the best route to your destination."
+        ))
+    
+    def _refuel(self) -> None:
+        """Handle refueling"""
+        if not self.game_instance or not self.game_instance.navigation:
+            return
+        
+        ship = self.game_instance.navigation.current_ship
+        coords = ship.coordinates
+        
+        # Check if at a station
+        if hasattr(self.game_instance, 'station_manager') and self.game_instance.station_manager:
+            station = self.game_instance.station_manager.get_station_at_location(coords)
+            if station:
+                fuel_needed = ship.max_fuel - ship.fuel
+                if fuel_needed > 0:
+                    cost = fuel_needed * 10  # 10 credits per fuel unit
+                    if self.game_instance.credits >= cost:
+                        self.game_instance.credits -= cost
+                        ship.fuel = ship.max_fuel
+                        self.app.push_screen(MessageScreen(
+                            "Refueling Complete",
+                            f"Refueled {fuel_needed} units for {cost} credits.\n\n"
+                            f"Fuel: {ship.fuel}/{ship.max_fuel}\n"
+                            f"Credits remaining: {self.game_instance.credits}"
+                        ))
+                        self.update_display()
+                    else:
+                        self.app.push_screen(MessageScreen(
+                            "Insufficient Credits",
+                            f"Refueling costs {cost} credits.\n"
+                            f"You have {self.game_instance.credits} credits."
+                        ))
                 else:
-                    ship_info = """Ship: Not Selected
-Class: N/A
-Fuel: N/A
-Location: Deep Space
-Cargo: N/A"""
-                
-                yield Static(ship_info, id="ship_status")
-                
-                yield Static("─" * 30, classes="rule")
-                yield Button("🗺️ Local Map", id="local_map", variant="success")
-                yield Button("🌌 Galaxy Overview", id="galaxy_map", variant="success") 
-                yield Button("⛽ Refuel", id="refuel", variant="warning")
-                yield Button("🎯 Jump to System", id="jump", variant="primary")
-                
-            # Right panel - Space map
-            with Vertical(id="nav_right"):
-                yield Static("🌌 LOCAL SPACE", classes="section_header")
-                
-                # Generate real local space map
-                if self.game_instance and hasattr(self.game_instance, 'navigation') and self.game_instance.navigation.current_ship:
-                    x, y, z = self.game_instance.navigation.current_ship.coordinates
-                    
-                    # Get nearby systems from real navigation data
-                    try:
-                        nearby = self.game_instance.navigation.galaxy.get_nearby_systems(x, y, z, 10)
-                        map_lines = [
-                            "┌─────────────────────────────────────────┐",
-                            "│             STAR SYSTEM MAP             │",
-                            "│                                         │"
-                        ]
-                        
-                        for i, (system, distance) in enumerate(nearby[:6]):  # Show max 6 systems
-                            name = system['name'][:12]  # Truncate long names
-                            status = "✓" if system.get('visited', False) else "?"
-                            map_lines.append(f"│    ⭐ {name:<12} [{status}] {distance:.1f}u   │")
-                        
-                        # Add current position
-                        map_lines.extend([
-                            "│                                         │",
-                            f"│         🚀 YOU ARE HERE                 │",
-                            f"│            {x, y, z}                   │",
-                            "│                                         │",
-                            "└─────────────────────────────────────────┘"
-                        ])
-                        
-                        map_display = "\n".join(map_lines)
-                    except:
-                        map_display = """
-    ┌─────────────────────────────────────────┐
-    │             STAR SYSTEM MAP             │
-    │                                         │
-    │    ⭐ Navigation Data Loading...          │
-    │                                         │
-    │         🚀 YOU ARE HERE                 │
-    │            Deep Space                   │
-    │                                         │
-    └─────────────────────────────────────────┘"""
-                else:
-                    map_display = """
-    ┌─────────────────────────────────────────┐
-    │             STAR SYSTEM MAP             │
-    │                                         │
-    │    No ship selected for navigation      │
-    │                                         │
-    │         Use Navigation -> Select Ship   │
-    │                                         │
-    └─────────────────────────────────────────┘"""
-                
-                yield Static(map_display, id="space_map")
+                    self.app.push_screen(MessageScreen("Already Full", "Ship fuel is already at maximum."))
+            else:
+                self.app.push_screen(MessageScreen(
+                    "No Station Here",
+                    "You must be at a space station to refuel.\n\n"
+                    "Look for ◉ symbols on the map."
+                ))
+        else:
+            self.app.push_screen(MessageScreen("Error", "Station manager not available."))
+    
+    def _scan_area(self) -> None:
+        """Handle area scan"""
+        if not self.game_instance or not self.game_instance.navigation:
+            return
+        
+        nav = self.game_instance.navigation
+        ship = nav.current_ship
+        x, y, z = ship.coordinates
+        
+        # Get all objects in scan range
+        nearby = nav.galaxy.get_nearby_systems(x, y, z, range_limit=ship.jump_range * 2)
+        
+        scan_info = f"[bold]Area Scan Report[/bold]\n"
+        scan_info += f"Location: ({x}, {y}, {z})\n"
+        scan_info += f"Scan Radius: {ship.jump_range * 2} units\n\n"
+        scan_info += f"Systems Detected: {len(nearby)}\n"
+        
+        # Count special objects
+        stations = 0
+        bots = 0
+        ruins = 0
+        
+        for system, dist in nearby:
+            coords = system.get('coordinates', (0, 0, 0))
+            if hasattr(self.game_instance, 'station_manager') and self.game_instance.station_manager:
+                if self.game_instance.station_manager.get_station_at_location(coords):
+                    stations += 1
+            if hasattr(self.game_instance, 'bot_manager') and self.game_instance.bot_manager:
+                if self.game_instance.bot_manager.get_bot_at_location(coords):
+                    bots += 1
+            if hasattr(self.game_instance, 'galactic_history'):
+                sx, sy, sz = coords
+                sites = self.game_instance.galactic_history.get_archaeological_sites_near(sx, sy, sz, radius=1)
+                if sites:
+                    ruins += 1
+        
+        scan_info += f"Space Stations: {stations}\n"
+        scan_info += f"AI Bots: {bots}\n"
+        scan_info += f"Archaeological Sites: {ruins}\n"
+        
+        self.app.push_screen(MessageScreen("Scan Results", scan_info))
+    
+    def _show_nearby_systems(self) -> None:
+        """Show detailed list of nearby systems"""
+        if not self.game_instance or not self.game_instance.navigation:
+            return
+        
+        nav = self.game_instance.navigation
+        ship = nav.current_ship
+        x, y, z = ship.coordinates
+        
+        nearby = nav.galaxy.get_nearby_systems(x, y, z, range_limit=ship.jump_range)
+        
+        if not nearby:
+            self.app.push_screen(MessageScreen("No Systems in Range", "No star systems within jump range."))
+            return
+        
+        # Already sorted by distance from galaxy.get_nearby_systems
+        sorted_systems = nearby
+        
+        systems_info = f"[bold]Systems Within Jump Range[/bold]\n"
+        systems_info += f"Jump Range: {ship.jump_range} units\n"
+        systems_info += f"Current Fuel: {ship.fuel}/{ship.max_fuel}\n\n"
+        
+        for system, dist in sorted_systems[:10]:  # Show top 10
+            name = system.get('name', 'Unknown')
+            coords = system.get('coordinates', (0, 0, 0))
+            visited = "★" if system.get('visited', False) else "✦"
+            systems_info += f"{visited} {name[:20]:<20} {dist:>5.1f}u @ {coords}\n"
+        
+        if len(sorted_systems) > 10:
+            systems_info += f"\n... and {len(sorted_systems) - 10} more systems"
+        
+        self.app.push_screen(MessageScreen("Nearby Systems", systems_info))
+    
+    def action_zoom_in(self) -> None:
+        """Zoom in on the map (show less area, more detail)"""
+        if self.zoom_level > self.min_zoom:
+            self.zoom_level -= 1
+            self.update_display()
+    
+    def action_zoom_out(self) -> None:
+        """Zoom out on the map (show more area, less detail)"""
+        if self.zoom_level < self.max_zoom:
+            self.zoom_level += 1
+            self.update_display()
 
 class TradingScreen(Static):
     """Trading and marketplace interface"""
@@ -2068,6 +2339,72 @@ class Game7019App(App):
         height: 18;
         color: white;
         background: black;
+    }
+    
+    #ascii_map {
+        height: 1fr;
+        width: 100%;
+        color: white;
+        background: black;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    #hex_map_container {
+        height: 1fr;
+        width: 1fr;
+        background: black;
+        overflow: auto;
+    }
+    
+    #nav_controls {
+        width: 30;
+        height: 1fr;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #nav_controls Button {
+        width: 100%;
+        margin: 0 0 1 0;
+    }
+    
+    #nav_info {
+        height: auto;
+        padding: 1 0;
+        color: white;
+    }
+    
+    #ship_status_bar {
+        height: 1;
+        color: cyan;
+        background: blue 10%;
+        padding: 0 1;
+        dock: top;
+    }
+    
+    #nav_legend {
+        height: 1;
+        color: yellow;
+        padding: 0 1;
+        dock: bottom;
+    }
+    
+    #message_dialog {
+        width: 60;
+        height: auto;
+        background: $panel;
+        border: thick $primary;
+        padding: 1;
+    }
+    
+    #message_dialog Static {
+        margin: 0 0 1 0;
+    }
+    
+    #message_dialog Button {
+        width: 100%;
+        margin: 1 0 0 0;
     }
 
     #nav_left Button {
@@ -3688,6 +4025,26 @@ class HelpModal(ModalScreen):
         
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close":
+            self.app.pop_screen()
+
+class MessageScreen(ModalScreen):
+    """Simple message modal screen"""
+    
+    def __init__(self, title: str, message: str):
+        super().__init__()
+        self.title = title
+        self.message = message
+    
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static(f"[bold]{self.title}[/bold]", classes="section_header", markup=True),
+            Static(self.message, markup=True),
+            Button("OK", variant="primary", id="ok_btn"),
+            id="message_dialog"
+        )
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "ok_btn":
             self.app.pop_screen()
 
 if __name__ == "__main__":
