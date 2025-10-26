@@ -85,14 +85,17 @@ class CharacterCreationCoordinator(Container):
         super().__init__(**kwargs)
         self.game_instance = game_instance
         self.current_step = 0
+        self.stage = 1  # 1 = species/background/faction • 2 = class/research/stats/name
         self.character_data = {
             'name': '',
-            'species': '',
+            'species': 'Terran',
             'background': '', 
             'faction': '',
             'character_class': '',
             'research_paths': [],
-            'stats': None
+            'stats': None,
+            'level': 1,
+            'xp': 0
         }
         self.steps = [
             ('species', '🧬 Choose Species'),
@@ -106,6 +109,8 @@ class CharacterCreationCoordinator(Container):
         ]
         # Map button ids back to original names (handles spaces/symbols)
         self._id_map: Dict[str, str] = {}
+        # Maps species display labels to (base_name, playable)
+        self._species_display_map = {}
 
     def _slug(self, text: str) -> str:
         return re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
@@ -117,40 +122,137 @@ class CharacterCreationCoordinator(Container):
     
     def compose(self) -> ComposeResult:
         yield Static("🎭 CHARACTER CREATION", classes="screen_title")
-        
-        # Step counter
-        yield Static("Step 1 of 8", id="step_counter", classes="step_counter")
-        
-        # Progress indicator
-        with Horizontal(id="progress_bar"):
-            for i, (step_id, step_name) in enumerate(self.steps):
-                status = "✅" if i < self.current_step else "⏳" if i == self.current_step else "⭕"
-                yield Static(f"{status} {step_name}", classes="progress_step")
-        
-        # Current step content area
-        with ScrollableContainer(id="step_content_area"):
-            yield Static("", id="step_content")
-            # Name input
-            yield Input(placeholder="Enter your character name...", id="name_input", classes="hidden")
-            # Stats buttons
-            yield Button("🎲 Generate Stats", id="generate_stats_step", variant="primary", classes="hidden")
-            yield Button("🔄 Reroll Stats", id="reroll_stats_step", variant="warning", classes="hidden")
-            # Selection buttons (will be populated dynamically)
-            with Vertical(id="selection_buttons"):
-                pass
-        
-        # Navigation buttons
-        with Horizontal(id="nav_buttons"):
-            yield Button("⬅️ Back", id="step_back", variant="warning")
-            yield Button("➡️ Next", id="step_next", variant="primary")
-            yield Button("🏠 Cancel", id="cancel_creation", variant="error")
+
+        # Show first three steps side-by-side with no buttons
+        with Horizontal(id="step_content_area"):
+            # Species list
+            with Vertical(id="species_panel"):
+                yield Static("🧬 Choose Species [1]", classes="section_header")
+                yield ListView(id="species_list")
+            # Background list
+            with Vertical(id="background_panel"):
+                yield Static("🏛️ Choose Background [2]", classes="section_header")
+                yield ListView(id="background_list")
+            # Faction list
+            with Vertical(id="faction_panel"):
+                yield Static("⚔️ Choose Faction [3]", classes="section_header")
+                yield ListView(id="faction_list")
+
+        # Keyboard help footer
+        help_text = (
+            "[bold]Keys:[/bold] 1/2/3 = Focus Species/Background/Faction • Arrow Keys = Move • Enter = Select • Tab = Next Panel • C = Continue • Q = Cancel"
+        )
+        yield Static(help_text, id="creation_help", markup=True)
     
     def on_mount(self):
-        """Initialize the display when mounted"""
-        self.update_step_display()
-        # Ensure progress UI is initialized
+        """Initialize and populate lists when mounted"""
+        self._populate_species_list()
+        self._populate_background_list()
+        self._populate_faction_list()
+        # Focus species list by default
         try:
-            self.update_progress_bar()
+            self.query_one("#species_list", ListView).focus()
+        except Exception:
+            pass
+
+    def _show_stage_two(self) -> None:
+        """Replace content with class/research/stats/name, keyboard-only."""
+        try:
+            area = self.query_one("#step_content_area")
+            area.remove_children()
+
+            # Build stage 2 layout: left column (class + research), right column (stats + name)
+            left_col = Vertical(id="stage2_left")
+            left_col.mount(Static("🎯 Choose Class", classes="section_header"))
+            left_col.mount(ListView(id="class_list"))
+            left_col.mount(Static("🔬 Select Research (Space/Enter to toggle, max 3)", classes="section_header"))
+            left_col.mount(ListView(id="research_list"))
+
+            right_col = Vertical(id="stage2_right")
+            right_col.mount(Static("🎲 Stats (G=Generate, R=Reroll)", classes="section_header"))
+            right_col.mount(Static("", id="stats_display"))
+            right_col.mount(Static("📝 Name (type and press Enter)", classes="section_header"))
+            right_col.mount(Input(placeholder="Enter your character name...", id="name_input"))
+
+            row = Horizontal()
+            row.mount(left_col)
+            row.mount(right_col)
+            area.mount(row)
+
+            # Update footer help
+            help_widget = self.query_one("#creation_help", Static)
+            help_widget.update("[bold]Keys:[/bold] Tab = Cycle • Enter/Space = Toggle • G/R = Generate/Reroll Stats • S = Finish • B = Back • Q = Cancel")
+
+            # Populate lists and initial stats
+            self._populate_class_list()
+            self._populate_research_list()
+            self._update_stats_display()
+            # Focus class list initially
+            try:
+                self.query_one("#class_list", ListView).focus()
+            except Exception:
+                pass
+            self.stage = 2
+        except Exception as e:
+            try:
+                self.app.show_notification(f"Error loading next stage: {e}")
+            except Exception:
+                pass
+
+    def _populate_class_list(self) -> None:
+        try:
+            from characters import character_classes
+            lv = self.query_one("#class_list", ListView)
+            lv.clear()
+            for cls in character_classes.keys():
+                lv.append(ListItem(Label(cls)))
+        except Exception:
+            pass
+
+    def _populate_research_list(self) -> None:
+        try:
+            from research import research_categories
+            lv = self.query_one("#research_list", ListView)
+            lv.clear()
+            for cat in list(research_categories.keys()):
+                checked = "✅" if cat in self.character_data['research_paths'] else "☐"
+                lv.append(ListItem(Label(f"{checked} {cat}")))
+        except Exception:
+            pass
+
+    def _toggle_research_at_index(self, idx: int) -> None:
+        try:
+            lv = self.query_one("#research_list", ListView)
+            items = [c for c in lv.children if isinstance(c, ListItem)]
+            if idx is None or idx < 0 or idx >= len(items):
+                return
+            li = items[idx]
+            label = li.query_one(Label)
+            text = str(label.renderable)
+            # Expect "☐ Cat" or "✅ Cat"; split off first two chars
+            cat = text[2:].strip()
+            if cat in self.character_data['research_paths']:
+                self.character_data['research_paths'].remove(cat)
+            else:
+                if len(self.character_data['research_paths']) < 3:
+                    self.character_data['research_paths'].append(cat)
+                else:
+                    try:
+                        self.app.show_notification("⚠️ Max 3 research paths")
+                    except Exception:
+                        pass
+            self._populate_research_list()
+        except Exception:
+            pass
+
+    def _update_stats_display(self) -> None:
+        try:
+            w = self.query_one("#stats_display", Static)
+            if self.character_data['stats']:
+                lines = [f"{k.title()}: {v}" for k, v in self.character_data['stats'].items()]
+                w.update("\n".join(lines))
+            else:
+                w.update("[dim]No stats yet. Press G to generate.[/dim]")
         except Exception:
             pass
     
@@ -170,11 +272,11 @@ class CharacterCreationCoordinator(Container):
         except:
             pass
         
-        # Clear any existing selection buttons
+        # This method remains for compatibility but no longer controls the UI
+        # as steps 1-3 are shown simultaneously and controlled via keyboard.
         try:
-            selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_children()
-        except:
+            pass
+        except Exception:
             pass
         
         if step_id == 'species':
@@ -238,79 +340,70 @@ class CharacterCreationCoordinator(Container):
         elif step_id == 'confirm':
             content_widget.update(self.get_confirm_content())
     
-    def create_species_buttons(self):
-        """Create buttons for species selection"""
-        if not GAME_AVAILABLE:
-            return
-        
+    def _populate_species_list(self):
+        """Populate the species ListView"""
         try:
-            from species import species_database, get_playable_species
-            playable_species = get_playable_species()
-            
-            selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_children()  # Clear old buttons
+            from species import get_playable_species, species_database
+            from rich.text import Text as RichText
+            playable_species = get_playable_species()  # dict of playable
+            all_species = list(species_database.keys()) if isinstance(species_database, dict) else list(playable_species.keys())
+
+            # Ensure 'Terran' appears in the list and is treated as playable
+            if not any(s.lower() == 'terran' for s in all_species):
+                all_species.append('Terran')
+
+            lv = self.query_one("#species_list", ListView)
+            lv.clear()
+            self._species_display_map = {}
+
+            # Show all species; mark and dim non-playable with a lock and note
+            for name in all_species:
+                is_playable = (name in playable_species) or (name.lower() == 'terran')
+                display = name if is_playable else f"🔒 {name} (not playable)"
+                self._species_display_map[display] = (name, is_playable)
+                if is_playable:
+                    lv.append(ListItem(Label(display)))
+                else:
+                    lv.append(ListItem(Label(RichText(display, style="dim"))))
+        except Exception as e:
             try:
-                selection_container.remove_class("hidden")
+                lv = self.query_one("#species_list", ListView)
+                lv.clear()
+                lv.append(ListItem(Label("No species data")))
             except Exception:
                 pass
-            
-            # If only one playable species and none selected, preselect it
-            if not self.character_data['species'] and len(playable_species) == 1:
-                self.character_data['species'] = list(playable_species.keys())[0]
-
-            self.app.log(f"Creating {len(playable_species)} species buttons")
-            
-            for species_name in playable_species.keys():
-                variant = "success" if species_name == self.character_data['species'] else "primary"
-                btn_id = self._make_id("select_species_", species_name)
-                btn = Button(f"🧬 {species_name}", id=btn_id, variant=variant)
-                selection_container.mount(btn)
-        except Exception as e:
-            self.app.log(f"Error creating species buttons: {e}")
     
-    def create_background_buttons(self):
-        """Create buttons for background selection"""
-        if not GAME_AVAILABLE:
-            return
-        
+    def _populate_background_list(self):
+        """Populate the background ListView"""
         try:
             from characters import character_backgrounds
-            
-            selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_children()  # Clear old buttons
-            
-            self.app.log(f"Creating {len(character_backgrounds)} background buttons")
-            
+            lv = self.query_one("#background_list", ListView)
+            lv.clear()
             for bg_name in character_backgrounds.keys():
-                variant = "success" if bg_name == self.character_data['background'] else "primary"
-                btn_id = self._make_id("select_background_", bg_name)
-                btn = Button(f"🏛️ {bg_name}", id=btn_id, variant=variant)
-                selection_container.mount(btn)
-        except Exception as e:
-            self.app.log(f"Error creating background buttons: {e}")
+                lv.append(ListItem(Label(f"{bg_name}")))
+        except Exception:
+            try:
+                lv = self.query_one("#background_list", ListView)
+                lv.clear()
+                lv.append(ListItem(Label("No background data")))
+            except Exception:
+                pass
     
-    def create_faction_buttons(self):
-        """Create buttons for faction selection"""
-        if not GAME_AVAILABLE:
-            return
-        
+    def _populate_faction_list(self):
+        """Populate the faction ListView"""
         try:
             from factions import factions
-            
-            selection_container = self.query_one("#selection_buttons")
-            selection_container.remove_children()  # Clear old buttons
-            
-            faction_list = list(factions.keys())[:6]
-            self.app.log(f"Creating {len(faction_list)} faction buttons")
-            
-            # Show first 6 factions
-            for faction_name in faction_list:
-                variant = "success" if faction_name == self.character_data['faction'] else "primary"
-                btn_id = self._make_id("select_faction_", faction_name)
-                btn = Button(f"⚔️ {faction_name}", id=btn_id, variant=variant)
-                selection_container.mount(btn)
-        except Exception as e:
-            self.app.log(f"Error creating faction buttons: {e}")
+            lv = self.query_one("#faction_list", ListView)
+            lv.clear()
+            for faction_name in list(factions.keys())[:12]:
+                lv.append(ListItem(Label(f"{faction_name}")))
+        except Exception:
+            try:
+                lv = self.query_one("#faction_list", ListView)
+                lv.clear()
+                lv.append(ListItem(Label("No faction data")))
+            except Exception:
+                pass
     
     def create_class_buttons(self):
         """Create buttons for class selection"""
@@ -474,76 +567,145 @@ class CharacterCreationCoordinator(Container):
         # more sophisticated widgets like ListView or custom clickable widgets
         pass
     
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button clicks within the coordinator"""
-        button_id = event.button.id
-        
-        # Debug logging
-        try:
-            self.app.log(f"Coordinator button pressed: {button_id}")
-        except Exception:
-            pass
-        
-        handled = False
-        
-        # Stats buttons
-        if button_id == "generate_stats_step":
-            self.generate_character_stats()
-            handled = True
-        elif button_id == "reroll_stats_step":
-            self.generate_character_stats()
-            handled = True
-        
-        # Selection buttons (IDs may be slugified; map back to labels)
-        elif button_id.startswith("select_species_"):
-            species_name = self._id_map.get(button_id, button_id.replace("select_species_", ""))
-            try:
-                self.app.log(f"Selecting species: {species_name}")
-            except Exception:
-                pass
-            self.select_species(species_name)
-            handled = True
-        elif button_id.startswith("select_background_"):
-            background_name = self._id_map.get(button_id, button_id.replace("select_background_", ""))
-            try:
-                self.app.log(f"Selecting background: {background_name}")
-            except Exception:
-                pass
-            self.select_background(background_name)
-            handled = True
-        elif button_id.startswith("select_faction_"):
-            faction_name = self._id_map.get(button_id, button_id.replace("select_faction_", ""))
-            try:
-                self.app.log(f"Selecting faction: {faction_name}")
-            except Exception:
-                pass
-            self.select_faction(faction_name)
-            handled = True
-        elif button_id.startswith("select_class_"):
-            class_name = self._id_map.get(button_id, button_id.replace("select_class_", ""))
-            try:
-                self.app.log(f"Selecting class: {class_name}")
-            except Exception:
-                pass
-            self.select_class(class_name)
-            handled = True
-        elif button_id.startswith("toggle_research_"):
-            research_path = self._id_map.get(button_id, button_id.replace("toggle_research_", ""))
-            try:
-                self.app.log(f"Toggling research path: {research_path}")
-            except Exception:
-                pass
-            self.toggle_research_path(research_path)
-            handled = True
-        
-        # Stop event propagation if we handled it
-        if handled:
-            event.stop()
+    # No button handlers needed (keyboard-only UI)
     
     def on_input_changed(self, event) -> None:
         """Handle input changes within the coordinator"""
         if event.input.id == "name_input":
             self.character_data['name'] = event.value
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Update character data when list selections change"""
+        try:
+            lv_id = event.list_view.id
+            label_widget = event.item.query_one(Label) if hasattr(event.item, 'query_one') else None
+            value = str(label_widget.renderable) if label_widget else None
+            if lv_id == "species_list" and value:
+                # Map display back to base name and check playability
+                base_name = None
+                playable = True
+                if value in self._species_display_map:
+                    base_name, playable = self._species_display_map[value]
+                else:
+                    # If display wasn't mapped (unlikely), strip prefix if present
+                    base_name = value.replace("🔒 ", "").replace(" (not playable)", "")
+                    # Conservative: treat as not playable if lock marker present
+                    playable = not value.startswith("🔒 ")
+
+                if not playable:
+                    try:
+                        self.app.show_notification("❌ This species is not playable yet.")
+                    except Exception:
+                        pass
+                    return
+                self.select_species(base_name)
+            elif lv_id == "background_list" and value:
+                self.select_background(value)
+            elif lv_id == "faction_list" and value:
+                self.select_faction(value)
+            elif lv_id == "class_list" and value:
+                self.select_class(value)
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:
+        """Keyboard navigation for panels.
+        Stage 1: 1/2/3 focus lists • Tab cycles • C continue • Q cancel
+        Stage 2: Tab cycle (class/research/name) • Enter/Space toggle research • G/R generate/reroll • S finish • B back • Q cancel
+        """
+        try:
+            key = getattr(event, 'key', '').lower()
+            if self.stage == 1 and key == '1':
+                self.query_one('#species_list', ListView).focus()
+                event.stop()
+            elif self.stage == 1 and key == '2':
+                self.query_one('#background_list', ListView).focus()
+                event.stop()
+            elif self.stage == 1 and key == '3':
+                self.query_one('#faction_list', ListView).focus()
+                event.stop()
+            elif self.stage == 1 and key == 'tab':
+                order = ['#species_list', '#background_list', '#faction_list']
+                focused = self.screen.focused
+                try:
+                    idx = -1
+                    for i, sel in enumerate(order):
+                        if focused is self.query_one(sel, ListView):
+                            idx = i
+                            break
+                    next_sel = order[(idx + 1) % len(order)] if idx != -1 else order[0]
+                    self.query_one(next_sel, ListView).focus()
+                    event.stop()
+                except Exception:
+                    pass
+            elif self.stage == 1 and key == 'j':
+                # # Validate selections
+                # if not (self.character_data['species'] and self.character_data['background'] and self.character_data['faction']):
+                #     try:
+                #         self.app.show_notification("❌ Select species, background, and faction first.")
+                #     except Exception:
+                #         pass
+                # else:
+                self._show_stage_two()
+                event.stop()
+            elif key == 'q':
+                # Cancel creation and return to main
+                self.app.action_show_main_menu()
+                event.stop()
+            # Stage 2 controls
+            elif self.stage == 2 and key == 'tab':
+                cycle = ['#class_list', '#research_list', '#name_input']
+                focused = self.screen.focused
+                try:
+                    idx = -1
+                    for i, sel in enumerate(cycle):
+                        try:
+                            if focused is self.query_one(sel):
+                                idx = i
+                                break
+                        except Exception:
+                            pass
+                    next_sel = cycle[(idx + 1) % len(cycle)] if idx != -1 else cycle[0]
+                    self.query_one(next_sel).focus()
+                    event.stop()
+                except Exception:
+                    pass
+            elif self.stage == 2 and key in ('enter', 'return', 'space'):
+                try:
+                    focused = self.screen.focused
+                    rl = self.query_one('#research_list', ListView)
+                    if focused is rl:
+                        idx = getattr(rl, 'index', None)
+                        self._toggle_research_at_index(idx if idx is not None else 0)
+                        event.stop()
+                except Exception:
+                    pass
+            elif self.stage == 2 and key == 'g':
+                self.generate_character_stats()
+                self._update_stats_display()
+                event.stop()
+            elif self.stage == 2 and key == 'r':
+                self.generate_character_stats()
+                self._update_stats_display()
+                event.stop()
+            elif self.stage == 2 and key == 'b':
+                # Back to stage 1 (re-create the coordinator for simplicity)
+                self.app.action_show_character_creation()
+                event.stop()
+            elif self.stage == 2 and key == 's':
+                # Finish character creation
+                try:
+                    if hasattr(self.app, 'handle_create_character_from_coordinator'):
+                        self.app.handle_create_character_from_coordinator(self)
+                    else:
+                        if self.game_instance:
+                            self.game_instance.character_created = True
+                        self.app.action_show_main_menu()
+                except Exception:
+                    self.app.action_show_main_menu()
+                event.stop()
+        except Exception:
+            pass
     
     def generate_character_stats(self):
         """Generate character stats"""
