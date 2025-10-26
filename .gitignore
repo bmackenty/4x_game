@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*cpython*
 
 # C extensions
 *.so
@@ -229,3 +230,4 @@ tramp
 *.tar.gz
 *.rar
 *.7z
+__pycache__/game.cpython-313.pyc
