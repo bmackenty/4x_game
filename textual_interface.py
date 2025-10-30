@@ -140,7 +140,7 @@ class CharacterCreationCoordinator(Container):
 
         # Keyboard help footer
         help_text = (
-            "[bold]Keys:[/bold] 1/2/3 = Focus Species/Background/Faction • Arrow Keys = Move • Enter = Select • Tab = Next Panel • C = Continue • Q = Cancel"
+            "[bold]Keys:[/bold] 1/2/3 = Focus Species/Background/Faction • Arrow Keys = Move • Enter = Select • Tab = Next Panel • N = Next Step • Q = Cancel"
         )
         yield Static(help_text, id="creation_help", markup=True)
     
@@ -579,7 +579,17 @@ class CharacterCreationCoordinator(Container):
         try:
             lv_id = event.list_view.id
             label_widget = event.item.query_one(Label) if hasattr(event.item, 'query_one') else None
-            value = str(label_widget.renderable) if label_widget else None
+            
+            # Extract the actual text value from the label
+            value = None
+            if label_widget:
+                renderable = label_widget.renderable
+                # Handle Rich Text objects
+                if hasattr(renderable, 'plain'):
+                    value = renderable.plain
+                else:
+                    value = str(renderable)
+            
             if lv_id == "species_list" and value:
                 # Map display back to base name and check playability
                 base_name = None
@@ -600,9 +610,19 @@ class CharacterCreationCoordinator(Container):
                     return
                 self.select_species(base_name)
             elif lv_id == "background_list" and value:
-                self.select_background(value)
+                # Extract plain text from Rich Text
+                if hasattr(value, 'plain'):
+                    background_name = value.plain
+                else:
+                    background_name = str(value)
+                self.select_background(background_name)
             elif lv_id == "faction_list" and value:
-                self.select_faction(value)
+                # Extract plain text from Rich Text
+                if hasattr(value, 'plain'):
+                    faction_name = value.plain
+                else:
+                    faction_name = str(value)
+                self.select_faction(faction_name)
             elif lv_id == "class_list" and value:
                 self.select_class(value)
         except Exception:
@@ -638,15 +658,21 @@ class CharacterCreationCoordinator(Container):
                     event.stop()
                 except Exception:
                     pass
-            elif self.stage == 1 and key == 'j':
-                # # Validate selections
-                # if not (self.character_data['species'] and self.character_data['background'] and self.character_data['faction']):
-                #     try:
-                #         self.app.show_notification("❌ Select species, background, and faction first.")
-                #     except Exception:
-                #         pass
-                # else:
-                self._show_stage_two()
+            elif self.stage == 1 and key == 'n':
+                # Debug: Show what's in character_data
+                try:
+                    self.app.notify(f"Data: species='{self.character_data['species']}' bg='{self.character_data['background']}' faction='{self.character_data['faction']}'", timeout=5)
+                except Exception:
+                    pass
+                
+                # Validate selections before continuing
+                if not (self.character_data['species'] and self.character_data['background'] and self.character_data['faction']):
+                    try:
+                        self.app.show_notification("❌ Select species, background, and faction first.", timeout=3.0)
+                    except Exception:
+                        pass
+                else:
+                    self._show_stage_two()
                 event.stop()
             elif key == 'q':
                 # Cancel creation and return to main
@@ -727,6 +753,10 @@ class CharacterCreationCoordinator(Container):
     
     def select_background(self, background_name):
         """Select a background"""
+        try:
+            self.app.notify(f"DEBUG select_background called with: '{background_name}'", timeout=3)
+        except:
+            pass
         self.character_data['background'] = background_name  
         self.update_step_display()
         self.update_progress_bar()
@@ -737,6 +767,10 @@ class CharacterCreationCoordinator(Container):
     
     def select_faction(self, faction_name):
         """Select a faction"""
+        try:
+            self.app.notify(f"DEBUG select_faction called with: '{faction_name}'", timeout=3)
+        except:
+            pass
         self.character_data['faction'] = faction_name
         self.update_step_display()
         self.update_progress_bar()
