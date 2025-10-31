@@ -578,17 +578,31 @@ class CharacterCreationCoordinator(Container):
         """Update character data when list selections change"""
         try:
             lv_id = event.list_view.id
-            label_widget = event.item.query_one(Label) if hasattr(event.item, 'query_one') else None
             
-            # Extract the actual text value from the label
+            # DEBUG: Show what's in the event
+            self.app.notify(f"DEBUG: event.item={event.item}, type={type(event.item)}")
+            self.app.notify(f"DEBUG: hasattr children={hasattr(event.item, 'children')}")
+            if hasattr(event.item, 'children'):
+                self.app.notify(f"DEBUG: children={event.item.children}, len={len(event.item.children) if event.item.children else 0}")
+                if event.item.children:
+                    self.app.notify(f"DEBUG: first child={event.item.children[0]}, type={type(event.item.children[0])}")
+            
+            # Extract the text value from the ListItem
             value = None
-            if label_widget:
-                renderable = label_widget.renderable
-                # Handle Rich Text objects
-                if hasattr(renderable, 'plain'):
-                    value = renderable.plain
-                else:
-                    value = str(renderable)
+            if hasattr(event.item, 'children') and event.item.children:
+                label_widget = event.item.children[0]
+                if hasattr(label_widget, 'renderable'):
+                    renderable = label_widget.renderable
+                    # Handle Rich Text objects
+                    if hasattr(renderable, 'plain'):
+                        value = renderable.plain
+                    else:
+                        value = str(renderable)
+                elif hasattr(label_widget, '_text'):
+                    value = str(label_widget._text)
+            
+            # DEBUG: Show what we extracted
+            self.app.notify(f"DEBUG: lv_id={lv_id}, value='{value}', type={type(value).__name__}")
             
             if lv_id == "species_list" and value:
                 # Map display back to base name and check playability
@@ -610,23 +624,17 @@ class CharacterCreationCoordinator(Container):
                     return
                 self.select_species(base_name)
             elif lv_id == "background_list" and value:
-                # Extract plain text from Rich Text
-                if hasattr(value, 'plain'):
-                    background_name = value.plain
-                else:
-                    background_name = str(value)
-                self.select_background(background_name)
+                self.app.notify(f"DEBUG: Calling select_background with '{value}'")
+                self.select_background(value)
             elif lv_id == "faction_list" and value:
-                # Extract plain text from Rich Text
-                if hasattr(value, 'plain'):
-                    faction_name = value.plain
-                else:
-                    faction_name = str(value)
-                self.select_faction(faction_name)
+                self.app.notify(f"DEBUG: Calling select_faction with '{value}'")
+                self.select_faction(value)
             elif lv_id == "class_list" and value:
                 self.select_class(value)
-        except Exception:
-            pass
+        except Exception as e:
+            self.app.notify(f"DEBUG ERROR: {e}")
+            import traceback
+            self.app.notify(f"TRACEBACK: {traceback.format_exc()}")
 
     def on_key(self, event) -> None:
         """Keyboard navigation for panels.
