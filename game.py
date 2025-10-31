@@ -49,8 +49,8 @@ class Game:
         self.custom_ships = []  # Player-built ships
         self.owned_stations = []
         self.owned_platforms = []
-        self.navigation = NavigationSystem(self)
         self.economy = EconomicSystem()
+        self.navigation = NavigationSystem(self)
         self.upgrade_system = ShipUpgradeSystem()
         self.station_manager = None  # Will be initialized after navigation
         self.bot_manager = None  # Will be initialized after navigation
@@ -1440,6 +1440,229 @@ class Game:
             print("Invalid input.")
         
         input("\nPress Enter to continue...")
+
+    # === Programmatic trading helpers for UI (no logic in UI) ===
+    def perform_trade_buy(self, system_name: str, commodity: str, quantity: int):
+        """Execute a buy transaction via the economic system and update game state.
+
+        Returns (success: bool, message: str)
+        """
+        try:
+            if quantity <= 0:
+                return False, "Quantity must be greater than zero"
+            if not hasattr(self, 'economy') or not self.economy:
+                return False, "Economic system unavailable"
+
+            market_info = self.economy.get_market_info(system_name)
+            if not market_info:
+                return False, "No market at this location"
+            market = market_info['market']
+            if commodity not in market['prices']:
+                return False, f"{commodity} not traded here"
+            price = market['prices'][commodity]
+            total_cost = price * quantity
+
+            # Check cargo capacity before buying
+            cargo_check, cargo_msg = self.check_cargo_capacity(quantity)
+            if not cargo_check:
+                return False, cargo_msg
+
+            success, message = self.economy.buy_commodity(system_name, commodity, quantity, self.credits)
+            if not success:
+                return False, message
+
+            # Update player credits and inventory
+            if total_cost > self.credits:
+                # Shouldn't happen if economy check passed, but guard anyway
+                return False, "Insufficient credits after market update"
+            self.credits -= total_cost
+            self.inventory[commodity] = self.inventory.get(commodity, 0) + quantity
+
+            # Update ship cargo if ship exists
+            try:
+                if self.navigation and self.navigation.current_ship:
+                    ship = self.navigation.current_ship
+                    if not ship.cargo:
+                        ship.cargo = {}
+                    ship.cargo[commodity] = ship.cargo.get(commodity, 0) + quantity
+            except Exception:
+                pass
+
+            # Reputation bonus at controlling faction (if any)
+            try:
+                if self.navigation and self.navigation.current_ship and hasattr(self, 'faction_system') and self.faction_system:
+                    coords = self.navigation.current_ship.coordinates
+                    faction = self.faction_system.get_system_faction(coords)
+                    if faction:
+                        rep_change = max(1, quantity // 10)  # small rep for trade volume
+                        self.faction_system.modify_reputation(faction, rep_change, "trade")
+            except Exception:
+                pass
+
+            # Profession XP for trading
+            try:
+                trade_xp = max(5, quantity // 5)
+                prof = getattr(self.profession_system, 'character_profession', None)
+                if prof == "Interstellar Trade Broker":
+                    self.profession_system.gain_experience("Interstellar Trade Broker", trade_xp * 2, "major trade")
+                elif prof == "Intergalactic Trader":
+                    self.profession_system.gain_experience("Intergalactic Trader", trade_xp * 2, "trade transaction")
+                elif prof:
+                    self.profession_system.gain_experience(prof, trade_xp, "trade activity")
+            except Exception:
+                pass
+
+            # Log
+            try:
+                self.add_log_entry('trade', f"Bought {quantity} {commodity} at {system_name}", {
+                    'commodity': commodity,
+                    'quantity': quantity,
+                    'price_each': price,
+                    'total_cost': total_cost,
+                    'system': system_name,
+                    'direction': 'buy'
+                })
+            except Exception:
+                pass
+
+            return True, message
+        except Exception as e:
+            return False, f"Trade error: {e}"
+
+    def check_cargo_capacity(self, additional_units: int):
+        """Check if current ship has capacity for additional cargo units.
+        
+        Returns (has_capacity: bool, message: str)
+        """
+        try:
+            if not hasattr(self, 'navigation') or not self.navigation or not self.navigation.current_ship:
+                # No ship selected - allow unlimited cargo for now
+                return True, "No ship cargo limit"
+            
+            ship = self.navigation.current_ship
+            current_cargo = sum(ship.cargo.values()) if ship.cargo else 0
+            max_cargo = getattr(ship, 'max_cargo', 100)
+            
+            if current_cargo + additional_units > max_cargo:
+                available = max_cargo - current_cargo
+                return False, f"Insufficient cargo space. Available: {available}/{max_cargo} units"
+            
+            return True, f"Cargo OK: {current_cargo + additional_units}/{max_cargo} after purchase"
+        except Exception as e:
+            # On error, be permissive
+            return True, f"Cargo check skipped: {e}"
+
+    def get_cargo_status(self):
+        """Get current cargo status for display.
+        
+        Returns dict with 'used', 'max', 'available', 'percentage'
+        """
+        try:
+            if not hasattr(self, 'navigation') or not self.navigation or not self.navigation.current_ship:
+                return {'used': 0, 'max': 0, 'available': 0, 'percentage': 0}
+            
+            ship = self.navigation.current_ship
+            current_cargo = sum(ship.cargo.values()) if ship.cargo else 0
+            max_cargo = getattr(ship, 'max_cargo', 100)
+            available = max(0, max_cargo - current_cargo)
+            percentage = (current_cargo / max_cargo * 100) if max_cargo > 0 else 0
+            
+            return {
+                'used': current_cargo,
+                'max': max_cargo,
+                'available': available,
+                'percentage': percentage
+            }
+        except Exception:
+            return {'used': 0, 'max': 0, 'available': 0, 'percentage': 0}
+
+    def get_market_best_deals(self, system_name: str):
+        """Get best buying and selling opportunities at a market.
+        
+        Returns dict with 'best_buys' and 'best_sells' lists
+        """
+        try:
+            if not hasattr(self, 'economy') or not self.economy:
+                return {'best_buys': [], 'best_sells': []}
+            
+            market_info = self.economy.get_market_info(system_name)
+            if not market_info:
+                return {'best_buys': [], 'best_sells': []}
+            
+            return {
+                'best_buys': market_info.get('best_buys', [])[:5],  # Top 5
+                'best_sells': market_info.get('best_sells', [])[:5]  # Top 5
+            }
+        except Exception:
+            return {'best_buys': [], 'best_sells': []}
+
+    def get_trade_routes(self):
+        """Get profitable trade routes across the galaxy.
+        
+        Returns list of trade opportunities
+        """
+        try:
+            if not hasattr(self, 'economy') or not self.economy:
+                return []
+            
+            opportunities = self.economy.get_trade_opportunities()
+            return opportunities[:10]  # Top 10 routes
+        except Exception:
+            return []
+
+    def perform_trade_sell(self, system_name: str, commodity: str, quantity: int):
+        """Execute a sell transaction via the economic system and update game state.
+
+        Returns (success: bool, message: str)
+        """
+        try:
+            if quantity <= 0:
+                return False, "Quantity must be greater than zero"
+            if not hasattr(self, 'economy') or not self.economy:
+                return False, "Economic system unavailable"
+            if commodity not in self.inventory:
+                return False, f"You don't have any {commodity}"
+            if quantity > self.inventory.get(commodity, 0):
+                return False, f"You only have {self.inventory.get(commodity, 0)} {commodity}"
+
+            success, message, credits_earned = self.economy.sell_commodity(system_name, commodity, quantity, self.inventory)
+            if not success:
+                return False, message
+
+            self.credits += credits_earned
+            self.inventory[commodity] -= quantity
+            if self.inventory[commodity] <= 0:
+                del self.inventory[commodity]
+
+            # Update ship cargo if ship exists
+            try:
+                if self.navigation and self.navigation.current_ship:
+                    ship = self.navigation.current_ship
+                    if ship.cargo and commodity in ship.cargo:
+                        ship.cargo[commodity] -= quantity
+                        if ship.cargo[commodity] <= 0:
+                            del ship.cargo[commodity]
+            except Exception:
+                pass
+
+            # Log
+            try:
+                market_info = self.economy.get_market_info(system_name)
+                price_each = market_info['market']['prices'].get(commodity, 0) if market_info else 0
+                self.add_log_entry('trade', f"Sold {quantity} {commodity} at {system_name}", {
+                    'commodity': commodity,
+                    'quantity': quantity,
+                    'price_each': price_each,
+                    'total_value': credits_earned,
+                    'system': system_name,
+                    'direction': 'sell'
+                })
+            except Exception:
+                pass
+
+            return True, message
+        except Exception as e:
+            return False, f"Trade error: {e}"
 
     def market_analysis(self, system_name):
         """Show detailed market analysis"""
