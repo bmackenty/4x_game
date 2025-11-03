@@ -1783,9 +1783,6 @@ class ShipyardScreen(Screen):
     
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("1", "view_ships", "View Ships", show=False),
-        Binding("2", "upgrade_ship", "Upgrade", show=False),
-        Binding("3", "build_ship", "Build Ship", show=False),
     ]
     
     def __init__(self, game, system, station):
@@ -1793,16 +1790,47 @@ class ShipyardScreen(Screen):
         self.game = game
         self.system = system
         self.station = station
+        self.mode = "main"  # main, upgrade_category, upgrade_component
+        self.selected_category = None
+        self.selected_index = 0
+        self.component_list = []
     
     def compose(self) -> ComposeResult:
         yield Static(id="shipyard_display")
         yield MessageLog()
+    
+    def on_key(self, event):
+        """Handle key presses"""
+        if event.character and event.character.isdigit():
+            num = int(event.character)
+            if self.mode == "main" and 1 <= num <= 2:
+                if num == 1:
+                    self.action_upgrade_ship()
+                elif num == 2:
+                    self.action_build_ship()
+                event.prevent_default()
+            elif self.mode == "upgrade_category" and 1 <= num <= 5:
+                self.select_category(num)
+                event.prevent_default()
+        elif event.key == "up" or event.key == "k":
+            if self.mode == "upgrade_component":
+                self.selected_index = max(0, self.selected_index - 1)
+                self.render_shipyard()
+        elif event.key == "down" or event.key == "j":
+            if self.mode == "upgrade_component":
+                self.selected_index = min(len(self.component_list) - 1, self.selected_index + 1)
+                self.render_shipyard()
+        elif event.key == "enter":
+            if self.mode == "upgrade_component" and self.component_list:
+                self.install_selected_component()
+                event.prevent_default()
     
     def on_mount(self):
         self.render_shipyard()
         self.query_one(MessageLog).add_message(f"Connected to {self.station.get('name')}", "green")
     
     def render_shipyard(self):
+        from ship_builder import ship_components
         text = Text()
         
         # Header
@@ -1811,80 +1839,215 @@ class ShipyardScreen(Screen):
         text.append("═" * 80 + "\n", style="bold cyan")
         text.append("\n")
         
-        # Station info
-        text.append(f"Type: ", style="white")
-        text.append(f"{self.station.get('type', 'Unknown')}\n", style="cyan")
-        text.append(f"Location: ", style="white")
-        text.append(f"{self.system['name']}\n", style="yellow")
-        text.append("\n")
-        text.append(f"{self.station.get('description', 'A shipbuilding facility.')}\n", style="italic dim white")
-        text.append("\n")
-        
-        # Current ship
+        # Current ship info
         nav = getattr(self.game, 'navigation', None)
         ship = nav.current_ship if nav else None
         
-        if ship:
-            text.append("━" * 80 + "\n", style="green")
-            text.append("YOUR CURRENT SHIP:\n", style="bold bright_green")
-            text.append("━" * 80 + "\n", style="green")
-            text.append(f"  Name: ", style="white")
+        if ship and hasattr(ship, 'components'):
+            text.append("CURRENT SHIP: ", style="bold bright_green")
             text.append(f"{ship.name}\n", style="bright_cyan")
-            text.append(f"  Class: ", style="white")
-            text.append(f"{ship.ship_class}\n", style="cyan")
-            text.append(f"  Cargo: ", style="white")
-            text.append(f"{ship.max_cargo} units\n", style="yellow")
-            text.append(f"  Fuel: ", style="white")
-            text.append(f"{ship.max_fuel} units\n", style="yellow")
-            text.append(f"  Jump Range: ", style="white")
-            text.append(f"{ship.jump_range}\n", style="yellow")
+            
+            # Show installed components
+            text.append(f"  Hull: ", style="white")
+            text.append(f"{ship.components.get('hull', 'Unknown')}\n", style="cyan")
+            text.append(f"  Engine: ", style="white")
+            text.append(f"{ship.components.get('engine', 'None')}\n", style="cyan")
+            
+            if ship.components.get('weapons'):
+                text.append(f"  Weapons: ", style="white")
+                text.append(f"{', '.join(ship.components['weapons'])}\n", style="cyan")
+            
+            if ship.components.get('shields'):
+                text.append(f"  Shields: ", style="white")
+                text.append(f"{', '.join(ship.components['shields'])}\n", style="cyan")
+            
+            if ship.components.get('special'):
+                text.append(f"  Special: ", style="white")
+                text.append(f"{', '.join(ship.components['special'])}\n", style="cyan")
+            
+            # Power info
+            power_info = self.game.get_ship_power_info()
+            if power_info:
+                power_pct = power_info['power_percentage']
+                power_color = "red" if power_pct > 90 else ("yellow" if power_pct > 70 else "green")
+                text.append(f"  Power: ", style="white")
+                text.append(f"{power_info['power_used']}W / {power_info['power_output']}W ", style=power_color)
+                text.append(f"({power_pct:.0f}%)\n", style=power_color)
+            
             text.append("\n")
         
-        # Services
+        # Mode-specific content
+        if self.mode == "main":
+            self._render_main_menu(text)
+        elif self.mode == "upgrade_category":
+            self._render_category_menu(text)
+        elif self.mode == "upgrade_component":
+            self._render_component_list(text)
+        
+        self.query_one("#shipyard_display", Static).update(text)
+    
+    def _render_main_menu(self, text):
         text.append("━" * 80 + "\n", style="cyan")
         text.append("SHIPYARD SERVICES:\n", style="bold bright_cyan")
         text.append("━" * 80 + "\n", style="cyan")
+        text.append("\n")
         
         text.append("[", style="white")
         text.append("1", style="bold yellow")
-        text.append("] View Available Ships", style="white")
-        text.append(" - Browse ship catalog\n", style="dim white")
+        text.append("] Upgrade Current Ship\n", style="white")
         
         text.append("[", style="white")
         text.append("2", style="bold yellow")
-        text.append("] Upgrade Current Ship", style="white")
-        text.append(" - Enhance capabilities\n", style="dim white")
-        
-        text.append("[", style="white")
-        text.append("3", style="bold yellow")
-        text.append("] Build New Ship", style="white")
-        text.append(" - Commission new vessel\n", style="dim white")
+        text.append("] Build New Ship (Coming Soon)\n", style="dim white")
         
         text.append("\n")
         text.append(f"Your Credits: ", style="white")
         text.append(f"{self.game.credits:,}\n", style="yellow")
         text.append("\n")
-        
         text.append("[", style="white")
         text.append("q/ESC", style="bold cyan")
         text.append("] Back\n", style="white")
+    
+    def _render_category_menu(self, text):
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("SELECT COMPONENT CATEGORY:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("\n")
         
-        self.query_one("#shipyard_display", Static).update(text)
+        text.append("[", style="white")
+        text.append("1", style="bold yellow")
+        text.append("] Engines\n", style="white")
+        
+        text.append("[", style="white")
+        text.append("2", style="bold yellow")
+        text.append("] Weapons\n", style="white")
+        
+        text.append("[", style="white")
+        text.append("3", style="bold yellow")
+        text.append("] Shields\n", style="white")
+        
+        text.append("[", style="white")
+        text.append("4", style="bold yellow")
+        text.append("] Special Systems\n", style="white")
+        
+        text.append("\n[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+    
+    def _render_component_list(self, text):
+        from ship_builder import ship_components
+        
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append(f"AVAILABLE {self.selected_category.upper()}:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("\n")
+        
+        if not self.component_list:
+            text.append("No components available.\n", style="yellow")
+        else:
+            for i, (comp_name, comp_data) in enumerate(self.component_list):
+                cursor = ">" if i == self.selected_index else " "
+                
+                # Check compatibility
+                can_install, reason = self.game.can_install_component(self.selected_category, comp_name)
+                status_color = "green" if can_install else "red"
+                status_icon = "✓" if can_install else "✗"
+                
+                text.append(f" {cursor} ", style="white")
+                text.append(f"{comp_name:<30} ", style="bright_cyan")
+                text.append(f"{comp_data.get('cost', 0):>8,} cr  ", style="yellow")
+                text.append(f"{status_icon} ", style=status_color)
+                
+                # Show key stats
+                if self.selected_category == "Engines":
+                    text.append(f"Speed:{comp_data.get('speed', 1.0):.1f}x Power:{comp_data.get('power_output', 0)}W", style="white")
+                elif self.selected_category == "Weapons":
+                    text.append(f"Dmg:{comp_data.get('damage', 0)} Pwr:{comp_data.get('power_required', 0)}W", style="white")
+                elif self.selected_category == "Shields":
+                    text.append(f"Str:{comp_data.get('shield_strength', 0)} Pwr:{comp_data.get('power_required', 0)}W", style="white")
+                elif self.selected_category == "Special Systems":
+                    if 'cargo_bonus' in comp_data:
+                        text.append(f"Cargo:+{comp_data['cargo_bonus']}", style="white")
+                    text.append(f" Pwr:{comp_data.get('power_required', 0)}W", style="white")
+                
+                text.append("\n")
+                
+                # Show reason if can't install
+                if not can_install and i == self.selected_index:
+                    text.append(f"      {reason}\n", style="red italic")
+        
+        text.append("\n")
+        if self.component_list:
+            selected_comp_name, selected_comp = self.component_list[self.selected_index]
+            text.append("DESCRIPTION: ", style="bold white")
+            text.append(f"{selected_comp.get('description', 'No description')}\n", style="italic white")
+            text.append("\n")
+        
+        text.append("[", style="white")
+        text.append("↑/↓ or j/k", style="bold cyan")
+        text.append("] Navigate  [", style="white")
+        text.append("Enter", style="bold green")
+        text.append("] Install  [", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
     
     def action_pop_screen(self):
-        self.app.pop_screen()
+        if self.mode != "main":
+            self.mode = "upgrade_category" if self.mode == "upgrade_component" else "main"
+            self.selected_index = 0
+            self.render_shipyard()
+        else:
+            self.app.pop_screen()
     
-    def view_ships(self):
-        self.query_one(MessageLog).add_message("Browsing ship catalog...", "cyan")
-        self.query_one(MessageLog).add_message("Ship catalog display coming soon!", "yellow")
+    def action_upgrade_ship(self):
+        ship = self.game.navigation.current_ship if self.game.navigation else None
+        if not ship:
+            self.query_one(MessageLog).add_message("No active ship!", "red")
+            return
+        
+        if not hasattr(ship, 'components'):
+            self.query_one(MessageLog).add_message("This ship doesn't support upgrades", "red")
+            return
+        
+        self.mode = "upgrade_category"
+        self.render_shipyard()
+        self.query_one(MessageLog).add_message("Select component category", "cyan")
     
-    def upgrade_ship(self):
-        self.query_one(MessageLog).add_message("Accessing upgrade options...", "cyan")
-        self.query_one(MessageLog).add_message("Ship upgrade system coming soon!", "yellow")
-    
-    def build_ship(self):
-        self.query_one(MessageLog).add_message("Opening ship builder...", "cyan")
+    def action_build_ship(self):
         self.query_one(MessageLog).add_message("Ship construction coming soon!", "yellow")
+    
+    def select_category(self, num):
+        from ship_builder import ship_components
+        
+        categories = ["Engines", "Weapons", "Shields", "Special Systems"]
+        if 1 <= num <= len(categories):
+            self.selected_category = categories[num - 1]
+            self.component_list = list(ship_components[self.selected_category].items())
+            self.selected_index = 0
+            self.mode = "upgrade_component"
+            self.render_shipyard()
+            self.query_one(MessageLog).add_message(f"Browsing {self.selected_category}", "cyan")
+    
+    def install_selected_component(self):
+        if not self.component_list:
+            return
+        
+        comp_name, comp_data = self.component_list[self.selected_index]
+        
+        # Check if can install
+        can_install, reason = self.game.can_install_component(self.selected_category, comp_name)
+        if not can_install:
+            self.query_one(MessageLog).add_message(reason, "red")
+            return
+        
+        # Install component
+        success, message = self.game.install_ship_component(self.selected_category, comp_name)
+        
+        if success:
+            self.query_one(MessageLog).add_message(message, "green")
+            self.render_shipyard()  # Refresh display with new stats
+        else:
+            self.query_one(MessageLog).add_message(message, "red")
 
 
 class ResearchScreen(Screen):

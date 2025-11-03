@@ -1,5 +1,23 @@
 """
 Ship Building and Customization System
+
+Power System:
+- Each component requires power (weapons, shields, special systems)
+- Engines provide power output
+- Total power_required cannot exceed engine power_output
+
+Slot System:
+- Components require specific slot types and quantities
+- Hull types define available slots
+- Example: Light Hull has 2 weapon hardpoints, 1 utility bay
+
+Tech Prerequisites:
+- Some components require research/tech unlocks
+- Links to research.py tech tree
+
+Size Classes:
+- Components have size_class (Small, Medium, Large, XL)
+- Must fit within hull size limits
 """
 
 ship_components = {
@@ -9,6 +27,13 @@ ship_components = {
             "health": 100,
             "cargo_space": 50,
             "speed_modifier": 1.2,
+            "size_class": "Small",
+            "slots": {
+                "weapon_hardpoints": 2,
+                "utility_bays": 1,
+                "engine_mounts": 1,
+                "shield_slots": 1
+            },
             "description": "Fast and nimble, perfect for scouts and couriers"
         },
         "Standard Hull": {
@@ -16,6 +41,13 @@ ship_components = {
             "health": 200,
             "cargo_space": 100,
             "speed_modifier": 1.0,
+            "size_class": "Medium",
+            "slots": {
+                "weapon_hardpoints": 4,
+                "utility_bays": 2,
+                "engine_mounts": 1,
+                "shield_slots": 1
+            },
             "description": "Balanced design suitable for most operations"
         },
         "Heavy Hull": {
@@ -23,6 +55,13 @@ ship_components = {
             "health": 400,
             "cargo_space": 150,
             "speed_modifier": 0.8,
+            "size_class": "Large",
+            "slots": {
+                "weapon_hardpoints": 6,
+                "utility_bays": 3,
+                "engine_mounts": 1,
+                "shield_slots": 2
+            },
             "description": "Robust construction for dangerous missions"
         },
         "Mega Hull": {
@@ -30,6 +69,13 @@ ship_components = {
             "health": 800,
             "cargo_space": 300,
             "speed_modifier": 0.6,
+            "size_class": "XL",
+            "slots": {
+                "weapon_hardpoints": 8,
+                "utility_bays": 4,
+                "engine_mounts": 2,
+                "shield_slots": 2
+            },
             "description": "Massive frame for industrial operations"
         }
     },
@@ -39,6 +85,11 @@ ship_components = {
             "fuel_efficiency": 1.0,
             "speed": 1.0,
             "reliability": 0.9,
+            "power_output": 100,
+            "size_class": "Small",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": None,
             "description": "Reliable ion propulsion system"
         },
         "Fusion Engine": {
@@ -46,6 +97,11 @@ ship_components = {
             "fuel_efficiency": 0.8,
             "speed": 1.3,
             "reliability": 0.85,
+            "power_output": 200,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": "Fusion Technology",
             "description": "High-performance fusion reactor drive"
         },
         "Ether Drive": {
@@ -53,6 +109,11 @@ ship_components = {
             "fuel_efficiency": 1.2,
             "speed": 1.5,
             "reliability": 0.75,
+            "power_output": 300,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": "Etheric Manipulation",
             "description": "Exotic etheric field manipulation drive"
         },
         "Quantum Jump Drive": {
@@ -60,7 +121,60 @@ ship_components = {
             "fuel_efficiency": 2.0,
             "speed": 3.0,
             "reliability": 0.7,
+            "power_output": 400,
+            "size_class": "Large",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": "Quantum Mechanics",
             "description": "Instantaneous quantum tunneling system"
+        },
+        "Graviton Flux Engine": {
+            "cost": 95000,
+            "fuel_efficiency": 2.2,
+            "speed": 2.8,
+            "reliability": 0.65,
+            "power_output": 450,
+            "size_class": "Large",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": "Graviton Physics",
+            "description": "Manipulates localized gravity wells to create near-instant acceleration."
+        },
+        "Solaris Bloom Drive": {
+            "cost": 40000,
+            "fuel_efficiency": 1.8,
+            "speed": 1.6,
+            "reliability": 0.9,
+            "power_output": 250,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "engine_mounts",
+            "tech_required": "Bio-Engineering",
+            "description": "Photosynthetic nano-panels harvest stellar radiation and Etheric sunlight."
+        },
+        "Voidstream Engine": {
+            "cost": 120000,
+            "fuel_efficiency": 3.0,
+            "speed": 3.5,
+            "reliability": 0.6,
+            "power_output": 500,
+            "size_class": "XL",
+            "slots_required": 2,
+            "slot_type": "engine_mounts",
+            "tech_required": "Subspace Navigation",
+            "description": "Taps subspace void currents for silent, faster-than-sensor travel."
+        },
+        "Chrono-Spindle Reactor": {
+            "cost": 150000,
+            "fuel_efficiency": 2.8,
+            "speed": 2.2,
+            "reliability": 0.7,
+            "power_output": 550,
+            "size_class": "XL",
+            "slots_required": 2,
+            "slot_type": "engine_mounts",
+            "tech_required": "Temporal Manipulation",
+            "description": "Generates thrust by coiling and releasing micro-temporal distortions."
         }
     },
     "Weapons": {
@@ -69,6 +183,11 @@ ship_components = {
             "damage": 50,
             "range": 100,
             "accuracy": 0.8,
+            "power_required": 20,
+            "size_class": "Small",
+            "slots_required": 1,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": None,
             "description": "Standard energy weapon system"
         },
         "Plasma Torpedoes": {
@@ -76,6 +195,11 @@ ship_components = {
             "damage": 120,
             "range": 200,
             "accuracy": 0.6,
+            "power_required": 40,
+            "size_class": "Medium",
+            "slots_required": 2,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Plasma Physics",
             "description": "Heavy explosive projectiles"
         },
         "Etheric Disruptors": {
@@ -83,6 +207,11 @@ ship_components = {
             "damage": 80,
             "range": 150,
             "accuracy": 0.85,
+            "power_required": 50,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Etheric Manipulation",
             "special": "Disables shields",
             "description": "Disrupts enemy etheric fields"
         },
@@ -91,8 +220,78 @@ ship_components = {
             "damage": 200,
             "range": 300,
             "accuracy": 0.7,
+            "power_required": 80,
+            "size_class": "Large",
+            "slots_required": 3,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Graviton Physics",
             "special": "Area damage",
             "description": "Weaponized gravitational distortion"
+        },
+        "Neutrino Lance": {
+            "cost": 40000,
+            "damage": 140,
+            "range": 350,
+            "accuracy": 0.85,
+            "power_required": 60,
+            "size_class": "Large",
+            "slots_required": 2,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Particle Physics",
+            "special": "Bypasses most shields",
+            "description": "Fires tightly focused neutrino beams that ignore conventional defenses."
+        },
+        "Chrono Torpedoes": {
+            "cost": 65000,
+            "damage": 300,
+            "range": 250,
+            "accuracy": 0.6,
+            "power_required": 90,
+            "size_class": "Large",
+            "slots_required": 3,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Temporal Manipulation",
+            "special": "Delays detonation across time, striking seconds later.",
+            "description": "Temporal-phase explosives that detonate in multiple timeframes."
+        },
+        "Nanite Swarm Projector": {
+            "cost": 35000,
+            "damage": 50,
+            "range": 150,
+            "accuracy": 0.9,
+            "power_required": 45,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Nanotechnology",
+            "special": "Erodes hull integrity over time",
+            "description": "Releases self-replicating nanites that disassemble enemy hulls."
+        },
+        "Dark Matter Railgun": {
+            "cost": 90000,
+            "damage": 250,
+            "range": 400,
+            "accuracy": 0.7,
+            "power_required": 100,
+            "size_class": "XL",
+            "slots_required": 4,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Dark Matter Research",
+            "special": "Pierces through multiple targets",
+            "description": "Accelerates dense dark-matter slugs beyond relativistic speeds."
+        },
+        "Harmonic Resonator": {
+            "cost": 20000,
+            "damage": 100,
+            "range": 180,
+            "accuracy": 0.75,
+            "power_required": 35,
+            "size_class": "Small",
+            "slots_required": 1,
+            "slot_type": "weapon_hardpoints",
+            "tech_required": "Etheric Manipulation",
+            "special": "Destabilizes Etheric shields",
+            "description": "Emits frequencies tuned to resonate with Ether fields."
         }
     },
     "Shields": {
@@ -100,18 +299,33 @@ ship_components = {
             "cost": 3000,
             "shield_strength": 50,
             "recharge_rate": 5,
+            "power_required": 15,
+            "size_class": "Small",
+            "slots_required": 1,
+            "slot_type": "shield_slots",
+            "tech_required": None,
             "description": "Standard particle deflection system"
         },
         "Plasma Shields": {
             "cost": 10000,
             "shield_strength": 150,
             "recharge_rate": 8,
+            "power_required": 30,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "shield_slots",
+            "tech_required": "Plasma Physics",
             "description": "High-energy plasma barrier"
         },
         "Etheric Barriers": {
             "cost": 20000,
             "shield_strength": 200,
             "recharge_rate": 12,
+            "power_required": 50,
+            "size_class": "Large",
+            "slots_required": 1,
+            "slot_type": "shield_slots",
+            "tech_required": "Etheric Manipulation",
             "special": "Reflects energy attacks",
             "description": "Mystical etheric protection field"
         },
@@ -119,6 +333,11 @@ ship_components = {
             "cost": 40000,
             "shield_strength": 100,
             "recharge_rate": 15,
+            "power_required": 60,
+            "size_class": "Large",
+            "slots_required": 2,
+            "slot_type": "shield_slots",
+            "tech_required": "Quantum Mechanics",
             "special": "50% chance to phase through attacks",
             "description": "Quantum phase-shifting defensive matrix"
         }
@@ -127,31 +346,61 @@ ship_components = {
         "Cargo Expander": {
             "cost": 8000,
             "cargo_bonus": 100,
+            "power_required": 10,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": None,
             "description": "Dimensional compression cargo system"
         },
         "Stealth Generator": {
             "cost": 25000,
             "stealth_rating": 0.8,
+            "power_required": 40,
+            "size_class": "Large",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": "Cloaking Technology",
             "description": "Advanced cloaking technology"
         },
         "Scanner Array": {
             "cost": 12000,
             "detection_range": 500,
+            "power_required": 20,
+            "size_class": "Small",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": None,
             "description": "Long-range sensor system"
         },
         "Mining Laser": {
             "cost": 15000,
             "mining_efficiency": 2.0,
+            "power_required": 30,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": None,
             "description": "Asteroid mining equipment"
         },
         "Research Lab": {
             "cost": 30000,
             "research_bonus": 0.5,
+            "power_required": 25,
+            "size_class": "Large",
+            "slots_required": 2,
+            "slot_type": "utility_bays",
+            "tech_required": "Advanced Research",
             "description": "Mobile scientific laboratory"
         },
         "Medical Bay": {
             "cost": 20000,
             "crew_health": 1.5,
+            "power_required": 15,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": None,
             "description": "Advanced medical facilities"
         }
     }
@@ -246,3 +495,123 @@ def calculate_ship_stats(components):
                 stats["cargo_space"] += system_data["cargo_bonus"]
     
     return stats
+
+
+def check_component_compatibility(hull_name, component_category, component_name, current_components, unlocked_tech=None):
+    """
+    Check if a component can be installed on the ship.
+    
+    Args:
+        hull_name: Name of the hull type
+        component_category: Category (Engines, Weapons, Shields, Special Systems)
+        component_name: Name of the component to install
+        current_components: Dict of currently installed components
+        unlocked_tech: List of unlocked technologies (optional)
+    
+    Returns:
+        (bool, str): (can_install, reason)
+    """
+    unlocked_tech = unlocked_tech or []
+    
+    # Get component and hull data
+    component = ship_components[component_category][component_name]
+    hull = ship_components["Hull Types"][hull_name]
+    
+    # Check tech requirements
+    if component.get("tech_required") and component["tech_required"] not in unlocked_tech:
+        return False, f"Requires technology: {component['tech_required']}"
+    
+    # Check slot availability
+    slot_type = component.get("slot_type")
+    slots_required = component.get("slots_required", 1)
+    
+    if slot_type:
+        # Count currently used slots
+        used_slots = 0
+        
+        if component_category == "Engines" and "engine" in current_components:
+            current_engine = ship_components["Engines"][current_components["engine"]]
+            if current_engine.get("slot_type") == slot_type:
+                used_slots += current_engine.get("slots_required", 1)
+        
+        if component_category == "Weapons" and "weapons" in current_components:
+            for weapon in current_components["weapons"]:
+                weapon_data = ship_components["Weapons"][weapon]
+                if weapon_data.get("slot_type") == slot_type:
+                    used_slots += weapon_data.get("slots_required", 1)
+        
+        if component_category == "Shields" and "shields" in current_components:
+            for shield in current_components.get("shields", []):
+                shield_data = ship_components["Shields"][shield]
+                if shield_data.get("slot_type") == slot_type:
+                    used_slots += shield_data.get("slots_required", 1)
+        
+        if component_category == "Special Systems" and "special" in current_components:
+            for system in current_components["special"]:
+                system_data = ship_components["Special Systems"][system]
+                if system_data.get("slot_type") == slot_type:
+                    used_slots += system_data.get("slots_required", 1)
+        
+        # For replacement (not adding), don't count current component's slots
+        available_slots = hull["slots"].get(slot_type, 0) - used_slots
+        
+        if slots_required > available_slots:
+            return False, f"Not enough {slot_type} ({available_slots} available, {slots_required} required)"
+    
+    # Check size class compatibility
+    hull_size = hull.get("size_class", "Medium")
+    component_size = component.get("size_class", "Small")
+    
+    size_order = {"Small": 0, "Medium": 1, "Large": 2, "XL": 3}
+    if size_order.get(component_size, 0) > size_order.get(hull_size, 1):
+        return False, f"Component too large for {hull_size} hull (requires {component_size} hull or larger)"
+    
+    return True, "Compatible"
+
+
+def calculate_power_usage(current_components):
+    """Calculate total power usage and available power"""
+    power_output = 0
+    power_used = 0
+    
+    # Get engine power output
+    if "engine" in current_components:
+        engine = ship_components["Engines"][current_components["engine"]]
+        power_output = engine.get("power_output", 0)
+    
+    # Calculate power consumption
+    if "weapons" in current_components:
+        for weapon in current_components["weapons"]:
+            weapon_data = ship_components["Weapons"][weapon]
+            power_used += weapon_data.get("power_required", 0)
+    
+    if "shields" in current_components:
+        shields_list = current_components["shields"] if isinstance(current_components["shields"], list) else [current_components["shields"]]
+        for shield in shields_list:
+            shield_data = ship_components["Shields"][shield]
+            power_used += shield_data.get("power_required", 0)
+    
+    if "special" in current_components:
+        for system in current_components["special"]:
+            system_data = ship_components["Special Systems"][system]
+            power_used += system_data.get("power_required", 0)
+    
+    return {
+        "power_output": power_output,
+        "power_used": power_used,
+        "power_available": power_output - power_used,
+        "power_percentage": (power_used / power_output * 100) if power_output > 0 else 0
+    }
+
+
+def get_component_power_requirement(component_category, component_name):
+    """Get power requirement for a specific component"""
+    component = ship_components[component_category][component_name]
+    return component.get("power_required", 0)
+
+
+def can_afford_component(component_category, component_name, credits):
+    """Check if player has enough credits for a component"""
+    component = ship_components[component_category][component_name]
+    cost = component.get("cost", 0)
+    return credits >= cost, cost

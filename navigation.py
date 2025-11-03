@@ -193,26 +193,82 @@ class Ship:
         self.cargo = {}
         self.max_cargo = 100
         
+        # Component tracking for upgrade system
+        self.components = {
+            "hull": "Light Hull",  # Default starter hull
+            "engine": "Ion Drive",  # Default starter engine
+            "weapons": ["Pulse Cannons"],  # List of installed weapons
+            "shields": ["Basic Deflectors"],  # List of installed shields
+            "special": []  # List of special systems
+        }
+        
         # Ship stats based on class
         self.set_ship_stats()
     
     def set_ship_stats(self):
-        """Set ship statistics based on class"""
-        ship_stats = {
-            "Basic Transport": {"fuel": 100, "range": 15, "cargo": 100},
-            "Starter Vessel": {"fuel": 100, "range": 15, "cargo": 100},
-            "Aurora-Class Freighter": {"fuel": 150, "range": 20, "cargo": 200},
-            "Stellar Voyager": {"fuel": 200, "range": 25, "cargo": 75},
-            "Aurora Ascendant": {"fuel": 120, "range": 18, "cargo": 80},
-            "Nebula Drifter": {"fuel": 180, "range": 22, "cargo": 90},
-            "Celestium-Class Communication Ship": {"fuel": 130, "range": 20, "cargo": 60}
-        }
-        
-        stats = ship_stats.get(self.ship_class, ship_stats["Basic Transport"])
-        self.max_fuel = stats["fuel"]
-        self.fuel = self.max_fuel
-        self.jump_range = stats["range"]
-        self.max_cargo = stats["cargo"]
+        """Set ship statistics based on class or components"""
+        # If using component system, calculate from components
+        if hasattr(self, 'components') and self.components:
+            self.calculate_stats_from_components()
+        else:
+            # Legacy system for backwards compatibility
+            ship_stats = {
+                "Basic Transport": {"fuel": 100, "range": 15, "cargo": 100},
+                "Starter Vessel": {"fuel": 100, "range": 15, "cargo": 100},
+                "Aurora-Class Freighter": {"fuel": 150, "range": 20, "cargo": 200},
+                "Stellar Voyager": {"fuel": 200, "range": 25, "cargo": 75},
+                "Aurora Ascendant": {"fuel": 120, "range": 18, "cargo": 80},
+                "Nebula Drifter": {"fuel": 180, "range": 22, "cargo": 90},
+                "Celestium-Class Communication Ship": {"fuel": 130, "range": 20, "cargo": 60}
+            }
+            
+            stats = ship_stats.get(self.ship_class, ship_stats["Basic Transport"])
+            self.max_fuel = stats["fuel"]
+            self.fuel = self.max_fuel
+            self.jump_range = stats["range"]
+            self.max_cargo = stats["cargo"]
+    
+    def calculate_stats_from_components(self):
+        """Calculate ship stats from installed components"""
+        try:
+            from ship_builder import ship_components
+            
+            # Reset stats
+            health = 0
+            cargo_space = 0
+            speed_mod = 1.0
+            fuel_efficiency = 1.0
+            
+            # Hull stats
+            if self.components.get("hull"):
+                hull = ship_components["Hull Types"][self.components["hull"]]
+                health = hull.get("health", 100)
+                cargo_space = hull.get("cargo_space", 100)
+                speed_mod = hull.get("speed_modifier", 1.0)
+            
+            # Engine stats
+            if self.components.get("engine"):
+                engine = ship_components["Engines"][self.components["engine"]]
+                fuel_efficiency = engine.get("fuel_efficiency", 1.0)
+                speed_mod *= engine.get("speed", 1.0)
+            
+            # Special system bonuses
+            if self.components.get("special"):
+                for system_name in self.components["special"]:
+                    system = ship_components["Special Systems"][system_name]
+                    if "cargo_bonus" in system:
+                        cargo_space += system["cargo_bonus"]
+            
+            # Apply calculated stats
+            self.max_cargo = int(cargo_space)
+            self.max_fuel = int(100 * fuel_efficiency)  # Base 100 fuel scaled by efficiency
+            self.fuel = min(self.fuel, self.max_fuel)  # Don't exceed new max
+            self.jump_range = int(15 * speed_mod)  # Base 15 range scaled by speed
+            self.health = health
+            
+        except ImportError:
+            # Fallback if ship_builder not available
+            pass
     
     def can_jump_to(self, target_coords, galaxy):
         """Check if ship can jump to target coordinates"""

@@ -1735,6 +1735,204 @@ class Game:
         
         input("\nPress Enter to continue...")
 
+    # ========== SHIP UPGRADE SYSTEM ==========
+    
+    def get_unlocked_technologies(self):
+        """Get list of unlocked technologies from research system"""
+        return self.completed_research if hasattr(self, 'completed_research') else []
+    
+    def can_install_component(self, component_category, component_name):
+        """Check if a component can be installed on current ship"""
+        from ship_builder import check_component_compatibility
+        
+        ship = self.navigation.current_ship if self.navigation else None
+        if not ship:
+            return False, "No active ship"
+        
+        if not hasattr(ship, 'components'):
+            return False, "Ship does not support component upgrades"
+        
+        hull_name = ship.components.get("hull", "Light Hull")
+        unlocked_tech = self.get_unlocked_technologies()
+        
+        return check_component_compatibility(
+            hull_name, 
+            component_category, 
+            component_name, 
+            ship.components,
+            unlocked_tech
+        )
+    
+    def install_ship_component(self, component_category, component_name, replace_index=None):
+        """
+        Install a component on the current ship.
+        
+        Args:
+            component_category: Category (Engines, Weapons, Shields, Special Systems)
+            component_name: Name of component to install
+            replace_index: For weapons/shields/special, which slot to replace (None = add new)
+        
+        Returns:
+            (success, message)
+        """
+        from ship_builder import ship_components, can_afford_component, calculate_power_usage
+        
+        ship = self.navigation.current_ship if self.navigation else None
+        if not ship:
+            return False, "No active ship"
+        
+        if not hasattr(ship, 'components'):
+            return False, "Ship does not support component upgrades"
+        
+        # Check affordability
+        can_afford, cost = can_afford_component(component_category, component_name, self.credits)
+        if not can_afford:
+            return False, f"Insufficient credits. Cost: {cost:,} cr"
+        
+        # Check compatibility
+        compatible, reason = self.can_install_component(component_category, component_name)
+        if not compatible:
+            return False, reason
+        
+        # Install component
+        old_component = None
+        
+        if component_category == "Engines":
+            old_component = ship.components.get("engine")
+            ship.components["engine"] = component_name
+            
+        elif component_category == "Weapons":
+            if replace_index is not None and 0 <= replace_index < len(ship.components["weapons"]):
+                old_component = ship.components["weapons"][replace_index]
+                ship.components["weapons"][replace_index] = component_name
+            else:
+                ship.components["weapons"].append(component_name)
+                
+        elif component_category == "Shields":
+            if replace_index is not None and 0 <= replace_index < len(ship.components["shields"]):
+                old_component = ship.components["shields"][replace_index]
+                ship.components["shields"][replace_index] = component_name
+            else:
+                ship.components["shields"].append(component_name)
+                
+        elif component_category == "Special Systems":
+            if replace_index is not None and 0 <= replace_index < len(ship.components["special"]):
+                old_component = ship.components["special"][replace_index]
+                ship.components["special"][replace_index] = component_name
+            else:
+                ship.components["special"].append(component_name)
+        
+        # Check power after installation
+        power_info = calculate_power_usage(ship.components)
+        if power_info["power_used"] > power_info["power_output"]:
+            # Rollback installation
+            if component_category == "Engines":
+                ship.components["engine"] = old_component
+            elif old_component and replace_index is not None:
+                if component_category == "Weapons":
+                    ship.components["weapons"][replace_index] = old_component
+                elif component_category == "Shields":
+                    ship.components["shields"][replace_index] = old_component
+                elif component_category == "Special Systems":
+                    ship.components["special"][replace_index] = old_component
+            else:
+                # Remove the added component
+                if component_category == "Weapons":
+                    ship.components["weapons"].pop()
+                elif component_category == "Shields":
+                    ship.components["shields"].pop()
+                elif component_category == "Special Systems":
+                    ship.components["special"].pop()
+            
+            return False, f"Insufficient power! Needs {power_info['power_used']}W but only {power_info['power_output']}W available"
+        
+        # Deduct cost
+        self.credits -= cost
+        
+        # Recalculate ship stats
+        ship.calculate_stats_from_components()
+        
+        # Log upgrade
+        self.add_log_entry('upgrade', f"Installed {component_name}", {
+            'component': component_name,
+            'category': component_category,
+            'cost': cost,
+            'ship': ship.name
+        })
+        
+        replacement_text = f" (replaced {old_component})" if old_component else ""
+        return True, f"Installed {component_name}{replacement_text} for {cost:,} credits"
+    
+    def remove_ship_component(self, component_category, component_index):
+        """
+        Remove a component from the current ship.
+        
+        Args:
+            component_category: Category (Weapons, Shields, Special Systems)
+            component_index: Index of component to remove
+        
+        Returns:
+            (success, message)
+        """
+        ship = self.navigation.current_ship if self.navigation else None
+        if not ship:
+            return False, "No active ship"
+        
+        if not hasattr(ship, 'components'):
+            return False, "Ship does not support component upgrades"
+        
+        # Can't remove engine or hull
+        if component_category in ["Engines", "Hull Types"]:
+            return False, "Cannot remove engine or hull"
+        
+        # Remove component
+        removed_component = None
+        
+        if component_category == "Weapons":
+            if 0 <= component_index < len(ship.components["weapons"]):
+                removed_component = ship.components["weapons"].pop(component_index)
+            else:
+                return False, "Invalid weapon index"
+                
+        elif component_category == "Shields":
+            if 0 <= component_index < len(ship.components["shields"]):
+                removed_component = ship.components["shields"].pop(component_index)
+            else:
+                return False, "Invalid shield index"
+                
+        elif component_category == "Special Systems":
+            if 0 <= component_index < len(ship.components["special"]):
+                removed_component = ship.components["special"].pop(component_index)
+            else:
+                return False, "Invalid system index"
+        
+        if not removed_component:
+            return False, "Could not remove component"
+        
+        # Recalculate ship stats
+        ship.calculate_stats_from_components()
+        
+        # Log removal
+        self.add_log_entry('upgrade', f"Removed {removed_component}", {
+            'component': removed_component,
+            'category': component_category,
+            'ship': ship.name
+        })
+        
+        return True, f"Removed {removed_component}"
+    
+    def get_ship_power_info(self):
+        """Get current ship power usage information"""
+        from ship_builder import calculate_power_usage
+        
+        ship = self.navigation.current_ship if self.navigation else None
+        if not ship or not hasattr(ship, 'components'):
+            return None
+        
+        return calculate_power_usage(ship.components)
+    
+    # ========== END SHIP UPGRADE SYSTEM ==========
+
     def purchase_menu(self):
         print("\n" + "="*60)
         print("           PURCHASE ASSETS")
