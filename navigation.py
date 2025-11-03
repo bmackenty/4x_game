@@ -15,6 +15,8 @@ class Galaxy:
     
     def generate_star_systems(self):
         """Generate random star systems throughout the galaxy"""
+        from space_stations import space_stations
+        
         system_names = [
             "Alpha Centauri", "Vega Prime", "Rigel Station", "Betelgeuse Sector",
             "Sirius Gate", "Procyon Hub", "Altair Outpost", "Arcturus Base",
@@ -31,6 +33,10 @@ class Galaxy:
         # Generate 30-40 star systems
         num_systems = random.randint(30, 40)
         
+        # Available space stations
+        available_stations = list(space_stations.keys())
+        random.shuffle(available_stations)
+        
         for i in range(num_systems):
             name = random.choice(system_names)
             system_names.remove(name)  # Avoid duplicates
@@ -40,20 +46,103 @@ class Galaxy:
             y = random.randint(10, self.size_y - 10)
             z = random.randint(5, self.size_z - 5)
             
+            # Determine system type first
+            system_type = random.choice(["Core World", "Frontier", "Industrial", "Military", "Research", "Trading Hub", "Mining", "Agricultural"])
+            
+            # Assign space stations to some systems
+            system_station_count = random.choices([0, 1, 2, 3], weights=[40, 35, 20, 5])[0]
+            system_stations = []
+            for _ in range(system_station_count):
+                if available_stations:
+                    station_name = available_stations.pop()
+                    station_data = space_stations[station_name].copy()
+                    station_data['name'] = station_name
+                    system_stations.append(station_data)
+            
+            # Generate celestial bodies for the system
+            celestial_bodies = self.generate_celestial_bodies(system_type)
+            
             # Generate system properties
             system = {
                 "name": name,
                 "coordinates": (x, y, z),
-                "type": random.choice(["Core World", "Frontier", "Industrial", "Military", "Research", "Trading Hub", "Mining", "Agricultural"]),
+                "type": system_type,
                 "population": random.randint(100000, 50000000),
                 "threat_level": random.randint(1, 10),
                 "resources": random.choice(["Rich", "Moderate", "Poor", "Abundant", "Depleted"]),
-                "stations": random.randint(0, 3),
+                "stations": system_stations,  # Now holds actual station data
+                "celestial_bodies": celestial_bodies,  # Planets, moons, asteroids, etc.
                 "visited": False,
                 "description": self.generate_system_description()
             }
             
             self.systems[(x, y, z)] = system
+    
+    def generate_celestial_bodies(self, system_type):
+        """Generate planets, moons, asteroid belts, and other celestial bodies"""
+        bodies = []
+        
+        # Number of major bodies (planets)
+        num_planets = random.randint(1, 8)
+        
+        planet_types = [
+            "Terrestrial Planet", "Gas Giant", "Ice Giant", "Lava World",
+            "Ocean World", "Desert Planet", "Jungle World", "Frozen World",
+            "Toxic Planet", "Crystal World", "Garden World", "Barren Rock"
+        ]
+        
+        for i in range(num_planets):
+            planet_type = random.choice(planet_types)
+            planet = {
+                "object_type": "Planet",
+                "name": f"Planet {i+1}",
+                "subtype": planet_type,
+                "has_atmosphere": random.choice([True, False]),
+                "habitable": planet_type in ["Garden World", "Terrestrial Planet", "Ocean World", "Jungle World"]
+            }
+            bodies.append(planet)
+            
+            # Some planets have moons
+            if random.random() < 0.5:
+                num_moons = random.randint(1, 4)
+                for j in range(num_moons):
+                    moon = {
+                        "object_type": "Moon",
+                        "name": f"Moon {chr(65+j)}",  # Moon A, B, C, etc.
+                        "orbits": f"Planet {i+1}",
+                        "has_resources": random.choice([True, False])
+                    }
+                    bodies.append(moon)
+        
+        # Asteroid belts
+        if random.random() < 0.6:
+            asteroid_belt = {
+                "object_type": "Asteroid Belt",
+                "name": "Asteroid Belt",
+                "mineral_rich": random.choice([True, False]),
+                "density": random.choice(["Sparse", "Moderate", "Dense"])
+            }
+            bodies.append(asteroid_belt)
+        
+        # Nebula clouds (rare)
+        if random.random() < 0.2:
+            nebula = {
+                "object_type": "Nebula",
+                "name": random.choice(["Stellar Nursery", "Emission Nebula", "Dark Nebula"]),
+                "hazardous": random.choice([True, False])
+            }
+            bodies.append(nebula)
+        
+        # Comets (very rare)
+        if random.random() < 0.1:
+            comet = {
+                "object_type": "Comet",
+                "name": "Rogue Comet",
+                "active": random.choice([True, False])
+            }
+            bodies.append(comet)
+        
+        return bodies
     
     def generate_system_description(self):
         """Generate random description for star systems"""

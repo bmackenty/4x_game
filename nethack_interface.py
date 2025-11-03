@@ -40,17 +40,19 @@ class MessageLog(Static):
         self.messages = []
         self.max_messages = 3
         
-    def add_message(self, msg: str):
-        """Add a message to the log"""
-        self.messages.append(msg)
+    def add_message(self, msg: str, color: str = "white"):
+        """Add a message to the log with optional color"""
+        self.messages.append((msg, color))
         if len(self.messages) > self.max_messages:
             self.messages.pop(0)
         self.update_display()
     
     def update_display(self):
-        """Update the message display"""
-        content = "\n".join(self.messages[-self.max_messages:])
-        self.update(content if content else " ")
+        """Update the message display with colors"""
+        text = Text()
+        for msg, color in self.messages[-self.max_messages:]:
+            text.append(msg + "\n", style=color)
+        self.update(text if text else " ")
 
 
 class CharacterCreationScreen(Screen):
@@ -321,7 +323,6 @@ class MainGameScreen(Screen):
         Binding("q", "quit_game", "Quit", show=False),
         Binding("i", "inventory", "Inventory", show=True),
         Binding("m", "map", "Map", show=True),
-        Binding("t", "trade", "Trade", show=True),
         Binding("r", "research", "Research", show=True),
         Binding("s", "status", "Status", show=True),
     ]
@@ -433,11 +434,6 @@ class MainGameScreen(Screen):
         self.query_one(MessageLog).add_message("Opening galactic map...")
         self.app.push_screen(MapScreen(self.game))
         
-    def action_trade(self):
-        """Show trade screen"""
-        self.query_one(MessageLog).add_message("Opening trade interface...")
-        self.app.push_screen(TradingScreen(self.game))
-        
     def action_research(self):
         """Show research screen"""
         self.query_one(MessageLog).add_message("Opening research interface...")
@@ -462,9 +458,17 @@ class MapScreen(Screen):
     def __init__(self, game):
         super().__init__()
         self.game = game
-        # Fixed map render size
-        self.map_width = 80
-        self.map_height = 22
+        # Viewport size (visible area)
+        self.viewport_width = 78
+        self.viewport_height = 20
+        # Virtual map size (much larger than viewport)
+        self.virtual_width = 200
+        self.virtual_height = 60
+        # Viewport offset (camera position in virtual coordinates)
+        self.viewport_x = 0
+        self.viewport_y = 0
+        # Scroll margin (distance from edge before scrolling)
+        self.scroll_margin = 3
     
     def compose(self) -> ComposeResult:
         yield Static(id="map_display")
@@ -480,7 +484,9 @@ class MapScreen(Screen):
             pass
 
         self.update_map()
-        self.query_one(MessageLog).add_message("Map displayed. '@' = your ship, '*' = visited, '+' = unvisited")
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message("Map displayed!", "cyan")
+        msg_log.add_message("@ = Your ship | * = Visited | + = Unvisited | ◈/◆ = Stations", "white")
     
     def update_map(self):
         nav = getattr(self.game, 'navigation', None)
@@ -489,51 +495,127 @@ class MapScreen(Screen):
             return
         galaxy = nav.galaxy
         ship = nav.current_ship
-        # Initialize buffer
-        buf = [[" "] * self.map_width for _ in range(self.map_height)]
+        
+        # Initialize virtual buffer - store (char, system_data) tuples
+        virtual_buf = [[(" ", None)] * self.virtual_width for _ in range(self.virtual_height)]
         
         def project(x, y):
-            # Scale 0..size to 0..width-1
-            px = int((x / galaxy.size_x) * (self.map_width - 1))
-            py = int((y / galaxy.size_y) * (self.map_height - 1))
+            # Scale galaxy coordinates to virtual map coordinates
+            px = int((x / galaxy.size_x) * (self.virtual_width - 1))
+            py = int((y / galaxy.size_y) * (self.virtual_height - 1))
             # Clamp
-            px = max(0, min(self.map_width - 1, px))
-            py = max(0, min(self.map_height - 1, py))
+            px = max(0, min(self.virtual_width - 1, px))
+            py = max(0, min(self.virtual_height - 1, py))
             return px, py
         
-        # Plot systems
+        # Plot systems on virtual buffer with system data
         for sys in galaxy.systems.values():
             x, y, _ = sys["coordinates"]
             px, py = project(x, y)
-            ch = "*" if sys.get("visited") else "+"
-            buf[py][px] = ch
+            # Different symbols for systems with stations
+            has_stations = sys.get("stations") and len(sys.get("stations", [])) > 0
+            if has_stations:
+                ch = "◈" if sys.get("visited") else "◆"  # Diamond for stations
+            else:
+                ch = "*" if sys.get("visited") else "+"
+            virtual_buf[py][px] = (ch, sys)
         
         # Plot ship last
+        ship_vx = ship_vy = 0
         if ship:
             sx, sy, _ = ship.coordinates
-            px, py = project(sx, sy)
-            buf[py][px] = "@"
+            ship_vx, ship_vy = project(sx, sy)
+            virtual_buf[ship_vy][ship_vx] = ("@", None)
+            
+            # Center viewport on ship
+            self.center_viewport_on(ship_vx, ship_vy)
         
-        # Build legend and info
-        lines = []
-        lines.append("═" * self.map_width)
-        lines.append("GALAXY MAP".center(self.map_width))
-        lines.append("═" * self.map_width)
+        # Build Rich Text with colors
+        text = Text()
         
-        # Render map area
-        for row in buf:
-            lines.append("".join(row))
+        # Header
+        text.append("═" * self.viewport_width + "\n", style="bold cyan")
+        text.append("GALAXY MAP".center(self.viewport_width) + "\n", style="bold yellow")
+        text.append("═" * self.viewport_width + "\n", style="bold cyan")
+        
+        # Render viewport with colors
+        for y in range(self.viewport_height):
+            virtual_y = self.viewport_y + y
+            if 0 <= virtual_y < self.virtual_height:
+                for x in range(self.viewport_width):
+                    virtual_x = self.viewport_x + x
+                    if 0 <= virtual_x < self.virtual_width:
+                        char, sys_data = virtual_buf[virtual_y][virtual_x]
+                        
+                        # Color based on character type
+                        if char == "@":
+                            text.append(char, style="bold bright_white on blue")
+                        elif char in ["◈", "◆"]:
+                            # Stations - cyan/bright_cyan
+                            if char == "◈":
+                                text.append(char, style="bright_cyan")
+                            else:
+                                text.append(char, style="cyan")
+                        elif char == "*":
+                            # Visited system - green
+                            text.append(char, style="green")
+                        elif char == "+":
+                            # Unvisited system - yellow
+                            text.append(char, style="yellow")
+                        else:
+                            text.append(char)
+                    else:
+                        text.append(" ")
+                text.append("\n")
+            else:
+                text.append(" " * self.viewport_width + "\n")
         
         # HUD
-        lines.append("─" * self.map_width)
+        text.append("─" * self.viewport_width + "\n", style="bold white")
         if ship:
             sx, sy, sz = ship.coordinates
-            lines.append(f"Ship: {ship.name} ({ship.ship_class})  Pos: ({sx},{sy},{sz})  Fuel: {ship.fuel}/{ship.max_fuel}  Range: {ship.jump_range}")
-        visited_count = sum(1 for s in galaxy.systems.values() if s.get("visited"))
-        lines.append(f"Systems: {len(galaxy.systems)} | Visited: {visited_count}")
-        lines.append("[q/ESC: Back]")
+            text.append(f"Ship: ", style="white")
+            text.append(f"{ship.name}", style="bold cyan")
+            text.append(f" ({ship.ship_class})  Pos: ({sx},{sy},{sz})\n", style="white")
+            text.append(f"Fuel: ", style="white")
+            fuel_pct = ship.fuel / ship.max_fuel if ship.max_fuel > 0 else 0
+            fuel_color = "green" if fuel_pct > 0.5 else "yellow" if fuel_pct > 0.25 else "red"
+            text.append(f"{ship.fuel}/{ship.max_fuel}", style=fuel_color)
+            text.append(f"  Range: {ship.jump_range}\n", style="white")
         
-        self.query_one("#map_display", Static).update("\n".join(lines))
+        visited_count = sum(1 for s in galaxy.systems.values() if s.get("visited"))
+        text.append(f"Systems: ", style="white")
+        text.append(f"{len(galaxy.systems)}", style="bold yellow")
+        text.append(f" | Visited: ", style="white")
+        text.append(f"{visited_count}", style="bold green")
+        text.append("\n", style="white")
+        
+        # Legend
+        text.append("Legend: ", style="white")
+        text.append("@ ", style="bold bright_white on blue")
+        text.append("You  ", style="white")
+        text.append("* ", style="green")
+        text.append("Visited  ", style="white")
+        text.append("+ ", style="yellow")
+        text.append("Unvisited  ", style="white")
+        text.append("◈ ", style="bright_cyan")
+        text.append("Station(Vis)  ", style="white")
+        text.append("◆ ", style="cyan")
+        text.append("Station\n", style="white")
+        
+        text.append("[q/ESC: Back | Arrow/hjkl: Move]\n", style="dim white")
+        
+        self.query_one("#map_display", Static).update(text)
+    
+    def center_viewport_on(self, vx, vy):
+        """Center the viewport on the given virtual coordinates"""
+        # Calculate desired top-left corner
+        target_x = vx - self.viewport_width // 2
+        target_y = vy - self.viewport_height // 2
+        
+        # Clamp to valid range
+        self.viewport_x = max(0, min(self.virtual_width - self.viewport_width, target_x))
+        self.viewport_y = max(0, min(self.virtual_height - self.viewport_height, target_y))
     
     def action_pop_screen(self):
         self.app.pop_screen()
@@ -559,9 +641,9 @@ class MapScreen(Screen):
         galaxy = nav.galaxy
         ship = nav.current_ship
 
-        # Choose movement step to make each keypress visible on the map
-        step_x = max(1, round(galaxy.size_x / self.map_width))
-        step_y = max(1, round(galaxy.size_y / self.map_height))
+        # Movement step - based on virtual map for smoother scrolling
+        step_x = max(1, round(galaxy.size_x / self.virtual_width))
+        step_y = max(1, round(galaxy.size_y / self.virtual_height))
 
         # Move within galaxy bounds
         x, y, z = ship.coordinates
@@ -569,12 +651,12 @@ class MapScreen(Screen):
         y = max(0, min(galaxy.size_y, y + dy * step_y))
         ship.coordinates = (x, y, z)
 
-        # After moving, check if we're on the same displayed cell as any star system
+        # Check if we're on a system
         def project(px, py):
-            sx = int((px / galaxy.size_x) * (self.map_width - 1))
-            sy = int((py / galaxy.size_y) * (self.map_height - 1))
-            sx = max(0, min(self.map_width - 1, sx))
-            sy = max(0, min(self.map_height - 1, sy))
+            sx = int((px / galaxy.size_x) * (self.virtual_width - 1))
+            sy = int((py / galaxy.size_y) * (self.virtual_height - 1))
+            sx = max(0, min(self.virtual_width - 1, sx))
+            sy = max(0, min(self.virtual_height - 1, sy))
             return sx, sy
 
         ship_cell = project(x, y)
@@ -597,8 +679,56 @@ class MapScreen(Screen):
         self.update_map()
 
         if entered_system:
-            # Open interaction screen for trading/repairs/combat
-            self.query_one(MessageLog).add_message(f"Arrived at {entered_system['name']}")
+            # Determine what objects are present
+            msg_log = self.query_one(MessageLog)
+            msg_log.add_message(f"Arrived at {entered_system['name']}", "bright_cyan")
+            
+            # Show what celestial bodies are here
+            bodies = entered_system.get('celestial_bodies', [])
+            if bodies:
+                # Identify primary object type
+                planets = [b for b in bodies if b['object_type'] == 'Planet']
+                moons = [b for b in bodies if b['object_type'] == 'Moon']
+                asteroids = [b for b in bodies if b['object_type'] == 'Asteroid Belt']
+                nebulae = [b for b in bodies if b['object_type'] == 'Nebula']
+                stations = entered_system.get('stations', [])
+                
+                # Build description of what's here
+                primary_objects = []
+                
+                if planets:
+                    # Mention habitable planets specifically
+                    habitable = [p for p in planets if p.get('habitable')]
+                    if habitable:
+                        primary_objects.append(f"{len(habitable)} habitable planet{'s' if len(habitable) > 1 else ''}")
+                    elif len(planets) == 1:
+                        primary_objects.append(f"1 {planets[0]['subtype'].lower()}")
+                    else:
+                        primary_objects.append(f"{len(planets)} planets")
+                
+                if moons:
+                    primary_objects.append(f"{len(moons)} moon{'s' if len(moons) > 1 else ''}")
+                
+                if asteroids:
+                    mineral_rich = [a for a in asteroids if a.get('mineral_rich')]
+                    if mineral_rich:
+                        primary_objects.append("mineral-rich asteroid belt")
+                    else:
+                        primary_objects.append("asteroid belt")
+                
+                if nebulae:
+                    hazardous = [n for n in nebulae if n.get('hazardous')]
+                    if hazardous:
+                        primary_objects.append(f"hazardous {nebulae[0]['name'].lower()}")
+                    else:
+                        primary_objects.append(nebulae[0]['name'].lower())
+                
+                if stations:
+                    primary_objects.append(f"{len(stations)} space station{'s' if len(stations) > 1 else ''}")
+                
+                if primary_objects:
+                    msg_log.add_message(f"System contains: {', '.join(primary_objects)}", "yellow")
+            
             self.app.push_screen(SystemInteractionScreen(self.game, entered_system))
 
 
@@ -607,40 +737,238 @@ class SystemInteractionScreen(Screen):
 
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("r", "refuel", "Refuel", show=True),
-        Binding("t", "trade", "Trade", show=True),
-        Binding("f", "fight", "Fight", show=True),
-        Binding("k", "repair", "Repair", show=True),
+        Binding("1", "action_1", "Action 1", show=False),
+        Binding("2", "action_2", "Action 2", show=False),
+        Binding("3", "action_3", "Action 3", show=False),
+        Binding("4", "action_4", "Action 4", show=False),
+        Binding("5", "action_5", "Action 5", show=False),
+        Binding("6", "action_6", "Action 6", show=False),
+        Binding("7", "action_7", "Action 7", show=False),
+        Binding("8", "action_8", "Action 8", show=False),
+        Binding("9", "action_9", "Action 9", show=False),
     ]
 
     def __init__(self, game, system):
         super().__init__()
         self.game = game
         self.system = system
+        self.available_actions = []  # Will store (number, name, handler, description)
 
     def compose(self) -> ComposeResult:
         yield Static(id="system_display")
         yield MessageLog()
 
     def on_mount(self):
+        self.build_available_actions()
         self.render_system()
-        self.query_one(MessageLog).add_message("[r]efuel  [t]rade  [k]repair  [f]ight  [q] back")
+        if self.available_actions:
+            action_list = ", ".join([f"[{a[0]}] {a[1]}" for a in self.available_actions[:5]])
+            self.query_one(MessageLog).add_message(f"Available: {action_list}...", "cyan")
+    
+    def build_available_actions(self):
+        """Build list of available actions based on system contents"""
+        self.available_actions = []
+        action_num = 1
+        
+        # Basic actions always available
+        self.available_actions.append((action_num, "Refuel", self.do_refuel, "Refuel your ship (10 cr/unit)"))
+        action_num += 1
+        
+        self.available_actions.append((action_num, "Trade", self.do_trade, "Access commodity markets"))
+        action_num += 1
+        
+        # Check for space stations with specific capabilities
+        stations = self.system.get('stations', [])
+        for station in stations:
+            station_type = station.get('type', '')
+            
+            # Shipyard stations
+            if 'Shipwright' in station.get('name', '') or 'Shipbuilding' in station.get('category', '') or 'Construction Yard' in station_type:
+                self.available_actions.append((
+                    action_num, 
+                    f"Shipyard ({station.get('name', 'Unknown')})", 
+                    lambda s=station: self.do_shipyard(s),
+                    "Build or upgrade ships"
+                ))
+                action_num += 1
+            
+            # Trading Hub stations (enhanced trading)
+            if 'Trade' in station.get('category', '') or 'Trade Hub' in station_type or 'Market' in station.get('name', ''):
+                self.available_actions.append((
+                    action_num,
+                    f"Market ({station.get('name', 'Unknown')})",
+                    lambda s=station: self.do_station_market(s),
+                    "Access enhanced station markets"
+                ))
+                action_num += 1
+            
+            # Research stations
+            if 'Research' in station.get('category', '') or 'Lab' in station_type:
+                self.available_actions.append((
+                    action_num,
+                    f"Research ({station.get('name', 'Unknown')})",
+                    lambda s=station: self.do_research(s),
+                    "Access research facilities"
+                ))
+                action_num += 1
+        
+        # Check for habitable planets - species interaction
+        bodies = self.system.get('celestial_bodies', [])
+        habitable_planets = [b for b in bodies if b.get('object_type') == 'Planet' and b.get('habitable')]
+        if habitable_planets:
+            self.available_actions.append((
+                action_num,
+                "Visit Colony",
+                lambda: self.do_visit_colony(habitable_planets[0]),
+                "Interact with planetary inhabitants"
+            ))
+            action_num += 1
+        
+        # Check for asteroid belts - mining
+        asteroid_belts = [b for b in bodies if b.get('object_type') == 'Asteroid Belt']
+        if asteroid_belts:
+            # Check if ship has mining capability (placeholder - you'd check ship equipment)
+            can_mine = True  # TODO: Check ship has mining equipment
+            if can_mine:
+                self.available_actions.append((
+                    action_num,
+                    "Mine Asteroids",
+                    lambda: self.do_mining(asteroid_belts[0]),
+                    "Extract minerals from asteroid belt"
+                ))
+                action_num += 1
+        
+        # Repair option
+        self.available_actions.append((action_num, "Repair", self.do_repair, "Repair ship damage"))
+        action_num += 1
 
     def render_system(self):
-        lines = []
-        lines.append("═" * 80)
-        lines.append(f"{self.system['name']}".center(80))
-        lines.append("═" * 80)
-        lines.append("")
-        lines.append(f"Type: {self.system.get('type','Unknown')}")
-        lines.append(f"Population: {self.system.get('population',0):,}")
-        lines.append(f"Resources: {self.system.get('resources','Unknown')}")
-        lines.append(f"Threat: {self.system.get('threat_level',0)}/10")
-        lines.append("")
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append(f"{self.system['name']}".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append("\n")
+        
+        # System info with colors
+        text.append(f"Type: ", style="white")
+        sys_type = self.system.get('type', 'Unknown')
+        type_colors = {
+            'Core World': 'bright_cyan',
+            'Industrial': 'yellow',
+            'Military': 'red',
+            'Research': 'magenta',
+            'Trading Hub': 'green',
+            'Mining': 'bright_yellow',
+            'Agricultural': 'bright_green',
+            'Frontier': 'white'
+        }
+        text.append(f"{sys_type}\n", style=type_colors.get(sys_type, 'white'))
+        
+        text.append(f"Population: ", style="white")
+        text.append(f"{self.system.get('population',0):,}\n", style="cyan")
+        
+        text.append(f"Resources: ", style="white")
+        resources = self.system.get('resources', 'Unknown')
+        res_colors = {'Rich': 'green', 'Abundant': 'bright_green', 'Moderate': 'yellow', 'Poor': 'red', 'Depleted': 'bright_red'}
+        text.append(f"{resources}\n", style=res_colors.get(resources, 'white'))
+        
+        text.append(f"Threat: ", style="white")
+        threat = self.system.get('threat_level', 0)
+        threat_color = 'green' if threat <= 3 else 'yellow' if threat <= 6 else 'red'
+        text.append(f"{threat}/10\n", style=threat_color)
+        text.append("\n")
+        
+        # Description
         if self.system.get('description'):
-            lines.append(self.system['description'])
-            lines.append("")
-        # Show station/bot/faction flags if available
+            text.append(self.system['description'] + "\n\n", style="italic white")
+        
+        # Celestial Bodies
+        celestial_bodies = self.system.get('celestial_bodies', [])
+        if celestial_bodies:
+            text.append("━" * 80 + "\n", style="blue")
+            text.append("CELESTIAL BODIES:\n", style="bold bright_blue")
+            text.append("━" * 80 + "\n", style="blue")
+            
+            # Group by type for better display
+            planets = [b for b in celestial_bodies if b['object_type'] == 'Planet']
+            moons = [b for b in celestial_bodies if b['object_type'] == 'Moon']
+            asteroids = [b for b in celestial_bodies if b['object_type'] == 'Asteroid Belt']
+            nebulae = [b for b in celestial_bodies if b['object_type'] == 'Nebula']
+            comets = [b for b in celestial_bodies if b['object_type'] == 'Comet']
+            
+            # Display planets
+            if planets:
+                text.append("Planets:\n", style="bold yellow")
+                for planet in planets:
+                    text.append(f"  • ", style="yellow")
+                    text.append(f"{planet['name']}", style="bright_yellow")
+                    text.append(f" - {planet['subtype']}", style="yellow")
+                    if planet.get('habitable'):
+                        text.append(" [HABITABLE]", style="bright_green")
+                    if planet.get('has_atmosphere'):
+                        text.append(" [Atmosphere]", style="cyan")
+                    text.append("\n")
+            
+            # Display moons
+            if moons:
+                text.append("Moons:\n", style="bold white")
+                for moon in moons:
+                    text.append(f"  • ", style="white")
+                    text.append(f"{moon['name']}", style="bright_white")
+                    text.append(f" (orbits {moon['orbits']})", style="dim white")
+                    if moon.get('has_resources'):
+                        text.append(" [Rich Resources]", style="green")
+                    text.append("\n")
+            
+            # Display asteroid belts
+            if asteroids:
+                for belt in asteroids:
+                    text.append(f"  • ", style="white")
+                    text.append(f"{belt['name']}", style="yellow")
+                    text.append(f" - {belt['density']} density", style="white")
+                    if belt.get('mineral_rich'):
+                        text.append(" [Mineral Rich]", style="bright_green")
+                    text.append("\n")
+            
+            # Display nebulae
+            if nebulae:
+                for nebula in nebulae:
+                    text.append(f"  • ", style="magenta")
+                    text.append(f"{nebula['name']}", style="bright_magenta")
+                    if nebula.get('hazardous'):
+                        text.append(" [HAZARDOUS]", style="red")
+                    text.append("\n")
+            
+            # Display comets
+            if comets:
+                for comet in comets:
+                    text.append(f"  • ", style="cyan")
+                    text.append(f"{comet['name']}", style="bright_cyan")
+                    if comet.get('active'):
+                        text.append(" [Active]", style="yellow")
+                    text.append("\n")
+            
+            text.append("\n")
+        
+        # Space Stations
+        stations = self.system.get('stations', [])
+        if stations:
+            text.append("━" * 80 + "\n", style="cyan")
+            text.append("SPACE STATIONS:\n", style="bold bright_cyan")
+            text.append("━" * 80 + "\n", style="cyan")
+            for i, station in enumerate(stations, 1):
+                text.append(f"{i}. ", style="white")
+                text.append(f"{station.get('name', 'Unknown Station')}", style="bold bright_cyan")
+                text.append(f" [{station.get('category', 'Unknown')}]\n", style="cyan")
+                text.append(f"   Type: ", style="white")
+                text.append(f"{station.get('type', 'Unknown')}\n", style="yellow")
+                text.append(f"   ", style="white")
+                text.append(f"{station.get('description', 'No description available.')}\n", style="dim white")
+            text.append("\n")
+        
+        # Old station manager system (if still used)
         try:
             coords = self.system['coordinates']
             # Station
@@ -649,61 +977,157 @@ class SystemInteractionScreen(Screen):
                 station = self.game.station_manager.get_station_at_location(coords)
             if station:
                 owner_status = "YOUR STATION" if station['owner'] == "Player" else "Available for Purchase"
-                lines.append(f"Station: {station['name']} ({station['type']}) - {owner_status}")
+                text.append(f"Station: {station['name']} ({station['type']}) - {owner_status}\n", style="bright_cyan")
             # Faction
             if hasattr(self.game, 'faction_system') and self.game.faction_system:
                 fac = self.game.faction_system.get_system_faction(coords)
                 if fac:
                     rep = self.game.faction_system.get_reputation_status(fac)
-                    lines.append(f"Control: {fac} | Your Standing: {rep}")
+                    rep_colors = {'Revered': 'bright_green', 'Honored': 'green', 'Friendly': 'cyan', 
+                                  'Neutral': 'white', 'Unfriendly': 'yellow', 'Hostile': 'red', 'Hated': 'bright_red'}
+                    text.append(f"Control: ", style="white")
+                    text.append(f"{fac}", style="yellow")
+                    text.append(f" | Your Standing: ", style="white")
+                    text.append(f"{rep}\n", style=rep_colors.get(rep, 'white'))
         except Exception:
             pass
 
-        lines.append("")
+        text.append("\n")
+        
         # Ship status
         nav = getattr(self.game, 'navigation', None)
         ship = nav.current_ship if nav else None
         if ship:
             sx, sy, sz = ship.coordinates
-            lines.append(f"Ship: {ship.name}  Fuel: {ship.fuel}/{ship.max_fuel}  Cargo: {sum(ship.cargo.values()) if ship.cargo else 0}/{ship.max_cargo}")
-        lines.append("")
-        lines.append("[r] Refuel (10 cr per fuel)  [t] Trade  [k] Repair  [f] Fight  [q/ESC] Back")
-        self.query_one("#system_display", Static).update("\n".join(lines))
+            text.append(f"Ship: ", style="white")
+            text.append(f"{ship.name}", style="bold cyan")
+            text.append(f"  Fuel: ", style="white")
+            fuel_pct = ship.fuel / ship.max_fuel if ship.max_fuel > 0 else 0
+            fuel_color = "green" if fuel_pct > 0.5 else "yellow" if fuel_pct > 0.25 else "red"
+            text.append(f"{ship.fuel}/{ship.max_fuel}", style=fuel_color)
+            cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+            text.append(f"  Cargo: ", style="white")
+            cargo_pct = cargo_used / ship.max_cargo if ship.max_cargo > 0 else 0
+            cargo_color = "green" if cargo_pct < 0.5 else "yellow" if cargo_pct < 0.8 else "red"
+            text.append(f"{cargo_used}/{ship.max_cargo}\n", style=cargo_color)
+        
+        text.append("\n")
+        
+        # Dynamic Actions Menu
+        text.append("━" * 80 + "\n", style="green")
+        text.append("AVAILABLE ACTIONS:\n", style="bold bright_green")
+        text.append("━" * 80 + "\n", style="green")
+        
+        for num, name, handler, description in self.available_actions:
+            text.append(f"[", style="white")
+            text.append(f"{num}", style="bold yellow")
+            text.append(f"] ", style="white")
+            text.append(f"{name}", style="bright_white")
+            text.append(f" - {description}\n", style="dim white")
+        
+        text.append("\n")
+        text.append("[", style="white")
+        text.append("1-9", style="bold cyan")
+        text.append("] Select action  [", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+        
+        self.query_one("#system_display", Static).update(text)
 
     def action_pop_screen(self):
         self.app.pop_screen()
-
-    def action_refuel(self):
+    
+    # Action dispatch methods
+    def action_1(self):
+        self._dispatch_action(1)
+    
+    def action_2(self):
+        self._dispatch_action(2)
+    
+    def action_3(self):
+        self._dispatch_action(3)
+    
+    def action_4(self):
+        self._dispatch_action(4)
+    
+    def action_5(self):
+        self._dispatch_action(5)
+    
+    def action_6(self):
+        self._dispatch_action(6)
+    
+    def action_7(self):
+        self._dispatch_action(7)
+    
+    def action_8(self):
+        self._dispatch_action(8)
+    
+    def action_9(self):
+        self._dispatch_action(9)
+    
+    def _dispatch_action(self, num):
+        """Dispatch to the appropriate action handler"""
+        for action_num, name, handler, desc in self.available_actions:
+            if action_num == num:
+                self.query_one(MessageLog).add_message(f"Accessing: {name}", "cyan")
+                handler()
+                return
+        self.query_one(MessageLog).add_message(f"No action {num} available", "red")
+    
+    # Action Handlers
+    def do_refuel(self):
         """Refuel current ship if at a system and with enough credits"""
         nav = getattr(self.game, 'navigation', None)
         ship = nav.current_ship if nav else None
         if not ship:
-            self.query_one(MessageLog).add_message("No ship to refuel.")
+            self.query_one(MessageLog).add_message("No ship to refuel.", "red")
             return
         fuel_needed = ship.max_fuel - ship.fuel
         if fuel_needed <= 0:
-            self.query_one(MessageLog).add_message("Ship already fully fueled.")
+            self.query_one(MessageLog).add_message("Ship already fully fueled.", "yellow")
             return
         cost = fuel_needed * 10
         if cost > self.game.credits:
-            self.query_one(MessageLog).add_message(f"Insufficient credits ({cost} needed).")
+            self.query_one(MessageLog).add_message(f"Insufficient credits ({cost} needed).", "red")
             return
         self.game.credits -= cost
         ship.fuel = ship.max_fuel
-        self.query_one(MessageLog).add_message(f"Refueled for {cost} credits.")
+        self.query_one(MessageLog).add_message(f"Refueled for {cost} credits.", "green")
         self.render_system()
 
-    def action_trade(self):
+    def do_trade(self):
         """Open trading interface"""
         self.app.push_screen(TradingScreen(self.game))
-
-    def action_fight(self):
-        # Placeholder for combat
-        self.query_one(MessageLog).add_message("Combat not implemented yet.")
-
-    def action_repair(self):
-        # Placeholder for repairs
-        self.query_one(MessageLog).add_message("Repairs not implemented yet.")
+    
+    def do_repair(self):
+        """Repair ship"""
+        self.app.push_screen(RepairScreen(self.game, self.system))
+    
+    def do_shipyard(self, station):
+        """Access shipyard at a station"""
+        self.query_one(MessageLog).add_message(f"Accessing shipyard at {station.get('name')}...", "cyan")
+        self.app.push_screen(ShipyardScreen(self.game, self.system, station))
+    
+    def do_station_market(self, station):
+        """Access enhanced station market"""
+        self.query_one(MessageLog).add_message(f"Accessing markets at {station.get('name')}...", "cyan")
+        # Use regular trading screen for now, could be enhanced later
+        self.app.push_screen(TradingScreen(self.game))
+    
+    def do_research(self, station):
+        """Access research station"""
+        self.query_one(MessageLog).add_message(f"Accessing research at {station.get('name')}...", "cyan")
+        self.app.push_screen(ResearchScreen(self.game, self.system, station))
+    
+    def do_visit_colony(self, planet):
+        """Visit habitable planet for species interaction"""
+        self.query_one(MessageLog).add_message(f"Landing on {planet.get('name')} ({planet.get('subtype')})...", "cyan")
+        self.app.push_screen(ColonyInteractionScreen(self.game, self.system, planet))
+    
+    def do_mining(self, asteroid_belt):
+        """Mine asteroid belt"""
+        self.query_one(MessageLog).add_message(f"Initiating mining operations...", "cyan")
+        self.app.push_screen(MiningScreen(self.game, self.system, asteroid_belt))
 
 
 class TradingScreen(Screen):
@@ -742,11 +1166,11 @@ class TradingScreen(Screen):
         self.system_name = self._get_system_name()
         if not self.system_name:
             self.query_one("#trade_display", Static).update("Not at a star system. Navigate to a system to trade.")
-            self.query_one(MessageLog).add_message("No market here.")
+            self.query_one(MessageLog).add_message("No market here.", "red")
             return
         self.refresh_lists()
         self.update_display()
-        self.query_one(MessageLog).add_message(f"Trading at {self.system_name}. Tab toggles Buy/Sell.")
+        self.query_one(MessageLog).add_message(f"Trading at {self.system_name}. Tab toggles Buy/Sell.", "green")
 
     def _get_system_name(self):
         try:
@@ -1228,6 +1652,594 @@ class NetHackInterface(App):
     def on_mount(self):
         """Start with character creation"""
         self.push_screen(CharacterCreationScreen())
+
+
+class RepairScreen(Screen):
+    """Screen for repairing ship damage"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("1", "repair_hull", "Repair Hull", show=False),
+        Binding("2", "repair_systems", "Repair Systems", show=False),
+        Binding("3", "repair_all", "Repair All", show=False),
+    ]
+    
+    def __init__(self, game, system):
+        super().__init__()
+        self.game = game
+        self.system = system
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="repair_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_repair()
+        self.query_one(MessageLog).add_message("Repair bay accessed", "green")
+    
+    def render_repair(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold yellow")
+        text.append(f"REPAIR BAY - {self.system['name']}".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold yellow")
+        text.append("\n")
+        
+        # Ship status
+        nav = getattr(self.game, 'navigation', None)
+        ship = nav.current_ship if nav else None
+        
+        if ship:
+            text.append(f"Ship: ", style="white")
+            text.append(f"{ship.name} ({ship.ship_class})\n", style="bright_cyan")
+            text.append("\n")
+            
+            # Hull integrity (placeholder - would track actual damage)
+            hull_integrity = 100  # TODO: Track actual ship damage
+            text.append(f"Hull Integrity: ", style="white")
+            hull_color = "green" if hull_integrity > 75 else "yellow" if hull_integrity > 40 else "red"
+            text.append(f"{hull_integrity}%\n", style=hull_color)
+            
+            # Systems status (placeholder)
+            text.append(f"Systems Status: ", style="white")
+            text.append(f"Operational\n", style="green")
+            text.append("\n")
+        
+        # Repair costs
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("REPAIR OPTIONS:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        
+        hull_cost = 500
+        systems_cost = 300
+        total_cost = hull_cost + systems_cost
+        
+        text.append("[", style="white")
+        text.append("1", style="bold yellow")
+        text.append("] Repair Hull - ", style="white")
+        text.append(f"{hull_cost} credits\n", style="green")
+        
+        text.append("[", style="white")
+        text.append("2", style="bold yellow")
+        text.append("] Repair Systems - ", style="white")
+        text.append(f"{systems_cost} credits\n", style="green")
+        
+        text.append("[", style="white")
+        text.append("3", style="bold yellow")
+        text.append("] Full Repair - ", style="white")
+        text.append(f"{total_cost} credits ", style="green")
+        text.append("(10% discount)\n", style="dim white")
+        
+        text.append("\n")
+        text.append(f"Your Credits: ", style="white")
+        text.append(f"{self.game.credits:,}\n", style="yellow")
+        text.append("\n")
+        
+        text.append("[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+        
+        self.query_one("#repair_display", Static).update(text)
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+    
+    def repair_hull(self):
+        cost = 500
+        if self.game.credits >= cost:
+            self.game.credits -= cost
+            self.query_one(MessageLog).add_message(f"Hull repaired for {cost} credits!", "green")
+            self.render_repair()
+        else:
+            self.query_one(MessageLog).add_message("Insufficient credits!", "red")
+    
+    def repair_systems(self):
+        cost = 300
+        if self.game.credits >= cost:
+            self.game.credits -= cost
+            self.query_one(MessageLog).add_message(f"Systems repaired for {cost} credits!", "green")
+            self.render_repair()
+        else:
+            self.query_one(MessageLog).add_message("Insufficient credits!", "red")
+    
+    def repair_all(self):
+        cost = 720  # 10% discount
+        if self.game.credits >= cost:
+            self.game.credits -= cost
+            self.query_one(MessageLog).add_message(f"Full repair completed for {cost} credits!", "green")
+            self.render_repair()
+        else:
+            self.query_one(MessageLog).add_message("Insufficient credits!", "red")
+
+
+class ShipyardScreen(Screen):
+    """Screen for shipyard operations - building and upgrading ships"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("1", "view_ships", "View Ships", show=False),
+        Binding("2", "upgrade_ship", "Upgrade", show=False),
+        Binding("3", "build_ship", "Build Ship", show=False),
+    ]
+    
+    def __init__(self, game, system, station):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.station = station
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="shipyard_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_shipyard()
+        self.query_one(MessageLog).add_message(f"Connected to {self.station.get('name')}", "green")
+    
+    def render_shipyard(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append(f"SHIPYARD - {self.station.get('name', 'Unknown Station')}".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append("\n")
+        
+        # Station info
+        text.append(f"Type: ", style="white")
+        text.append(f"{self.station.get('type', 'Unknown')}\n", style="cyan")
+        text.append(f"Location: ", style="white")
+        text.append(f"{self.system['name']}\n", style="yellow")
+        text.append("\n")
+        text.append(f"{self.station.get('description', 'A shipbuilding facility.')}\n", style="italic dim white")
+        text.append("\n")
+        
+        # Current ship
+        nav = getattr(self.game, 'navigation', None)
+        ship = nav.current_ship if nav else None
+        
+        if ship:
+            text.append("━" * 80 + "\n", style="green")
+            text.append("YOUR CURRENT SHIP:\n", style="bold bright_green")
+            text.append("━" * 80 + "\n", style="green")
+            text.append(f"  Name: ", style="white")
+            text.append(f"{ship.name}\n", style="bright_cyan")
+            text.append(f"  Class: ", style="white")
+            text.append(f"{ship.ship_class}\n", style="cyan")
+            text.append(f"  Cargo: ", style="white")
+            text.append(f"{ship.max_cargo} units\n", style="yellow")
+            text.append(f"  Fuel: ", style="white")
+            text.append(f"{ship.max_fuel} units\n", style="yellow")
+            text.append(f"  Jump Range: ", style="white")
+            text.append(f"{ship.jump_range}\n", style="yellow")
+            text.append("\n")
+        
+        # Services
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("SHIPYARD SERVICES:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        
+        text.append("[", style="white")
+        text.append("1", style="bold yellow")
+        text.append("] View Available Ships", style="white")
+        text.append(" - Browse ship catalog\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("2", style="bold yellow")
+        text.append("] Upgrade Current Ship", style="white")
+        text.append(" - Enhance capabilities\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("3", style="bold yellow")
+        text.append("] Build New Ship", style="white")
+        text.append(" - Commission new vessel\n", style="dim white")
+        
+        text.append("\n")
+        text.append(f"Your Credits: ", style="white")
+        text.append(f"{self.game.credits:,}\n", style="yellow")
+        text.append("\n")
+        
+        text.append("[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+        
+        self.query_one("#shipyard_display", Static).update(text)
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+    
+    def view_ships(self):
+        self.query_one(MessageLog).add_message("Browsing ship catalog...", "cyan")
+        self.query_one(MessageLog).add_message("Ship catalog display coming soon!", "yellow")
+    
+    def upgrade_ship(self):
+        self.query_one(MessageLog).add_message("Accessing upgrade options...", "cyan")
+        self.query_one(MessageLog).add_message("Ship upgrade system coming soon!", "yellow")
+    
+    def build_ship(self):
+        self.query_one(MessageLog).add_message("Opening ship builder...", "cyan")
+        self.query_one(MessageLog).add_message("Ship construction coming soon!", "yellow")
+
+
+class ResearchScreen(Screen):
+    """Screen for research station operations"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("1", "view_research", "View Research", show=False),
+        Binding("2", "start_research", "Start Research", show=False),
+        Binding("3", "buy_data", "Buy Data", show=False),
+    ]
+    
+    def __init__(self, game, system, station):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.station = station
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="research_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_research()
+        self.query_one(MessageLog).add_message(f"Connected to {self.station.get('name')}", "green")
+    
+    def render_research(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold magenta")
+        text.append(f"RESEARCH STATION - {self.station.get('name', 'Unknown Station')}".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold magenta")
+        text.append("\n")
+        
+        # Station info
+        text.append(f"Type: ", style="white")
+        text.append(f"{self.station.get('type', 'Unknown')}\n", style="magenta")
+        text.append(f"Location: ", style="white")
+        text.append(f"{self.system['name']}\n", style="yellow")
+        text.append("\n")
+        text.append(f"{self.station.get('description', 'A research facility.')}\n", style="italic dim white")
+        text.append("\n")
+        
+        # Current research
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("CURRENT RESEARCH:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        
+        active_research = getattr(self.game, 'active_research', None)
+        if active_research:
+            text.append(f"  Project: ", style="white")
+            text.append(f"{active_research}\n", style="bright_magenta")
+            progress = getattr(self.game, 'research_progress', 0)
+            text.append(f"  Progress: ", style="white")
+            text.append(f"{progress}%\n", style="cyan")
+        else:
+            text.append("  No active research\n", style="dim white")
+        text.append("\n")
+        
+        # Completed research
+        completed = getattr(self.game, 'completed_research', [])
+        if completed:
+            text.append(f"Completed Technologies: ", style="white")
+            text.append(f"{len(completed)}\n", style="green")
+            text.append("\n")
+        
+        # Services
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append("RESEARCH SERVICES:\n", style="bold bright_magenta")
+        text.append("━" * 80 + "\n", style="magenta")
+        
+        text.append("[", style="white")
+        text.append("1", style="bold yellow")
+        text.append("] View Research Tree", style="white")
+        text.append(" - Browse available technologies\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("2", style="bold yellow")
+        text.append("] Start New Research", style="white")
+        text.append(" - Begin technology project\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("3", style="bold yellow")
+        text.append("] Purchase Data", style="white")
+        text.append(" - Buy completed research\n", style="dim white")
+        
+        text.append("\n")
+        text.append(f"Your Credits: ", style="white")
+        text.append(f"{self.game.credits:,}\n", style="yellow")
+        text.append("\n")
+        
+        text.append("[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+        
+        self.query_one("#research_display", Static).update(text)
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+    
+    def view_research(self):
+        self.query_one(MessageLog).add_message("Accessing research database...", "cyan")
+        self.query_one(MessageLog).add_message("Research tree viewer coming soon!", "yellow")
+    
+    def start_research(self):
+        self.query_one(MessageLog).add_message("Selecting research project...", "cyan")
+        self.query_one(MessageLog).add_message("Research project selector coming soon!", "yellow")
+    
+    def buy_data(self):
+        self.query_one(MessageLog).add_message("Browsing available data...", "cyan")
+        self.query_one(MessageLog).add_message("Data marketplace coming soon!", "yellow")
+
+
+class ColonyInteractionScreen(Screen):
+    """Screen for interacting with inhabited planets"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("1", "action_1", "Trade", show=False),
+        Binding("2", "action_2", "Recruit", show=False),
+        Binding("3", "action_3", "Diplomacy", show=False),
+    ]
+    
+    def __init__(self, game, system, planet):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.planet = planet
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="colony_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_colony()
+        self.query_one(MessageLog).add_message("Landed on inhabited world", "green")
+    
+    def render_colony(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold green")
+        text.append(f"COLONY - {self.planet.get('name', 'Unknown')} ({self.system['name']})".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold green")
+        text.append("\n")
+        
+        # Planet info
+        text.append(f"Planet Type: ", style="white")
+        text.append(f"{self.planet.get('subtype', 'Unknown')}\n", style="cyan")
+        text.append(f"Atmosphere: ", style="white")
+        text.append(f"{'Breathable' if self.planet.get('has_atmosphere') else 'None'}\n", 
+                   style="green" if self.planet.get('has_atmosphere') else "red")
+        text.append(f"Population: ", style="white")
+        text.append(f"{self.system.get('population', 0):,}\n", style="cyan")
+        text.append("\n")
+        
+        # Species info (placeholder - would be generated based on system)
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append("INHABITANTS:\n", style="bold bright_magenta")
+        text.append("━" * 80 + "\n", style="magenta")
+        
+        # Generate random species for now
+        import random
+        species_types = ["Terran", "Aetheri", "Silvan", "Quarrellian", "Luminaut"]
+        local_species = random.choice(species_types)
+        
+        text.append(f"Primary Species: ", style="white")
+        text.append(f"{local_species}\n", style="bright_cyan")
+        text.append(f"Culture: ", style="white")
+        cultures = ["Mercantile", "Militaristic", "Scientific", "Spiritual", "Agrarian"]
+        text.append(f"{random.choice(cultures)}\n", style="yellow")
+        text.append(f"Attitude: ", style="white")
+        attitudes = ["Welcoming", "Neutral", "Cautious", "Suspicious"]
+        attitude = random.choice(attitudes)
+        attitude_color = {"Welcoming": "green", "Neutral": "white", "Cautious": "yellow", "Suspicious": "red"}
+        text.append(f"{attitude}\n", style=attitude_color.get(attitude, "white"))
+        text.append("\n")
+        
+        # Available actions
+        text.append("━" * 80 + "\n", style="green")
+        text.append("AVAILABLE INTERACTIONS:\n", style="bold bright_green")
+        text.append("━" * 80 + "\n", style="green")
+        
+        text.append("[", style="white")
+        text.append("1", style="bold yellow")
+        text.append("] ", style="white")
+        text.append("Trade with Locals", style="bright_white")
+        text.append(" - Exchange goods and information\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("2", style="bold yellow")
+        text.append("] ", style="white")
+        text.append("Recruit Crew/Specialists", style="bright_white")
+        text.append(" - Hire local talent for your ship\n", style="dim white")
+        
+        text.append("[", style="white")
+        text.append("3", style="bold yellow")
+        text.append("] ", style="white")
+        text.append("Diplomatic Mission", style="bright_white")
+        text.append(" - Establish relations and alliances\n", style="dim white")
+        
+        text.append("\n")
+        text.append("[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Return to orbit\n", style="white")
+        
+        self.query_one("#colony_display", Static).update(text)
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+    
+    def action_1(self):
+        self.query_one(MessageLog).add_message("Opening local trade markets...", "cyan")
+        # Could open a special trading screen with local goods
+        self.query_one(MessageLog).add_message("Local trade interface coming soon!", "yellow")
+    
+    def action_2(self):
+        self.query_one(MessageLog).add_message("Accessing recruitment office...", "cyan")
+        self.query_one(MessageLog).add_message("Crew recruitment coming soon!", "yellow")
+    
+    def action_3(self):
+        self.query_one(MessageLog).add_message("Initiating diplomatic protocols...", "cyan")
+        self.query_one(MessageLog).add_message("Diplomacy system coming soon!", "yellow")
+
+
+class MiningScreen(Screen):
+    """Screen for mining asteroids"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("space", "mine_cycle", "Mine", show=True),
+    ]
+    
+    def __init__(self, game, system, asteroid_belt):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.asteroid_belt = asteroid_belt
+        self.mining_progress = 0
+        self.resources_collected = {}
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="mining_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_mining()
+        self.query_one(MessageLog).add_message("Mining operations initialized", "green")
+    
+    def render_mining(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold yellow")
+        text.append(f"MINING OPERATIONS - {self.system['name']}".center(80) + "\n", style="bold yellow")
+        text.append("═" * 80 + "\n", style="bold yellow")
+        text.append("\n")
+        
+        # Asteroid belt info
+        text.append(f"Target: ", style="white")
+        text.append(f"{self.asteroid_belt.get('name', 'Asteroid Belt')}\n", style="bright_yellow")
+        text.append(f"Density: ", style="white")
+        density = self.asteroid_belt.get('density', 'Moderate')
+        density_color = {"Sparse": "yellow", "Moderate": "white", "Dense": "green"}
+        text.append(f"{density}\n", style=density_color.get(density, "white"))
+        text.append(f"Mineral Content: ", style="white")
+        if self.asteroid_belt.get('mineral_rich'):
+            text.append("Rich\n", style="bright_green")
+        else:
+            text.append("Standard\n", style="white")
+        text.append("\n")
+        
+        # Mining progress
+        text.append("━" * 80 + "\n", style="cyan")
+        text.append("MINING PROGRESS:\n", style="bold bright_cyan")
+        text.append("━" * 80 + "\n", style="cyan")
+        
+        progress_bar_width = 40
+        filled = int(self.mining_progress / 100 * progress_bar_width)
+        bar = "[" + ("█" * filled) + ("·" * (progress_bar_width - filled)) + "]"
+        text.append(f"Progress: {bar} {self.mining_progress}%\n", style="cyan")
+        text.append("\n")
+        
+        # Resources collected
+        if self.resources_collected:
+            text.append("Resources Collected:\n", style="bold green")
+            for resource, amount in self.resources_collected.items():
+                text.append(f"  • {resource}: ", style="white")
+                text.append(f"{amount} units\n", style="green")
+            text.append("\n")
+        
+        # Ship cargo status
+        nav = getattr(self.game, 'navigation', None)
+        ship = nav.current_ship if nav else None
+        if ship:
+            cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+            text.append(f"Cargo Hold: ", style="white")
+            cargo_pct = cargo_used / ship.max_cargo if ship.max_cargo > 0 else 0
+            cargo_color = "green" if cargo_pct < 0.7 else "yellow" if cargo_pct < 0.9 else "red"
+            text.append(f"{cargo_used}/{ship.max_cargo} ", style=cargo_color)
+            text.append(f"({cargo_pct*100:.0f}% full)\n", style=cargo_color)
+            text.append("\n")
+        
+        # Instructions
+        text.append("[", style="white")
+        text.append("SPACE", style="bold yellow")
+        text.append("] Mine (hold to continue)  [", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Finish mining and return\n", style="white")
+        
+        self.query_one("#mining_display", Static).update(text)
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+    
+    def action_mine_cycle(self):
+        """Perform one mining cycle"""
+        import random
+        
+        # Check cargo space
+        nav = getattr(self.game, 'navigation', None)
+        ship = nav.current_ship if nav else None
+        if ship:
+            cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+            if cargo_used >= ship.max_cargo:
+                self.query_one(MessageLog).add_message("Cargo hold full! Return to station.", "red")
+                return
+        
+        # Mine resources
+        self.mining_progress = min(100, self.mining_progress + random.randint(5, 15))
+        
+        # Determine what was found
+        possible_resources = [
+            "Zerite Crystals", "Crythium Ore", "Phasemetal", "Quantum Sand",
+            "Gravite", "Nullstone", "Carboxite Slabs", "Living Ore"
+        ]
+        
+        if random.random() < 0.7:  # 70% chance to find something
+            resource = random.choice(possible_resources)
+            amount = random.randint(1, 5)
+            
+            # Bonus for mineral-rich belts
+            if self.asteroid_belt.get('mineral_rich'):
+                amount *= 2
+            
+            self.resources_collected[resource] = self.resources_collected.get(resource, 0) + amount
+            
+            # Add to ship cargo
+            if ship and hasattr(ship, 'cargo'):
+                ship.cargo[resource] = ship.cargo.get(resource, 0) + amount
+            
+            # Also add to game inventory
+            self.game.inventory[resource] = self.game.inventory.get(resource, 0) + amount
+            
+            self.query_one(MessageLog).add_message(f"Extracted {amount} units of {resource}!", "green")
+        else:
+            self.query_one(MessageLog).add_message("Mining... no valuable ore in this batch", "dim white")
+        
+        self.render_mining()
 
 
 def main():
