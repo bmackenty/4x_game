@@ -5,7 +5,7 @@ Pure keyboard control, ASCII-based UI inspired by NetHack/Roguelikes
 """
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import Static, Label
 from textual.binding import Binding
 from textual.screen import Screen
@@ -420,7 +420,7 @@ class MainGameScreen(Screen):
         
         lines.append("")
         lines.append("─" * 80)
-        lines.append("[i: Inventory] [m: Map] [t: Trade] [r: Research] [s: Status] [q: Menu]")
+        lines.append("[i: Inventory] [m: Map] [r: Research] [s: Status] [q: Menu]")
         
         self.query_one("#main_area", Static).update("\n".join(lines))
         
@@ -737,15 +737,6 @@ class SystemInteractionScreen(Screen):
 
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("1", "action_1", "Action 1", show=False),
-        Binding("2", "action_2", "Action 2", show=False),
-        Binding("3", "action_3", "Action 3", show=False),
-        Binding("4", "action_4", "Action 4", show=False),
-        Binding("5", "action_5", "Action 5", show=False),
-        Binding("6", "action_6", "Action 6", show=False),
-        Binding("7", "action_7", "Action 7", show=False),
-        Binding("8", "action_8", "Action 8", show=False),
-        Binding("9", "action_9", "Action 9", show=False),
     ]
 
     def __init__(self, game, system):
@@ -757,6 +748,17 @@ class SystemInteractionScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(id="system_display")
         yield MessageLog()
+
+    def on_key(self, event):
+        """Handle key presses directly"""
+        # Check for number keys
+        if event.character and event.character.isdigit():
+            num = int(event.character)
+            if num >= 1 and num <= 9:
+                self._dispatch_action(num)
+                event.prevent_default()
+                return
+        # Let other keys propagate normally
 
     def on_mount(self):
         self.build_available_actions()
@@ -1037,34 +1039,6 @@ class SystemInteractionScreen(Screen):
     def action_pop_screen(self):
         self.app.pop_screen()
     
-    # Action dispatch methods
-    def action_1(self):
-        self._dispatch_action(1)
-    
-    def action_2(self):
-        self._dispatch_action(2)
-    
-    def action_3(self):
-        self._dispatch_action(3)
-    
-    def action_4(self):
-        self._dispatch_action(4)
-    
-    def action_5(self):
-        self._dispatch_action(5)
-    
-    def action_6(self):
-        self._dispatch_action(6)
-    
-    def action_7(self):
-        self._dispatch_action(7)
-    
-    def action_8(self):
-        self._dispatch_action(8)
-    
-    def action_9(self):
-        self._dispatch_action(9)
-    
     def _dispatch_action(self, num):
         """Dispatch to the appropriate action handler"""
         for action_num, name, handler, desc in self.available_actions:
@@ -1157,6 +1131,7 @@ class TradingScreen(Screen):
         self.sell_items = []  # list of (name, owned_qty, price, demand)
         self.selected_index = 0
         self.quantity = 1
+        self.trade_scroll_offset = 0  # For scrolling long lists
 
     def compose(self) -> ComposeResult:
         yield Static(id="trade_display")
@@ -1313,7 +1288,7 @@ class TradingScreen(Screen):
         lines.append("Note: Prices change with supply/demand. Routes may shift before arrival.")
 
     def _display_trade_list(self, lines):
-        """Display buy or sell list"""
+        """Display buy or sell list with scrolling support"""
         # List items
         items = self.buy_items if self.mode == "buy" else self.sell_items
         if not items:
@@ -1322,17 +1297,43 @@ class TradingScreen(Screen):
             else:
                 lines.append("No sellable inventory here (or no market demand).")
         else:
+            # Calculate visible window (show max 20 items at a time)
+            max_visible = 20
+            total_items = len(items)
+            
+            # Adjust scroll offset to keep selected item visible
+            if self.selected_index < self.trade_scroll_offset:
+                self.trade_scroll_offset = self.selected_index
+            elif self.selected_index >= self.trade_scroll_offset + max_visible:
+                self.trade_scroll_offset = self.selected_index - max_visible + 1
+            
+            # Clamp scroll offset
+            self.trade_scroll_offset = max(0, min(self.trade_scroll_offset, max(0, total_items - max_visible)))
+            
+            # Display header
             header = ("#  Commodity                     Price        Avail/Demand")
             lines.append(header)
             lines.append("-" * len(header))
-            for i, entry in enumerate(items, 1):
-                cursor = ">" if (i - 1) == self.selected_index else " "
+            
+            # Show scroll indicator if needed
+            if self.trade_scroll_offset > 0:
+                lines.append(f"  ▲ ({self.trade_scroll_offset} items above)")
+            
+            # Display visible items
+            end_idx = min(self.trade_scroll_offset + max_visible, total_items)
+            for i in range(self.trade_scroll_offset, end_idx):
+                entry = items[i]
+                cursor = ">" if i == self.selected_index else " "
                 if self.mode == "buy":
                     name, price, supply = entry
-                    lines.append(f" {cursor} {i:2d}. {name:<28} {price:>8,} cr     {supply:>6}")
+                    lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {supply:>6}")
                 else:
                     name, owned, price, demand = entry
-                    lines.append(f" {cursor} {i:2d}. {name:<28} {price:>8,} cr     {owned:>3}/{demand:<3}")
+                    lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {owned:>3}/{demand:<3}")
+            
+            # Show scroll indicator if more items below
+            if end_idx < total_items:
+                lines.append(f"  ▼ ({total_items - end_idx} items below)")
 
             # Selected item details
             sel = items[self.selected_index]
@@ -1363,6 +1364,8 @@ class TradingScreen(Screen):
         else:
             self.mode = "sell" if self.mode == "buy" else "buy"
         self.quantity = 1
+        self.selected_index = 0
+        self.trade_scroll_offset = 0
         self.refresh_lists()
         self.update_display()
 
@@ -1371,6 +1374,7 @@ class TradingScreen(Screen):
             self.mode = "buy"
         else:
             self.mode = "analysis"
+        self.trade_scroll_offset = 0
         self.update_display()
 
     def action_show_opportunities(self):
@@ -1378,6 +1382,7 @@ class TradingScreen(Screen):
             self.mode = "buy"
         else:
             self.mode = "opportunities"
+        self.trade_scroll_offset = 0
         self.update_display()
 
     def action_cursor_down(self):
