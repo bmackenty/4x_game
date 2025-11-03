@@ -826,6 +826,140 @@ theoretical_sciences = {
     }
 }
 
+# Ship Technology Sciences (for component unlocks)
+ship_technologies = {
+    "Fusion Technology": {
+        "category": "Engineering and Applied",
+        "description": "Harnessing fusion reactions for power generation and propulsion systems.",
+        "difficulty": 4,
+        "research_cost": 50000,
+        "research_time": 60,
+        "prerequisites": [],
+        "unlocks": ["Fusion Engine", "Fusion Reactors"],
+        "related_energy": "Thermal Energy"
+    },
+    "Plasma Physics": {
+        "category": "Engineering and Applied",
+        "description": "Advanced understanding of plasma states for weapons and shielding.",
+        "difficulty": 5,
+        "research_cost": 75000,
+        "research_time": 80,
+        "prerequisites": [],
+        "unlocks": ["Plasma Torpedoes", "Plasma Shields"],
+        "related_energy": "Thermal Energy"
+    },
+    "Etheric Manipulation": {
+        "category": "Etheric and Cosmic",
+        "description": "Fundamental control over Etheric Energy fields for various applications.",
+        "difficulty": 6,
+        "research_cost": 100000,
+        "research_time": 100,
+        "prerequisites": [],
+        "unlocks": ["Etheric Disruptors", "Etheric Barriers", "Harmonic Resonator"],
+        "related_energy": "Etheric Energy"
+    },
+    "Graviton Physics": {
+        "category": "Quantum and Transdimensional",
+        "description": "Manipulation of gravitational forces at the particle level.",
+        "difficulty": 7,
+        "research_cost": 150000,
+        "research_time": 120,
+        "prerequisites": [],
+        "unlocks": ["Gravity Cannon", "Graviton Flux Engine"],
+        "related_energy": "Gravitational Energy"
+    },
+    "Quantum Mechanics": {
+        "category": "Quantum and Transdimensional",
+        "description": "Deep understanding of quantum phenomena for advanced technologies.",
+        "difficulty": 6,
+        "research_cost": 120000,
+        "research_time": 100,
+        "prerequisites": [],
+        "unlocks": ["Quantum Jump Drive", "Phase Shields"],
+        "related_energy": "Quantum Flux"
+    },
+    "Particle Physics": {
+        "category": "Engineering and Applied",
+        "description": "Study of subatomic particles for precision weapons systems.",
+        "difficulty": 6,
+        "research_cost": 100000,
+        "research_time": 90,
+        "prerequisites": [],
+        "unlocks": ["Neutrino Lance"],
+        "related_energy": "Nuclear Energy"
+    },
+    "Temporal Manipulation": {
+        "category": "Quantum and Transdimensional",
+        "description": "Controlling time flows for offensive and propulsion applications.",
+        "difficulty": 8,
+        "research_cost": 200000,
+        "research_time": 150,
+        "prerequisites": ["Quantum Mechanics"],
+        "unlocks": ["Chrono Torpedoes", "Chrono-Spindle Reactor"],
+        "related_energy": "Chrono-Energy"
+    },
+    "Nanotechnology": {
+        "category": "Engineering and Applied",
+        "description": "Molecular-scale engineering for self-replicating systems.",
+        "difficulty": 5,
+        "research_cost": 80000,
+        "research_time": 70,
+        "prerequisites": [],
+        "unlocks": ["Nanite Swarm Projector"],
+        "related_energy": "Electromagnetic Energy"
+    },
+    "Dark Matter Research": {
+        "category": "Theoretical and Foundational",
+        "description": "Understanding and harnessing exotic dark matter particles.",
+        "difficulty": 9,
+        "research_cost": 250000,
+        "research_time": 180,
+        "prerequisites": ["Particle Physics"],
+        "unlocks": ["Dark Matter Railgun"],
+        "related_energy": "Dark Matter Energy"
+    },
+    "Subspace Navigation": {
+        "category": "Quantum and Transdimensional",
+        "description": "Traveling through subspace dimensions for faster-than-light travel.",
+        "difficulty": 7,
+        "research_cost": 180000,
+        "research_time": 130,
+        "prerequisites": ["Quantum Mechanics"],
+        "unlocks": ["Voidstream Engine"],
+        "related_energy": "Void Essence"
+    },
+    "Bio-Engineering": {
+        "category": "Biological and Xenogenetic",
+        "description": "Combining biological processes with technology.",
+        "difficulty": 5,
+        "research_cost": 90000,
+        "research_time": 80,
+        "prerequisites": [],
+        "unlocks": ["Solaris Bloom Drive"],
+        "related_energy": "Synthetic Bio-Energy"
+    },
+    "Cloaking Technology": {
+        "category": "Engineering and Applied",
+        "description": "Advanced stealth systems for invisibility and detection avoidance.",
+        "difficulty": 6,
+        "research_cost": 110000,
+        "research_time": 90,
+        "prerequisites": [],
+        "unlocks": ["Stealth Generator"],
+        "related_energy": "Electromagnetic Energy"
+    },
+    "Advanced Research": {
+        "category": "Computational and Predictive",
+        "description": "Enhanced research methodologies and laboratory facilities.",
+        "difficulty": 4,
+        "research_cost": 60000,
+        "research_time": 50,
+        "prerequisites": [],
+        "unlocks": ["Research Lab"],
+        "related_energy": "Electromagnetic Energy"
+    }
+}
+
 # Combine all research fields
 all_research = {
     **quantum_sciences,
@@ -837,7 +971,8 @@ all_research = {
     **planetary_sciences,
     **philosophical_sciences,
     **medical_sciences,
-    **theoretical_sciences
+    **theoretical_sciences,
+    **ship_technologies
 }
 
 # Research categories for easy access

@@ -1932,6 +1932,157 @@ class Game:
         return calculate_power_usage(ship.components)
     
     # ========== END SHIP UPGRADE SYSTEM ==========
+    
+    # ========== RESEARCH SYSTEM ==========
+    
+    def get_available_research_projects(self):
+        """Get research projects that can be started based on completed research"""
+        from research import get_available_research
+        available = get_available_research(self.completed_research)
+        # Filter out already completed
+        return {name: data for name, data in available.items() if name not in self.completed_research}
+    
+    def can_afford_research(self, research_name):
+        """Check if player can afford a research project"""
+        from research import all_research
+        research = all_research.get(research_name)
+        if not research:
+            return False, "Research not found"
+        
+        cost = research.get('research_cost', 0)
+        if cost > self.credits:
+            return False, f"Insufficient credits. Need {cost:,} cr"
+        
+        return True, "Can afford"
+    
+    def start_research_project(self, research_name):
+        """Start a new research project"""
+        from research import all_research
+        
+        if self.active_research:
+            return False, f"Already researching: {self.active_research}"
+        
+        research = all_research.get(research_name)
+        if not research:
+            return False, "Research not found"
+        
+        # Check if available (prerequisites met)
+        available = self.get_available_research_projects()
+        if research_name not in available:
+            return False, "Prerequisites not met or already completed"
+        
+        # Check affordability
+        can_afford, reason = self.can_afford_research(research_name)
+        if not can_afford:
+            return False, reason
+        
+        # Deduct cost and start research
+        cost = research.get('research_cost', 0)
+        self.credits -= cost
+        self.active_research = research_name
+        self.research_progress = 0
+        
+        # Log research start
+        self.add_log_entry('research', f"Started researching {research_name}", {
+            'research': research_name,
+            'cost': cost,
+            'duration': research.get('research_time', 0)
+        })
+        
+        return True, f"Started research: {research_name} for {cost:,} credits"
+    
+    def progress_research(self, days=1):
+        """Progress active research by a number of days"""
+        from research import all_research
+        
+        if not self.active_research:
+            return False, "No active research"
+        
+        research = all_research.get(self.active_research)
+        if not research:
+            return False, "Research data not found"
+        
+        total_time = research.get('research_time', 100)
+        self.research_progress += days
+        
+        # Check if completed
+        if self.research_progress >= total_time:
+            completed_research = self.active_research
+            self.complete_research()
+            return True, f"Research completed: {completed_research}!"
+        
+        progress_pct = (self.research_progress / total_time) * 100
+        return True, f"Research progress: {progress_pct:.1f}%"
+    
+    def complete_research(self):
+        """Complete the current research project"""
+        from research import all_research
+        
+        if not self.active_research:
+            return
+        
+        research_name = self.active_research
+        research = all_research.get(research_name)
+        
+        # Add to completed
+        if research_name not in self.completed_research:
+            self.completed_research.append(research_name)
+        
+        # Log completion
+        self.add_log_entry('research', f"Completed research: {research_name}", {
+            'research': research_name,
+            'unlocks': research.get('unlocks', []) if research else []
+        })
+        
+        # Reset active research
+        self.active_research = None
+        self.research_progress = 0
+    
+    def cancel_research(self):
+        """Cancel current research (no refund)"""
+        if self.active_research:
+            cancelled = self.active_research
+            self.active_research = None
+            self.research_progress = 0
+            return True, f"Cancelled research: {cancelled}"
+        return False, "No active research"
+    
+    def purchase_completed_research(self, research_name, cost_multiplier=3.0):
+        """Purchase a completed research instantly (expensive)"""
+        from research import all_research
+        
+        research = all_research.get(research_name)
+        if not research:
+            return False, "Research not found"
+        
+        if research_name in self.completed_research:
+            return False, "Already completed"
+        
+        # Check prerequisites
+        available = self.get_available_research_projects()
+        if research_name not in available:
+            return False, "Prerequisites not met"
+        
+        # Calculate purchase cost (3x normal cost by default)
+        base_cost = research.get('research_cost', 0)
+        purchase_cost = int(base_cost * cost_multiplier)
+        
+        if purchase_cost > self.credits:
+            return False, f"Insufficient credits. Need {purchase_cost:,} cr"
+        
+        # Purchase and complete
+        self.credits -= purchase_cost
+        self.completed_research.append(research_name)
+        
+        self.add_log_entry('research', f"Purchased research data: {research_name}", {
+            'research': research_name,
+            'cost': purchase_cost,
+            'unlocks': research.get('unlocks', [])
+        })
+        
+        return True, f"Purchased {research_name} for {purchase_cost:,} credits"
+    
+    # ========== END RESEARCH SYSTEM ==========
 
     def purchase_menu(self):
         print("\n" + "="*60)

@@ -2055,9 +2055,6 @@ class ResearchScreen(Screen):
     
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("1", "view_research", "View Research", show=False),
-        Binding("2", "start_research", "Start Research", show=False),
-        Binding("3", "buy_data", "Buy Data", show=False),
     ]
     
     def __init__(self, game, system, station):
@@ -2065,16 +2062,60 @@ class ResearchScreen(Screen):
         self.game = game
         self.system = system
         self.station = station
+        self.mode = "main"  # main, browse, start, purchase
+        self.selected_category = None
+        self.selected_index = 0
+        self.research_list = []
     
     def compose(self) -> ComposeResult:
         yield Static(id="research_display")
         yield MessageLog()
+    
+    def on_key(self, event):
+        """Handle key presses"""
+        if event.character and event.character.isdigit():
+            num = int(event.character)
+            if self.mode == "main" and 1 <= num <= 3:
+                if num == 1:
+                    self.action_browse_research()
+                elif num == 2:
+                    self.action_start_research()
+                elif num == 3:
+                    self.action_purchase_data()
+                event.prevent_default()
+            elif self.mode == "browse" and 1 <= num <= 9:
+                self.select_category(num)
+                event.prevent_default()
+        elif event.key == "up" or event.key == "k":
+            if self.mode in ["start", "purchase"]:
+                self.selected_index = max(0, self.selected_index - 1)
+                self.render_research()
+        elif event.key == "down" or event.key == "j":
+            if self.mode in ["start", "purchase"]:
+                self.selected_index = min(len(self.research_list) - 1, self.selected_index + 1)
+                self.render_research()
+        elif event.key == "enter":
+            if self.mode == "start" and self.research_list:
+                self.start_selected_research()
+                event.prevent_default()
+            elif self.mode == "purchase" and self.research_list:
+                self.purchase_selected_research()
+                event.prevent_default()
+        elif event.key == "c" and self.mode == "main":
+            # Cancel current research
+            self.cancel_current_research()
+            event.prevent_default()
+        elif event.key == "p" and self.mode == "main":
+            # Progress research manually (for testing)
+            self.progress_research_manually()
+            event.prevent_default()
     
     def on_mount(self):
         self.render_research()
         self.query_one(MessageLog).add_message(f"Connected to {self.station.get('name')}", "green")
     
     def render_research(self):
+        from research import all_research, research_categories
         text = Text()
         
         # Header
@@ -2083,83 +2124,280 @@ class ResearchScreen(Screen):
         text.append("═" * 80 + "\n", style="bold magenta")
         text.append("\n")
         
-        # Station info
-        text.append(f"Type: ", style="white")
-        text.append(f"{self.station.get('type', 'Unknown')}\n", style="magenta")
-        text.append(f"Location: ", style="white")
-        text.append(f"{self.system['name']}\n", style="yellow")
-        text.append("\n")
-        text.append(f"{self.station.get('description', 'A research facility.')}\n", style="italic dim white")
-        text.append("\n")
-        
-        # Current research
-        text.append("━" * 80 + "\n", style="cyan")
-        text.append("CURRENT RESEARCH:\n", style="bold bright_cyan")
-        text.append("━" * 80 + "\n", style="cyan")
-        
+        # Active research status
         active_research = getattr(self.game, 'active_research', None)
         if active_research:
-            text.append(f"  Project: ", style="white")
-            text.append(f"{active_research}\n", style="bright_magenta")
-            progress = getattr(self.game, 'research_progress', 0)
-            text.append(f"  Progress: ", style="white")
-            text.append(f"{progress}%\n", style="cyan")
-        else:
-            text.append("  No active research\n", style="dim white")
-        text.append("\n")
+            research_data = all_research.get(active_research)
+            if research_data:
+                progress = getattr(self.game, 'research_progress', 0)
+                total_time = research_data.get('research_time', 100)
+                progress_pct = (progress / total_time) * 100 if total_time > 0 else 0
+                
+                text.append("ACTIVE RESEARCH: ", style="bold bright_magenta")
+                text.append(f"{active_research}\n", style="bright_cyan")
+                
+                # Progress bar
+                bar_width = 40
+                filled = int(progress_pct / 100 * bar_width)
+                bar = "[" + ("█" * filled) + ("·" * (bar_width - filled)) + "]"
+                progress_color = "green" if progress_pct > 66 else ("yellow" if progress_pct > 33 else "red")
+                text.append(f"  {bar} ", style=progress_color)
+                text.append(f"{progress_pct:.1f}%\n", style=progress_color)
+                text.append(f"  {progress}/{total_time} days\n", style="white")
+                text.append("\n")
         
-        # Completed research
+        # Completed research count
         completed = getattr(self.game, 'completed_research', [])
         if completed:
-            text.append(f"Completed Technologies: ", style="white")
-            text.append(f"{len(completed)}\n", style="green")
+            text.append(f"Completed: ", style="white")
+            text.append(f"{len(completed)} ", style="green")
+            text.append(f"/ {len(all_research)} technologies\n", style="white")
             text.append("\n")
         
-        # Services
+        # Mode-specific content
+        if self.mode == "main":
+            self._render_main_menu(text)
+        elif self.mode == "browse":
+            self._render_category_menu(text)
+        elif self.mode == "start":
+            self._render_research_list(text, for_purchase=False)
+        elif self.mode == "purchase":
+            self._render_research_list(text, for_purchase=True)
+        
+        self.query_one("#research_display", Static).update(text)
+    
+    def _render_main_menu(self, text):
         text.append("━" * 80 + "\n", style="magenta")
         text.append("RESEARCH SERVICES:\n", style="bold bright_magenta")
         text.append("━" * 80 + "\n", style="magenta")
+        text.append("\n")
         
         text.append("[", style="white")
         text.append("1", style="bold yellow")
-        text.append("] View Research Tree", style="white")
-        text.append(" - Browse available technologies\n", style="dim white")
+        text.append("] Browse Research Tree\n", style="white")
         
         text.append("[", style="white")
         text.append("2", style="bold yellow")
-        text.append("] Start New Research", style="white")
-        text.append(" - Begin technology project\n", style="dim white")
+        text.append("] Start New Research\n", style="white")
         
         text.append("[", style="white")
         text.append("3", style="bold yellow")
-        text.append("] Purchase Data", style="white")
-        text.append(" - Buy completed research\n", style="dim white")
+        text.append("] Purchase Research Data (3x cost)\n", style="white")
+        
+        if self.game.active_research:
+            text.append("\n[", style="white")
+            text.append("c", style="bold red")
+            text.append("] Cancel Active Research\n", style="white")
+            
+            text.append("[", style="white")
+            text.append("p", style="bold cyan")
+            text.append("] Progress Research (+10 days)\n", style="dim white")
         
         text.append("\n")
         text.append(f"Your Credits: ", style="white")
         text.append(f"{self.game.credits:,}\n", style="yellow")
         text.append("\n")
-        
         text.append("[", style="white")
         text.append("q/ESC", style="bold cyan")
         text.append("] Back\n", style="white")
+    
+    def _render_category_menu(self, text):
+        from research import research_categories
         
-        self.query_one("#research_display", Static).update(text)
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append("SELECT RESEARCH CATEGORY:\n", style="bold bright_magenta")
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append("\n")
+        
+        categories = list(research_categories.keys())
+        for i, category in enumerate(categories[:9], 1):  # Show first 9
+            count = len(research_categories[category])
+            completed_count = sum(1 for name in research_categories[category].keys() 
+                                if name in self.game.completed_research)
+            
+            text.append("[", style="white")
+            text.append(f"{i}", style="bold yellow")
+            text.append(f"] {category} ", style="white")
+            text.append(f"({completed_count}/{count})\n", style="cyan")
+        
+        text.append("\n[", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
+    
+    def _render_research_list(self, text, for_purchase=False):
+        from research import all_research
+        
+        title = "PURCHASE RESEARCH DATA" if for_purchase else "START NEW RESEARCH"
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append(f"{title}:\n", style="bold bright_magenta")
+        text.append("━" * 80 + "\n", style="magenta")
+        text.append("\n")
+        
+        if not self.research_list:
+            text.append("No research projects available.\n", style="yellow")
+        else:
+            # Show scrollable list
+            max_visible = 15
+            total_items = len(self.research_list)
+            scroll_offset = max(0, min(self.selected_index - max_visible + 1, total_items - max_visible))
+            scroll_offset = max(0, scroll_offset)
+            
+            if scroll_offset > 0:
+                text.append(f"  ▲ ({scroll_offset} items above)\n", style="dim white")
+            
+            end_idx = min(scroll_offset + max_visible, total_items)
+            for i in range(scroll_offset, end_idx):
+                research_name, research_data = self.research_list[i]
+                cursor = ">" if i == self.selected_index else " "
+                
+                # Check affordability
+                cost = research_data.get('research_cost', 0)
+                if for_purchase:
+                    cost = int(cost * 3.0)  # 3x for purchase
+                
+                can_afford = cost <= self.game.credits
+                cost_color = "yellow" if can_afford else "red"
+                
+                text.append(f" {cursor} ", style="white")
+                text.append(f"{research_name:<40} ", style="bright_magenta")
+                text.append(f"{cost:>10,} cr ", style=cost_color)
+                text.append(f"[{research_data.get('difficulty', 0)}/10]", style="cyan")
+                text.append(f" {research_data.get('research_time', 0)} days\n", style="white")
+            
+            if end_idx < total_items:
+                text.append(f"  ▼ ({total_items - end_idx} items below)\n", style="dim white")
+            
+            # Show selected research details
+            if self.research_list:
+                selected_name, selected_data = self.research_list[self.selected_index]
+                text.append("\n")
+                text.append("━" * 80 + "\n", style="dim white")
+                text.append(f"{selected_name}\n", style="bold bright_magenta")
+                text.append(f"{selected_data.get('description', '')}\n", style="italic white")
+                text.append(f"\nDifficulty: {selected_data.get('difficulty', 0)}/10  ", style="cyan")
+                text.append(f"Time: {selected_data.get('research_time', 0)} days  ", style="white")
+                text.append(f"Category: {selected_data.get('category', 'Unknown')}\n", style="yellow")
+                
+                if selected_data.get('prerequisites'):
+                    text.append(f"Prerequisites: {', '.join(selected_data['prerequisites'])}\n", style="red")
+                
+                if selected_data.get('unlocks'):
+                    text.append(f"Unlocks: {', '.join(selected_data['unlocks'])}\n", style="green")
+        
+        text.append("\n[", style="white")
+        text.append("↑/↓ or j/k", style="bold cyan")
+        text.append("] Navigate  [", style="white")
+        text.append("Enter", style="bold green")
+        action_text = "Purchase" if for_purchase else "Start"
+        text.append(f"] {action_text}  [", style="white")
+        text.append("q/ESC", style="bold cyan")
+        text.append("] Back\n", style="white")
     
     def action_pop_screen(self):
-        self.app.pop_screen()
+        if self.mode != "main":
+            self.mode = "main"
+            self.selected_index = 0
+            self.render_research()
+        else:
+            self.app.pop_screen()
     
-    def view_research(self):
-        self.query_one(MessageLog).add_message("Accessing research database...", "cyan")
-        self.query_one(MessageLog).add_message("Research tree viewer coming soon!", "yellow")
+    def action_browse_research(self):
+        self.mode = "browse"
+        self.render_research()
+        self.query_one(MessageLog).add_message("Select research category", "cyan")
     
-    def start_research(self):
-        self.query_one(MessageLog).add_message("Selecting research project...", "cyan")
-        self.query_one(MessageLog).add_message("Research project selector coming soon!", "yellow")
+    def action_start_research(self):
+        if self.game.active_research:
+            self.query_one(MessageLog).add_message("Already researching something! Cancel first with 'c'", "red")
+            return
+        
+        available = self.game.get_available_research_projects()
+        if not available:
+            self.query_one(MessageLog).add_message("No research available!", "red")
+            return
+        
+        self.research_list = list(available.items())
+        self.selected_index = 0
+        self.mode = "start"
+        self.render_research()
+        self.query_one(MessageLog).add_message("Select research to start", "cyan")
     
-    def buy_data(self):
-        self.query_one(MessageLog).add_message("Browsing available data...", "cyan")
-        self.query_one(MessageLog).add_message("Data marketplace coming soon!", "yellow")
+    def action_purchase_data(self):
+        available = self.game.get_available_research_projects()
+        if not available:
+            self.query_one(MessageLog).add_message("No research available to purchase!", "red")
+            return
+        
+        self.research_list = list(available.items())
+        self.selected_index = 0
+        self.mode = "purchase"
+        self.render_research()
+        self.query_one(MessageLog).add_message("Select research to purchase (3x cost)", "cyan")
+    
+    def select_category(self, num):
+        from research import research_categories, all_research
+        
+        categories = list(research_categories.keys())
+        if 1 <= num <= len(categories):
+            category = categories[num - 1]
+            research_in_category = research_categories[category]
+            
+            # Show info about this category
+            msg_log = self.query_one(MessageLog)
+            msg_log.add_message(f"Category: {category}", "magenta")
+            
+            completed = [name for name in research_in_category.keys() if name in self.game.completed_research]
+            available = [name for name in research_in_category.keys() 
+                        if name in self.game.get_available_research_projects()]
+            
+            msg_log.add_message(f"Completed: {len(completed)}, Available: {len(available)}, Total: {len(research_in_category)}", "cyan")
+            
+            # List some examples
+            if available:
+                examples = list(available)[:3]
+                msg_log.add_message(f"Examples: {', '.join(examples)}", "yellow")
+    
+    def start_selected_research(self):
+        if not self.research_list:
+            return
+        
+        research_name, research_data = self.research_list[self.selected_index]
+        success, message = self.game.start_research_project(research_name)
+        
+        if success:
+            self.query_one(MessageLog).add_message(message, "green")
+            self.mode = "main"
+            self.render_research()
+        else:
+            self.query_one(MessageLog).add_message(message, "red")
+    
+    def purchase_selected_research(self):
+        if not self.research_list:
+            return
+        
+        research_name, research_data = self.research_list[self.selected_index]
+        success, message = self.game.purchase_completed_research(research_name, cost_multiplier=3.0)
+        
+        if success:
+            self.query_one(MessageLog).add_message(message, "green")
+            self.mode = "main"
+            self.render_research()
+        else:
+            self.query_one(MessageLog).add_message(message, "red")
+    
+    def cancel_current_research(self):
+        success, message = self.game.cancel_research()
+        if success:
+            self.query_one(MessageLog).add_message(message, "yellow")
+        else:
+            self.query_one(MessageLog).add_message(message, "red")
+        self.render_research()
+    
+    def progress_research_manually(self):
+        """Manually progress research by 10 days (for testing)"""
+        success, message = self.game.progress_research(days=10)
+        self.query_one(MessageLog).add_message(message, "cyan" if success else "red")
+        self.render_research()
 
 
 class ColonyInteractionScreen(Screen):
