@@ -7,6 +7,7 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 - **Character Creation**: 6 unique character classes with different starting bonuses and backgrounds
 - **Ship Building**: Custom ship construction system with hull types, engines, weapons, shields, and special systems
 - **Space Navigation**: 3D galaxy with 30-40 star systems to explore using X,Y,Z coordinates
+- **Scanning Range**: Ships detect nearby planets, stations, and resources; upgrade scanners for extended range
 - **Manufacturing Platforms**: 20+ unique industrial facilities from Solar Forge Arrays to Temporal Forges
 - **Commodities Trading**: Extensive catalog of exotic goods, bio-materials, and raw resources
 - **Ship Classes**: Various starship types from stealth frigates to massive freighters
@@ -516,10 +517,24 @@ Enhance your ships with advanced technology at specialized stations:
   - Boost carrying capacity and loading speed
 - **Navigation Systems**: Advanced Scanner, Jump Computer, Stellar Cartographer
   - Enhanced sensors, accuracy, and exploration capabilities
+- **Scanning Systems**: Scanner Array (8.0 range), Advanced Scanner Array (15.0 range), Quantum Scanner (25.0 range)
+  - Detect nearby planets, stations, asteroids, and resources from greater distances
+  - See detailed icons for scanned objects on the galaxy map
 - **Defensive Systems**: Reinforced Hull, Shield Booster, Point Defense
   - Better protection and survivability
 - **Life Support**: Extended Life Support, Medical Bay, Luxury Quarters
   - Improved crew capacity and comfort
+
+### Scanning Range System
+- **Default Range**: Ships start with 5.0 map unit scan range
+- **Scanner Upgrades**: Install better scanners to detect objects from farther away
+- **Visual Indicators**: Scanned objects show icons beneath them on the map:
+  - **P** = Habitable planets (high value exploration targets)
+  - **p** = Regular planets
+  - **S** = Space stations (services and upgrades)
+  - **M** = Mineral-rich asteroids (mining opportunities)
+  - **a** = Regular asteroid belts
+- **Strategic Advantage**: Long-range scanners help plan routes and find valuable resources
 
 ### Upgrade Mechanics
 - **Station Requirement**: Upgrades only available at Research Labs, Military Bases, and Shipyards

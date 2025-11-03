@@ -366,12 +366,35 @@ ship_components = {
         "Scanner Array": {
             "cost": 12000,
             "detection_range": 500,
+            "scan_range": 8.0,  # Map scanning range
             "power_required": 20,
             "size_class": "Small",
             "slots_required": 1,
             "slot_type": "utility_bays",
             "tech_required": None,
             "description": "Long-range sensor system"
+        },
+        "Advanced Scanner Array": {
+            "cost": 30000,
+            "detection_range": 1000,
+            "scan_range": 15.0,  # Extended map scanning range
+            "power_required": 35,
+            "size_class": "Medium",
+            "slots_required": 1,
+            "slot_type": "utility_bays",
+            "tech_required": "Advanced Research",
+            "description": "Extended-range deep space sensors"
+        },
+        "Quantum Scanner": {
+            "cost": 50000,
+            "detection_range": 2000,
+            "scan_range": 25.0,  # Long-range scanning
+            "power_required": 50,
+            "size_class": "Large",
+            "slots_required": 2,
+            "slot_type": "utility_bays",
+            "tech_required": "Quantum Mechanics",
+            "description": "Quantum-entangled sensor network with extreme range"
         },
         "Mining Laser": {
             "cost": 15000,

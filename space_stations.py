@@ -10,12 +10,12 @@ space_stations = {
         "description": "Encircles a star to harvest its energy and manufacture hyperalloys, feeding galactic shipyards with raw power and materials."
     },
     "BioSpire Sanctum": {
-        "category": "Biotech",
-        "type": "Living Station",
+        "category": "Biotech / Research",
+        "type": "Living Research Station",
         "description": "A semi-organic tower grown from engineered Silvan seed-flesh, serving as both habitat and research laboratory."
     },
     "Archive of Echoes": {
-        "category": "Knowledge",
+        "category": "Knowledge / Research",
         "type": "Data Preservation Station",
         "description": "A memory-crypt orbiting a dead world, storing consciousness records and cultural histories in crystalline lattices."
     },
@@ -105,7 +105,7 @@ space_stations = {
         "description": "Fixes shifting ether currents in deep space, allowing stable passage for interdimensional vessels."
     },
     "Oblivion Spindle": {
-        "category": "Exotic Physics",
+        "category": "Exotic Physics / Research",
         "type": "Black-Site Research Station",
         "description": "Built in orbit of collapsing stars, it conducts forbidden experiments with quantum collapse fields."
     },
@@ -123,5 +123,45 @@ space_stations = {
         "category": "Religious / Industry",
         "type": "Sacred Manufacturing Station",
         "description": "Combines devotion with industry, where artisans and priests infuse etheric blessings into newly forged artifacts."
+    },
+    "Axiom Research Lab": {
+        "category": "Research",
+        "type": "Advanced Research Facility",
+        "description": "A state-of-the-art research station dedicated to quantum physics, ether manipulation, and technological breakthroughs."
+    },
+    "Nova Scientific Outpost": {
+        "category": "Research",
+        "type": "Deep Space Research Station",
+        "description": "Isolated research facility studying stellar phenomena, dark matter, and exotic particles in the void between stars."
+    },
+    "Cognition Nexus": {
+        "category": "Research",
+        "type": "Consciousness Research Hub",
+        "description": "Advanced facility exploring the intersection of mind, technology, and etheric resonance through neural mapping and AI integration."
+    },
+    "Helix Institute": {
+        "category": "Research",
+        "type": "Biological Research Center",
+        "description": "Premier xenogenetic research station studying alien DNA, genetic engineering, and bio-enhancement technologies."
+    },
+    "Tesseract Laboratory": {
+        "category": "Research",
+        "type": "Dimensional Physics Lab",
+        "description": "Multi-dimensional research facility investigating transdimensional theory, warp mechanics, and reality manipulation."
+    },
+    "Prometheus Station": {
+        "category": "Research",
+        "type": "Energy Research Complex",
+        "description": "Cutting-edge facility researching zero-point energy, fusion technologies, and exotic power generation methods."
+    },
+    "Chronos Institute": {
+        "category": "Research",
+        "type": "Temporal Research Facility",
+        "description": "Specialized station studying time manipulation, temporal mechanics, and chrono-energy applications within stable flux fields."
+    },
+    "Synthesis Hub": {
+        "category": "Research",
+        "type": "Applied Sciences Station",
+        "description": "Multi-disciplinary research station combining theoretical discoveries with practical engineering applications."
     }
 }

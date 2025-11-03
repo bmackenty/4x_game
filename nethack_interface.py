@@ -487,6 +487,7 @@ class MapScreen(Screen):
         msg_log = self.query_one(MessageLog)
         msg_log.add_message("Map displayed!", "cyan")
         msg_log.add_message("@ = Your ship | * = Visited | + = Unvisited | ◈/◆ = Stations", "white")
+        msg_log.add_message("Scanned objects: P/p = Planets | S = Stations | M/a = Asteroids", "bright_magenta")
     
     def update_map(self):
         nav = getattr(self.game, 'navigation', None)
@@ -508,6 +509,15 @@ class MapScreen(Screen):
             py = max(0, min(self.virtual_height - 1, py))
             return px, py
         
+        # Get objects in scan range if ship has scanning capability
+        scanned_systems = set()
+        if ship and hasattr(ship, 'get_objects_in_scan_range'):
+            scan_results = ship.get_objects_in_scan_range(galaxy)
+            for obj_type, obj_data, distance in scan_results:
+                if obj_type == 'system':
+                    # Mark system as scanned
+                    scanned_systems.add(obj_data['name'])
+        
         # Plot systems on virtual buffer with system data
         for sys in galaxy.systems.values():
             x, y, _ = sys["coordinates"]
@@ -519,6 +529,44 @@ class MapScreen(Screen):
             else:
                 ch = "*" if sys.get("visited") else "+"
             virtual_buf[py][px] = (ch, sys)
+            
+            # Add small icons below systems within scan range
+            if sys['name'] in scanned_systems and py + 1 < self.virtual_height:
+                # Determine what icons to show
+                icons = []
+                
+                # Check for planets
+                bodies = sys.get('celestial_bodies', [])
+                planets = [b for b in bodies if b['object_type'] == 'Planet']
+                if planets:
+                    # Show P for habitable planets, p for regular planets
+                    habitable = [p for p in planets if p.get('habitable')]
+                    if habitable:
+                        icons.append('P')  # Habitable planet
+                    else:
+                        icons.append('p')  # Regular planet
+                
+                # Check for stations
+                if has_stations:
+                    icons.append('S')  # Station
+                
+                # Check for special objects
+                moons = [b for b in bodies if b['object_type'] == 'Moon']
+                asteroids = [b for b in bodies if b['object_type'] == 'Asteroid Belt']
+                
+                if asteroids:
+                    mineral_rich = [a for a in asteroids if a.get('mineral_rich')]
+                    if mineral_rich:
+                        icons.append('M')  # Mineral-rich asteroids
+                    else:
+                        icons.append('a')  # Regular asteroids
+                
+                # Place first icon below the system
+                if icons and px < self.virtual_width:
+                    current_char, current_data = virtual_buf[py + 1][px]
+                    # Only place if empty or space
+                    if current_char == " ":
+                        virtual_buf[py + 1][px] = (icons[0], None)
         
         # Plot ship last
         ship_vx = ship_vy = 0
@@ -562,6 +610,21 @@ class MapScreen(Screen):
                         elif char == "+":
                             # Unvisited system - yellow
                             text.append(char, style="yellow")
+                        elif char == "P":
+                            # Habitable planet (scanned)
+                            text.append(char, style="bold bright_green")
+                        elif char == "p":
+                            # Regular planet (scanned)
+                            text.append(char, style="dim green")
+                        elif char == "S":
+                            # Station indicator (scanned)
+                            text.append(char, style="bold bright_cyan")
+                        elif char == "M":
+                            # Mineral-rich asteroids (scanned)
+                            text.append(char, style="bold yellow")
+                        elif char == "a":
+                            # Regular asteroids (scanned)
+                            text.append(char, style="dim white")
                         else:
                             text.append(char)
                     else:
@@ -581,7 +644,10 @@ class MapScreen(Screen):
             fuel_pct = ship.fuel / ship.max_fuel if ship.max_fuel > 0 else 0
             fuel_color = "green" if fuel_pct > 0.5 else "yellow" if fuel_pct > 0.25 else "red"
             text.append(f"{ship.fuel}/{ship.max_fuel}", style=fuel_color)
-            text.append(f"  Range: {ship.jump_range}\n", style="white")
+            text.append(f"  Range: {ship.jump_range}", style="white")
+            # Show scan range
+            scan_range = getattr(ship, 'scan_range', 5.0)
+            text.append(f"  Scan: {scan_range:.1f}\n", style="bright_magenta")
         
         visited_count = sum(1 for s in galaxy.systems.values() if s.get("visited"))
         text.append(f"Systems: ", style="white")
@@ -602,6 +668,18 @@ class MapScreen(Screen):
         text.append("Station(Vis)  ", style="white")
         text.append("◆ ", style="cyan")
         text.append("Station\n", style="white")
+        
+        text.append("Scan: ", style="white")
+        text.append("P ", style="bold bright_green")
+        text.append("Habitable  ", style="white")
+        text.append("p ", style="dim green")
+        text.append("Planet  ", style="white")
+        text.append("S ", style="bold bright_cyan")
+        text.append("Station  ", style="white")
+        text.append("M ", style="bold yellow")
+        text.append("Minerals  ", style="white")
+        text.append("a ", style="dim white")
+        text.append("Asteroids\n", style="white")
         
         text.append("[q/ESC: Back | Arrow/hjkl: Move]\n", style="dim white")
         

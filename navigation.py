@@ -192,6 +192,7 @@ class Ship:
         self.jump_range = 15  # Maximum jump distance
         self.cargo = {}
         self.max_cargo = 100
+        self.scan_range = 5.0  # Default scanning range in map units
         
         # Component tracking for upgrade system
         self.components = {
@@ -238,6 +239,7 @@ class Ship:
             cargo_space = 0
             speed_mod = 1.0
             fuel_efficiency = 1.0
+            scan_range = 5.0  # Base scan range
             
             # Hull stats
             if self.components.get("hull"):
@@ -258,6 +260,8 @@ class Ship:
                     system = ship_components["Special Systems"][system_name]
                     if "cargo_bonus" in system:
                         cargo_space += system["cargo_bonus"]
+                    if "scan_range" in system:
+                        scan_range = system["scan_range"]
             
             # Apply calculated stats
             self.max_cargo = int(cargo_space)
@@ -265,6 +269,7 @@ class Ship:
             self.fuel = min(self.fuel, self.max_fuel)  # Don't exceed new max
             self.jump_range = int(15 * speed_mod)  # Base 15 range scaled by speed
             self.health = health
+            self.scan_range = scan_range
             
         except ImportError:
             # Fallback if ship_builder not available
@@ -311,6 +316,37 @@ class Ship:
         fuel_needed = self.max_fuel - self.fuel
         self.fuel = self.max_fuel
         return fuel_needed
+    
+    def get_objects_in_scan_range(self, galaxy):
+        """Get all celestial bodies and systems within scan range.
+        Returns a list of tuples: (object_type, object_data, distance)
+        where object_type is 'system', 'planet', 'station', etc.
+        """
+        results = []
+        ship_x, ship_y, ship_z = self.coordinates
+        
+        for coords, system in galaxy.systems.items():
+            sys_x, sys_y, sys_z = coords
+            # Calculate 2D distance (ignoring Z for now, since map is 2D)
+            distance = math.sqrt((sys_x - ship_x)**2 + (sys_y - ship_y)**2)
+            
+            if distance <= self.scan_range and distance > 0:
+                # System is in scan range
+                results.append(('system', system, distance))
+                
+                # Check for stations in this system
+                if system.get('stations'):
+                    for station in system['stations']:
+                        results.append(('station', station, distance))
+                
+                # Check for celestial bodies
+                if system.get('celestial_bodies'):
+                    for body in system['celestial_bodies']:
+                        results.append((body['object_type'].lower(), body, distance))
+        
+        # Sort by distance
+        results.sort(key=lambda x: x[2])
+        return results
 
 class NavigationSystem:
     def __init__(self, game):
