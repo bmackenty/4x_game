@@ -13,6 +13,7 @@ from rich.text import Text
 from rich.panel import Panel
 from rich.table import Table
 import random
+import math
 
 # Import game modules
 try:
@@ -486,8 +487,13 @@ class MapScreen(Screen):
         self.update_map()
         msg_log = self.query_one(MessageLog)
         msg_log.add_message("Map displayed!", "cyan")
-        msg_log.add_message("@ = Your ship | * = Visited | + = Unvisited | ◈/◆ = Stations", "white")
+        msg_log.add_message("@ = Your ship | & = NPC ships | * = Visited | + = Unvisited | ◈/◆ = Stations", "white")
         msg_log.add_message("Scanned objects: P/p = Planets | S = Stations | M/a = Asteroids", "bright_magenta")
+        
+        # Show NPC count
+        nav = getattr(self.game, 'navigation', None)
+        if nav and hasattr(nav, 'npc_ships'):
+            msg_log.add_message(f"Active NPC ships in galaxy: {len(nav.npc_ships)}", "magenta")
     
     def update_map(self):
         nav = getattr(self.game, 'navigation', None)
@@ -568,7 +574,15 @@ class MapScreen(Screen):
                     if current_char == " ":
                         virtual_buf[py + 1][px] = (icons[0], None)
         
-        # Plot ship last
+        # Plot NPC ships
+        if nav and hasattr(nav, 'npc_ships'):
+            for npc in nav.npc_ships:
+                nx, ny, nz = npc.coordinates
+                npx, npy = project(nx, ny)
+                # Use '&' symbol for NPCs
+                virtual_buf[npy][npx] = ("&", npc)
+        
+        # Plot player ship last (so it's on top)
         ship_vx = ship_vy = 0
         if ship:
             sx, sy, _ = ship.coordinates
@@ -598,6 +612,9 @@ class MapScreen(Screen):
                         # Color based on character type
                         if char == "@":
                             text.append(char, style="bold bright_white on blue")
+                        elif char == "&":
+                            # NPC ship
+                            text.append(char, style="bold magenta")
                         elif char in ["◈", "◆"]:
                             # Stations - cyan/bright_cyan
                             if char == "◈":
@@ -654,12 +671,29 @@ class MapScreen(Screen):
         text.append(f"{len(galaxy.systems)}", style="bold yellow")
         text.append(f" | Visited: ", style="white")
         text.append(f"{visited_count}", style="bold green")
+        
+        # Show nearby NPCs
+        if nav and hasattr(nav, 'npc_ships') and ship:
+            nearby_npcs = []
+            sx, sy, sz = ship.coordinates
+            for npc in nav.npc_ships:
+                nx, ny, nz = npc.coordinates
+                distance = math.sqrt((sx-nx)**2 + (sy-ny)**2 + (sz-nz)**2)
+                if distance <= 10:  # Within 10 units
+                    nearby_npcs.append((npc, distance))
+            
+            if nearby_npcs:
+                text.append(f" | NPCs nearby: ", style="white")
+                text.append(f"{len(nearby_npcs)}", style="bold magenta")
+        
         text.append("\n", style="white")
         
         # Legend
         text.append("Legend: ", style="white")
         text.append("@ ", style="bold bright_white on blue")
         text.append("You  ", style="white")
+        text.append("& ", style="bold magenta")
+        text.append("NPC  ", style="white")
         text.append("* ", style="green")
         text.append("Visited  ", style="white")
         text.append("+ ", style="yellow")
@@ -728,6 +762,26 @@ class MapScreen(Screen):
         x = max(0, min(galaxy.size_x, x + dx * step_x))
         y = max(0, min(galaxy.size_y, y + dy * step_y))
         ship.coordinates = (x, y, z)
+        
+        # Move NPC ships
+        if hasattr(nav, 'update_npc_ships'):
+            nav.update_npc_ships()
+        
+        # Check for NPC encounters
+        if hasattr(nav, 'get_npc_at_location'):
+            npc = nav.get_npc_at_location((x, y, z))
+            if npc:
+                try:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message(f"Encountered {npc.name}!", "bright_magenta")
+                    self.update_map()
+                    self.app.push_screen(NPCEncounterScreen(self.game, npc, nav))
+                    return
+                except Exception as e:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message(f"Error with NPC encounter: {e}", "red")
+                    import traceback
+                    traceback.print_exc()
 
         # Check if we're on a system
         def project(px, py):
@@ -808,6 +862,243 @@ class MapScreen(Screen):
                     msg_log.add_message(f"System contains: {', '.join(primary_objects)}", "yellow")
             
             self.app.push_screen(SystemInteractionScreen(self.game, entered_system))
+
+
+class NPCEncounterScreen(Screen):
+    """Screen for interacting with NPC ships"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+    ]
+    
+    def __init__(self, game, npc, navigation):
+        super().__init__()
+        self.game = game
+        self.npc = npc
+        self.navigation = navigation
+        self.mode = "main"  # main, trade, rumors
+        self.selected_index = 0
+        self.trade_mode = "buy"  # buy or sell
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="npc_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.render_npc()
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message(f"Encountered {self.npc.name}", "bright_magenta")
+        msg_log.add_message(self.npc.get_greeting(), "cyan")
+    
+    def on_key(self, event) -> None:
+        key = event.key
+        
+        if self.mode == "main":
+            if key in ["1"]:
+                self.mode = "trade"
+                self.selected_index = 0
+                self.render_npc()
+            elif key in ["2"]:
+                self.show_rumors()
+            elif key in ["3"]:
+                self.chat()
+            elif key in ["4", "q", "escape"]:
+                self.app.pop_screen()
+        
+        elif self.mode == "trade":
+            if key in ["1"]:
+                self.trade_mode = "buy"
+                self.selected_index = 0
+                self.render_npc()
+            elif key in ["2"]:
+                self.trade_mode = "sell"
+                self.selected_index = 0
+                self.render_npc()
+            elif key in ["escape", "q"]:
+                self.mode = "main"
+                self.render_npc()
+            elif key == "j" or key == "down":
+                items = list(self.npc.trade_goods.keys()) if self.trade_mode == "buy" else list(self.game.inventory.keys())
+                if items:
+                    self.selected_index = (self.selected_index + 1) % len(items)
+                    self.render_npc()
+            elif key == "k" or key == "up":
+                items = list(self.npc.trade_goods.keys()) if self.trade_mode == "buy" else list(self.game.inventory.keys())
+                if items:
+                    self.selected_index = (self.selected_index - 1) % len(items)
+                    self.render_npc()
+            elif key == "enter":
+                self.execute_trade()
+    
+    def render_npc(self):
+        text = Text()
+        
+        # Header
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append(f"NPC ENCOUNTER - {self.npc.name}".center(80) + "\n", style="bold yellow")
+        text.append(f"Ship: {self.npc.ship_class} | Personality: {self.npc.personality}".center(80) + "\n", style="white")
+        text.append("═" * 80 + "\n", style="bold cyan")
+        text.append("\n")
+        
+        if self.mode == "main":
+            text.append("What would you like to do?\n\n", style="bright_white")
+            text.append("[1] Trade with them\n", style="cyan")
+            text.append("[2] Ask about rumors\n", style="cyan")
+            text.append("[3] Chat\n", style="cyan")
+            text.append("[4] Leave\n", style="dim white")
+            
+            # Show NPC info
+            text.append("\n" + "─" * 80 + "\n", style="white")
+            text.append(f"NPC Credits: {self.npc.credits:,}\n", style="yellow")
+            text.append(f"Cargo ({len(self.npc.trade_goods)} types): ", style="white")
+            text.append(", ".join(self.npc.trade_goods.keys())[:60] + "\n", style="dim white")
+        
+        elif self.mode == "trade":
+            text.append("TRADE MENU\n\n", style="bright_white")
+            text.append("[1] Buy from NPC  ", style="cyan" if self.trade_mode == "buy" else "dim white")
+            text.append("[2] Sell to NPC\n\n", style="cyan" if self.trade_mode == "sell" else "dim white")
+            
+            if self.trade_mode == "buy":
+                text.append("Available from NPC:\n", style="bright_yellow")
+                text.append("─" * 80 + "\n", style="white")
+                
+                if not self.npc.trade_goods:
+                    text.append("Nothing available for trade.\n", style="dim white")
+                else:
+                    for i, (item, qty) in enumerate(self.npc.trade_goods.items()):
+                        price = 10  # Base price
+                        marker = "► " if i == self.selected_index else "  "
+                        style = "bright_white" if i == self.selected_index else "white"
+                        text.append(f"{marker}{item} x{qty} - {price} credits each\n", style=style)
+            else:
+                text.append("Your Inventory:\n", style="bright_yellow")
+                text.append("─" * 80 + "\n", style="white")
+                
+                if not self.game.inventory:
+                    text.append("Nothing to sell.\n", style="dim white")
+                else:
+                    for i, (item, qty) in enumerate(self.game.inventory.items()):
+                        price = 8  # Sell price (lower than buy)
+                        marker = "► " if i == self.selected_index else "  "
+                        style = "bright_white" if i == self.selected_index else "white"
+                        text.append(f"{marker}{item} x{qty} - {price} credits each\n", style=style)
+            
+            text.append("\n[j/k: navigate] [Enter: trade] [q: back]\n", style="dim white")
+        
+        text.append("\n" + "─" * 80 + "\n", style="white")
+        text.append(f"Your Credits: {self.game.credits:,}\n", style="green")
+        
+        self.query_one("#npc_display", Static).update(text)
+    
+    def execute_trade(self):
+        msg_log = self.query_one(MessageLog)
+        
+        if self.trade_mode == "buy":
+            items = list(self.npc.trade_goods.keys())
+            if not items or self.selected_index >= len(items):
+                return
+            
+            item = items[self.selected_index]
+            price = 10
+            
+            if self.game.credits >= price:
+                # Buy one unit
+                self.game.credits -= price
+                self.npc.credits += price
+                self.npc.trade_goods[item] -= 1
+                
+                if self.npc.trade_goods[item] <= 0:
+                    del self.npc.trade_goods[item]
+                    self.selected_index = max(0, self.selected_index - 1)
+                
+                # Add to player inventory
+                self.game.inventory[item] = self.game.inventory.get(item, 0) + 1
+                
+                msg_log.add_message(f"Bought {item} for {price} credits", "green")
+                self.render_npc()
+            else:
+                msg_log.add_message("Not enough credits!", "red")
+        
+        else:  # sell
+            items = list(self.game.inventory.keys())
+            if not items or self.selected_index >= len(items):
+                return
+            
+            item = items[self.selected_index]
+            price = 8
+            
+            if self.npc.credits >= price:
+                # Sell one unit
+                self.game.credits += price
+                self.npc.credits -= price
+                self.game.inventory[item] -= 1
+                
+                if self.game.inventory[item] <= 0:
+                    del self.game.inventory[item]
+                    self.selected_index = max(0, self.selected_index - 1)
+                
+                # Add to NPC inventory
+                self.npc.trade_goods[item] = self.npc.trade_goods.get(item, 0) + 1
+                
+                msg_log.add_message(f"Sold {item} for {price} credits", "green")
+                self.render_npc()
+            else:
+                msg_log.add_message("NPC doesn't have enough credits!", "red")
+    
+    def show_rumors(self):
+        msg_log = self.query_one(MessageLog)
+        
+        # Generate 1-3 rumors
+        num_rumors = random.randint(1, 3)
+        for _ in range(num_rumors):
+            rumor = self.npc.generate_rumor()
+            msg_log.add_message(f"💬 {rumor}", "yellow")
+        
+        msg_log.add_message("Press any key to continue...", "dim white")
+    
+    def chat(self):
+        msg_log = self.query_one(MessageLog)
+        
+        chat_responses = {
+            "Friendly": [
+                "It's a big galaxy out there. Stick to the trade routes if you're new.",
+                "I've been doing this for years. Never gets old!",
+                "Safe travels, friend. May the stars guide you."
+            ],
+            "Cautious": [
+                "...Just passing through. Same as you, I assume.",
+                "Keep your sensors sharp. Not everyone out here is friendly.",
+                "I don't share my routes. Sorry."
+            ],
+            "Greedy": [
+                "Credits make the galaxy go round, friend.",
+                "Everything has a price. Everything.",
+                "I didn't get rich by being generous."
+            ],
+            "Chatty": [
+                "Oh, let me tell you about the time I nearly crashed into a comet!",
+                "Have you been to the nebula sectors? Absolutely beautiful!",
+                "I know someone who knows someone who found an ancient artifact..."
+            ],
+            "Mysterious": [
+                "The void speaks to those who listen.",
+                "Some paths are meant to be walked alone.",
+                "You'll understand... in time."
+            ],
+            "Suspicious": [
+                "Why so many questions? What are you really after?",
+                "I don't know you. I don't trust you.",
+                "This conversation is over."
+            ]
+        }
+        
+        response = random.choice(chat_responses.get(self.npc.personality, ["..."]))
+        msg_log.add_message(f"{self.npc.name}: {response}", "cyan")
+    
+    def action_pop_screen(self):
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message(f"{self.npc.name} continues on their journey...", "dim white")
+        self.app.pop_screen()
 
 
 class SystemInteractionScreen(Screen):

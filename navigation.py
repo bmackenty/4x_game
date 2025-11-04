@@ -5,6 +5,158 @@ Space Navigation and Galaxy Map System
 import random
 import math
 
+class NPCShip:
+    """NPC ship that moves around the galaxy"""
+    def __init__(self, name, ship_class, start_coords, galaxy):
+        self.name = name
+        self.ship_class = ship_class
+        self.coordinates = start_coords
+        self.destination = None
+        self.galaxy = galaxy
+        self.personality = random.choice(["Friendly", "Cautious", "Greedy", "Chatty", "Mysterious", "Suspicious"])
+        self.trade_goods = self._generate_trade_goods()
+        self.credits = random.randint(5000, 50000)
+        self.rumors = []
+        
+    def _generate_trade_goods(self):
+        """Generate random trade goods for this NPC"""
+        from goods import commodities
+        goods = {}
+        
+        # Flatten commodities dict to list
+        all_items = []
+        for category, items in commodities.items():
+            all_items.extend(items)
+        
+        if not all_items:
+            return goods
+        
+        # NPC has 2-5 different commodity types
+        num_types = random.randint(2, 5)
+        available = random.sample(all_items, min(num_types, len(all_items)))
+        for commodity in available:
+            quantity = random.randint(5, 30)
+            goods[commodity['name']] = quantity
+        return goods
+    
+    def move(self):
+        """Move NPC ship towards destination or pick new one"""
+        if not self.destination:
+            # Pick a random system as destination
+            systems = list(self.galaxy.systems.values())
+            if systems:
+                target_system = random.choice(systems)
+                self.destination = target_system['coordinates']
+        
+        if self.destination:
+            # Move towards destination
+            x, y, z = self.coordinates
+            tx, ty, tz = self.destination
+            
+            # Simple movement - move 1-3 units per step in each direction
+            step_size = random.randint(1, 3)
+            dx = max(-step_size, min(step_size, tx - x))
+            dy = max(-step_size, min(step_size, ty - y))
+            dz = max(-step_size, min(step_size, tz - z))
+            
+            self.coordinates = (x + dx, y + dy, z + dz)
+            
+            # Check if reached destination
+            if self.coordinates == self.destination:
+                self.destination = None  # Pick new destination next move
+    
+    def get_greeting(self):
+        """Get a greeting based on personality"""
+        greetings = {
+            "Friendly": [
+                "Greetings, fellow traveler! Safe journeys to you!",
+                "Hello there! Beautiful day for space travel, isn't it?",
+                "Welcome! Always happy to meet another captain out here!"
+            ],
+            "Cautious": [
+                "...Identify yourself. State your intentions.",
+                "Keep your distance. What do you want?",
+                "I'm monitoring you. Don't try anything."
+            ],
+            "Greedy": [
+                "Credits first, questions later. What are you buying?",
+                "Time is money, friend. Make it quick.",
+                "I smell profit. What have you got for me?"
+            ],
+            "Chatty": [
+                "Oh! A visitor! I have SO much to tell you!",
+                "Finally, someone to talk to! You won't believe what I've seen!",
+                "Wonderful! I've been out here for weeks with no one to chat with!"
+            ],
+            "Mysterious": [
+                "...The void whispers secrets, traveler.",
+                "Some encounters are destined. This may be one of them.",
+                "Curious. I sensed your approach before you arrived."
+            ],
+            "Suspicious": [
+                "What's your angle? Nobody just 'runs into' someone out here.",
+                "Convenient timing. Too convenient. What do you really want?",
+                "I don't trust coincidences. Why are you here?"
+            ]
+        }
+        
+        return random.choice(greetings.get(self.personality, ["Greetings."]))
+    
+    def generate_rumor(self):
+        """Generate a random rumor or news"""
+        rumor_types = [
+            # Location rumors
+            "I heard there's a mineral-rich asteroid field near {} - might be worth checking out.",
+            "Word is {} has the best ship upgrades in this sector.",
+            "They say {} is controlled by hostile forces these days. Stay alert.",
+            "Someone mentioned a derelict station drifting near {}. Could be salvage.",
+            
+            # Economic rumors  
+            "Prices for {} are through the roof in the core systems right now.",
+            "I'm hearing {} is in high demand. Could fetch a good price.",
+            "Market crash on {}! Buy low while you can.",
+            
+            # General rumors
+            "I saw something strange in deep space... lights where no ships should be.",
+            "Pirates have been hitting trade routes near the frontier lately.",
+            "There's talk of a new research breakthrough at one of the science stations.",
+            "Some trader was going on about 'temporal anomalies' - probably drunk.",
+            "I heard the Stellar Consortium is recruiting new members.",
+            "Word from the core worlds: tensions are rising between the major factions.",
+        ]
+        
+        from goods import commodities
+        
+        rumor_template = random.choice(rumor_types)
+        
+        # Fill in placeholders
+        if '{}' in rumor_template:
+            # Needs a system name or commodity
+            if 'asteroid' in rumor_template or 'upgrades' in rumor_template or 'hostile' in rumor_template or 'derelict' in rumor_template:
+                # System name
+                systems = list(self.galaxy.systems.values())
+                if systems:
+                    system = random.choice(systems)
+                    rumor = rumor_template.format(system['name'])
+                else:
+                    rumor = rumor_template.replace(' near {}', '')
+            else:
+                # Commodity name - flatten commodities dict
+                all_items = []
+                for category, items in commodities.items():
+                    all_items.extend(items)
+                
+                if all_items:
+                    commodity = random.choice(all_items)
+                    rumor = rumor_template.format(commodity['name'])
+                else:
+                    rumor = rumor_template.replace(' {}', ' rare goods')
+        else:
+            rumor = rumor_template
+        
+        return rumor
+
+
 class Galaxy:
     def __init__(self):
         self.size_x = 100  # Galaxy width
@@ -354,9 +506,60 @@ class NavigationSystem:
         self.galaxy = Galaxy()
         self.current_ship = None
         self.selected_ship_index = 0
+        self.npc_ships = []  # List of NPC ships in the galaxy
         
         # Create markets for all star systems
         self.create_all_markets()
+        
+        # Spawn NPC ships
+        self.spawn_npc_ships()
+    
+    def spawn_npc_ships(self):
+        """Spawn a small number of NPC ships in the galaxy"""
+        npc_names = [
+            "Wandering Merchant", "Star Drifter", "Nomad Trader",
+            "Deep Space Explorer", "Fortune Seeker", "Cosmic Voyager",
+            "Stellar Nomad", "Void Runner", "Frontier Trader",
+            "Nebula Wanderer", "Etheric Traveler", "Quantum Drifter"
+        ]
+        
+        npc_ship_classes = [
+            "Aurora-Class Freighter", "Stellar Voyager", "Nebula Drifter",
+            "Celestium-Class Communication Ship", "Basic Transport"
+        ]
+        
+        # Spawn 3-6 NPC ships
+        num_npcs = random.randint(3, 6)
+        
+        systems = list(self.galaxy.systems.values())
+        if not systems:
+            return
+        
+        for i in range(min(num_npcs, len(npc_names))):
+            name = npc_names[i]
+            ship_class = random.choice(npc_ship_classes)
+            # Start at random system
+            start_system = random.choice(systems)
+            start_coords = start_system['coordinates']
+            
+            npc = NPCShip(name, ship_class, start_coords, self.galaxy)
+            self.npc_ships.append(npc)
+    
+    def update_npc_ships(self):
+        """Move all NPC ships"""
+        for npc in self.npc_ships:
+            npc.move()
+    
+    def get_npc_at_location(self, coords):
+        """Check if there's an NPC ship at the given coordinates"""
+        x, y, z = coords
+        for npc in self.npc_ships:
+            nx, ny, nz = npc.coordinates
+            # Check if within range (use larger range to account for movement steps)
+            distance = math.sqrt((x-nx)**2 + (y-ny)**2 + (z-nz)**2)
+            if distance <= 5.0:  # Larger range to catch encounters during map movement
+                return npc
+        return None
     
     def display_ship_status(self):
         """Display current ship status"""
