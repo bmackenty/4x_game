@@ -459,9 +459,9 @@ class MapScreen(Screen):
     def __init__(self, game):
         super().__init__()
         self.game = game
-        # Viewport size (visible area)
-        self.viewport_width = 78
-        self.viewport_height = 20
+        # Viewport size (visible area) - expanded for larger screens
+        self.viewport_width = 120
+        self.viewport_height = 35
         # Virtual map size (much larger than viewport)
         self.virtual_width = 200
         self.virtual_height = 60

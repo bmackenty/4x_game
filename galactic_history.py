@@ -1,3 +1,4 @@
+
 """
 Galactic History System for 4X Game
 Procedural ancient civilizations, archaeological discoveries, and historical events
