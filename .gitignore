@@ -232,3 +232,5 @@ tramp
 *.7z
 __pycache__/game.cpython-313.pyc
 __pycache__/game.cpython-313.pyc
+__pycache__/factions.cpython-313.pyc
+__pycache__/navigation.cpython-313.pyc

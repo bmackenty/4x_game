@@ -1,0 +1,177 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    FACTION ZONE TOGGLE VISUALIZATION                           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          NORMAL MODE (Default)                              │
+│                         Press 'f' to enable factions                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+                              GALAXY MAP
+═══════════════════════════════════════════════════════════════════════════════
+
+                    +              *              ◆
+        
+              +          *     @         +             ◈
+        
+                    +         &              *
+        
+        *                 +              +         *
+        
+                +              ◆              +
+
+─────────────────────────────────────────────────────────────────────────────
+Ship: Wanderer (Scout)  Pos: (250,300,100)
+Fuel: 45/50  Range: 10  Scan: 8.0
+Systems: 89 | Visited: 12
+
+Legend: @ You  & NPC  * Visited  + Unvisited  ◈ Station(Vis)  ◆ Station
+[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                      ↓↓↓ PRESS 'f' KEY ↓↓↓                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FACTION MODE (Toggled ON)                           │
+│                        Press 'f' again to disable                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+                        GALAXY MAP - FACTION ZONES
+═══════════════════════════════════════════════════════════════════════════════
+
+                    +              *              ◆
+        
+         ░░░░░░+░░░░░░░░*░░░░@░░░░░░░+░░░░░        ◈
+                  [BLUE - The Veritas Covenant]
+         ░░░░░░░░░░+░░░░░░░░&░░░░░░░░░*░░░░
+        
+        *        ░░░░░░░+░░░░░░░░░░░░░░+         *
+        
+                +              ◆              +
+
+─────────────────────────────────────────────────────────────────────────────
+Ship: Wanderer (Scout)  Pos: (250,300,100)
+Fuel: 45/50  Range: 10  Scan: 8.0
+Systems: 89 | Visited: 12 | Zone: The Veritas Covenant
+
+Faction Mode: Colored backgrounds = faction zones  ░ = faction space
+
+Legend: @ You  & NPC  * Visited  + Unvisited  ◈ Station(Vis)  ◆ Station
+[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions]
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                              KEY DIFFERENCES                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────┬─────────────────────────────────────┐
+│         NORMAL MODE                 │         FACTION MODE                │
+├─────────────────────────────────────┼─────────────────────────────────────┤
+│ • Clean, minimal view               │ • Color-coded territories           │
+│ • No background characters          │ • ░ fills faction space             │
+│ • Header: "GALAXY MAP"              │ • Header: "FACTION ZONES"           │
+│ • No zone info in HUD               │ • Current zone in HUD               │
+│ • Focus on navigation               │ • Focus on faction geography        │
+│ • Standard system colors            │ • Faction-colored backgrounds       │
+└─────────────────────────────────────┴─────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                           FACTION COLOR EXAMPLES                               ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+   ░░░░░*░░░@░░░+░░░        [BLUE]    The Veritas Covenant (Research)
+   
+   ░░░░░*░░░@░░░+░░░        [RED]     The Harmonic Synaxis (Mysticism)
+   
+   ░░░░░*░░░@░░░+░░░        [GREEN]   Keeper of the Keys (Exploration)
+   
+   ░░░░░*░░░@░░░+░░░        [CYAN]    Celestial Alliance (Cultural)
+   
+   ░░░░░*░░░@░░░+░░░        [YELLOW]  The Scholara Nexus (Research)
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                            STRATEGIC SCENARIOS                                 ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+SCENARIO 1: Planning a Trade Route
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Without Faction View: Must enter each system to check faction control     │
+│  With Faction View: See Trade faction zones (CYAN) instantly, plan route   │
+│                                                                             │
+│  Before: ◆────+────*────+────◆  (Can't tell which are Trade faction)      │
+│  After:  ◆────░░░░░*░░░░+░░░░◆  [CYAN = Stellar Nexus Guild - 30% off!]  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SCENARIO 2: Avoiding Hostile Territory
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Without Faction View: Might accidentally enter hostile space              │
+│  With Faction View: See hostile zones (RED) clearly, route around          │
+│                                                                             │
+│  Before: *──@──+──◆──*  (Unknown if hostile)                              │
+│  After:  *──@──░░░░░░░  [RED = HOSTILE! Avoid!]                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SCENARIO 3: Finding Research Stations
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Without Faction View: Search randomly for research faction systems        │
+│  With Faction View: Locate Research zones (BLUE) quickly                   │
+│                                                                             │
+│  Before: +──+──◆──+──+  (Which stations have research bonus?)             │
+│  After:  +──░░░◆░░░░+  [BLUE = Research +40% speed!]                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                              QUICK REFERENCE                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+KEY: f
+ACTION: Toggle faction zone visualization ON/OFF
+INSTANT: Yes (no lag)
+PERSISTENT: Yes (until you toggle again)
+
+WHEN TO USE FACTION MODE:
+  ✓ Planning strategic routes
+  ✓ Finding faction-specific benefits
+  ✓ Avoiding hostile territories
+  ✓ Understanding galactic politics
+  ✓ Locating research/trade hubs
+
+WHEN TO USE NORMAL MODE:
+  ✓ General navigation
+  ✓ Quick exploration
+  ✓ Minimal visual clutter
+  ✓ Focus on systems only
+
+COLORS USED (11 total):
+  blue, red, green, magenta, cyan, yellow,
+  bright_blue, bright_red, bright_green, bright_magenta, bright_cyan
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                          IMPLEMENTATION COMPLETE                               ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+Files Created:
+  ✓ demo_faction_toggle.py           - Interactive demonstration
+  ✓ FACTION_TOGGLE_GUIDE.md          - Visual reference guide
+  ✓ FACTION_TOGGLE_IMPLEMENTATION.md - Technical documentation
+  ✓ FACTION_TOGGLE_ASCII.txt         - This file
+
+Files Modified:
+  ✓ nethack_interface.py             - Added toggle functionality
+  ✓ FACTION_ZONES.md                 - Updated with toggle documentation
+
+Ready to Use:
+  python3 nethack_interface.py       - Start game and press 'f' on map
+  python3 demo_faction_toggle.py     - See demo of the feature
+  python3 test_faction_zones.py      - Test faction zone data
