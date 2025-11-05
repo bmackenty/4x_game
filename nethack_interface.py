@@ -324,6 +324,7 @@ class MainGameScreen(Screen):
         Binding("q", "quit_game", "Quit", show=False),
         Binding("i", "inventory", "Inventory", show=True),
         Binding("m", "map", "Map", show=True),
+        Binding("n", "news", "News", show=True),
         Binding("r", "research", "Research", show=True),
         Binding("s", "status", "Status", show=True),
     ]
@@ -332,6 +333,7 @@ class MainGameScreen(Screen):
         super().__init__()
         self.character_data = character_data
         self.game = Game() if GAME_AVAILABLE else None
+        self.turn_count = 0
         
         # Initialize game with character
         if self.game:
@@ -380,7 +382,7 @@ class MainGameScreen(Screen):
         """Initialize the game screen"""
         self.update_display()
         self.query_one(MessageLog).add_message(f"Welcome, {self.character_data['name']}!")
-        self.query_one(MessageLog).add_message("Press 'i' for inventory, 'm' for map, 't' for trade, 'r' for research")
+        self.query_one(MessageLog).add_message("Press 'n' for news, 'm' for map, 'i' for inventory, 's' for status")
         if self.game and self.game.owned_ships:
             starter = ", ".join(self.game.owned_ships)
             self.query_one(MessageLog).add_message(f"Starter ship(s): {starter}")
@@ -421,28 +423,46 @@ class MainGameScreen(Screen):
         
         lines.append("")
         lines.append("─" * 80)
-        lines.append("[i: Inventory] [m: Map] [r: Research] [s: Status] [q: Menu]")
+        lines.append("[i: Inventory] [m: Map] [n: News] [s: Status] [q: Menu]")
         
         self.query_one("#main_area", Static).update("\n".join(lines))
+    
+    def advance_turn(self):
+        """Advance the game turn and update events"""
+        self.turn_count += 1
+        
+        # Update events every 3 turns
+        if self.game and hasattr(self.game, 'event_system') and self.turn_count % 3 == 0:
+            self.game.event_system.update_events()
         
     def action_inventory(self):
         """Show inventory screen"""
         self.query_one(MessageLog).add_message("Opening inventory...")
         self.app.push_screen(InventoryScreen(self.game))
+        self.advance_turn()
         
     def action_map(self):
         """Show map screen"""
         self.query_one(MessageLog).add_message("Opening galactic map...")
         self.app.push_screen(MapScreen(self.game))
+        self.advance_turn()
+    
+    def action_news(self):
+        """Show galactic news feed"""
+        self.query_one(MessageLog).add_message("Opening galactic news feed...")
+        self.app.push_screen(GalacticNewsScreen(self.game))
+        self.advance_turn()
         
     def action_research(self):
         """Show research screen"""
         self.query_one(MessageLog).add_message("Opening research interface...")
+        self.advance_turn()
         
     def action_status(self):
         """Show detailed status"""
         self.query_one(MessageLog).add_message("Opening status screen...")
         self.app.push_screen(StatusScreen(self.character_data, self.game))
+        self.advance_turn()
         
     def action_quit_game(self):
         """Quit the game"""
@@ -454,11 +474,13 @@ class MapScreen(Screen):
     
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("n", "news", "News", show=True),
     ]
     
     def __init__(self, game):
         super().__init__()
         self.game = game
+        self.move_count = 0  # Track moves for event updates
         # Viewport size (visible area) - expanded for larger screens
         self.viewport_width = 120
         self.viewport_height = 35
@@ -731,6 +753,10 @@ class MapScreen(Screen):
     
     def action_pop_screen(self):
         self.app.pop_screen()
+    
+    def action_news(self):
+        """Show galactic news feed from the map"""
+        self.app.push_screen(GalacticNewsScreen(self.game))
 
     def on_key(self, event) -> None:
         """Arrow/HJKL movement on the map; entering a system opens interaction screen"""
@@ -762,6 +788,16 @@ class MapScreen(Screen):
         x = max(0, min(galaxy.size_x, x + dx * step_x))
         y = max(0, min(galaxy.size_y, y + dy * step_y))
         ship.coordinates = (x, y, z)
+        
+        # Track moves and update events every 3 moves
+        self.move_count += 1
+        if self.move_count % 3 == 0 and hasattr(self.game, 'event_system'):
+            self.game.event_system.update_events()
+            # Show notification if new event occurred
+            latest_news = self.game.event_system.get_news_feed(limit=1)
+            if latest_news and self.move_count == 3:  # Only show first time
+                msg_log = self.query_one(MessageLog)
+                msg_log.add_message("⚡ New galactic event! Press 'n' for news", "bright_yellow")
         
         # Move NPC ships
         if hasattr(nav, 'update_npc_ships'):
@@ -864,7 +900,176 @@ class MapScreen(Screen):
             self.app.push_screen(SystemInteractionScreen(self.game, entered_system))
 
 
+class GalacticNewsScreen(Screen):
+    """Galactic News Feed - displays recent events from the event system"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("j,down", "scroll_down", "Down", show=False),
+        Binding("k,up", "scroll_up", "Up", show=False),
+    ]
+    
+    def __init__(self, game):
+        super().__init__()
+        self.game = game
+        self.news_scroll_offset = 0
+        self.news_items = []
+        self.max_display = 20
+        
+    def compose(self) -> ComposeResult:
+        yield Static(id="news_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.load_news()
+        self.render_news()
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message("Galactic News Network - Stay Informed", "bright_cyan")
+        msg_log.add_message("Use j/k or arrows to scroll", "white")
+    
+    def load_news(self):
+        """Load news from the event system"""
+        self.news_items = []
+        
+        if not self.game or not hasattr(self.game, 'event_system'):
+            # Generate some placeholder news if event system not available
+            self.news_items = [
+                {
+                    'headline': 'Systems Online',
+                    'description': 'All galactic communication systems are operational.',
+                    'type': 'system',
+                    'severity': 1
+                }
+            ]
+            return
+        
+        # Get news from the event system
+        news_feed = self.game.event_system.get_news_feed(limit=30)
+        
+        if news_feed:
+            self.news_items = news_feed
+        else:
+            # No news yet, show a placeholder
+            self.news_items = [
+                {
+                    'headline': 'Galaxy at Peace',
+                    'description': 'No major events reported at this time. All systems nominal.',
+                    'type': 'system',
+                    'severity': 1
+                }
+            ]
+    
+    def render_news(self):
+        """Render the news feed"""
+        text = Text()
+        
+        # Header
+        text.append("═" * 100 + "\n", style="bold cyan")
+        text.append("GALACTIC NEWS NETWORK".center(100) + "\n", style="bold bright_cyan")
+        text.append("Breaking News from Across the Galaxy".center(100) + "\n", style="cyan")
+        text.append("═" * 100 + "\n", style="bold cyan")
+        text.append("\n")
+        
+        # Show event count
+        active_events = 0
+        if self.game and hasattr(self.game, 'event_system'):
+            active_events = len(self.game.event_system.get_active_events())
+        
+        text.append(f"Active Events: {active_events} | News Items: {len(self.news_items)}\n", style="yellow")
+        text.append("─" * 100 + "\n", style="dim white")
+        text.append("\n")
+        
+        # Display news items
+        if not self.news_items:
+            text.append("No news available.\n", style="dim white")
+        else:
+            # Show subset based on scroll offset
+            start_idx = self.news_scroll_offset
+            end_idx = min(start_idx + self.max_display, len(self.news_items))
+            
+            for i in range(start_idx, end_idx):
+                item = self.news_items[i]
+                
+                # Color based on event type
+                type_colors = {
+                    'economic': 'green',
+                    'political': 'blue',
+                    'scientific': 'bright_cyan',
+                    'military': 'red',
+                    'natural': 'yellow',
+                    'social': 'magenta',
+                    'travel': 'cyan',
+                    'scandal': 'bright_magenta',
+                    'tabloid': 'bright_magenta',
+                    'system': 'dim white'
+                }
+                
+                event_type = item.get('type', 'system')
+                color = type_colors.get(event_type, 'white')
+                severity = item.get('severity', 1)
+                
+                # Severity indicator
+                severity_mark = "!" * min(severity, 5)
+                if severity >= 7:
+                    severity_style = "bold red"
+                elif severity >= 4:
+                    severity_style = "yellow"
+                else:
+                    severity_style = "dim white"
+                
+                # Headline
+                text.append(f"[{severity_mark:5}] ", style=severity_style)
+                text.append(f"{item.get('headline', 'Unknown Event')}\n", style=f"bold {color}")
+                
+                # Description
+                description = item.get('description', '')
+                # Wrap description to fit screen
+                if len(description) > 95:
+                    description = description[:92] + "..."
+                text.append(f"         {description}\n", style=color)
+                
+                # Event type and affected systems
+                type_str = f"[{event_type.upper()}]"
+                affected = item.get('affected_systems', [])
+                if affected and len(affected) > 0:
+                    systems_str = ", ".join(affected[:3])
+                    if len(affected) > 3:
+                        systems_str += f" (+{len(affected) - 3} more)"
+                    text.append(f"         {type_str} Affected: {systems_str}\n", style="dim white")
+                else:
+                    text.append(f"         {type_str}\n", style="dim white")
+                
+                text.append("\n")
+            
+            # Scroll indicator
+            if len(self.news_items) > self.max_display:
+                text.append("─" * 100 + "\n", style="dim white")
+                text.append(f"Showing {start_idx + 1}-{end_idx} of {len(self.news_items)} | ", style="dim cyan")
+                text.append("Use j/k to scroll\n", style="dim cyan")
+        
+        self.query_one("#news_display", Static).update(text)
+    
+    def action_scroll_down(self):
+        """Scroll down the news feed"""
+        if self.news_scroll_offset + self.max_display < len(self.news_items):
+            self.news_scroll_offset += 1
+            self.render_news()
+            self.query_one(MessageLog).add_message("Scrolled down", "dim white")
+    
+    def action_scroll_up(self):
+        """Scroll up the news feed"""
+        if self.news_scroll_offset > 0:
+            self.news_scroll_offset -= 1
+            self.render_news()
+            self.query_one(MessageLog).add_message("Scrolled up", "dim white")
+    
+    def action_pop_screen(self):
+        """Close the news screen"""
+        self.app.pop_screen()
+
+
 class NPCEncounterScreen(Screen):
+
     """Screen for interacting with NPC ships"""
     
     BINDINGS = [
