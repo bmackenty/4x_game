@@ -159,15 +159,57 @@ class NPCShip:
 
 class Galaxy:
     def __init__(self):
-        self.size_x = 100  # Galaxy width
-        self.size_y = 100  # Galaxy height  
-        self.size_z = 50   # Galaxy depth
+        self.size_x = 500  # Galaxy width - substantially increased
+        self.size_y = 500  # Galaxy height - substantially increased
+        self.size_z = 200  # Galaxy depth - substantially increased
         self.systems = {}
+        self.faction_zones = {}  # {faction_name: [(center_x, center_y, center_z), radius]}
         self.generate_star_systems()
+    
+    def generate_faction_zones(self):
+        """Generate faction-controlled zones throughout the galaxy"""
+        from factions import factions
+        
+        faction_names = list(factions.keys())
+        # Create zones for a subset of factions to leave some neutral space
+        num_faction_zones = min(len(faction_names), 15)  # Limit to 15 faction zones
+        selected_factions = random.sample(faction_names, num_faction_zones)
+        
+        for faction_name in selected_factions:
+            # Random center point for faction zone
+            center_x = random.randint(100, self.size_x - 100)
+            center_y = random.randint(100, self.size_y - 100)
+            center_z = random.randint(50, self.size_z - 50)
+            
+            # Zone radius based on faction influence (larger zones for some factions)
+            radius = random.randint(40, 100)
+            
+            self.faction_zones[faction_name] = {
+                'center': (center_x, center_y, center_z),
+                'radius': radius,
+                'systems': []  # Will be populated when systems are generated
+            }
+    
+    def get_faction_for_location(self, x, y, z):
+        """Get the controlling faction for a given location, if any"""
+        for faction_name, zone_data in self.faction_zones.items():
+            center = zone_data['center']
+            radius = zone_data['radius']
+            
+            # Calculate distance from zone center
+            distance = ((x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2) ** 0.5
+            
+            if distance <= radius:
+                return faction_name
+        
+        return None  # Neutral/unclaimed space
     
     def generate_star_systems(self):
         """Generate random star systems throughout the galaxy"""
         from space_stations import space_stations
+        
+        # First, generate faction zones
+        self.generate_faction_zones()
         
         system_names = [
             "Alpha Centauri", "Vega Prime", "Rigel Station", "Betelgeuse Sector",
@@ -179,40 +221,91 @@ class Galaxy:
             "Ross 154", "Epsilon Eridani", "61 Cygni", "Groombridge 1618",
             "DX Cancri", "Tau Ceti", "Gliese 667C", "Kepler-442b",
             "HD 40307g", "Gliese 581g", "Kepler-452b", "TRAPPIST-1",
-            "LHS 1140b", "Proxima b", "Ross 128b", "TOI-715b"
+            "LHS 1140b", "Proxima b", "Ross 128b", "TOI-715b",
+            # Add more system names for the larger galaxy
+            "Zeta Reticuli", "Beta Pictoris", "Fomalhaut", "Epsilon Indi",
+            "Delta Pavonis", "Sigma Draconis", "Mu Arae", "Upsilon Andromedae",
+            "47 Ursae Majoris", "55 Cancri", "Gamma Cephei", "HD 209458",
+            "Gliese 876", "Gliese 436", "Gliese 832", "Gliese 163",
+            "Kapteyn's Star", "Luyten's Star", "YZ Ceti", "Lacaille 9352",
+            "GJ 1061", "GJ 15 A", "GJ 273", "GJ 433", "GJ 674", "GJ 832",
+            "HD 85512", "HD 40307", "HD 69830", "HD 10180"
         ]
         
-        # Generate 30-40 star systems
-        num_systems = random.randint(30, 40)
+        # Generate more star systems for the larger galaxy (80-120 systems)
+        num_systems = random.randint(80, 120)
         
         # Available space stations
         available_stations = list(space_stations.keys())
         random.shuffle(available_stations)
         
         for i in range(num_systems):
-            name = random.choice(system_names)
-            system_names.remove(name)  # Avoid duplicates
+            # Generate unique name
+            if system_names:
+                name = random.choice(system_names)
+                system_names.remove(name)  # Avoid duplicates
+            else:
+                name = f"System-{i+1}"  # Fallback if we run out of names
             
             # Random coordinates within galaxy bounds
             x = random.randint(10, self.size_x - 10)
             y = random.randint(10, self.size_y - 10)
             z = random.randint(5, self.size_z - 5)
             
+            # Determine which faction controls this location
+            controlling_faction = self.get_faction_for_location(x, y, z)
+            
             # Determine system type first
             system_type = random.choice(["Core World", "Frontier", "Industrial", "Military", "Research", "Trading Hub", "Mining", "Agricultural"])
             
+            # If in faction space, bias system type and stations based on faction focus
+            if controlling_faction:
+                from factions import factions
+                faction_data = factions.get(controlling_faction, {})
+                faction_focus = faction_data.get('primary_focus', '')
+                
+                # Bias system type based on faction focus
+                if faction_focus == 'Trade':
+                    system_type = random.choice(["Trading Hub", "Core World", "Industrial"])
+                elif faction_focus == 'Research':
+                    system_type = random.choice(["Research", "Core World", "Frontier"])
+                elif faction_focus == 'Technology':
+                    system_type = random.choice(["Industrial", "Research", "Core World"])
+                elif faction_focus == 'Industry':
+                    system_type = random.choice(["Industrial", "Mining", "Core World"])
+                elif faction_focus == 'Exploration':
+                    system_type = random.choice(["Frontier", "Research", "Trading Hub"])
+                elif faction_focus == 'Mysticism':
+                    system_type = random.choice(["Research", "Frontier", "Core World"])
+                elif faction_focus == 'Cultural':
+                    system_type = random.choice(["Core World", "Trading Hub", "Agricultural"])
+            
             # Assign space stations to some systems
-            system_station_count = random.choices([0, 1, 2, 3], weights=[40, 35, 20, 5])[0]
+            # Increase station count in faction space
+            if controlling_faction:
+                system_station_count = random.choices([1, 2, 3, 4], weights=[30, 35, 25, 10])[0]
+            else:
+                system_station_count = random.choices([0, 1, 2, 3], weights=[40, 35, 20, 5])[0]
+            
             system_stations = []
             for _ in range(system_station_count):
                 if available_stations:
                     station_name = available_stations.pop()
                     station_data = space_stations[station_name].copy()
                     station_data['name'] = station_name
+                    # Mark station as faction-controlled
+                    if controlling_faction:
+                        station_data['controlling_faction'] = controlling_faction
                     system_stations.append(station_data)
             
             # Generate celestial bodies for the system
             celestial_bodies = self.generate_celestial_bodies(system_type)
+            
+            # Mark habitable planets as faction-controlled
+            if controlling_faction:
+                for body in celestial_bodies:
+                    if body.get('object_type') == 'Planet' and body.get('habitable'):
+                        body['controlling_faction'] = controlling_faction
             
             # Generate system properties
             system = {
@@ -225,8 +318,13 @@ class Galaxy:
                 "stations": system_stations,  # Now holds actual station data
                 "celestial_bodies": celestial_bodies,  # Planets, moons, asteroids, etc.
                 "visited": False,
-                "description": self.generate_system_description()
+                "description": self.generate_system_description(),
+                "controlling_faction": controlling_faction  # NEW: Track faction control
             }
+            
+            # Add system to faction zone's system list
+            if controlling_faction and controlling_faction in self.faction_zones:
+                self.faction_zones[controlling_faction]['systems'].append((x, y, z))
             
             self.systems[(x, y, z)] = system
     

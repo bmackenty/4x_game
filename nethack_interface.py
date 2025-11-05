@@ -475,6 +475,7 @@ class MapScreen(Screen):
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
         Binding("n", "news", "News", show=True),
+        Binding("f", "toggle_factions", "Toggle Factions", show=True),
     ]
     
     def __init__(self, game):
@@ -492,6 +493,8 @@ class MapScreen(Screen):
         self.viewport_y = 0
         # Scroll margin (distance from edge before scrolling)
         self.scroll_margin = 3
+        # Faction zone display toggle
+        self.show_faction_zones = False
     
     def compose(self) -> ComposeResult:
         yield Static(id="map_display")
@@ -525,8 +528,8 @@ class MapScreen(Screen):
         galaxy = nav.galaxy
         ship = nav.current_ship
         
-        # Initialize virtual buffer - store (char, system_data) tuples
-        virtual_buf = [[(" ", None)] * self.virtual_width for _ in range(self.virtual_height)]
+        # Initialize virtual buffer - store (char, system_data, faction_name) tuples
+        virtual_buf = [[(" ", None, None)] * self.virtual_width for _ in range(self.virtual_height)]
         
         def project(x, y):
             # Scale galaxy coordinates to virtual map coordinates
@@ -536,6 +539,33 @@ class MapScreen(Screen):
             px = max(0, min(self.virtual_width - 1, px))
             py = max(0, min(self.virtual_height - 1, py))
             return px, py
+        
+        # If faction zones are enabled, draw faction backgrounds
+        faction_colors = {}
+        if self.show_faction_zones and hasattr(galaxy, 'faction_zones'):
+            # Assign colors to factions
+            available_colors = [
+                "blue", "red", "green", "magenta", "cyan", 
+                "yellow", "bright_blue", "bright_red", "bright_green",
+                "bright_magenta", "bright_cyan"
+            ]
+            for idx, faction_name in enumerate(galaxy.faction_zones.keys()):
+                faction_colors[faction_name] = available_colors[idx % len(available_colors)]
+            
+            # Fill in faction zone backgrounds
+            for py in range(self.virtual_height):
+                for px in range(self.virtual_width):
+                    # Convert virtual coords back to galaxy coords
+                    gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
+                    gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
+                    gz = galaxy.size_z / 2  # Use middle z-plane for 2D visualization
+                    
+                    # Check which faction zone this point is in
+                    faction = galaxy.get_faction_for_location(gx, gy, gz) if hasattr(galaxy, 'get_faction_for_location') else None
+                    
+                    if faction:
+                        # Mark this cell as being in faction space with a subtle background character
+                        virtual_buf[py][px] = ("░", None, faction)
         
         # Get objects in scan range if ship has scanning capability
         scanned_systems = set()
@@ -556,7 +586,10 @@ class MapScreen(Screen):
                 ch = "◈" if sys.get("visited") else "◆"  # Diamond for stations
             else:
                 ch = "*" if sys.get("visited") else "+"
-            virtual_buf[py][px] = (ch, sys)
+            
+            # Get faction for this system
+            faction = sys.get('controlling_faction')
+            virtual_buf[py][px] = (ch, sys, faction)
             
             # Add small icons below systems within scan range
             if sys['name'] in scanned_systems and py + 1 < self.virtual_height:
@@ -591,25 +624,28 @@ class MapScreen(Screen):
                 
                 # Place first icon below the system
                 if icons and px < self.virtual_width:
-                    current_char, current_data = virtual_buf[py + 1][px]
-                    # Only place if empty or space
-                    if current_char == " ":
-                        virtual_buf[py + 1][px] = (icons[0], None)
+                    current_char, current_data, current_faction = virtual_buf[py + 1][px]
+                    # Only place if empty or space or faction background
+                    if current_char == " " or current_char == "░":
+                        virtual_buf[py + 1][px] = (icons[0], None, current_faction)
         
         # Plot NPC ships
         if nav and hasattr(nav, 'npc_ships'):
             for npc in nav.npc_ships:
                 nx, ny, nz = npc.coordinates
                 npx, npy = project(nx, ny)
-                # Use '&' symbol for NPCs
-                virtual_buf[npy][npx] = ("&", npc)
+                # Use '&' symbol for NPCs, preserve faction info
+                _, _, faction = virtual_buf[npy][npx]
+                virtual_buf[npy][npx] = ("&", npc, faction)
         
         # Plot player ship last (so it's on top)
         ship_vx = ship_vy = 0
         if ship:
             sx, sy, _ = ship.coordinates
             ship_vx, ship_vy = project(sx, sy)
-            virtual_buf[ship_vy][ship_vx] = ("@", None)
+            # Preserve faction info at player location
+            _, _, faction = virtual_buf[ship_vy][ship_vx]
+            virtual_buf[ship_vy][ship_vx] = ("@", None, faction)
             
             # Center viewport on ship
             self.center_viewport_on(ship_vx, ship_vy)
@@ -619,7 +655,10 @@ class MapScreen(Screen):
         
         # Header
         text.append("═" * self.viewport_width + "\n", style="bold cyan")
-        text.append("GALAXY MAP".center(self.viewport_width) + "\n", style="bold yellow")
+        header = "GALAXY MAP"
+        if self.show_faction_zones:
+            header += " - FACTION ZONES"
+        text.append(header.center(self.viewport_width) + "\n", style="bold yellow")
         text.append("═" * self.viewport_width + "\n", style="bold cyan")
         
         # Render viewport with colors
@@ -629,41 +668,70 @@ class MapScreen(Screen):
                 for x in range(self.viewport_width):
                     virtual_x = self.viewport_x + x
                     if 0 <= virtual_x < self.virtual_width:
-                        char, sys_data = virtual_buf[virtual_y][virtual_x]
+                        char, sys_data, faction = virtual_buf[virtual_y][virtual_x]
+                        
+                        # Determine base style based on character type
+                        base_style = None
                         
                         # Color based on character type
                         if char == "@":
-                            text.append(char, style="bold bright_white on blue")
+                            base_style = "bold bright_white on blue"
                         elif char == "&":
                             # NPC ship
-                            text.append(char, style="bold magenta")
+                            base_style = "bold magenta"
                         elif char in ["◈", "◆"]:
-                            # Stations - cyan/bright_cyan
-                            if char == "◈":
-                                text.append(char, style="bright_cyan")
+                            # Stations - cyan/bright_cyan, but may have faction background
+                            if self.show_faction_zones and faction:
+                                # Show in faction color
+                                faction_color = faction_colors.get(faction, "cyan")
+                                if char == "◈":
+                                    base_style = f"bold bright_white on {faction_color}"
+                                else:
+                                    base_style = f"bold white on {faction_color}"
                             else:
-                                text.append(char, style="cyan")
+                                if char == "◈":
+                                    base_style = "bright_cyan"
+                                else:
+                                    base_style = "cyan"
                         elif char == "*":
-                            # Visited system - green
-                            text.append(char, style="green")
+                            # Visited system - green, but may have faction background
+                            if self.show_faction_zones and faction:
+                                faction_color = faction_colors.get(faction, "green")
+                                base_style = f"bold white on {faction_color}"
+                            else:
+                                base_style = "green"
                         elif char == "+":
-                            # Unvisited system - yellow
-                            text.append(char, style="yellow")
+                            # Unvisited system - yellow, but may have faction background
+                            if self.show_faction_zones and faction:
+                                faction_color = faction_colors.get(faction, "yellow")
+                                base_style = f"bold white on {faction_color}"
+                            else:
+                                base_style = "yellow"
                         elif char == "P":
                             # Habitable planet (scanned)
-                            text.append(char, style="bold bright_green")
+                            base_style = "bold bright_green"
                         elif char == "p":
                             # Regular planet (scanned)
-                            text.append(char, style="dim green")
+                            base_style = "dim green"
                         elif char == "S":
                             # Station indicator (scanned)
-                            text.append(char, style="bold bright_cyan")
+                            base_style = "bold bright_cyan"
                         elif char == "M":
                             # Mineral-rich asteroids (scanned)
-                            text.append(char, style="bold yellow")
+                            base_style = "bold yellow"
                         elif char == "a":
                             # Regular asteroids (scanned)
-                            text.append(char, style="dim white")
+                            base_style = "dim white"
+                        elif char == "░":
+                            # Faction background
+                            if self.show_faction_zones and faction:
+                                faction_color = faction_colors.get(faction, "white")
+                                base_style = f"dim {faction_color}"
+                            else:
+                                base_style = "dim white"
+                        
+                        if base_style:
+                            text.append(char, style=base_style)
                         else:
                             text.append(char)
                     else:
@@ -694,6 +762,15 @@ class MapScreen(Screen):
         text.append(f" | Visited: ", style="white")
         text.append(f"{visited_count}", style="bold green")
         
+        # Show current faction zone if enabled
+        if self.show_faction_zones and ship and hasattr(galaxy, 'get_faction_for_location'):
+            sx, sy, sz = ship.coordinates
+            current_faction = galaxy.get_faction_for_location(sx, sy, sz)
+            if current_faction:
+                text.append(f" | Zone: ", style="white")
+                faction_color = faction_colors.get(current_faction, "white")
+                text.append(f"{current_faction}", style=f"bold {faction_color}")
+        
         # Show nearby NPCs
         if nav and hasattr(nav, 'npc_ships') and ship:
             nearby_npcs = []
@@ -711,6 +788,12 @@ class MapScreen(Screen):
         text.append("\n", style="white")
         
         # Legend
+        if self.show_faction_zones:
+            text.append("Faction Mode: ", style="bold bright_cyan")
+            text.append("Colored backgrounds = faction zones  ", style="white")
+            text.append("░ ", style="dim white")
+            text.append("= faction space\n", style="white")
+        
         text.append("Legend: ", style="white")
         text.append("@ ", style="bold bright_white on blue")
         text.append("You  ", style="white")
@@ -737,7 +820,7 @@ class MapScreen(Screen):
         text.append("a ", style="dim white")
         text.append("Asteroids\n", style="white")
         
-        text.append("[q/ESC: Back | Arrow/hjkl: Move]\n", style="dim white")
+        text.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions]\n", style="dim white")
         
         self.query_one("#map_display", Static).update(text)
     
@@ -757,6 +840,16 @@ class MapScreen(Screen):
     def action_news(self):
         """Show galactic news feed from the map"""
         self.app.push_screen(GalacticNewsScreen(self.game))
+    
+    def action_toggle_factions(self):
+        """Toggle faction zone visualization"""
+        self.show_faction_zones = not self.show_faction_zones
+        msg_log = self.query_one(MessageLog)
+        if self.show_faction_zones:
+            msg_log.add_message("Faction zones: ON", "bright_cyan")
+        else:
+            msg_log.add_message("Faction zones: OFF", "white")
+        self.update_map()
 
     def on_key(self, event) -> None:
         """Arrow/HJKL movement on the map; entering a system opens interaction screen"""
@@ -1426,6 +1519,29 @@ class SystemInteractionScreen(Screen):
         text.append(f"{self.system['name']}".center(80) + "\n", style="bold yellow")
         text.append("═" * 80 + "\n", style="bold cyan")
         text.append("\n")
+        
+        # Faction control information
+        controlling_faction = self.system.get('controlling_faction')
+        if controlling_faction:
+            text.append("⚑ Controlled by: ", style="white")
+            text.append(f"{controlling_faction}\n", style="bold bright_magenta")
+            
+            # Show faction benefits if available
+            if hasattr(self.game, 'faction_system'):
+                benefits = self.game.faction_system.get_faction_zone_benefits(controlling_faction, 'system')
+                rep = self.game.faction_system.player_relations.get(controlling_faction, 0)
+                rep_status = self.game.faction_system.get_reputation_status(controlling_faction)
+                
+                text.append(f"  Your Reputation: ", style="white")
+                rep_color = 'green' if rep >= 50 else 'yellow' if rep >= 0 else 'red'
+                text.append(f"{rep_status} ({rep})\n", style=rep_color)
+                
+                # Show active benefits
+                if benefits['description']:
+                    text.append("  Active Benefits: ", style="white")
+                    text.append(f"{', '.join(benefits['description'][:2])}\n", style="bright_green")
+            
+            text.append("\n")
         
         # System info with colors
         text.append(f"Type: ", style="white")

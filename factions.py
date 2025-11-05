@@ -128,6 +128,78 @@ class FactionSystem:
         
         return benefits
     
+    def get_faction_zone_benefits(self, faction_name, location_type='system'):
+        """Get benefits for being in a faction's controlled space
+        
+        Args:
+            faction_name: Name of the controlling faction
+            location_type: 'system', 'station', 'planet', or 'shipyard'
+        
+        Returns:
+            dict with benefit descriptions and modifiers
+        """
+        rep = self.player_relations.get(faction_name, 0)
+        faction_data = factions.get(faction_name, {})
+        benefits = {
+            'trade_discount': 0,
+            'repair_discount': 0,
+            'refuel_discount': 0,
+            'research_bonus': 0,
+            'shipyard_discount': 0,
+            'description': []
+        }
+        
+        # Base benefits for being in faction space (even with neutral rep)
+        if rep >= -25:  # Neutral or better
+            benefits['description'].append(f"You are in {faction_name} space")
+            
+            # Faction-specific base benefits
+            focus = faction_data.get('primary_focus', '')
+            if focus == 'Trade':
+                benefits['trade_discount'] = 5
+                benefits['description'].append("Trade goods: -5% prices")
+            elif focus == 'Technology' or focus == 'Industry':
+                benefits['repair_discount'] = 10
+                benefits['shipyard_discount'] = 5
+                benefits['description'].append("Repair: -10%, Shipyard: -5%")
+            elif focus == 'Research':
+                benefits['research_bonus'] = 10
+                benefits['description'].append("Research speed: +10%")
+        
+        # Enhanced benefits for cordial relations
+        if rep >= 25:
+            benefits['trade_discount'] += 5
+            benefits['refuel_discount'] = 10
+            benefits['description'].append("Cordial status: Additional discounts")
+            
+        # Strong benefits for friendly relations
+        if rep >= 50:
+            benefits['trade_discount'] += 10
+            benefits['repair_discount'] += 15
+            benefits['refuel_discount'] += 10
+            benefits['shipyard_discount'] += 10
+            benefits['research_bonus'] += 15
+            benefits['description'].append("Friendly status: Major discounts and bonuses")
+        
+        # Maximum benefits for allied status
+        if rep >= 75:
+            benefits['trade_discount'] += 15
+            benefits['repair_discount'] += 20
+            benefits['refuel_discount'] += 20
+            benefits['shipyard_discount'] += 20
+            benefits['research_bonus'] += 25
+            benefits['description'].append("Allied status: Maximum benefits")
+        
+        # Location-specific bonuses
+        if location_type == 'station' and rep >= 25:
+            benefits['description'].append("Station access granted")
+        elif location_type == 'shipyard' and rep >= 50:
+            benefits['description'].append("Advanced ship modifications available")
+        elif location_type == 'planet' and rep >= 50:
+            benefits['description'].append("Colony support and trade privileges")
+        
+        return benefits
+    
     def assign_faction_territories(self, galaxy):
         """Assign territories to factions across the galaxy"""
         systems = list(galaxy.systems.values())
