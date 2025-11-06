@@ -31,6 +31,14 @@ def display_history():
                 print(f"    • {cataclysm}")
             print()
         
+        # Faction Formations
+        if epoch.get('faction_formations'):
+            print("  🏛️  Faction Formations:")
+            for faction in epoch['faction_formations']:
+                print(f"    • Year {faction['year']:,}: {faction['name']}")
+                print(f"      {faction['event']}")
+            print()
+        
         # Mysteries
         if epoch.get('mysteries'):
             print("  ✦ Mysteries of This Age:")

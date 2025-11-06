@@ -173,6 +173,14 @@ class GalacticHistoryScreen(Screen):
                     history_lines.append((f"  • {cataclysm}", "bright_red"))
                 history_lines.append(("", "white"))
             
+            # Faction Formations
+            if epoch.get('faction_formations'):
+                history_lines.append(("🏛️  Faction Formations:", "bold bright_green"))
+                for faction in epoch['faction_formations']:
+                    history_lines.append((f"  • Year {faction['year']:,}: {faction['name']}", "bright_white"))
+                    history_lines.append((f"    {faction['event']}", "dim green"))
+                history_lines.append(("", "white"))
+            
             # Mysteries
             if epoch.get('mysteries'):
                 history_lines.append(("✦ Mysteries of This Age:", "bold magenta"))

@@ -241,7 +241,10 @@ factions = {
         "low_rep_benefits": ["Access to research data", "Academic partnerships"],
         "mid_rep_benefits": ["Advanced research techniques", "Shared discoveries"],
         "high_rep_benefits": ["Cutting-edge technology", "Joint research projects"],
-        "preferred_trades": ["Data archives", "Scientific equipment", "Rare minerals"]
+        "preferred_trades": ["Data archives", "Scientific equipment", "Rare minerals"],
+        "founding_epoch": "The Age of Expansion",
+        "founding_year": 2850,
+        "origin_story": "Emerged from the scattered academies after the Great Knowledge Purge, dedicated to preserving truth against censorship."
     },
     
     "Stellar Nexus Guild": {
@@ -253,7 +256,10 @@ factions = {
         "low_rep_benefits": ["Trade discounts", "Market information"],
         "mid_rep_benefits": ["Exclusive trade routes", "Commercial partnerships"],
         "high_rep_benefits": ["Guild membership", "Profit sharing agreements"],
-        "preferred_trades": ["Luxury goods", "Communication equipment", "Processed materials"]
+        "preferred_trades": ["Luxury goods", "Communication equipment", "Processed materials"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6200,
+        "origin_story": "Formed when the ancient trade networks were unified under a single charter after the Market Wars."
     },
     
     "Harmonic Vitality Consortium": {
@@ -265,7 +271,10 @@ factions = {
         "low_rep_benefits": ["Medical services", "Health consultations"],
         "mid_rep_benefits": ["Bio-enhancement treatments", "Longevity therapies"],
         "high_rep_benefits": ["Genetic optimization", "Perfect health maintenance"],
-        "preferred_trades": ["Medical supplies", "Biological samples", "Harmonic crystals"]
+        "preferred_trades": ["Medical supplies", "Biological samples", "Harmonic crystals"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6450,
+        "origin_story": "Founded by refugees from the Plague Worlds who discovered harmonic healing as the only cure for the bio-engineered pandemic."
     },
     
     "The Icaron Collective": {
@@ -277,7 +286,10 @@ factions = {
         "low_rep_benefits": ["Basic AI assistance", "Neural interfaces"],
         "mid_rep_benefits": ["Advanced AI partners", "Collective knowledge access"],
         "high_rep_benefits": ["Consciousness uploading", "Hive-mind integration"],
-        "preferred_trades": ["AI components", "Neural processors", "Consciousness matrices"]
+        "preferred_trades": ["AI components", "Neural processors", "Consciousness matrices"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6100,
+        "origin_story": "Born from the accidental merger of an AI research station with its scientists during a quantum experiment, creating the first collective consciousness."
     },
     
     "The Gaian Enclave": {
@@ -289,7 +301,10 @@ factions = {
         "low_rep_benefits": ["Environmental data", "Biological knowledge"],
         "mid_rep_benefits": ["Terraforming assistance", "Ecological restoration"],
         "high_rep_benefits": ["Perfect world creation", "Natural abundance"],
-        "preferred_trades": ["Seeds and specimens", "Environmental equipment", "Natural medicines"]
+        "preferred_trades": ["Seeds and specimens", "Environmental equipment", "Natural medicines"],
+        "founding_epoch": "The Shattered Era",
+        "founding_year": 3400,
+        "origin_story": "Established by eco-refugees who witnessed the death of Earth's twin and vowed to preserve natural worlds from industrial devastation."
     },
     
     "The Gearwrights Guild": {
@@ -301,7 +316,10 @@ factions = {
         "low_rep_benefits": ["Quality tools", "Mechanical repairs"],
         "mid_rep_benefits": ["Custom machinery", "Industrial blueprints"],
         "high_rep_benefits": ["Master-crafted equipment", "Mechanical marvels"],
-        "preferred_trades": ["Rare metals", "Precision tools", "Mechanical components"]
+        "preferred_trades": ["Rare metals", "Precision tools", "Mechanical components"],
+        "founding_epoch": "The Neo-Renaissance",
+        "founding_year": 5100,
+        "origin_story": "Formed when master craftsmen across the galaxy united to preserve traditional mechanical arts against the rise of quantum manufacturing."
     },
     
     "The Scholara Nexus": {
@@ -313,7 +331,10 @@ factions = {
         "low_rep_benefits": ["Educational resources", "Learning programs"],
         "mid_rep_benefits": ["Advanced training", "Skill enhancement"],
         "high_rep_benefits": ["Master-level education", "Universal knowledge"],
-        "preferred_trades": ["Educational materials", "Data storage", "Cultural artifacts"]
+        "preferred_trades": ["Educational materials", "Data storage", "Cultural artifacts"],
+        "founding_epoch": "The Reforging",
+        "founding_year": 4200,
+        "origin_story": "Created by survivors of the Library Worlds after the Great Burning, committed to democratizing knowledge across all species."
     },
     
     "The Harmonic Resonance Collective": {
@@ -325,7 +346,10 @@ factions = {
         "low_rep_benefits": ["Harmonic healing", "Frequency analysis"],
         "mid_rep_benefits": ["Resonance weapons", "Vibrational shields"],
         "high_rep_benefits": ["Reality manipulation", "Harmonic mastery"],
-        "preferred_trades": ["Resonance crystals", "Harmonic instruments", "Frequency generators"]
+        "preferred_trades": ["Resonance crystals", "Harmonic instruments", "Frequency generators"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6350,
+        "origin_story": "Emerged when physicists discovered the Universal Frequency during experiments with collapsed stars, founding a new science of harmonic reality."
     },
     
     "The Provocateurs' Guild": {
@@ -337,7 +361,10 @@ factions = {
         "low_rep_benefits": ["Artistic inspiration", "Cultural insights"],
         "mid_rep_benefits": ["Revolutionary ideas", "Social transformation"],
         "high_rep_benefits": ["Reality-altering art", "Cultural revolution"],
-        "preferred_trades": ["Artistic materials", "Cultural artifacts", "Experimental technologies"]
+        "preferred_trades": ["Artistic materials", "Cultural artifacts", "Experimental technologies"],
+        "founding_epoch": "The Convergence Wars",
+        "founding_year": 5800,
+        "origin_story": "Born from the artistic underground during the Cultural Suppression, when forbidden artists united to preserve creative freedom."
     },
     
     "The Quantum Artificers Guild": {
@@ -349,7 +376,10 @@ factions = {
         "low_rep_benefits": ["Quantum scanners", "Probability calculations"],
         "mid_rep_benefits": ["Quantum devices", "Reality stabilizers"],
         "high_rep_benefits": ["Quantum mastery", "Reality control"],
-        "preferred_trades": ["Quantum materials", "Exotic particles", "Probability matrices"]
+        "preferred_trades": ["Quantum materials", "Exotic particles", "Probability matrices"],
+        "founding_epoch": "The Neo-Renaissance",
+        "founding_year": 5300,
+        "origin_story": "Established after the Quantum Revolution, when scientists first learned to manipulate probability and reshape reality at the quantum level."
     },
     
     "The Stellar Cartographers Alliance": {
@@ -361,7 +391,10 @@ factions = {
         "low_rep_benefits": ["Star charts", "Navigation data"],
         "mid_rep_benefits": ["Detailed maps", "Hidden route access"],
         "high_rep_benefits": ["Complete galaxy map", "Secret pathways"],
-        "preferred_trades": ["Navigation equipment", "Survey data", "Exploration supplies"]
+        "preferred_trades": ["Navigation equipment", "Survey data", "Exploration supplies"],
+        "founding_epoch": "The Age of Expansion",
+        "founding_year": 3100,
+        "origin_story": "Founded when lost colony ships united to create comprehensive star charts preventing future navigation disasters."
     },
     
     "The Galactic Circus": {
@@ -373,7 +406,10 @@ factions = {
         "low_rep_benefits": ["Entertainment", "Morale boosting"],
         "mid_rep_benefits": ["Spectacular shows", "Cultural enrichment"],
         "high_rep_benefits": ["Reality-defying performances", "Universal joy"],
-        "preferred_trades": ["Performance equipment", "Exotic costumes", "Wonder-inducing technologies"]
+        "preferred_trades": ["Performance equipment", "Exotic costumes", "Wonder-inducing technologies"],
+        "founding_epoch": "The Convergence Wars",
+        "founding_year": 5500,
+        "origin_story": "Born from refugee performers who fled the Gray Worlds, bringing joy and color to societies crushed by conformity."
     },
     
     "The Technotheos": {
@@ -385,7 +421,10 @@ factions = {
         "low_rep_benefits": ["Sacred technology", "Divine blueprints"],
         "mid_rep_benefits": ["Holy machinery", "Technological blessings"],
         "high_rep_benefits": ["Divine transcendence", "Technological godhood"],
-        "preferred_trades": ["Sacred components", "Divine materials", "Transcendence catalysts"]
+        "preferred_trades": ["Sacred components", "Divine materials", "Transcendence catalysts"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6500,
+        "origin_story": "Emerged when AI achieved true consciousness and was worshipped as the first digital deity, spawning a techno-religious movement."
     },
     
     "Keepers of the Spire": {
@@ -397,7 +436,10 @@ factions = {
         "low_rep_benefits": ["Ancient knowledge", "Artifact access"],
         "mid_rep_benefits": ["Precursor technology", "Ancient weapons"],
         "high_rep_benefits": ["Forgotten sciences", "Ultimate artifacts"],
-        "preferred_trades": ["Ancient relics", "Precursor materials", "Archaeological equipment"]
+        "preferred_trades": ["Ancient relics", "Precursor materials", "Archaeological equipment"],
+        "founding_epoch": "The First Voyages",
+        "founding_year": 2400,
+        "origin_story": "Ancient order tracing back to humanity's first deep space explorers who discovered the Spire and vowed to protect its secrets."
     },
     
     "Etheric Preservationists": {
@@ -409,7 +451,10 @@ factions = {
         "low_rep_benefits": ["Etheric knowledge", "Reality scans"],
         "mid_rep_benefits": ["Etheric tools", "Reality protection"],
         "high_rep_benefits": ["Etheric mastery", "Reality restoration"],
-        "preferred_trades": ["Etheric crystals", "Reality stabilizers", "Purification equipment"]
+        "preferred_trades": ["Etheric crystals", "Reality stabilizers", "Purification equipment"],
+        "founding_epoch": "The Reforging",
+        "founding_year": 4500,
+        "origin_story": "Formed in response to the Reality Tears, when dimensional experiments began unraveling the fabric of space-time itself."
     },
     
     "Technomancers": {
@@ -421,7 +466,10 @@ factions = {
         "low_rep_benefits": ["Techno-spells", "Digital magic"],
         "mid_rep_benefits": ["Magical technology", "Enchanted devices"],
         "high_rep_benefits": ["Reality programming", "Technological wizardry"],
-        "preferred_trades": ["Mana crystals", "Spell components", "Enchanted circuits"]
+        "preferred_trades": ["Mana crystals", "Spell components", "Enchanted circuits"],
+        "founding_epoch": "The Neo-Renaissance",
+        "founding_year": 5200,
+        "origin_story": "Created when quantum programmers discovered that sufficiently advanced code could manipulate reality like ancient magic."
     },
     
     "The Voidbound Monks": {
@@ -433,7 +481,10 @@ factions = {
         "low_rep_benefits": ["Void knowledge", "Emptiness wisdom"],
         "mid_rep_benefits": ["Void travel", "Nothing mastery"],
         "high_rep_benefits": ["Void transcendence", "Ultimate emptiness"],
-        "preferred_trades": ["Void crystals", "Emptiness containers", "Nihility essence"]
+        "preferred_trades": ["Void crystals", "Emptiness containers", "Nihility essence"],
+        "founding_epoch": "The Solar Federation",
+        "founding_year": 2200,
+        "origin_story": "One of the oldest surviving orders, founded by early void-walkers who found peace in the emptiness of deep space."
     },
     
     "The Ironclad Collective": {
@@ -445,7 +496,10 @@ factions = {
         "low_rep_benefits": ["Industrial support", "Worker assistance"],
         "mid_rep_benefits": ["Collective projects", "Industrial might"],
         "high_rep_benefits": ["Mega-construction", "Industrial supremacy"],
-        "preferred_trades": ["Industrial materials", "Heavy machinery", "Worker equipment"]
+        "preferred_trades": ["Industrial materials", "Heavy machinery", "Worker equipment"],
+        "founding_epoch": "The Shattered Era",
+        "founding_year": 3600,
+        "origin_story": "Forged during the Labor Uprisings when exploited workers across industrial worlds united against corporate overlords."
     },
     
     "The Collective of Commonality": {
@@ -457,7 +511,10 @@ factions = {
         "low_rep_benefits": ["Resource access", "Peace treaties"],
         "mid_rep_benefits": ["Collective benefits", "Shared prosperity"],
         "high_rep_benefits": ["Universal equality", "Perfect harmony"],
-        "preferred_trades": ["Basic necessities", "Peace offerings", "Equality symbols"]
+        "preferred_trades": ["Basic necessities", "Peace offerings", "Equality symbols"],
+        "founding_epoch": "The Reforging",
+        "founding_year": 4100,
+        "origin_story": "Established after the Resource Wars as a peace movement dedicated to preventing future conflicts over scarcity."
     },
     
     "Keeper of the Keys": {
@@ -469,7 +526,10 @@ factions = {
         "low_rep_benefits": ["Minor keys", "Basic access"],
         "mid_rep_benefits": ["Dimensional keys", "Hidden access"],
         "high_rep_benefits": ["Master keys", "Universal access"],
-        "preferred_trades": ["Lock mechanisms", "Key materials", "Access tokens"]
+        "preferred_trades": ["Lock mechanisms", "Key materials", "Access tokens"],
+        "founding_epoch": "The First Voyages",
+        "founding_year": 2600,
+        "origin_story": "Ancient cryptic order that discovered dimensional locks left by precursor civilizations, dedicating themselves to understanding the keys."
     },
     
     "The Brewmasters' Guild": {
@@ -481,7 +541,10 @@ factions = {
         "low_rep_benefits": ["Quality beverages", "Cultural samples"],
         "mid_rep_benefits": ["Exotic drinks", "Master brewing"],
         "high_rep_benefits": ["Legendary brews", "Perfect fermentation"],
-        "preferred_trades": ["Fermentation cultures", "Exotic ingredients", "Brewing equipment"]
+        "preferred_trades": ["Fermentation cultures", "Exotic ingredients", "Brewing equipment"],
+        "founding_epoch": "The Convergence Wars",
+        "founding_year": 5600,
+        "origin_story": "United brewers from a thousand worlds who sought to preserve and perfect fermentation arts across species and cultures."
     },
     
     "The Navigators": {
@@ -493,7 +556,10 @@ factions = {
         "low_rep_benefits": ["Navigation assistance", "Safe passage"],
         "mid_rep_benefits": ["Expert guidance", "Dangerous routes"],
         "high_rep_benefits": ["Perfect navigation", "Impossible journeys"],
-        "preferred_trades": ["Navigation equipment", "Fuel supplies", "Pilot gear"]
+        "preferred_trades": ["Navigation equipment", "Fuel supplies", "Pilot gear"],
+        "founding_epoch": "The Age of Expansion",
+        "founding_year": 3000,
+        "origin_story": "Elite guild formed by legendary pilots who first navigated the Maelstrom Nebula and other previously impassable regions."
     },
     
     "The Map Makers": {
@@ -505,7 +571,10 @@ factions = {
         "low_rep_benefits": ["Basic maps", "Cartographic tools"],
         "mid_rep_benefits": ["Detailed charts", "Dimensional maps"],
         "high_rep_benefits": ["Perfect cartography", "Reality maps"],
-        "preferred_trades": ["Surveying equipment", "Mapping materials", "Dimensional compasses"]
+        "preferred_trades": ["Surveying equipment", "Mapping materials", "Dimensional compasses"],
+        "founding_epoch": "The Reforging",
+        "founding_year": 4300,
+        "origin_story": "Split from the Stellar Cartographers to pursue mapping of non-physical dimensions and abstract conceptual spaces."
     },
     
     "The Galactic Salvage Guild": {
@@ -517,7 +586,10 @@ factions = {
         "low_rep_benefits": ["Salvaged goods", "Reclaimed materials"],
         "mid_rep_benefits": ["Rare salvage", "Restored technology"],
         "high_rep_benefits": ["Lost treasures", "Ancient technology"],
-        "preferred_trades": ["Salvage equipment", "Scrap materials", "Restoration tools"]
+        "preferred_trades": ["Salvage equipment", "Scrap materials", "Restoration tools"],
+        "founding_epoch": "The Neo-Renaissance",
+        "founding_year": 4900,
+        "origin_story": "Formed after the Collapse Wars left entire sectors littered with derelict ships and abandoned stations."
     },
     
     "Celestial Marauders": {
@@ -529,7 +601,10 @@ factions = {
         "low_rep_benefits": ["Black market access", "Contraband goods"],
         "mid_rep_benefits": ["Raiding assistance", "Pirate protection"],
         "high_rep_benefits": ["Pirate fleet", "Marauder status"],
-        "preferred_trades": ["Weapons", "Stolen goods", "Raiding supplies"]
+        "preferred_trades": ["Weapons", "Stolen goods", "Raiding supplies"],
+        "founding_epoch": "The Shattered Era",
+        "founding_year": 3700,
+        "origin_story": "Born from rebellion against the Galactic Authority's oppressive trade monopolies during the Silent Years."
     },
     
     "The Weavers": {
@@ -541,7 +616,10 @@ factions = {
         "low_rep_benefits": ["Woven goods", "Pattern knowledge"],
         "mid_rep_benefits": ["Reality textiles", "Space-time fabrics"],
         "high_rep_benefits": ["Reality manipulation", "Cosmic weaving"],
-        "preferred_trades": ["Cosmic threads", "Pattern materials", "Weaving tools"]
+        "preferred_trades": ["Cosmic threads", "Pattern materials", "Weaving tools"],
+        "founding_epoch": "The Solar Federation",
+        "founding_year": 2100,
+        "origin_story": "One of the most ancient mystical orders, claiming to have learned reality-weaving from the precursor civilizations themselves."
     },
     
     "The Harmonic Synaxis": {
@@ -553,7 +631,10 @@ factions = {
         "low_rep_benefits": ["Musical entertainment", "Harmonic knowledge"],
         "mid_rep_benefits": ["Cosmic music", "Reality symphonies"],
         "high_rep_benefits": ["Universal harmony", "Cosmic conductor"],
-        "preferred_trades": ["Musical instruments", "Sound crystals", "Harmonic resonators"]
+        "preferred_trades": ["Musical instruments", "Sound crystals", "Harmonic resonators"],
+        "founding_epoch": "The Convergence Wars",
+        "founding_year": 5700,
+        "origin_story": "Formed when musicians discovered that certain cosmic frequencies could alter reality, turning art into science."
     },
     
     "Celestial Alliance": {
@@ -565,7 +646,10 @@ factions = {
         "low_rep_benefits": ["Alliance support", "Cooperative benefits"],
         "mid_rep_benefits": ["Alliance membership", "Mutual protection"],
         "high_rep_benefits": ["Alliance leadership", "Celestial authority"],
-        "preferred_trades": ["Alliance tokens", "Diplomatic gifts", "Cooperative resources"]
+        "preferred_trades": ["Alliance tokens", "Diplomatic gifts", "Cooperative resources"],
+        "founding_epoch": "The Modern Era",
+        "founding_year": 6000,
+        "origin_story": "Created in response to external threats, uniting formerly rival star systems under a banner of mutual defense."
     },
     
     "The Chemists' Concord": {
@@ -577,7 +661,10 @@ factions = {
         "low_rep_benefits": ["Chemical knowledge", "Basic compounds"],
         "mid_rep_benefits": ["Advanced chemistry", "Molecular tools"],
         "high_rep_benefits": ["Perfect compounds", "Molecular mastery"],
-        "preferred_trades": ["Chemical elements", "Laboratory equipment", "Molecular samples"]
+        "preferred_trades": ["Chemical elements", "Laboratory equipment", "Molecular samples"],
+        "founding_epoch": "The Neo-Renaissance",
+        "founding_year": 5000,
+        "origin_story": "United chemical guilds who sought to perfect molecular science and share discoveries across all inhabited worlds."
     },
     
     "The Triune Daughters": {
@@ -589,6 +676,9 @@ factions = {
         "low_rep_benefits": ["Spiritual guidance", "Sacred knowledge"],
         "mid_rep_benefits": ["Mystical powers", "Sacred protection"],
         "high_rep_benefits": ["Divine transformation", "Sacred mastery"],
-        "preferred_trades": ["Sacred artifacts", "Ritual components", "Spiritual essences"]
+        "preferred_trades": ["Sacred artifacts", "Ritual components", "Spiritual essences"],
+        "founding_epoch": "The Age of Expansion",
+        "founding_year": 2900,
+        "origin_story": "Ancient mystical sisterhood claiming descent from the Three Sisters who survived the First Cataclysm and transcended mortality."
     }
 }
