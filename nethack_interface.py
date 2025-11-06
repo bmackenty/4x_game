@@ -23,6 +23,7 @@ try:
     from factions import factions
     from research import research_categories
     from navigation import Ship
+    from galactic_history import generate_epoch_history
     GAME_AVAILABLE = True
 except ImportError:
     GAME_AVAILABLE = False
@@ -31,6 +32,7 @@ except ImportError:
     species_database = {}
     factions = {}
     research_categories = {}
+    generate_epoch_history = None
 
 
 class MessageLog(Static):
@@ -56,12 +58,212 @@ class MessageLog(Static):
         self.update(text if text else " ")
 
 
+class GalacticHistoryScreen(Screen):
+    """Display the galactic history - epochs, civilizations, cataclysms"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("j,down", "scroll_down", "Scroll Down", show=True),
+        Binding("k,up", "scroll_up", "Scroll Up", show=True),
+    ]
+    
+    def __init__(self):
+        super().__init__()
+        self.history_scroll_offset = 0
+        self.history_data = None
+        
+    def compose(self) -> ComposeResult:
+        yield Static(id="history_display")
+        yield MessageLog()
+        
+    def on_mount(self):
+        """Generate and display galactic history"""
+        # Generate history if available
+        if generate_epoch_history:
+            self.history_data = generate_epoch_history()
+        else:
+            # Fallback demo history when galactic_history module isn't available
+            self.history_data = self._generate_demo_history()
+        
+        self.update_display()
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message("Galactic History - Use j/k or arrows to scroll, q to return", "cyan")
+    
+    def _generate_demo_history(self):
+        """Generate simple demo history when galactic_history module is unavailable"""
+        return [
+            {
+                "name": "The Dawn of Echoes",
+                "start_year": 0,
+                "end_year": 3000,
+                "themes": ["emergence", "first contact"],
+                "cataclysms": ["Etheric Resonance Collapse"],
+                "mysteries": ["The Great Silence returns for 73 years"],
+                "civilizations": [
+                    {
+                        "name": "Aethori Bio-Architects",
+                        "type": "Bio-Architects",
+                        "traits": ["organic cities", "living ships", "gene-forged citizens"],
+                        "founded": 200,
+                        "collapsed": 2800,
+                        "remnants": "Overgrown megastructures pulsate faintly, still alive after millennia.",
+                        "notable_events": [
+                            "The Aethori Bio-Architects encountered a planet disappears and reappears inverted."
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "The Age of Expansion",
+                "start_year": 3000,
+                "end_year": 10000,
+                "themes": ["colonization", "conflict"],
+                "cataclysms": ["AI Schism of the Ascendant Mind", "Stellar Network Implosion"],
+                "mysteries": [],
+                "civilizations": [
+                    {
+                        "name": "Voryx Quantum Dynasties",
+                        "type": "Quantum Dynasties",
+                        "traits": ["temporal control", "superposition rulers", "probability warfare"],
+                        "founded": 3500,
+                        "collapsed": 9500,
+                        "remnants": "Temporal scars linger, with entire regions flickering between timelines.",
+                        "notable_events": [
+                            "The Voryx Quantum Dynasties encountered a ship exits FTL before it departs."
+                        ]
+                    }
+                ]
+            }
+        ]
+        
+    def update_display(self):
+        """Render the galactic history"""
+        text = Text()
+        
+        # Header
+        text.append("═" * 120 + "\n", style="bold cyan")
+        text.append("GALACTIC HISTORY".center(120) + "\n", style="bold yellow")
+        text.append("The Ages of the Known Galaxy".center(120) + "\n", style="dim white")
+        text.append("═" * 120 + "\n", style="bold cyan")
+        text.append("\n")
+        
+        if not self.history_data:
+            text.append("History data unavailable.\n", style="red")
+            text.append("\n")
+            text.append("Press 'q' to return\n", style="dim white")
+            self.query_one("#history_display", Static).update(text)
+            return
+        
+        # Build the full history text
+        history_lines = []
+        
+        for epoch in self.history_data:
+            # Epoch header
+            history_lines.append(("═" * 120, "bold bright_cyan"))
+            history_lines.append((f"{epoch['name']}", "bold bright_yellow"))
+            history_lines.append((f"Years {epoch['start_year']:,} – {epoch['end_year']:,} (Duration: {epoch['end_year'] - epoch['start_year']:,} years)", "bright_white"))
+            history_lines.append(("─" * 120, "dim white"))
+            history_lines.append((f"Themes: {', '.join(epoch['themes'])}", "cyan"))
+            history_lines.append(("", "white"))
+            
+            # Cataclysms
+            if epoch.get('cataclysms'):
+                history_lines.append(("⚠ Major Cataclysms:", "bold red"))
+                for cataclysm in epoch['cataclysms']:
+                    history_lines.append((f"  • {cataclysm}", "bright_red"))
+                history_lines.append(("", "white"))
+            
+            # Mysteries
+            if epoch.get('mysteries'):
+                history_lines.append(("✦ Mysteries of This Age:", "bold magenta"))
+                for mystery in epoch['mysteries']:
+                    history_lines.append((f"  • {mystery}", "bright_magenta"))
+                history_lines.append(("", "white"))
+            
+            # Civilizations
+            history_lines.append(("Civilizations of This Epoch:", "bold green"))
+            history_lines.append(("", "white"))
+            
+            for civ in epoch['civilizations']:
+                history_lines.append((f"┌─ {civ['name']}", "bold bright_white"))
+                history_lines.append((f"│  Type: {civ['type']}", "white"))
+                history_lines.append((f"│  Traits: {', '.join(civ['traits'])}", "dim cyan"))
+                history_lines.append((f"│  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "yellow"))
+                history_lines.append((f"│  Duration: {civ['collapsed'] - civ['founded']:,} years", "dim yellow"))
+                history_lines.append((f"│", "white"))
+                history_lines.append((f"│  Remnants:", "bright_blue"))
+                history_lines.append((f"│    {civ['remnants']}", "dim blue"))
+                
+                if civ.get('notable_events'):
+                    history_lines.append((f"│", "white"))
+                    history_lines.append((f"│  Notable Events:", "bright_green"))
+                    for event in civ['notable_events']:
+                        history_lines.append((f"│    • {event}", "dim green"))
+                
+                history_lines.append((f"└{'─' * 118}", "dim white"))
+                history_lines.append(("", "white"))
+            
+            history_lines.append(("", "white"))
+        
+        # Apply scroll offset and render visible lines
+        visible_height = 35  # Number of lines visible
+        start_line = self.history_scroll_offset
+        end_line = start_line + visible_height
+        
+        visible_lines = history_lines[start_line:end_line]
+        
+        for line_text, line_style in visible_lines:
+            text.append(line_text + "\n", style=line_style)
+        
+        # Scroll indicator
+        text.append("\n")
+        text.append("─" * 120 + "\n", style="bold white")
+        total_lines = len(history_lines)
+        scroll_pct = (self.history_scroll_offset / max(1, total_lines - visible_height)) * 100 if total_lines > visible_height else 100
+        text.append(f"Scroll: {scroll_pct:.0f}% | Line {start_line + 1}/{total_lines} | [j/k or ↑/↓: scroll] [q: back]\n", style="dim white")
+        
+        self.query_one("#history_display", Static).update(text)
+    
+    def action_scroll_down(self):
+        """Scroll down through history"""
+        # Calculate max scroll based on content
+        visible_height = 35
+        total_lines = 0
+        
+        if self.history_data:
+            # Rough estimate of total lines
+            for epoch in self.history_data:
+                total_lines += 10  # Epoch header
+                total_lines += len(epoch.get('cataclysms', []))
+                total_lines += len(epoch.get('mysteries', []))
+                for civ in epoch['civilizations']:
+                    total_lines += 10  # Civ basic info
+                    total_lines += len(civ.get('notable_events', []))
+        
+        max_scroll = max(0, total_lines - visible_height)
+        
+        if self.history_scroll_offset < max_scroll:
+            self.history_scroll_offset += 3
+            self.update_display()
+    
+    def action_scroll_up(self):
+        """Scroll up through history"""
+        if self.history_scroll_offset > 0:
+            self.history_scroll_offset = max(0, self.history_scroll_offset - 3)
+            self.update_display()
+    
+    def action_pop_screen(self):
+        """Return to previous screen"""
+        self.app.pop_screen()
+
+
 class CharacterCreationScreen(Screen):
     """NetHack-style character creation - single screen with keyboard selection"""
     
     BINDINGS = [
         Binding("ctrl+c", "app.quit", "Quit", show=False),
         Binding("enter", "confirm", "Confirm", show=True),
+        Binding("h,H", "show_history", "History", show=True),
     ]
     
     def __init__(self):
@@ -191,7 +393,7 @@ class CharacterCreationScreen(Screen):
         
         lines.append("")
         lines.append("─" * 80)
-        lines.append(f"[j/k or ↑/↓: navigate] [a-z: quick select] [Enter: confirm] [q: quit]")
+        lines.append(f"[j/k or ↑/↓: navigate] [a-z: quick select] [Enter: confirm] [H: history] [q: quit]")
         
         self.query_one("#main_display", Static).update("\n".join(lines))
         
@@ -315,6 +517,10 @@ class CharacterCreationScreen(Screen):
             }
         self.query_one(MessageLog).add_message("Stats rolled! Press 'r' to reroll or Enter to accept.")
         self.update_display()
+    
+    def action_show_history(self):
+        """Show the galactic history screen"""
+        self.app.push_screen(GalacticHistoryScreen())
 
 
 class MainGameScreen(Screen):
@@ -327,6 +533,7 @@ class MainGameScreen(Screen):
         Binding("n", "news", "News", show=True),
         Binding("r", "research", "Research", show=True),
         Binding("s", "status", "Status", show=True),
+        Binding("h,H", "history", "History", show=True),
     ]
     
     def __init__(self, character_data):
@@ -371,6 +578,10 @@ class MainGameScreen(Screen):
                     self.game.navigation.current_ship = Ship(first_ship, first_ship)
             except Exception:
                 pass
+
+    def action_history(self):
+        """Open the Galactic History screen"""
+        self.app.push_screen(GalacticHistoryScreen())
         
     def compose(self) -> ComposeResult:
         """Compose the main game screen"""
@@ -476,6 +687,7 @@ class MapScreen(Screen):
         Binding("escape,q", "pop_screen", "Back", show=True),
         Binding("n", "news", "News", show=True),
         Binding("f", "toggle_factions", "Toggle Factions", show=True),
+        Binding("h,H", "history", "History", show=True),
     ]
     
     def __init__(self, game):
@@ -820,7 +1032,7 @@ class MapScreen(Screen):
         text.append("a ", style="dim white")
         text.append("Asteroids\n", style="white")
         
-        text.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions]\n", style="dim white")
+        text.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions | H: History]\n", style="dim white")
         
         self.query_one("#map_display", Static).update(text)
     
@@ -840,6 +1052,10 @@ class MapScreen(Screen):
     def action_news(self):
         """Show galactic news feed from the map"""
         self.app.push_screen(GalacticNewsScreen(self.game))
+    
+    def action_history(self):
+        """Show galactic history from the map"""
+        self.app.push_screen(GalacticHistoryScreen())
     
     def action_toggle_factions(self):
         """Toggle faction zone visualization"""
