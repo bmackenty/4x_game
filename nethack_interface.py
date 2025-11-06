@@ -289,7 +289,7 @@ class CharacterCreationScreen(Screen):
         # Selection lists
         self.species_list = list(get_playable_species().keys()) if GAME_AVAILABLE else ["Terran"]
         self.background_list = list(character_backgrounds.keys()) if GAME_AVAILABLE else ["Merchant"]
-        self.faction_list = list(factions.keys())[:12] if GAME_AVAILABLE else ["Independent"]
+        self.faction_list = list(factions.keys()) if GAME_AVAILABLE else ["Independent"]
         self.class_list = list(character_classes.keys()) if GAME_AVAILABLE else ["Explorer"]
         
         # Current selection index
@@ -346,14 +346,91 @@ class CharacterCreationScreen(Screen):
                     lines.append(f"      {desc}...")
                     
         elif self.stage == "faction":
+            # Two-column layout: faction list on left, details on right
             lines.append("SELECT YOUR FACTION:")
             lines.append("")
-            for i, faction in enumerate(self.faction_list):
-                cursor = ">" if i == self.current_index else " "
-                lines.append(f"  {cursor} {chr(97 + i)}) {faction}")
-                if GAME_AVAILABLE and faction in factions:
-                    desc = factions[faction].get('description', '')[:60]
-                    lines.append(f"      {desc}...")
+            
+            # Calculate scrolling window (show 20 items at a time)
+            visible_count = 20
+            scroll_offset = max(0, self.current_index - visible_count + 5)  # Keep selection near middle
+            visible_factions = self.faction_list[scroll_offset:scroll_offset + visible_count]
+            
+            # Get current faction details
+            current_faction_name = self.faction_list[self.current_index]
+            current_faction = factions.get(current_faction_name, {}) if GAME_AVAILABLE else {}
+            
+            # Build the detail lines for the right panel
+            detail_lines = []
+            if GAME_AVAILABLE and current_faction:
+                detail_lines.append(f"│ FACTION DETAILS")
+                detail_lines.append(f"│ " + "─" * 38)
+                detail_lines.append(f"│ Philosophy: {current_faction.get('philosophy', 'Unknown')}")
+                detail_lines.append(f"│ Focus: {current_faction.get('primary_focus', 'Unknown')}")
+                detail_lines.append(f"│ Government: {current_faction.get('government_type', 'Unknown')}")
+                detail_lines.append(f"│")
+                
+                # Description (word wrap)
+                desc = current_faction.get('description', '')
+                if desc:
+                    detail_lines.append(f"│ Description:")
+                    # Wrap description to 36 chars per line
+                    words = desc.split()
+                    line = ""
+                    for word in words:
+                        if len(line) + len(word) + 1 <= 36:
+                            line += (word + " ")
+                        else:
+                            detail_lines.append(f"│   {line.strip()}")
+                            line = word + " "
+                    if line:
+                        detail_lines.append(f"│   {line.strip()}")
+                    detail_lines.append(f"│")
+                
+                # Origin story (word wrap)
+                origin = current_faction.get('origin_story', '')
+                if origin:
+                    detail_lines.append(f"│ Origin:")
+                    words = origin.split()
+                    line = ""
+                    for word in words:
+                        if len(line) + len(word) + 1 <= 36:
+                            line += (word + " ")
+                        else:
+                            detail_lines.append(f"│   {line.strip()}")
+                            line = word + " "
+                    if line:
+                        detail_lines.append(f"│   {line.strip()}")
+                    detail_lines.append(f"│")
+                
+                # Founding information
+                epoch = current_faction.get('founding_epoch', 'Unknown')
+                year = current_faction.get('founding_year', '?')
+                detail_lines.append(f"│ Founded: {epoch}")
+                detail_lines.append(f"│ Year: {year}")
+            else:
+                detail_lines.append("│")
+            
+            # Build left column (faction list) and combine with right column
+            for i, faction in enumerate(visible_factions):
+                actual_index = i + scroll_offset
+                cursor = ">" if actual_index == self.current_index else " "
+                
+                # Left side: faction name (40 chars wide)
+                left_text = f"  {cursor} {faction}"[:38].ljust(38)
+                
+                # Right side: get corresponding detail line
+                if i < len(detail_lines):
+                    right_text = detail_lines[i]
+                else:
+                    right_text = "│"
+                
+                lines.append(left_text + "  " + right_text)
+            
+            # Show scroll indicator if needed
+            if len(self.faction_list) > visible_count:
+                lines.append("")
+                scroll_info = f"  [{self.current_index + 1}/{len(self.faction_list)}] (Use j/k to scroll)"
+                lines.append(scroll_info)
                     
         elif self.stage == "class":
             lines.append("SELECT YOUR CLASS:")
@@ -401,7 +478,10 @@ class CharacterCreationScreen(Screen):
         
         lines.append("")
         lines.append("─" * 80)
-        lines.append(f"[j/k or ↑/↓: navigate] [a-z: quick select] [Enter: confirm] [H: history] [q: quit]")
+        if self.stage == "faction":
+            lines.append(f"[j/k or ↑/↓: scroll] [Enter: confirm] [H: history] [q: quit]")
+        else:
+            lines.append(f"[j/k or ↑/↓: navigate] [a-z: quick select] [Enter: confirm] [H: history] [q: quit]")
         
         self.query_one("#main_display", Static).update("\n".join(lines))
         
@@ -427,8 +507,8 @@ class CharacterCreationScreen(Screen):
             self.stage = "name"
             self.current_index = 0
             self.update_display()
-        # Quick letter selection
-        elif len(key) == 1 and key.isalpha() and self.stage not in ["name", "stats", "confirm"]:
+        # Quick letter selection (skip for faction since there are too many)
+        elif len(key) == 1 and key.isalpha() and self.stage not in ["name", "stats", "confirm", "faction"]:
             idx = ord(key.lower()) - ord('a')
             if 0 <= idx < len(self.get_current_list()):
                 self.current_index = idx
