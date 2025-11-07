@@ -1,9 +1,18 @@
 """
 Space Navigation and Galaxy Map System
+
+SYSTEM GENERATION:
+- Loads 10 predefined star systems from systems.py with rich lore, history, and faction control
+- Generates additional procedural systems to fill galaxy to 80-120 total systems
+- Predefined systems include: Alpha Centauri, Vega Prime, Rigel Station, Betelgeuse Sector,
+  Sirius Gate, Tau Ceti, Kepler-442b, Ross 128, Proxima b, and TRAPPIST-1
+- Each predefined system has detailed planets, resources, history, trade routes, and special features
+- Faction zones are built around predefined systems, then expanded with additional zones
 """
 
 import random
 import math
+from systems import system_registry, SYSTEM_TYPES
 
 class NPCShip:
     """NPC ship that moves around the galaxy"""
@@ -164,16 +173,47 @@ class Galaxy:
         self.size_z = 200  # Galaxy depth - substantially increased
         self.systems = {}
         self.faction_zones = {}  # {faction_name: [(center_x, center_y, center_z), radius]}
-        self.generate_star_systems()
+        
+        # Load predefined systems from systems.py
+        self.load_predefined_systems()
+        
+        # Generate faction zones based on predefined systems
+        self.generate_faction_zones()
+        
+        # Generate additional procedural systems to fill the galaxy
+        self.generate_procedural_systems()
+    
+    def load_predefined_systems(self):
+        """Load all predefined systems from systems.py"""
+        predefined = system_registry.get_all_systems()
+        self.systems.update(predefined)
+        print(f"Loaded {len(predefined)} predefined star systems")
     
     def generate_faction_zones(self):
-        """Generate faction-controlled zones throughout the galaxy"""
+        """Generate faction-controlled zones based on predefined systems and additional coverage"""
         from factions import factions
         
+        # First, create zones around predefined faction systems
+        for coords, system in self.systems.items():
+            faction = system.get('controlling_faction')
+            if faction:
+                if faction not in self.faction_zones:
+                    self.faction_zones[faction] = {
+                        'center': coords,
+                        'radius': random.randint(50, 80),
+                        'systems': [coords]
+                    }
+                else:
+                    # Add to existing faction systems list
+                    self.faction_zones[faction]['systems'].append(coords)
+        
+        # Add additional faction zones in unclaimed space
         faction_names = list(factions.keys())
-        # Create zones for a subset of factions to leave some neutral space
-        num_faction_zones = min(len(faction_names), 15)  # Limit to 15 faction zones
-        selected_factions = random.sample(faction_names, num_faction_zones)
+        factions_without_zones = [f for f in faction_names if f not in self.faction_zones]
+        
+        # Create zones for remaining factions to leave some neutral space
+        num_additional_zones = min(len(factions_without_zones), 8)
+        selected_factions = random.sample(factions_without_zones, num_additional_zones) if factions_without_zones else []
         
         for faction_name in selected_factions:
             # Random center point for faction zone
@@ -181,13 +221,13 @@ class Galaxy:
             center_y = random.randint(100, self.size_y - 100)
             center_z = random.randint(50, self.size_z - 50)
             
-            # Zone radius based on faction influence (larger zones for some factions)
-            radius = random.randint(40, 100)
+            # Zone radius based on faction influence
+            radius = random.randint(40, 70)
             
             self.faction_zones[faction_name] = {
                 'center': (center_x, center_y, center_z),
                 'radius': radius,
-                'systems': []  # Will be populated when systems are generated
+                'systems': []
             }
     
     def get_faction_for_location(self, x, y, z):
@@ -204,25 +244,27 @@ class Galaxy:
         
         return None  # Neutral/unclaimed space
     
-    def generate_star_systems(self):
-        """Generate random star systems throughout the galaxy"""
+    def generate_procedural_systems(self):
+        """Generate additional procedural systems to fill the galaxy (supplements predefined systems)"""
         from space_stations import space_stations
         
-        # First, generate faction zones
-        self.generate_faction_zones()
+        # Calculate how many systems we already have
+        existing_count = len(self.systems)
+        target_total = random.randint(80, 120)
+        num_to_generate = max(0, target_total - existing_count)
+        
+        print(f"Generating {num_to_generate} additional procedural systems...")
         
         system_names = [
-            "Alpha Centauri", "Vega Prime", "Rigel Station", "Betelgeuse Sector",
-            "Sirius Gate", "Procyon Hub", "Altair Outpost", "Arcturus Base",
+            "Procyon Hub", "Altair Outpost", "Arcturus Base",
             "Capella Nexus", "Aldebaran Port", "Antares Junction", "Spica Terminal",
             "Pollux Settlement", "Regulus Colony", "Deneb Fortress", "Canopus Trade Hub",
             "Bellatrix Mining", "Mintaka Research", "Alnilam Depot", "Alnitak Refinery",
             "Proxima Relay", "Wolf 359", "Barnard's Star", "Lalande 21185",
             "Ross 154", "Epsilon Eridani", "61 Cygni", "Groombridge 1618",
-            "DX Cancri", "Tau Ceti", "Gliese 667C", "Kepler-442b",
-            "HD 40307g", "Gliese 581g", "Kepler-452b", "TRAPPIST-1",
-            "LHS 1140b", "Proxima b", "Ross 128b", "TOI-715b",
-            # Add more system names for the larger galaxy
+            "DX Cancri", "Gliese 667C", 
+            "HD 40307g", "Gliese 581g", "Kepler-452b",
+            "LHS 1140b", "Ross 128b", "TOI-715b",
             "Zeta Reticuli", "Beta Pictoris", "Fomalhaut", "Epsilon Indi",
             "Delta Pavonis", "Sigma Draconis", "Mu Arae", "Upsilon Andromedae",
             "47 Ursae Majoris", "55 Cancri", "Gamma Cephei", "HD 209458",
@@ -232,25 +274,45 @@ class Galaxy:
             "HD 85512", "HD 40307", "HD 69830", "HD 10180"
         ]
         
-        # Generate more star systems for the larger galaxy (80-120 systems)
-        num_systems = random.randint(80, 120)
+        # Remove names already used by predefined systems
+        for system in self.systems.values():
+            if system['name'] in system_names:
+                system_names.remove(system['name'])
         
         # Available space stations
         available_stations = list(space_stations.keys())
         random.shuffle(available_stations)
         
-        for i in range(num_systems):
+        for i in range(num_to_generate):
             # Generate unique name
             if system_names:
                 name = random.choice(system_names)
                 system_names.remove(name)  # Avoid duplicates
             else:
-                name = f"System-{i+1}"  # Fallback if we run out of names
+                name = f"System-{existing_count + i + 1}"  # Fallback if we run out of names
             
-            # Random coordinates within galaxy bounds
-            x = random.randint(10, self.size_x - 10)
-            y = random.randint(10, self.size_y - 10)
-            z = random.randint(5, self.size_z - 5)
+            # Random coordinates within galaxy bounds, avoiding predefined system locations
+            max_attempts = 50
+            for attempt in range(max_attempts):
+                x = random.randint(10, self.size_x - 10)
+                y = random.randint(10, self.size_y - 10)
+                z = random.randint(5, self.size_z - 5)
+                
+                # Check if too close to existing systems (minimum 15 units apart)
+                too_close = False
+                for existing_coords in self.systems.keys():
+                    distance = ((x - existing_coords[0])**2 + 
+                               (y - existing_coords[1])**2 + 
+                               (z - existing_coords[2])**2) ** 0.5
+                    if distance < 15:
+                        too_close = True
+                        break
+                
+                if not too_close:
+                    break
+            else:
+                # If we couldn't find a good spot, just use the last attempt
+                pass
             
             # Determine which faction controls this location
             controlling_faction = self.get_faction_for_location(x, y, z)
