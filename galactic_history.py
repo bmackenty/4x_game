@@ -203,6 +203,41 @@ def clamp(a: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, a))
 
 # ===========================
+# Validation
+# ===========================
+def _validate_history(epochs: List["Epoch"]) -> None:
+    # chronological order and non-empty windows
+    for i, ep in enumerate(epochs):
+        assert ep.start_year <= ep.end_year, f"Epoch window invalid: {ep.name}"
+        if i:
+            assert epochs[i-1].end_year <= ep.start_year or epochs[i-1].end_year + 1 >= ep.start_year, \
+                f"Epochs out of order or overlapping oddly: {epochs[i-1].name} -> {ep.name}"
+
+    # anchor presence checks
+    anchors = {e.name: e for e in epochs}
+    if "The Great Silence" in anchors:
+        gs = anchors["The Great Silence"]
+        assert any("Loss of interstellar comms" in m for m in gs.mysteries), \
+            "Great Silence anchor note missing"
+
+    if "The Etheric Convergence" in anchors:
+        ec = anchors["The Etheric Convergence"]
+        assert any("Widespread activation of Ether usage" in m for m in ec.mysteries), \
+            "Etheric Convergence anchor note missing"
+
+    if "Reformation After Silence" in anchors:
+        rf = anchors["Reformation After Silence"]
+        assert any("deep-space reconnaissance" in m for m in rf.mysteries), \
+            "Post-Silence reconnaissance anchor note missing"
+
+    # Terrans extinction constraint by YEAR_END (7019)
+    if "Modern Cycle" in anchors:
+        mc = anchors["Modern Cycle"]
+        for c in mc.civilizations:
+            if c.species == "Terrans":
+                assert c.collapsed < YEAR_END, "Terrans must be collapsed before 7019 in Modern Cycle"
+
+# ===========================
 # Generation (canon-constrained)
 # ===========================
 def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
@@ -218,6 +253,16 @@ def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
     civs: List[Civilization] = []
     for _ in range(random.randint(3, 7)):
         sp = pick_species()
+
+        # Optional (now enforced): curtail Terrans after the Silence window.
+        # If the epoch starts after the Silence, re-roll species until not Terrans.
+        # (Safety cap prevents pathological loops if SPECIES were reduced oddly.)
+        if start >= GREAT_SILENCE_END and sp["name"] == "Terrans":
+            for _reroll in range(10):
+                sp = pick_species()
+                if sp["name"] != "Terrans":
+                    break
+
         name = build_name(sp["name"])
         # ensure internal timeline sanity
         rise = random.randint(start, end)
@@ -257,12 +302,18 @@ def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
     # faction formations that make sense for this epoch’s theme window
     faction_events: List[Event] = []
     plausible_factions = list(FACTIONS)
+    if AVOID_CELESTIAL_ALLIANCE:
+        plausible_factions = [f for f in plausible_factions if "Alliance" not in f]
     random.shuffle(plausible_factions)
+
     for f in plausible_factions[:random.randint(1, 3)]:
         when = random.randint(start, end)
-        # gate any explicit “Alliance” wording if desired (kept generic anyway)
+        rationale = random.choice([
+            "trade corridors", "research charters", "recon mandates",
+            "craft standards", "cultural compacts"
+        ])
         label = f
-        faction_events.append(Event(when, f"{label} coalesces around {random.choice(['trade corridors','research charters','recon mandates','craft standards','cultural compacts'])}"))
+        faction_events.append(Event(when, f"{label} coalesces around {rationale}"))
 
     ep = Epoch(
         epoch_id=str(uuid.uuid4())[:8],
@@ -283,11 +334,9 @@ def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
 
     if epoch_template.get("name") == "Modern Cycle":
         # enforce Terrans extinction status by YEAR_END
-        # We won’t delete Terran civs earlier, but mark their status if present
         for c in ep.civilizations:
             if c.species == "Terrans":
                 c.collapsed = min(c.collapsed, YEAR_END - 1)
-        # Add explicit constraint note
         ep.mysteries.append("By 7019, Terrans are functionally extinct; only legacy caches and echoes remain.")
 
     return ep
@@ -296,14 +345,13 @@ def generate_history() -> List[Epoch]:
     if SEED is not None:
         random.seed(SEED)
     epochs: List[Epoch] = [generate_epoch(t) for t in EPOCH_TEMPLATES]
-    # sanity: ensure chronological sequencing without gaps/overlaps beyond the defined windows
     epochs = sorted(epochs, key=lambda e: e.start_year)
+    _validate_history(epochs)
     return epochs
 
 # =========================
 # Public API (class wrapper)
 # =========================
-
 class GalacticHistory:
     """Canon-guided 7019 history with constrained randomness."""
     def __init__(self, seed: Optional[int] = SEED):
@@ -323,43 +371,13 @@ class GalacticHistory:
                 return self._epoch_to_dict(e)
         return None
 
-    # ===== Helpers =====
-    def _epoch_to_dict(self, e: Epoch) -> Dict[str, Any]:
-        return {
-            "epoch_id": e.epoch_id,
-            "name": e.name,
-            "start_year": e.start_year,
-            "end_year": e.end_year,
-            "themes": e.themes,
-            "cataclysms": e.cataclysms,
-            "mysteries": e.mysteries,
-            "faction_formations": [{"year": ev.year, "event": ev.description} for ev in e.faction_formations],
-            "civilizations": [
-                {
-                    "name": c.name,
-                    "species": c.species,
-                    "traits": c.traits,
-                    "founded": c.founded,
-                    "collapsed": c.collapsed,
-                    "remnants": c.remnant,
-                    "notable_events": [{"year": ev.year, "description": ev.description} for ev in c.notable_events],
-                } for c in e.civilizations
-            ],
-        }
-
-# === Legacy API for UI compatibility ===
-def generate_epoch_history():
-    """Legacy API for UI compatibility: returns epoch dicts as expected by nethack_interface.py."""
-    return GalacticHistory().get_epochs()
-
-    def get_epoch_by_year(self, year: int) -> Optional[Dict[str, Any]]:
+    def get_epoch_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         for e in self.epochs:
-            if e.start_year <= year <= e.end_year:
+            if e.name == name:
                 return self._epoch_to_dict(e)
         return None
 
     # ===== Helpers =====
-
     def _epoch_to_dict(self, e: Epoch) -> Dict[str, Any]:
         return {
             "epoch_id": e.epoch_id,
@@ -384,9 +402,9 @@ def generate_epoch_history():
         }
 
 # === Legacy API for UI compatibility ===
-def generate_epoch_history():
-    """Legacy API for UI compatibility: returns epoch dicts as expected by nethack_interface.py."""
-    return GalacticHistory().get_epochs()
+def generate_epoch_history(seed: Optional[int] = None):
+    """Return epoch dicts for legacy callers (e.g., nethack_interface.py)."""
+    return GalacticHistory(seed=seed).get_epochs()
 
 # =========================
 # Demo CLI (pretty printer)

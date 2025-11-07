@@ -71,6 +71,7 @@ class GalacticHistoryScreen(Screen):
         super().__init__()
         self.history_scroll_offset = 0
         self.history_data = None
+        self.history_lines = []  # Cache the built history lines
         
     def compose(self) -> ComposeResult:
         yield Static(id="history_display")
@@ -85,9 +86,76 @@ class GalacticHistoryScreen(Screen):
             # Fallback demo history when galactic_history module isn't available
             self.history_data = self._generate_demo_history()
         
+        # Build history lines once
+        self._build_history_lines()
+        
         self.update_display()
         msg_log = self.query_one(MessageLog)
         msg_log.add_message("Galactic History - Use j/k or arrows to scroll, q to return", "cyan")
+    
+    def _build_history_lines(self):
+        """Build the complete history lines list once"""
+        self.history_lines = []
+        
+        if not self.history_data:
+            return
+        
+        for epoch in self.history_data:
+            # Epoch header
+            self.history_lines.append(("═" * 120, "bold bright_cyan"))
+            self.history_lines.append((f"{epoch['name']}", "bold bright_yellow"))
+            self.history_lines.append((f"Years {epoch['start_year']:,} – {epoch['end_year']:,} (Duration: {epoch['end_year'] - epoch['start_year']:,} years)", "bright_white"))
+            self.history_lines.append(("─" * 120, "dim white"))
+            self.history_lines.append((f"Themes: {', '.join(epoch['themes'])}", "cyan"))
+            self.history_lines.append(("", "white"))
+            
+            # Cataclysms
+            if epoch.get('cataclysms'):
+                self.history_lines.append(("⚠ Major Cataclysms:", "bold red"))
+                for cataclysm in epoch['cataclysms']:
+                    self.history_lines.append((f"  • {cataclysm}", "bright_red"))
+                self.history_lines.append(("", "white"))
+            
+            # Faction Formations
+            if epoch.get('faction_formations'):
+                self.history_lines.append(("🏛️  Faction Formations:", "bold bright_green"))
+                for faction in epoch['faction_formations']:
+                    self.history_lines.append((f"  • Year {faction['year']:,}: {faction['event']}", "bright_white"))
+                self.history_lines.append(("", "white"))
+            
+            # Mysteries
+            if epoch.get('mysteries'):
+                self.history_lines.append(("✦ Mysteries of This Age:", "bold magenta"))
+                for mystery in epoch['mysteries']:
+                    self.history_lines.append((f"  • {mystery}", "bright_magenta"))
+                self.history_lines.append(("", "white"))
+            
+            # Civilizations
+            self.history_lines.append(("Civilizations of This Epoch:", "bold green"))
+            self.history_lines.append(("", "white"))
+            
+            for civ in epoch['civilizations']:
+                self.history_lines.append((f"┌─ {civ['name']}", "bold bright_white"))
+                self.history_lines.append((f"│  Species: {civ['species']}", "white"))
+                self.history_lines.append((f"│  Traits: {', '.join(civ['traits'])}", "dim cyan"))
+                self.history_lines.append((f"│  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "yellow"))
+                self.history_lines.append((f"│  Duration: {civ['collapsed'] - civ['founded']:,} years", "dim yellow"))
+                self.history_lines.append((f"│", "white"))
+                self.history_lines.append((f"│  Remnants:", "bright_blue"))
+                self.history_lines.append((f"│    {civ['remnants']}", "dim blue"))
+                
+                if civ.get('notable_events'):
+                    self.history_lines.append((f"│", "white"))
+                    self.history_lines.append((f"│  Notable Events:", "bright_green"))
+                    for event in civ['notable_events']:
+                        year = event.get('year', '?')
+                        desc = event.get('description', str(event))
+                        self.history_lines.append((f"│    • Year {year}: {desc}", "dim green"))
+                
+                self.history_lines.append((f"└{'─' * 118}", "dim white"))
+                self.history_lines.append(("", "white"))
+            
+            self.history_lines.append(("", "white"))
     
     def _generate_demo_history(self):
         """Generate simple demo history when galactic_history module is unavailable"""
@@ -147,80 +215,19 @@ class GalacticHistoryScreen(Screen):
         text.append("═" * 120 + "\n", style="bold cyan")
         text.append("\n")
         
-        if not self.history_data:
+        if not self.history_lines:
             text.append("History data unavailable.\n", style="red")
             text.append("\n")
             text.append("Press 'q' to return\n", style="dim white")
             self.query_one("#history_display", Static).update(text)
             return
         
-        # Build the full history text
-        history_lines = []
-        
-        for epoch in self.history_data:
-            # Epoch header
-            history_lines.append(("═" * 120, "bold bright_cyan"))
-            history_lines.append((f"{epoch['name']}", "bold bright_yellow"))
-            history_lines.append((f"Years {epoch['start_year']:,} – {epoch['end_year']:,} (Duration: {epoch['end_year'] - epoch['start_year']:,} years)", "bright_white"))
-            history_lines.append(("─" * 120, "dim white"))
-            history_lines.append((f"Themes: {', '.join(epoch['themes'])}", "cyan"))
-            history_lines.append(("", "white"))
-            
-            # Cataclysms
-            if epoch.get('cataclysms'):
-                history_lines.append(("⚠ Major Cataclysms:", "bold red"))
-                for cataclysm in epoch['cataclysms']:
-                    history_lines.append((f"  • {cataclysm}", "bright_red"))
-                history_lines.append(("", "white"))
-            
-            # Faction Formations
-            if epoch.get('faction_formations'):
-                history_lines.append(("🏛️  Faction Formations:", "bold bright_green"))
-                for faction in epoch['faction_formations']:
-                    history_lines.append((f"  • Year {faction['year']:,}: {faction['event']}", "bright_white"))
-                history_lines.append(("", "white"))
-            
-            # Mysteries
-            if epoch.get('mysteries'):
-                history_lines.append(("✦ Mysteries of This Age:", "bold magenta"))
-                for mystery in epoch['mysteries']:
-                    history_lines.append((f"  • {mystery}", "bright_magenta"))
-                history_lines.append(("", "white"))
-            
-            # Civilizations
-            history_lines.append(("Civilizations of This Epoch:", "bold green"))
-            history_lines.append(("", "white"))
-            
-            for civ in epoch['civilizations']:
-                history_lines.append((f"┌─ {civ['name']}", "bold bright_white"))
-                history_lines.append((f"│  Species: {civ['species']}", "white"))
-                history_lines.append((f"│  Traits: {', '.join(civ['traits'])}", "dim cyan"))
-                history_lines.append((f"│  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "yellow"))
-                history_lines.append((f"│  Duration: {civ['collapsed'] - civ['founded']:,} years", "dim yellow"))
-                history_lines.append((f"│", "white"))
-                history_lines.append((f"│  Remnants:", "bright_blue"))
-                history_lines.append((f"│    {civ['remnants']}", "dim blue"))
-                
-                if civ.get('notable_events'):
-                    history_lines.append((f"│", "white"))
-                    history_lines.append((f"│  Notable Events:", "bright_green"))
-                    for event in civ['notable_events']:
-                        # event is a dict with 'year' and 'description'
-                        year = event.get('year', '?')
-                        desc = event.get('description', str(event))
-                        history_lines.append((f"│    • Year {year}: {desc}", "dim green"))
-                
-                history_lines.append((f"└{'─' * 118}", "dim white"))
-                history_lines.append(("", "white"))
-            
-            history_lines.append(("", "white"))
-        
         # Apply scroll offset and render visible lines
         visible_height = 35  # Number of lines visible
         start_line = self.history_scroll_offset
         end_line = start_line + visible_height
         
-        visible_lines = history_lines[start_line:end_line]
+        visible_lines = self.history_lines[start_line:end_line]
         
         for line_text, line_style in visible_lines:
             text.append(line_text + "\n", style=line_style)
@@ -228,7 +235,7 @@ class GalacticHistoryScreen(Screen):
         # Scroll indicator
         text.append("\n")
         text.append("─" * 120 + "\n", style="bold white")
-        total_lines = len(history_lines)
+        total_lines = len(self.history_lines)
         scroll_pct = (self.history_scroll_offset / max(1, total_lines - visible_height)) * 100 if total_lines > visible_height else 100
         text.append(f"Scroll: {scroll_pct:.0f}% | Line {start_line + 1}/{total_lines} | [j/k or ↑/↓: scroll] [q: back]\n", style="dim white")
         
@@ -236,20 +243,8 @@ class GalacticHistoryScreen(Screen):
     
     def action_scroll_down(self):
         """Scroll down through history"""
-        # Calculate max scroll based on content
         visible_height = 35
-        total_lines = 0
-        
-        if self.history_data:
-            # Rough estimate of total lines
-            for epoch in self.history_data:
-                total_lines += 10  # Epoch header
-                total_lines += len(epoch.get('cataclysms', []))
-                total_lines += len(epoch.get('mysteries', []))
-                for civ in epoch['civilizations']:
-                    total_lines += 10  # Civ basic info
-                    total_lines += len(civ.get('notable_events', []))
-        
+        total_lines = len(self.history_lines)
         max_scroll = max(0, total_lines - visible_height)
         
         if self.history_scroll_offset < max_scroll:
