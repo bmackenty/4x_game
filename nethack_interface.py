@@ -177,8 +177,7 @@ class GalacticHistoryScreen(Screen):
             if epoch.get('faction_formations'):
                 history_lines.append(("🏛️  Faction Formations:", "bold bright_green"))
                 for faction in epoch['faction_formations']:
-                    history_lines.append((f"  • Year {faction['year']:,}: {faction['name']}", "bright_white"))
-                    history_lines.append((f"    {faction['event']}", "dim green"))
+                    history_lines.append((f"  • Year {faction['year']:,}: {faction['event']}", "bright_white"))
                 history_lines.append(("", "white"))
             
             # Mysteries
@@ -194,7 +193,7 @@ class GalacticHistoryScreen(Screen):
             
             for civ in epoch['civilizations']:
                 history_lines.append((f"┌─ {civ['name']}", "bold bright_white"))
-                history_lines.append((f"│  Type: {civ['type']}", "white"))
+                history_lines.append((f"│  Species: {civ['species']}", "white"))
                 history_lines.append((f"│  Traits: {', '.join(civ['traits'])}", "dim cyan"))
                 history_lines.append((f"│  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "yellow"))
                 history_lines.append((f"│  Duration: {civ['collapsed'] - civ['founded']:,} years", "dim yellow"))
@@ -206,7 +205,10 @@ class GalacticHistoryScreen(Screen):
                     history_lines.append((f"│", "white"))
                     history_lines.append((f"│  Notable Events:", "bright_green"))
                     for event in civ['notable_events']:
-                        history_lines.append((f"│    • {event}", "dim green"))
+                        # event is a dict with 'year' and 'description'
+                        year = event.get('year', '?')
+                        desc = event.get('description', str(event))
+                        history_lines.append((f"│    • Year {year}: {desc}", "dim green"))
                 
                 history_lines.append((f"└{'─' * 118}", "dim white"))
                 history_lines.append(("", "white"))

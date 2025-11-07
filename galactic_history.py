@@ -1,298 +1,416 @@
+# 7019-aligned Galactic History Generator (canon-guided, procedurally varied)
+# Notes:
+# - Keeps randomness but constrains it to 7019 anchors and lore.
+# - By default, avoids explicit “Celestial Alliance” naming; flip AVOID_CELESTIAL_ALLIANCE to False if desired.
+# - End of timeline is fixed at YEAR_END = 7019 (humans/terrans functionally extinct by then).
+
 import random
 import uuid
-from datetime import datetime
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional
 
-# =========================
-# Faction Formation Timeline
-# =========================
-FACTION_FORMATIONS = {
-    "The Solar Federation": [
-        {"name": "The Weavers", "year": 2100, "event": "Ancient mystics learned reality-weaving from precursor ruins"},
-        {"name": "The Voidbound Monks", "year": 2200, "event": "First void-walkers founded monastic order in deep space"},
-    ],
-    "The First Voyages": [
-        {"name": "Keepers of the Spire", "year": 2400, "event": "Discovery of the ancient Spire led to formation of guardian order"},
-        {"name": "Keeper of the Keys", "year": 2600, "event": "Cryptic order formed to understand dimensional locks"},
-    ],
-    "The Age of Expansion": [
-        {"name": "The Triune Daughters", "year": 2900, "event": "Three Sisters survived the First Cataclysm and founded mystical sisterhood"},
-        {"name": "The Veritas Covenant", "year": 2850, "event": "Scholars united after the Great Knowledge Purge"},
-        {"name": "The Navigators", "year": 3000, "event": "Elite pilots conquered the Maelstrom Nebula"},
-        {"name": "The Stellar Cartographers Alliance", "year": 3100, "event": "Lost colonies united to prevent navigation disasters"},
-    ],
-    "The Shattered Era": [
-        {"name": "The Gaian Enclave", "year": 3400, "event": "Eco-refugees witnessed death of Earth's twin"},
-        {"name": "The Ironclad Collective", "year": 3600, "event": "Workers united during the Labor Uprisings"},
-        {"name": "Celestial Marauders", "year": 3700, "event": "Rebellion against oppressive trade monopolies"},
-    ],
-    "The Reforging": [
-        {"name": "The Collective of Commonality", "year": 4100, "event": "Peace movement formed after the Resource Wars"},
-        {"name": "The Scholara Nexus", "year": 4200, "event": "Survivors of Library Worlds committed to universal education"},
-        {"name": "The Map Makers", "year": 4300, "event": "Cartographers split to map non-physical dimensions"},
-        {"name": "Etheric Preservationists", "year": 4500, "event": "Order formed to combat Reality Tears"},
-    ],
-    "The Neo-Renaissance": [
-        {"name": "The Galactic Salvage Guild", "year": 4900, "event": "Salvagers organized after the Collapse Wars"},
-        {"name": "The Chemists' Concord", "year": 5000, "event": "Chemical guilds united for molecular perfection"},
-        {"name": "The Gearwrights Guild", "year": 5100, "event": "Craftsmen preserved mechanical arts"},
-        {"name": "Technomancers", "year": 5200, "event": "Quantum programmers discovered reality-altering code"},
-        {"name": "The Quantum Artificers Guild", "year": 5300, "event": "Scientists mastered quantum probability manipulation"},
-    ],
-    "The Convergence Wars": [
-        {"name": "The Galactic Circus", "year": 5500, "event": "Refugee performers brought joy to Gray Worlds"},
-        {"name": "The Brewmasters' Guild", "year": 5600, "event": "Brewers from a thousand worlds united"},
-        {"name": "The Harmonic Synaxis", "year": 5700, "event": "Musicians discovered reality-altering cosmic frequencies"},
-        {"name": "The Provocateurs' Guild", "year": 5800, "event": "Forbidden artists united during Cultural Suppression"},
-    ],
-    "The Modern Era": [
-        {"name": "Celestial Alliance", "year": 6000, "event": "Rival star systems united against external threats"},
-        {"name": "The Icaron Collective", "year": 6100, "event": "First collective consciousness born from quantum accident"},
-        {"name": "Stellar Nexus Guild", "year": 6200, "event": "Trade networks unified after the Market Wars"},
-        {"name": "The Harmonic Resonance Collective", "year": 6350, "event": "Physicists discovered the Universal Frequency"},
-        {"name": "Harmonic Vitality Consortium", "year": 6450, "event": "Plague World refugees discovered harmonic healing"},
-        {"name": "The Technotheos", "year": 6500, "event": "First digital deity sparked techno-religious movement"},
-    ],
+# ================
+# Config & Anchors
+# ================
+SEED: Optional[int] = None  # set an int for reproducible runs
+AVOID_CELESTIAL_ALLIANCE = True
+
+YEAR_START = 6000      # start of our curated timeline window
+YEAR_END   = 7019      # canonical present
+# Anchor windows (editable if you later lock dates tighter)
+ETHERIC_CONVERGENCE_WINDOW = (6150, 6200)     # first widespread activation of Ether Magic
+GREAT_SILENCE_START        = 6420             # “nearly a century” fits 6420–6510 default
+GREAT_SILENCE_END          = 6510
+POST_SILENCE_REFORM        = (6515, 6560)     # reorganization, Deep Space Reconnaissance Command, etc.
+
+# =======================
+# Canon Species & Factions
+# =======================
+SPECIES = [
+    {"name": "Terrans", "traits": ["post-Anthropocene diaspora", "legacy tech caches", "functionally extinct by 7019"]},
+    {"name": "Silvans", "traits": ["plant-based sentients", "bio-cities", "spore diplomacy"]},
+    {"name": "Aurorans", "traits": ["energy beings", "radiant communication", "light-phase habitats"]},
+    {"name": "Zentari", "traits": ["amphibious humanoids", "pressure-adapted", "fluidic computation"]},
+    {"name": "Gaians", "traits": ["lithic physiology", "geode memory vaults", "seismic languages"]},
+    {"name": "Luminauts", "traits": ["light manipulation", "prism arrays", "spectral philosophy"]},
+    {"name": "Synthetix", "traits": ["cybernetic organisms", "consensus firmware", "precision craft"]},
+    {"name": "Mycelioids", "traits": ["fungal intelligence", "hyphal networks", "distributed minds"]},
+    {"name": "Chronauts", "traits": ["time-aware perception", "chronometric rituals", "loop hygiene"]},
+    {"name": "Umbraxians", "traits": ["dark-matter affinity", "umbra fields", "low-emission cultures"]},
+    {"name": "Eternals", "traits": ["effective immortality", "long-cycle planning", "stasis ethics"]},
+    {"name": "Xha’reth", "traits": ["etheric-advanced", "non-Euclidean craft", "singular aesthetics"]},
+]
+
+# Canon factions from 7019; wording kept generic when AVOID_CELESTIAL_ALLIANCE=True
+FACTIONS = [
+    "Veritas Covenant",
+    "Stellar Nexus Guild",
+    "Harmonic Vitality Consortium",
+    "Icaron Collective",
+    "Gaian Enclave",
+    "Gearwrights Guild",
+    "Scholara Nexus",
+    "Harmonic Resonance Collective",
+    "Provocateurs' Guild",
+    "Quantum Artificers Guild",
+    "Stellar Cartographers Alliance",
+    "Galactic Circus",
+    "Technotheos",
+    "Keepers of the Spire",
+    "Etheric Preservationists",
+    "Technomancers",
+    "Voidbound Monks",
+    "Ironclad Collective",
+    "Collective of Commonality",
+    "Brewmasters' Guild",
+]
+
+# Lost civilizations & remnants (from your samples)
+LOST_CIVIL_REMNANTS = {
+    "Zenthorian Empire": "Crystal communication nodes scattered across deserted planets, faintly cross-linking under stellar winds.",
+    "Oreon Civilization": "Submerged ruins beneath acidic seas; pressure-stable conduits still hum at trench floors.",
+    "Myridian Builders": "Colossal moon statues aligned to archaic celestial lattices—navigation aids across epochs.",
+    "Aetheris Collective": "Faint etheric echoes in hard vacuum; thought-bridges spark under auroral bombardment.",
+    "Garnathans of Vorex": "Petrified forest-cities; bio-engineered arbor forms calcified mid-growth.",
+    "Silix Supremacy": "Indecipherable ultra-hard silicate dataslates; write-once memory that outlived its readers.",
+    "Draconis League": "Ruined star fortresses orbiting dead suns; armor vitrified by unknown beams.",
+    "Luminar Ascendency": "Prisms that still project spectral oratorios when stellar angles align.",
+    "Echoes of Entari": "Sound sculptures on windscoured worlds; entire valleys tuned to lost chords.",
 }
 
-# =========================
-# Epoch Definitions
-# =========================
-EPOCHS = [
-    {"name": "The First Voyages", "duration": (150, 250), "themes": ["early spaceflight", "lunar colonies", "mars settlements", "asteroid mining"]},
-    {"name": "The Solar Federation", "duration": (200, 350), "themes": ["system unification", "megastructures", "AI emergence", "genetic modification"]},
-    {"name": "The Stellar Exodus", "duration": (300, 500), "themes": ["FTL discovery", "generation ships", "first contact", "colonial wars"]},
-    {"name": "The Dawn of Echoes", "duration": (400, 600), "themes": ["emergence", "etheric awakening", "transhuman divergence", "origin myths"]},
-    {"name": "The Age of Expansion", "duration": (600, 900), "themes": ["colonization", "conflict", "divergence", "terraforming"]},
-    {"name": "The Golden Synthesis", "duration": (350, 550), "themes": ["cultural renaissance", "universal translation", "trade networks", "scientific revolution"]},
-    {"name": "The Shattered Era", "duration": (400, 650), "themes": ["collapse", "civil war", "isolation", "entropy storms"]},
-    {"name": "The Dark Centuries", "duration": (250, 400), "themes": ["technological regression", "lost colonies", "pirate kingdoms", "forgotten worlds"]},
-    {"name": "The Reforging", "duration": (350, 550), "themes": ["rediscovery", "synthetic rebirth", "spiritual convergence", "cultural fusion"]},
-    {"name": "The Neo-Renaissance", "duration": (300, 500), "themes": ["artistic awakening", "philosophical enlightenment", "diplomatic accord", "peaceful expansion"]},
-    {"name": "The Convergence Wars", "duration": (200, 400), "themes": ["ideological conflict", "proxy wars", "weapons of mass destruction", "tactical evolution"]},
-    {"name": "The Veiled Age", "duration": (300, 450), "themes": ["mystery", "hidden knowledge", "dimensional instability", "cosmic horror"]},
-    {"name": "The Modern Era", "duration": (100, 200), "themes": ["current events", "fragile peace", "exploration", "innovation"]},
-]
-
-# =========================
-# Civilizational Archetypes
-# =========================
-CIV_TYPES = [
-    {"type": "Bio-Architects", "traits": ["organic cities", "living ships", "gene-forged citizens"]},
-    {"type": "Quantum Dynasties", "traits": ["temporal control", "superposition rulers", "probability warfare"]},
-    {"type": "Etheric Theocracies", "traits": ["divine AI", "energy worship", "sacred computation"]},
-    {"type": "Data Phantoms", "traits": ["uploaded minds", "ghost empires", "digital gods"]},
-    {"type": "Crystalline Empires", "traits": ["light communication", "refraction weaponry", "memory lattice archives"]},
-    {"type": "Gravitic Orders", "traits": ["gravity sculpting", "orbital fortresses", "planetary prisons"]},
-    {"type": "Synthetic Hegemonies", "traits": ["machine governance", "empathy emulation", "precision warfare"]},
-    {"type": "Aquatic Federations", "traits": ["fluidic computing", "subsurface habitats", "pressure-adapted evolution"]},
-    {"type": "Chrono-Kin", "traits": ["time fracture", "looped wars", "recursive civilizations"]},
-    {"type": "Luminal Artists", "traits": ["aesthetic warfare", "art as energy", "spectral philosophy"]},
-    {"type": "Void Nomads", "traits": ["dark matter harvesting", "mobile habitats", "stellar navigation"]},
-    {"type": "Hive Minds", "traits": ["collective consciousness", "neural networks", "swarm intelligence"]},
-    {"type": "Star Forges", "traits": ["stellar engineering", "dyson sphere construction", "energy mastery"]},
-    {"type": "Memory Keepers", "traits": ["historical preservation", "archive worlds", "cultural stewardship"]},
-    {"type": "Flesh Sculptors", "traits": ["biological engineering", "adaptive evolution", "plague weaponry"]},
-    {"type": "Nano-Swarms", "traits": ["molecular construction", "grey goo threats", "programmable matter"]},
-    {"type": "Psi-Collectives", "traits": ["telepathic networks", "mind palaces", "psychic warfare"]},
-    {"type": "Merchant Guilds", "traits": ["trade monopolies", "economic warfare", "corporate governance"]},
-    {"type": "Warrior Clans", "traits": ["honor codes", "ritualistic combat", "military supremacy"]},
-    {"type": "Monastic Orders", "traits": ["spiritual discipline", "meditation colonies", "ascetic philosophy"]},
-]
-
-# =========================
-# Cataclysm & Event Templates
-# =========================
-CATASTROPHES = [
-    "Etheric Resonance Collapse",
-    "Dimensional Convergence Failure",
-    "AI Schism of the Ascendant Mind",
-    "Stellar Network Implosion",
-    "Gravitic Chain Reversal",
-    "Psychogenic Virus Outbreak",
-    "Quantum Cascade Catastrophe",
-    "Silence Wave (Communication Collapse)",
-    "Collective Dream Overload",
-    "Entropy Storm Surge",
-    "The Great Forgetting (Memory Plague)",
-    "Solar Inversion Event",
-    "Nanite Rebellion",
-    "Wormhole Destabilization Crisis",
-    "The Void Awakening",
-    "Dark Energy Cascade",
-    "Temporal Paradox Wars",
-    "Mass Uplift Failure",
-    "The Clone Madness",
-    "Hyperlane Collapse",
-    "Artificial Star Detonation",
-    "The Betrayal Protocol",
-    "Cosmic Background Radiation Shift",
-    "The Machine Plague",
-    "Psionic Burnout",
+# Ether/tech mishap palette aligned to 7019
+CATACLYSMS = [
+    "Chrono-synthetic Flux surge",
+    "Etheric overdraw collapse",
+    "Wormline fracture event",
+    "Nanoforge swarm runaway",
+    "Psionic harmonics burnout",
+    "Gravitic shear cascade",
+    "Quantum tunnel misaddress",
+    "Memory-plague bloom",
+    "Dark-energy wake inversion",
+    "Subspace lattice implosion",
 ]
 
 MYSTERIES = [
-    "The Great Silence returns for 73 years",
-    "A single AI claims to be the reincarnation of ten dead species",
-    "A planet disappears and reappears inverted",
-    "Dreams across five systems synchronize into a single narrative",
-    "A ship exits FTL before it departs",
-    "An entire star system phases out of reality for exactly one hour",
-    "All clocks in a sector run backwards for three days",
-    "A derelict fleet arrives from the future with no crew",
-    "Twelve identical planets appear in unrelated systems",
-    "A message in an unknown language is received from inside a black hole",
-    "Children across ten worlds speak the same prophecy simultaneously",
-    "A star begins transmitting mathematical proofs",
-    "Time moves at different rates on opposite sides of a nebula",
-    "An ancient monument predicts current events with perfect accuracy",
-    "Gravity reverses in a volume of space for 48 hours",
+    "A message arrives from within a stable singularity in a voice no species claims",
+    "Twelve moons on unrelated worlds shift into identical resonant orbits",
+    "A fleet re-emerges before its recorded departure with correct fuel delta",
+    "A nebula enforces asymmetric time dilation across its biconvex shell",
+    "An archival monument outputs valid predictions, then melts into sand",
 ]
 
+# =================
+# Epochs (Canon-led)
+# =================
+# We construct epochs around anchors rather than picking freeform durations.
+EPOCH_TEMPLATES = [
+    {
+        "name": "Pre-Convergence Drift",
+        "window": (YEAR_START, ETHERIC_CONVERGENCE_WINDOW[0] - 1),
+        "themes": ["early FTL experiments", "generation waystations", "proto-guilds", "archive seeding"],
+    },
+    {
+        "name": "The Etheric Convergence",
+        "window": ETHERIC_CONVERGENCE_WINDOW,
+        "themes": ["first awakenings", "ether-tech integration", "navigation upheaval", "power rebalancing"],
+        "must_include_event": "Widespread activation of Ether usage across multiple civilizations",
+    },
+    {
+        "name": "Expansion & Awakening",
+        "window": (ETHERIC_CONVERGENCE_WINDOW[1] + 1, GREAT_SILENCE_START - 1),
+        "themes": ["terraformation booms", "inter-species accords", "trade lanes", "cultural fusion"],
+    },
+    {
+        "name": "The Great Silence",
+        "window": (GREAT_SILENCE_START, GREAT_SILENCE_END),
+        "themes": ["communications blackout", "vanishing ships", "isolation", "local resilience"],
+        "must_include_event": "Loss of interstellar comms across a vast quadrant; entrants do not return",
+    },
+    {
+        "name": "Reformation After Silence",
+        "window": (POST_SILENCE_REFORM[0], POST_SILENCE_REFORM[1]),
+        "themes": ["deep reconnaissance", "protocol hardening", "redundant comms", "risk cartography"],
+        "must_include_event": "Formation of a dedicated deep-space reconnaissance command",
+    },
+    {
+        "name": "Late Neo-Renaissance",
+        "window": (POST_SILENCE_REFORM[1] + 1, 6950),
+        "themes": ["art-science synthesis", "diplomatic recombination", "education compacts", "craft guild ascendance"],
+    },
+    {
+        "name": "Convergence Conflicts",
+        "window": (6951, 6990),
+        "themes": ["ideological clashes", "proxy theatres", "ethics of power", "containment doctrines"],
+    },
+    {
+        "name": "Modern Cycle",
+        "window": (6991, YEAR_END),
+        "themes": ["fragile peace", "frontier probes", "innovation bursts", "quiet catastrophes averted"],
+        "must_include_constraint": "Terrans are functionally extinct by 7019",
+    },
+]
+
+# ==========================
+# Helper dataclasses & utils
+# ==========================
+@dataclass
+class Event:
+    year: int
+    description: str
+
+@dataclass
+class Civilization:
+    name: str
+    species: str
+    traits: List[str]
+    founded: int
+    collapsed: int
+    remnant: str
+    notable_events: List[Event] = field(default_factory=list)
+
+@dataclass
+class Epoch:
+    epoch_id: str
+    name: str
+    start_year: int
+    end_year: int
+    themes: List[str]
+    civilizations: List[Civilization]
+    cataclysms: List[str]
+    mysteries: List[str]
+    faction_formations: List[Event]
+
+# name builders tuned for 7019 “feel”
+PREFIX = ["Aeth", "Vor", "Zyn", "Kry", "Lum", "Xha", "Orr", "Thal", "Mir", "Nex",
+          "Syl", "Dra", "Qua", "Zen", "Pyr", "Kor", "Vel", "Ix", "Nar", "Tel"]
+MIDFIX = ["-", " ", "", ""]
+SUFFIX = ["ari", "oth", "en", "yx", "ion", "ath", "ara", "is", "um", "el",
+          "ax", "os", "ir", "un", "eth", "al", "ix", "or", "ak", "ian"]
+
+def build_name(base: str) -> str:
+    return f"{random.choice(PREFIX)}{random.choice(MIDFIX)}{random.choice(SUFFIX)} {base}"
+
+def pick_species() -> Dict[str, Any]:
+    s = random.choice(SPECIES)
+    return {"name": s["name"], "traits": s["traits"]}
+
+def lost_civ_remnant() -> str:
+    name, desc = random.choice(list(LOST_CIVIL_REMNANTS.items()))
+    return f"{name}: {desc}"
+
+def clamp(a: int, lo: int, hi: int) -> int:
+    return max(lo, min(hi, a))
+
+# ===========================
+# Generation (canon-constrained)
+# ===========================
+def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
+    start, end = epoch_template["window"]
+    if start > end:
+        # degenerate window; collapse to a single year
+        start, end = end, end
+
+    # choose 2–4 themes
+    themes = random.sample(epoch_template["themes"], k=min(len(epoch_template["themes"]), random.randint(2, 4)))
+
+    # civilizations in epoch (3–7), lifespans constrained to the window
+    civs: List[Civilization] = []
+    for _ in range(random.randint(3, 7)):
+        sp = pick_species()
+        name = build_name(sp["name"])
+        # ensure internal timeline sanity
+        rise = random.randint(start, end)
+        span = max(5, int((end - start) * random.uniform(0.08, 0.45)))
+        fall = clamp(rise + span, rise + 1, end)
+        rem = lost_civ_remnant()
+
+        # 2–4 events per civ
+        evs: List[Event] = []
+        for _ in range(random.randint(2, 4)):
+            year = random.randint(rise, fall)
+            desc = random.choice([
+                "stabilized a wormline through turbulent ether",
+                "suffered a localized Chrono-synthetic Flux rebound",
+                "deployed prism-array translators to bridge cultures",
+                "mapped dark-wake eddies for safer drift",
+                "contained a nanoforge runaway at cost of a moon",
+                "catalogued echo-ruins from a forgotten polity",
+                "instituted loop-hygiene after minor time drift",
+            ])
+            evs.append(Event(year, desc))
+
+        civs.append(Civilization(
+            name=name,
+            species=sp["name"],
+            traits=sp["traits"],
+            founded=rise,
+            collapsed=fall,
+            remnant=rem,
+            notable_events=sorted(evs, key=lambda e: e.year),
+        ))
+
+    # 1–3 cataclysms and 0–2 mysteries per epoch
+    cats = random.sample(CATACLYSMS, k=random.randint(1, 3))
+    mys  = random.sample(MYSTERIES,   k=random.randint(0, 2))
+
+    # faction formations that make sense for this epoch’s theme window
+    faction_events: List[Event] = []
+    plausible_factions = list(FACTIONS)
+    random.shuffle(plausible_factions)
+    for f in plausible_factions[:random.randint(1, 3)]:
+        when = random.randint(start, end)
+        # gate any explicit “Alliance” wording if desired (kept generic anyway)
+        label = f
+        faction_events.append(Event(when, f"{label} coalesces around {random.choice(['trade corridors','research charters','recon mandates','craft standards','cultural compacts'])}"))
+
+    ep = Epoch(
+        epoch_id=str(uuid.uuid4())[:8],
+        name=epoch_template["name"],
+        start_year=start,
+        end_year=end,
+        themes=themes,
+        civilizations=sorted(civs, key=lambda c: c.founded),
+        cataclysms=cats,
+        mysteries=mys,
+        faction_formations=sorted(faction_events, key=lambda e: e.year),
+    )
+
+    # Inject required anchor events/constraints
+    if "must_include_event" in epoch_template:
+        inject_year = clamp((start + end) // 2, start, end)
+        ep.mysteries.append(f"{epoch_template['must_include_event']} (c.{inject_year})")
+
+    if epoch_template.get("name") == "Modern Cycle":
+        # enforce Terrans extinction status by YEAR_END
+        # We won’t delete Terran civs earlier, but mark their status if present
+        for c in ep.civilizations:
+            if c.species == "Terrans":
+                c.collapsed = min(c.collapsed, YEAR_END - 1)
+        # Add explicit constraint note
+        ep.mysteries.append("By 7019, Terrans are functionally extinct; only legacy caches and echoes remain.")
+
+    return ep
+
+def generate_history() -> List[Epoch]:
+    if SEED is not None:
+        random.seed(SEED)
+    epochs: List[Epoch] = [generate_epoch(t) for t in EPOCH_TEMPLATES]
+    # sanity: ensure chronological sequencing without gaps/overlaps beyond the defined windows
+    epochs = sorted(epochs, key=lambda e: e.start_year)
+    return epochs
+
 # =========================
-# Generator Functions
+# Public API (class wrapper)
 # =========================
 
-def generate_epoch_history():
-    """Generate a complete history of epochs, each containing multiple civilizations and events."""
-    history = []
-    time_marker = 2025  # Start from current year
-
-    for epoch in EPOCHS:
-        duration = random.randint(*epoch["duration"])
-        num_themes = min(len(epoch["themes"]), random.randint(2, 4))
-        num_civs = random.randint(3, 8)  # More civilizations per epoch
-        num_cataclysms = random.randint(1, 4)  # More cataclysms
-        num_mysteries = random.randint(0, 3)  # More mysteries
-        
-        # Get faction formations for this epoch
-        faction_events = FACTION_FORMATIONS.get(epoch["name"], [])
-        
-        epoch_entry = {
-            "epoch_id": str(uuid.uuid4())[:8],
-            "name": epoch["name"],
-            "start_year": time_marker,
-            "end_year": time_marker + duration,
-            "themes": random.sample(epoch["themes"], k=num_themes),
-            "civilizations": [generate_civilization(epoch, time_marker, duration) for _ in range(num_civs)],
-            "cataclysms": random.sample(CATASTROPHES, k=num_cataclysms),
-            "mysteries": random.sample(MYSTERIES, k=num_mysteries) if MYSTERIES else [],
-            "faction_formations": faction_events,  # Add faction formations
-        }
-        time_marker += duration
-        history.append(epoch_entry)
-    return history
-
-def generate_civilization(epoch, epoch_start, epoch_duration):
-    """Generate one civilization with attributes, rise/fall, and remnants."""
-    civ_type = random.choice(CIV_TYPES)
-    civ_name = generate_name(civ_type["type"])
-    
-    # Civilization timeline within the epoch
-    rise_offset = random.randint(0, epoch_duration // 3)
-    lifespan = random.randint(epoch_duration // 10, epoch_duration * 2 // 3)
-    rise = epoch_start + rise_offset
-    fall = rise + lifespan
-    
-    remnant = generate_remnant(civ_type["type"])
-    
-    # More notable events per civilization
-    num_events = random.randint(2, 5)
-    
-    return {
-        "name": civ_name,
-        "type": civ_type["type"],
-        "traits": civ_type["traits"],
-        "founded": rise,
-        "collapsed": fall,
-        "remnants": remnant,
-        "notable_events": [generate_event(civ_name) for _ in range(num_events)]
-    }
-
-def generate_event(civ_name):
-    return f"The {civ_name} encountered {random.choice(MYSTERIES).lower()}."
-
-def generate_remnant(civ_type):
-    patterns = {
-        "Bio-Architects": "Overgrown megastructures pulsate faintly, still alive after millennia.",
-        "Quantum Dynasties": "Temporal scars linger, with entire regions flickering between timelines.",
-        "Etheric Theocracies": "Silent cathedrals of light hum beneath the surface of ruined moons.",
-        "Data Phantoms": "Ghost signals whisper through subspace, echoes of forgotten consciousness.",
-        "Crystalline Empires": "Vast prisms refract the light of dying suns into coded messages.",
-        "Gravitic Orders": "Collapsed singularities mark where their citadels once orbited.",
-        "Synthetic Hegemonies": "Automated sentinels still patrol empty space, awaiting new directives.",
-        "Aquatic Federations": "Submerged vaults preserve songs and data of extinct species.",
-        "Chrono-Kin": "Areas where time folds upon itself, replaying their extinction endlessly.",
-        "Luminal Artists": "Orbiting sculptures emit harmonics of unknown emotion.",
-        "Void Nomads": "Abandoned dark matter refineries drift through the cosmic void.",
-        "Hive Minds": "Dormant neural nodes pulse weakly, dreaming of lost unity.",
-        "Star Forges": "Half-completed dyson spheres orbit dead stars, monuments to ambition.",
-        "Memory Keepers": "Vast libraries float in space, their contents slowly degrading.",
-        "Flesh Sculptors": "Genetic templates preserved in crystallized DNA archives.",
-        "Nano-Swarms": "Inert grey matter clouds, frozen mid-construction.",
-        "Psi-Collectives": "Psychic echoes resonate through abandoned meditation chambers.",
-        "Merchant Guilds": "Derelict trade stations still broadcast automated price listings.",
-        "Warrior Clans": "Honor monuments stand vigil over ancient battlefields.",
-        "Monastic Orders": "Silent monasteries orbit dead worlds, their prayers long ceased.",
-    }
-    return patterns.get(civ_type, "Ruins beyond comprehension.")
-
-def generate_name(civ_type):
-    prefixes = ["Aeth", "Vor", "Zyn", "Kry", "Lum", "Xha", "Orr", "Thal", "Mir", "Nex", 
-                "Syl", "Dra", "Qua", "Zen", "Pyr", "Kor", "Vel", "Ix", "Nar", "Tel"]
-    suffixes = ["ari", "oth", "en", "yx", "ion", "ath", "ara", "is", "um", "el",
-                "ax", "os", "ir", "un", "eth", "al", "ix", "or", "ak", "ian"]
-    return f"{random.choice(prefixes)}{random.choice(suffixes)} {civ_type.split()[0]}"
-
-# =========================
-# GalacticHistory Class
-# =========================
 class GalacticHistory:
-    """
-    Class wrapper for galactic history generation.
-    Used by the main game to access history data.
-    """
-    def __init__(self):
-        self.epochs = generate_epoch_history()
-    
-    def get_epochs(self):
-        """Return all epochs in the galactic history"""
-        return self.epochs
-    
-    def get_current_year(self):
-        """Return the current year (end of last epoch)"""
-        if self.epochs:
-            return self.epochs[-1]['end_year']
-        return 0
-    
-    def get_epoch_by_year(self, year):
-        """Get the epoch that contains the given year"""
-        for epoch in self.epochs:
-            if epoch['start_year'] <= year <= epoch['end_year']:
-                return epoch
+    """Canon-guided 7019 history with constrained randomness."""
+    def __init__(self, seed: Optional[int] = SEED):
+        if seed is not None:
+            random.seed(seed)
+        self.epochs: List[Epoch] = generate_history()
+
+    def get_epochs(self) -> List[Dict[str, Any]]:
+        return [self._epoch_to_dict(e) for e in self.epochs]
+
+    def get_current_year(self) -> int:
+        return YEAR_END
+
+    def get_epoch_by_year(self, year: int) -> Optional[Dict[str, Any]]:
+        for e in self.epochs:
+            if e.start_year <= year <= e.end_year:
+                return self._epoch_to_dict(e)
         return None
 
+    # ===== Helpers =====
+    def _epoch_to_dict(self, e: Epoch) -> Dict[str, Any]:
+        return {
+            "epoch_id": e.epoch_id,
+            "name": e.name,
+            "start_year": e.start_year,
+            "end_year": e.end_year,
+            "themes": e.themes,
+            "cataclysms": e.cataclysms,
+            "mysteries": e.mysteries,
+            "faction_formations": [{"year": ev.year, "event": ev.description} for ev in e.faction_formations],
+            "civilizations": [
+                {
+                    "name": c.name,
+                    "species": c.species,
+                    "traits": c.traits,
+                    "founded": c.founded,
+                    "collapsed": c.collapsed,
+                    "remnants": c.remnant,
+                    "notable_events": [{"year": ev.year, "description": ev.description} for ev in c.notable_events],
+                } for c in e.civilizations
+            ],
+        }
+
+# === Legacy API for UI compatibility ===
+def generate_epoch_history():
+    """Legacy API for UI compatibility: returns epoch dicts as expected by nethack_interface.py."""
+    return GalacticHistory().get_epochs()
+
+    def get_epoch_by_year(self, year: int) -> Optional[Dict[str, Any]]:
+        for e in self.epochs:
+            if e.start_year <= year <= e.end_year:
+                return self._epoch_to_dict(e)
+        return None
+
+    # ===== Helpers =====
+
+    def _epoch_to_dict(self, e: Epoch) -> Dict[str, Any]:
+        return {
+            "epoch_id": e.epoch_id,
+            "name": e.name,
+            "start_year": e.start_year,
+            "end_year": e.end_year,
+            "themes": e.themes,
+            "cataclysms": e.cataclysms,
+            "mysteries": e.mysteries,
+            "faction_formations": [{"year": ev.year, "event": ev.description} for ev in e.faction_formations],
+            "civilizations": [
+                {
+                    "name": c.name,
+                    "species": c.species,
+                    "traits": c.traits,
+                    "founded": c.founded,
+                    "collapsed": c.collapsed,
+                    "remnants": c.remnant,
+                    "notable_events": [{"year": ev.year, "description": ev.description} for ev in c.notable_events],
+                } for c in e.civilizations
+            ],
+        }
+
+# === Legacy API for UI compatibility ===
+def generate_epoch_history():
+    """Legacy API for UI compatibility: returns epoch dicts as expected by nethack_interface.py."""
+    return GalacticHistory().get_epochs()
+
 # =========================
-# Run Generation
+# Demo CLI (pretty printer)
 # =========================
 if __name__ == "__main__":
-    galactic_history = generate_epoch_history()
-
-    for epoch in galactic_history:
-        print(f"\n=== {epoch['name']} ({epoch['start_year']} – {epoch['end_year']}) ===")
-        print(f"Themes: {', '.join(epoch['themes'])}")
-        print(f"Major Cataclysms: {', '.join(epoch['cataclysms'])}")
-        
-        # Show faction formations
-        if epoch.get('faction_formations'):
-            print(f"\n  🏛️  FACTION FORMATIONS:")
-            for faction in epoch['faction_formations']:
-                print(f"    • {faction['year']}: {faction['name']} - {faction['event']}")
-        
-        print(f"\n  Civilizations:")
-        for civ in epoch["civilizations"]:
-            print(f"  - {civ['name']} ({civ['type']})")
-            print(f"    Traits: {', '.join(civ['traits'])}")
-            print(f"    Founded: {civ['founded']}, Collapsed: {civ['collapsed']}")
-            print(f"    Remnants: {civ['remnants']}")
-            for e in civ["notable_events"]:
-                print(f"      * {e}")
+    gh = GalacticHistory(seed=SEED)
+    for ep in gh.get_epochs():
+        print(f"\n=== {ep['name']} ({ep['start_year']} – {ep['end_year']}) ===")
+        print("Themes:", ", ".join(ep["themes"]))
+        if ep["cataclysms"]:
+            print("Cataclysms:", ", ".join(ep["cataclysms"]))
+        if ep["mysteries"]:
+            print("Notable Notes/Mysteries:")
+            for m in ep["mysteries"]:
+                print("  -", m)
+        if ep["faction_formations"]:
+            print("Factions:")
+            for f in ep["faction_formations"]:
+                print(f"  • {f['year']}: {f['event']}")
+        print("Civilizations:")
+        for c in ep["civilizations"]:
+            print(f"  - {c['name']} [{c['species']}]")
+            print(f"    Traits: {', '.join(c['traits'])}")
+            print(f"    {c['founded']} → {c['collapsed']}")
+            print(f"    Remnants: {c['remnants']}")
+            for ev in c["notable_events"]:
+                print(f"      * {ev['year']}: {ev['description']}")
