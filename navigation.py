@@ -193,19 +193,40 @@ class Galaxy:
         """Generate faction-controlled zones based on predefined systems and additional coverage"""
         from factions import factions
         
-        # First, create zones around predefined faction systems
+        # First, group predefined systems by faction
+        faction_systems = {}
         for coords, system in self.systems.items():
             faction = system.get('controlling_faction')
             if faction:
-                if faction not in self.faction_zones:
-                    self.faction_zones[faction] = {
-                        'center': coords,
-                        'radius': random.randint(50, 80),
-                        'systems': [coords]
-                    }
-                else:
-                    # Add to existing faction systems list
-                    self.faction_zones[faction]['systems'].append(coords)
+                if faction not in faction_systems:
+                    faction_systems[faction] = []
+                faction_systems[faction].append(coords)
+        
+        # Create zones around predefined faction systems
+        for faction, system_coords_list in faction_systems.items():
+            if not system_coords_list:
+                continue
+            
+            # Calculate the center of all faction systems (average position)
+            avg_x = sum(c[0] for c in system_coords_list) / len(system_coords_list)
+            avg_y = sum(c[1] for c in system_coords_list) / len(system_coords_list)
+            avg_z = sum(c[2] for c in system_coords_list) / len(system_coords_list)
+            center = (avg_x, avg_y, avg_z)
+            
+            # Calculate radius to cover all faction systems plus some buffer
+            max_distance = 0
+            for coords in system_coords_list:
+                distance = ((coords[0] - avg_x)**2 + (coords[1] - avg_y)**2 + (coords[2] - avg_z)**2) ** 0.5
+                max_distance = max(max_distance, distance)
+            
+            # Add buffer to radius (20-40 units beyond furthest system)
+            radius = max_distance + random.randint(20, 40)
+            
+            self.faction_zones[faction] = {
+                'center': center,
+                'radius': radius,
+                'systems': system_coords_list
+            }
         
         # Add additional faction zones in unclaimed space
         faction_names = list(factions.keys())
@@ -232,6 +253,14 @@ class Galaxy:
     
     def get_faction_for_location(self, x, y, z):
         """Get the controlling faction for a given location, if any"""
+        # First, check if there's a system at this exact location with a predefined faction
+        system = self.systems.get((x, y, z))
+        if system:
+            # If system explicitly has controlling_faction defined (even if None), use it
+            if 'controlling_faction' in system:
+                return system['controlling_faction']
+        
+        # Otherwise, check faction zones by radius
         for faction_name, zone_data in self.faction_zones.items():
             center = zone_data['center']
             radius = zone_data['radius']
