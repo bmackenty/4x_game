@@ -792,6 +792,8 @@ class MapScreen(Screen):
         self.scroll_margin = 3
         # Faction zone display toggle
         self.show_faction_zones = False
+        # Faction color mapping (persistent across updates)
+        self.faction_colors = {}
     
     def compose(self) -> ComposeResult:
         yield Static(id="map_display")
@@ -838,16 +840,23 @@ class MapScreen(Screen):
             return px, py
         
         # If faction zones are enabled, draw faction backgrounds
-        faction_colors = {}
         if self.show_faction_zones and hasattr(galaxy, 'faction_zones'):
-            # Assign colors to factions
+            # Import deterministic faction color mapping
+            from systems import FACTION_COLORS
+            
+            # Populate instance faction colors dictionary for consistent access
             available_colors = [
                 "blue", "red", "green", "magenta", "cyan", 
                 "yellow", "bright_blue", "bright_red", "bright_green",
                 "bright_magenta", "bright_cyan"
             ]
             for idx, faction_name in enumerate(galaxy.faction_zones.keys()):
-                faction_colors[faction_name] = available_colors[idx % len(available_colors)]
+                if faction_name in FACTION_COLORS:
+                    # Use predefined color for consistency
+                    self.faction_colors[faction_name] = FACTION_COLORS[faction_name]
+                else:
+                    # Fallback for procedural factions
+                    self.faction_colors[faction_name] = available_colors[idx % len(available_colors)]
             
             # Fill in faction zone backgrounds
             for py in range(self.virtual_height):
@@ -980,7 +989,7 @@ class MapScreen(Screen):
                             # Stations - cyan/bright_cyan, but may have faction background
                             if self.show_faction_zones and faction:
                                 # Show in faction color
-                                faction_color = faction_colors.get(faction, "cyan")
+                                faction_color = self.faction_colors.get(faction, "cyan")
                                 if char == "◈":
                                     base_style = f"bold bright_white on {faction_color}"
                                 else:
@@ -993,14 +1002,14 @@ class MapScreen(Screen):
                         elif char == "*":
                             # Visited system - green, but may have faction background
                             if self.show_faction_zones and faction:
-                                faction_color = faction_colors.get(faction, "green")
+                                faction_color = self.faction_colors.get(faction, "green")
                                 base_style = f"bold white on {faction_color}"
                             else:
                                 base_style = "green"
                         elif char == "+":
                             # Unvisited system - yellow, but may have faction background
                             if self.show_faction_zones and faction:
-                                faction_color = faction_colors.get(faction, "yellow")
+                                faction_color = self.faction_colors.get(faction, "yellow")
                                 base_style = f"bold white on {faction_color}"
                             else:
                                 base_style = "yellow"
@@ -1022,7 +1031,7 @@ class MapScreen(Screen):
                         elif char == "░":
                             # Faction background
                             if self.show_faction_zones and faction:
-                                faction_color = faction_colors.get(faction, "white")
+                                faction_color = self.faction_colors.get(faction, "white")
                                 base_style = f"dim {faction_color}"
                             else:
                                 base_style = "dim white"
@@ -1065,7 +1074,7 @@ class MapScreen(Screen):
             current_faction = galaxy.get_faction_for_location(sx, sy, sz)
             if current_faction:
                 text.append(f" | Zone: ", style="white")
-                faction_color = faction_colors.get(current_faction, "white")
+                faction_color = self.faction_colors.get(current_faction, "white")
                 text.append(f"{current_faction}", style=f"bold {faction_color}")
         
         # Show nearby NPCs

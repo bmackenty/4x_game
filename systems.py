@@ -1,11 +1,91 @@
 """
 Star Systems Module - Deterministic System Definitions
 Defines star systems with predefined characteristics, planets, resources, history, and faction control.
+Also defines deterministic faction zones that control regions of space.
 This replaces the purely random system generation with curated, lore-rich systems.
 """
 
 import random
 from typing import Dict, List, Optional, Tuple, Any
+
+# Deterministic Faction Zones - defines which factions control which regions of space
+# Format: faction_name -> {center: (x, y, z), radius: int, description: str}
+FACTION_ZONES = {
+    "The Veritas Covenant": {
+        "center": (50, 50, 25),
+        "radius": 60,
+        "description": "Core research and knowledge preservation sector around Alpha Centauri"
+    },
+    "Stellar Nexus Guild": {
+        "center": (65, 65, 29),
+        "radius": 70,
+        "description": "Major trade corridor connecting Vega Prime and Sirius Gate"
+    },
+    "Ironclad Collective": {
+        "center": (30, 80, 20),
+        "radius": 55,
+        "description": "Fortified border region centered on Rigel Station"
+    },
+    "Scholara Nexus": {
+        "center": (90, 45, 35),
+        "radius": 65,
+        "description": "Scientific research zone around Betelgeuse Sector"
+    },
+    "Harmonic Vitality Consortium": {
+        "center": (40, 40, 22),
+        "radius": 50,
+        "description": "Agricultural and bio-diversity sector centered on Tau Ceti"
+    },
+    "Gearwrights Guild": {
+        "center": (25, 30, 15),
+        "radius": 55,
+        "description": "Mining and manufacturing region around Ross 128"
+    },
+    "Keepers of the Spire": {
+        "center": (48, 52, 24),
+        "radius": 60,
+        "description": "Archaeological research zone protecting ancient sites near Proxima b"
+    },
+    "Stellar Cartographers Alliance": {
+        "center": (110, 95, 45),
+        "radius": 65,
+        "description": "Frontier exploration sector at TRAPPIST-1"
+    }
+}
+
+# Deterministic faction color assignments for visual display
+# These colors are used in the faction overlay map for consistency
+FACTION_COLORS = {
+    "The Veritas Covenant": "bright_blue",
+    "Stellar Nexus Guild": "bright_yellow",
+    "Ironclad Collective": "bright_red",
+    "Scholara Nexus": "bright_magenta",
+    "Harmonic Vitality Consortium": "bright_green",
+    "Gearwrights Guild": "cyan",
+    "Keepers of the Spire": "magenta",
+    "Stellar Cartographers Alliance": "bright_cyan",
+    # Additional factions with consistent colors
+    "The Galactic Salvage Guild": "blue",
+    "Veritas Covenant": "bright_blue",  # Alias
+    "Gaian Enclave": "green",
+    "The Provocateurs' Guild": "yellow",
+    "Quantum Artificers Guild": "bright_magenta",
+    "Harmonic Resonance Collective": "bright_green",
+    "Icaron Collective": "red",
+    "Etheric Preservationists": "cyan",
+    "Galactic Circus": "bright_yellow",
+    "Technotheos": "magenta",
+    "Keepers of the Keys": "blue",
+    "Celestial Marauders": "red",
+    "The Brewmasters' Guild": "yellow",
+    "Voidbound Monks": "bright_cyan",
+    "Collective of Commonality": "green",
+    "The Triune Daughters": "magenta",
+    "The Chemists' Concord": "cyan",
+    "The Map Makers": "bright_yellow",
+    "Celestial Alliance": "bright_blue",
+    "The Ironclad Collective": "bright_red",  # Alias
+}
 
 # System type definitions with gameplay implications
 SYSTEM_TYPES = {
@@ -170,7 +250,7 @@ PLANET_TYPES = {
 # Predefined star systems with rich lore and history
 STAR_SYSTEMS = {
     "Alpha Centauri": {
-        "coordinates": (50, 50, 25),
+        "coordinates": (350, 50, 25),
         "type": "Core World",
         "description": "The oldest human colony outside Sol, a beacon of civilization and commerce.",
         "controlling_faction": "The Veritas Covenant",

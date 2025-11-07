@@ -12,7 +12,7 @@ SYSTEM GENERATION:
 
 import random
 import math
-from systems import system_registry, SYSTEM_TYPES
+from systems import system_registry, SYSTEM_TYPES, FACTION_ZONES
 
 class NPCShip:
     """NPC ship that moves around the galaxy"""
@@ -190,55 +190,34 @@ class Galaxy:
         print(f"Loaded {len(predefined)} predefined star systems")
     
     def generate_faction_zones(self):
-        """Generate faction-controlled zones based on predefined systems and additional coverage"""
+        """Load predefined faction zones from systems.py and add additional procedural zones"""
         from factions import factions
         
-        # First, group predefined systems by faction
-        faction_systems = {}
-        for coords, system in self.systems.items():
-            faction = system.get('controlling_faction')
-            if faction:
-                if faction not in faction_systems:
-                    faction_systems[faction] = []
-                faction_systems[faction].append(coords)
-        
-        # Create zones around predefined faction systems
-        for faction, system_coords_list in faction_systems.items():
-            if not system_coords_list:
-                continue
+        # Load predefined faction zones from systems.py
+        for faction_name, zone_data in FACTION_ZONES.items():
+            # Find all systems that belong to this faction
+            faction_systems = []
+            for coords, system in self.systems.items():
+                if system.get('controlling_faction') == faction_name:
+                    faction_systems.append(coords)
             
-            # Calculate the center of all faction systems (average position)
-            avg_x = sum(c[0] for c in system_coords_list) / len(system_coords_list)
-            avg_y = sum(c[1] for c in system_coords_list) / len(system_coords_list)
-            avg_z = sum(c[2] for c in system_coords_list) / len(system_coords_list)
-            center = (avg_x, avg_y, avg_z)
-            
-            # Calculate radius to cover all faction systems plus some buffer
-            max_distance = 0
-            for coords in system_coords_list:
-                distance = ((coords[0] - avg_x)**2 + (coords[1] - avg_y)**2 + (coords[2] - avg_z)**2) ** 0.5
-                max_distance = max(max_distance, distance)
-            
-            # Add buffer to radius (30-50 units beyond furthest system)
-            # Ensure minimum radius of 40 units for visibility on faction overlay
-            radius = max(40, max_distance + random.randint(30, 50))
-            
-            self.faction_zones[faction] = {
-                'center': center,
-                'radius': radius,
-                'systems': system_coords_list
+            self.faction_zones[faction_name] = {
+                'center': zone_data['center'],
+                'radius': zone_data['radius'],
+                'systems': faction_systems,
+                'description': zone_data.get('description', '')
             }
         
-        # Add additional faction zones in unclaimed space
+        # Add additional faction zones in unclaimed space for factions without predefined zones
         faction_names = list(factions.keys())
         factions_without_zones = [f for f in faction_names if f not in self.faction_zones]
         
-        # Create zones for remaining factions to leave some neutral space
+        # Create zones for some remaining factions to leave neutral space
         num_additional_zones = min(len(factions_without_zones), 8)
         selected_factions = random.sample(factions_without_zones, num_additional_zones) if factions_without_zones else []
         
         for faction_name in selected_factions:
-            # Random center point for faction zone
+            # Random center point for faction zone in unclaimed space
             center_x = random.randint(100, self.size_x - 100)
             center_y = random.randint(100, self.size_y - 100)
             center_z = random.randint(50, self.size_z - 50)
@@ -249,7 +228,8 @@ class Galaxy:
             self.faction_zones[faction_name] = {
                 'center': (center_x, center_y, center_z),
                 'radius': radius,
-                'systems': []
+                'systems': [],
+                'description': f'Extended territory of {faction_name}'
             }
     
     def get_faction_for_location(self, x, y, z):
@@ -257,11 +237,15 @@ class Galaxy:
         # First, check if there's a system at this exact location with a predefined faction
         system = self.systems.get((x, y, z))
         if system:
-            # If system explicitly has controlling_faction defined (even if None), use it
-            if 'controlling_faction' in system:
-                return system['controlling_faction']
+            # If system explicitly has a controlling_faction set (not None), use it
+            controlling_faction = system.get('controlling_faction')
+            if controlling_faction is not None:
+                return controlling_faction
         
-        # Otherwise, check faction zones by radius
+        # Check faction zones by radius - find the closest zone if multiple overlap
+        closest_faction = None
+        closest_distance = float('inf')
+        
         for faction_name, zone_data in self.faction_zones.items():
             center = zone_data['center']
             radius = zone_data['radius']
@@ -269,10 +253,11 @@ class Galaxy:
             # Calculate distance from zone center
             distance = ((x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2) ** 0.5
             
-            if distance <= radius:
-                return faction_name
+            if distance <= radius and distance < closest_distance:
+                closest_faction = faction_name
+                closest_distance = distance
         
-        return None  # Neutral/unclaimed space
+        return closest_faction  # Returns None if no zones contain this location
     
     def generate_procedural_systems(self):
         """Generate additional procedural systems to fill the galaxy (supplements predefined systems)"""
