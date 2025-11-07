@@ -219,8 +219,9 @@ class Galaxy:
                 distance = ((coords[0] - avg_x)**2 + (coords[1] - avg_y)**2 + (coords[2] - avg_z)**2) ** 0.5
                 max_distance = max(max_distance, distance)
             
-            # Add buffer to radius (20-40 units beyond furthest system)
-            radius = max_distance + random.randint(20, 40)
+            # Add buffer to radius (30-50 units beyond furthest system)
+            # Ensure minimum radius of 40 units for visibility on faction overlay
+            radius = max(40, max_distance + random.randint(30, 50))
             
             self.faction_zones[faction] = {
                 'center': center,
