@@ -162,35 +162,147 @@ character_backgrounds = {
     }
 }
 
-def create_character_stats():
-    """Generate random character statistics"""
-    import random
-    
-    stats = {
-        # Core Command Attributes
-        "leadership": random.randint(1, 10),
-        "charisma": random.randint(1, 10),
-        "strategy": random.randint(1, 10),
-        
-        # Combat & Military
-        "combat": random.randint(1, 10),
-        "tactics": random.randint(1, 10),
-        "piloting": random.randint(1, 10),
-        
-        # Technical & Science
-        "engineering": random.randint(1, 10),
-        "research": random.randint(1, 10),
-        "hacking": random.randint(1, 10),
-        
-        # Social & Economic
-        "diplomacy": random.randint(1, 10),
-        "trading": random.randint(1, 10),
-        "espionage": random.randint(1, 10),
-        
-        # Exploration & Survival
-        "navigation": random.randint(1, 10),
-        "survival": random.randint(1, 10),
-        "archaeology": random.randint(1, 10)
+# The Seven Core Characteristics of 7019
+# Base-100 system: all stats start at 30, players allocate 30 points
+STAT_NAMES = {
+    "VIT": "Vitality",
+    "KIN": "Kinetics",
+    "INT": "Intellect",
+    "AEF": "Aetheric Affinity",
+    "COH": "Coherence",
+    "INF": "Influence",
+    "SYN": "Synthesis"
+}
+
+STAT_DESCRIPTIONS = {
+    "VIT": "Biological endurance, physical resilience, and self-repair capacity",
+    "KIN": "Speed, agility, reaction time, and precision in physical and cybernetic systems",
+    "INT": "Cognitive power, analytical capacity, and data-processing speed",
+    "AEF": "Resonance with Etheric Energy - ability to sense, channel, and manipulate the Ether",
+    "COH": "Stability of consciousness and identity across biological, digital, and etheric layers",
+    "INF": "Social resonance - charisma, authority, and emotional projection",
+    "SYN": "Adaptability - ability to integrate technologies, merge disciplines, or harmonize with alien systems"
+}
+
+BASE_STAT_VALUE = 30
+POINT_BUY_POINTS = 30
+MAX_STAT_VALUE = 100
+
+def create_base_character_stats():
+    """Create base character stats - all stats start at 30"""
+    return {
+        "VIT": BASE_STAT_VALUE,
+        "KIN": BASE_STAT_VALUE,
+        "INT": BASE_STAT_VALUE,
+        "AEF": BASE_STAT_VALUE,
+        "COH": BASE_STAT_VALUE,
+        "INF": BASE_STAT_VALUE,
+        "SYN": BASE_STAT_VALUE
     }
+
+def validate_stat_allocation(stats, background_name=None):
+    """Validate that stat allocation is legal (30 points allocated, max 100 per stat)
     
-    return stats
+    Args:
+        stats: Dictionary of stat values
+        background_name: Optional background name to account for stat bonuses
+    """
+    base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+    
+    # Account for background bonuses if provided
+    if background_name:
+        try:
+            from backgrounds import backgrounds as background_data
+            bg = background_data.get(background_name, {})
+            bonuses = bg.get('stat_bonuses', {})
+            if bonuses:
+                bg_bonus_total = sum(bonuses.values())
+                base_total += bg_bonus_total
+        except ImportError:
+            pass  # backgrounds module not available, ignore
+    
+    current_total = sum(stats.values())
+    allocated_points = current_total - base_total
+    
+    # Check total allocation (can be under, but not over)
+    if allocated_points > POINT_BUY_POINTS:
+        return False, f"Cannot allocate more than {POINT_BUY_POINTS} points (currently {allocated_points})"
+    
+    # Check max per stat
+    for stat_name, value in stats.items():
+        if value > MAX_STAT_VALUE:
+            return False, f"{STAT_NAMES[stat_name]} cannot exceed {MAX_STAT_VALUE} (currently {value})"
+        # Calculate minimum for this stat (including background bonus)
+        min_value = BASE_STAT_VALUE
+        if background_name:
+            try:
+                from backgrounds import backgrounds as background_data
+                bg = background_data.get(background_name, {})
+                bonuses = bg.get('stat_bonuses', {})
+                if stat_name in bonuses:
+                    min_value += bonuses[stat_name]
+            except ImportError:
+                pass
+        if value < min_value:
+            return False, f"{STAT_NAMES[stat_name]} cannot be below {min_value} (currently {value})"
+    
+    remaining_points = POINT_BUY_POINTS - allocated_points
+    if remaining_points > 0:
+        return True, f"Valid allocation ({remaining_points} points remaining)"
+    return True, "Valid allocation"
+
+DERIVED_METRIC_INFO = {
+    "Health": {
+        "formula": "VIT × 10 + COH × 5",
+        "description": "Physical integrity and resistance to damage."
+    },
+    "Etheric Capacity": {
+        "formula": "AEF × 8 + COH × 4",
+        "description": "Total energy that can be safely channeled."
+    },
+    "Processing Speed": {
+        "formula": "INT + KIN",
+        "description": "Reaction speed in both physical and digital domains."
+    },
+    "Adaptation Index": {
+        "formula": "(SYN + COH + INT) ÷ 3",
+        "description": "Ability to evolve under stress or exposure to new environments."
+    },
+    "Resilience Index": {
+        "formula": "VIT + COH",
+        "description": "Combined physical and mental stability."
+    },
+    "Innovation Quotient": {
+        "formula": "INT + SYN",
+        "description": "Capacity to invent, adapt, and hybridize solutions."
+    },
+    "Etheric Stability": {
+        "formula": "AEF + COH",
+        "description": "Safety margin when channeling or resisting etheric forces."
+    },
+    "Social Engineering Potential": {
+        "formula": "INF + SYN",
+        "description": "Effectiveness at blending diplomacy with technological or cultural manipulation."
+    }
+}
+
+def calculate_derived_attributes(stats):
+    """Calculate derived metrics from base stats"""
+    derived = {}
+    derived["Health"] = stats["VIT"] * 10 + stats["COH"] * 5
+    derived["Etheric Capacity"] = stats["AEF"] * 8 + stats["COH"] * 4
+    derived["Processing Speed"] = stats["INT"] + stats["KIN"]
+    derived["Adaptation Index"] = int((stats["SYN"] + stats["COH"] + stats["INT"]) / 3)
+    derived["Resilience Index"] = stats["VIT"] + stats["COH"]
+    derived["Innovation Quotient"] = stats["INT"] + stats["SYN"]
+    derived["Etheric Stability"] = stats["AEF"] + stats["COH"]
+    derived["Social Engineering Potential"] = stats["INF"] + stats["SYN"]
+    return derived
+
+def create_character_stats():
+    """
+    Create character stats with point-buy system.
+    For backward compatibility, returns base stats (all 30).
+    Point allocation should be done through the UI.
+    """
+    return create_base_character_stats()

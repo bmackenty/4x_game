@@ -71,7 +71,7 @@ def test_game_initialization():
             'faction': list(factions.keys())[0],
             'character_class': list(character_classes.keys())[0],
             'research_paths': list(research_categories.keys())[:2],
-            'stats': create_character_stats()
+            'stats': create_base_character_stats()
         }
         
         result = game.initialize_new_game(test_character_data)

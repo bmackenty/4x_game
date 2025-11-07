@@ -11,7 +11,13 @@ from manufacturing import industrial_platforms
 from goods import commodities
 from ship_classes import ship_classes
 from space_stations import space_stations
-from characters import character_classes, character_backgrounds, create_character_stats
+from characters import (
+    character_classes,
+    character_backgrounds,
+    create_character_stats,
+    calculate_derived_attributes,
+    DERIVED_METRIC_INFO,
+)
 from species import species_database, get_playable_species
 from energies import all_energies, get_safe_energies, get_energy_efficiency, get_energy_cost_multiplier
 from research import all_research, research_categories, get_research_by_category, get_available_research
@@ -88,12 +94,9 @@ class Game:
             if 'stats' in character_data and character_data['stats']:
                 self.character_stats = character_data['stats']
             else:
-                # Create character stats based on class and background
-                from characters import create_character_stats
-                self.character_stats = create_character_stats(
-                    character_data.get('class', '1'), 
-                    character_data.get('background', 'a')
-                )
+                # Create base character stats (all 30, point-buy will be done in UI)
+                from characters import create_base_character_stats
+                self.character_stats = create_base_character_stats()
             
             # Mark character as created
             self.character_created = True
@@ -2340,8 +2343,9 @@ class Game:
         # Profession selection
         self.select_profession()
         
-        # Generate character stats
-        self.character_stats = create_character_stats()
+        # Generate base character stats (all 30, point-buy done in UI)
+        from characters import create_base_character_stats
+        self.character_stats = create_base_character_stats()
         
         # Ensure every character has at least a basic ship
         if not self.owned_ships:
@@ -2458,8 +2462,24 @@ class Game:
             print(f"Profession: None assigned")
         
         print("\nCHARACTER STATISTICS:")
-        for stat, value in self.character_stats.items():
-            print(f"  {stat.title()}: {value}/10")
+        from characters import STAT_NAMES
+        for stat_code in STAT_NAMES.keys():
+            value = self.character_stats.get(stat_code, 30)
+            stat_name = STAT_NAMES[stat_code]
+            print(f"  {stat_code} ({stat_name}): {value}/100")
+        if self.character_stats:
+            print("\nDERIVED METRICS:")
+            derived = calculate_derived_attributes(self.character_stats)
+            for name, value in derived.items():
+                info = DERIVED_METRIC_INFO.get(name, {})
+                formula = info.get("formula")
+                description = info.get("description")
+                line = f"  {name}: {value}"
+                if formula:
+                    line += f"  [{formula}]"
+                if description:
+                    line += f" - {description}"
+                print(line)
         
         print("\nCLASS ABILITIES:")
         class_info = character_classes[self.character_class]

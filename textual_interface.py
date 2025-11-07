@@ -169,7 +169,7 @@ class CharacterCreationCoordinator(Container):
             left_col.mount(ListView(id="research_list"))
 
             right_col = Vertical(id="stage2_right")
-            right_col.mount(Static("🎲 Stats (G=Generate, R=Reroll)", classes="section_header"))
+            right_col.mount(Static("🎲 Allocate Stats (G=Initialize, +/- to adjust)", classes="section_header"))
             right_col.mount(Static("", id="stats_display"))
             right_col.mount(Static("📝 Name (type and press Enter)", classes="section_header"))
             right_col.mount(Input(placeholder="Enter your character name...", id="name_input"))
@@ -181,7 +181,7 @@ class CharacterCreationCoordinator(Container):
 
             # Update footer help
             help_widget = self.query_one("#creation_help", Static)
-            help_widget.update("[bold]Keys:[/bold] Tab = Cycle • Enter/Space = Toggle • G/R = Generate/Reroll Stats • S = Finish • B = Back • Q = Cancel")
+            help_widget.update("[bold]Keys:[/bold] Tab = Cycle • Enter/Space = Toggle Research • G = Initialize Stats (30 pts) • V/K/I/A/C/F/S = Select Stat • +/- = Adjust • S = Finish • B = Back • Q = Cancel")
 
             # Populate lists and initial stats
             self._populate_class_list()
@@ -247,14 +247,82 @@ class CharacterCreationCoordinator(Container):
 
     def _update_stats_display(self) -> None:
         try:
+            from characters import (
+                STAT_NAMES,
+                STAT_DESCRIPTIONS,
+                BASE_STAT_VALUE,
+                POINT_BUY_POINTS,
+                MAX_STAT_VALUE,
+                validate_stat_allocation,
+                calculate_derived_attributes,
+                DERIVED_METRIC_INFO,
+            )
+            
             w = self.query_one("#stats_display", Static)
             if self.character_data['stats']:
-                lines = [f"{k.title()}: {v}" for k, v in self.character_data['stats'].items()]
+                stats = self.character_data['stats']
+                # Calculate allocated points
+                base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+                current_total = sum(stats.values())
+                allocated_points = current_total - base_total
+                remaining_points = POINT_BUY_POINTS - allocated_points
+                
+                # Build display
+                lines = []
+                lines.append(f"[bold]Points Remaining: {remaining_points}/{POINT_BUY_POINTS}[/bold]\n")
+                
+                # Show each stat with current value and +/- buttons
+                for stat_code in STAT_NAMES.keys():
+                    stat_name = STAT_NAMES[stat_code]
+                    value = stats.get(stat_code, BASE_STAT_VALUE)
+                    # Calculate if we can increase/decrease
+                    can_increase = value < MAX_STAT_VALUE and remaining_points > 0
+                    can_decrease = value > BASE_STAT_VALUE
+                    
+                    # Color coding
+                    if value >= 70:
+                        color = "bold green"
+                    elif value >= 50:
+                        color = "yellow"
+                    else:
+                        color = "white"
+                    
+                    stat_line = f"[{color}]{stat_code:3s}[/{color}] {stat_name:20s}: {value:3d}/{MAX_STAT_VALUE}"
+                    if can_decrease:
+                        stat_line += " [dim](-)[/dim]"
+                    if can_increase:
+                        stat_line += " [dim](+)[/dim]"
+                    lines.append(stat_line)
+                
+                # Validation status (allow unspent points)
+                is_valid, msg = validate_stat_allocation(stats, self.character_data.get('background'))
+                if is_valid:
+                    lines.append(f"\n[bold green]✓ {msg}[/bold green]")
+                    # Show derived attributes
+                    derived = calculate_derived_attributes(stats)
+                    lines.append("\n[bold]Derived Metrics:[/bold]")
+                    for attr, val in derived.items():
+                        info = DERIVED_METRIC_INFO.get(attr, {})
+                        formula = info.get("formula")
+                        description = info.get("description")
+                        metric_line = f"  {attr}: {val}"
+                        if formula:
+                            metric_line += f"  [{formula}]"
+                        if description:
+                            metric_line += f" - {description}"
+                        lines.append(metric_line)
+                else:
+                    lines.append(f"\n[bold red]⚠ {msg}[/bold red]")
+                
                 w.update("\n".join(lines))
             else:
-                w.update("[dim]No stats yet. Press G to generate.[/dim]")
-        except Exception:
-            pass
+                w.update(f"[dim]Press G to initialize stats (all start at {BASE_STAT_VALUE}, allocate {POINT_BUY_POINTS} points)[/dim]")
+        except Exception as e:
+            try:
+                w = self.query_one("#stats_display", Static)
+                w.update(f"[red]Error: {e}[/red]")
+            except:
+                pass
     
     def update_step_display(self):
         """Update the display for the current step"""
@@ -525,15 +593,32 @@ class CharacterCreationCoordinator(Container):
         return content
     
     def get_stats_content(self):
-        content = "🎲 Generate your character stats:\n\n"
+        from characters import STAT_NAMES, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE, validate_stat_allocation
+        
+        content = f"🎲 Allocate Character Stats (Point-Buy System):\n\n"
+        content += f"All stats start at {BASE_STAT_VALUE}. You have up to {POINT_BUY_POINTS} points to distribute (max {MAX_STAT_VALUE} per stat).\n"
+        content += "It's fine to leave points unspent.\n\n"
         
         if self.character_data['stats']:
-            content += "Current stats:\n"
-            for stat, value in self.character_data['stats'].items():
-                content += f"{stat}: {value}\n"
-            content += "\n🔄 Click 'Reroll' to generate new stats"
+            stats = self.character_data['stats']
+            base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+            current_total = sum(stats.values())
+            allocated_points = current_total - base_total
+            remaining_points = POINT_BUY_POINTS - allocated_points
+            
+            content += f"Points Remaining: {remaining_points}/{POINT_BUY_POINTS}\n\n"
+            content += "Current Stats:\n"
+            for stat_code in STAT_NAMES.keys():
+                value = stats.get(stat_code, BASE_STAT_VALUE)
+                content += f"  {stat_code} ({STAT_NAMES[stat_code]}): {value}/{MAX_STAT_VALUE}\n"
+            
+            is_valid, msg = validate_stat_allocation(stats, self.character_data.get('background'))
+            if is_valid:
+                content += f"\n✓ {msg}"
+            else:
+                content += f"\n⚠ {msg}"
         else:
-            content += "Click 'Generate Stats' to create your character's attributes"
+            content += "Press 'G' to initialize stats (all start at base value)"
         
         return content
     
@@ -554,9 +639,29 @@ class CharacterCreationCoordinator(Container):
         content += f"Research Paths: {', '.join(self.character_data['research_paths'])}\n\n"
         
         if self.character_data['stats']:
+            from characters import STAT_NAMES, validate_stat_allocation
             content += "Stats:\n"
-            for stat, value in self.character_data['stats'].items():
-                content += f"  {stat}: {value}\n"
+            stats = self.character_data['stats']
+            for stat_code in STAT_NAMES.keys():
+                value = stats.get(stat_code, 30)
+                stat_name = STAT_NAMES[stat_code]
+                content += f"  {stat_code} ({stat_name}): {value}/100\n"
+            
+            # Derived metrics including composite indices
+            derived = calculate_derived_attributes(stats, self.character_data.get('background'))
+            if derived:
+                content += "\nDerived Metrics:\n"
+                for name, value in derived.items():
+                    content += f"  {name}: {value}\n"
+            
+            # Validation status
+            is_valid, msg = validate_stat_allocation(stats, self.character_data.get('background'))
+            if is_valid:
+                content += f"\n✓ {msg}\n"
+            else:
+                content += f"\n⚠ {msg}\n"
+        else:
+            content += "⚠ Stats not initialized!\n"
         
         content += "\n🎉 Ready to create your character!"
         return content
@@ -716,38 +821,146 @@ class CharacterCreationCoordinator(Container):
                     pass
             elif self.stage == 2 and key == 'g':
                 self.generate_character_stats()
-                self._update_stats_display()
                 event.stop()
-            elif self.stage == 2 and key == 'r':
-                self.generate_character_stats()
-                self._update_stats_display()
+            elif self.stage == 2 and key in ('+', '='):
+                # Increase currently selected stat (if stats list exists)
+                try:
+                    # Get currently focused stat from stats_display or use a default
+                    # For now, we'll cycle through stats or use a stored selection
+                    if hasattr(self, '_selected_stat_index'):
+                        from characters import STAT_NAMES
+                        stat_codes = list(STAT_NAMES.keys())
+                        if 0 <= self._selected_stat_index < len(stat_codes):
+                            self.adjust_stat(stat_codes[self._selected_stat_index], +1)
+                    else:
+                        # Default to first stat
+                        from characters import STAT_NAMES
+                        stat_codes = list(STAT_NAMES.keys())
+                        if stat_codes:
+                            self._selected_stat_index = 0
+                            self.adjust_stat(stat_codes[0], +1)
+                except Exception:
+                    pass
+                event.stop()
+            elif self.stage == 2 and key == '-':
+                # Decrease currently selected stat
+                try:
+                    if hasattr(self, '_selected_stat_index'):
+                        from characters import STAT_NAMES
+                        stat_codes = list(STAT_NAMES.keys())
+                        if 0 <= self._selected_stat_index < len(stat_codes):
+                            self.adjust_stat(stat_codes[self._selected_stat_index], -1)
+                    else:
+                        from characters import STAT_NAMES
+                        stat_codes = list(STAT_NAMES.keys())
+                        if stat_codes:
+                            self._selected_stat_index = 0
+                            self.adjust_stat(stat_codes[0], -1)
+                except Exception:
+                    pass
+                event.stop()
+            elif self.stage == 2 and key.lower() in ('v', 'k', 'i', 'a', 'c', 'f', 's'):
+                # Quick stat selection: V=VIT, K=KIN, I=INT, A=AEF, C=COH, F=INF, S=SYN
+                stat_map = {'v': 'VIT', 'k': 'KIN', 'i': 'INT', 'a': 'AEF', 'c': 'COH', 'f': 'INF', 's': 'SYN'}
+                stat_code = stat_map[key.lower()]
+                from characters import STAT_NAMES
+                stat_codes = list(STAT_NAMES.keys())
+                if stat_code in stat_codes:
+                    self._selected_stat_index = stat_codes.index(stat_code)
+                    try:
+                        self.app.show_notification(f"Selected {STAT_NAMES[stat_code]}. Use +/- to adjust.", timeout=2.0)
+                    except:
+                        pass
                 event.stop()
             elif self.stage == 2 and key == 'b':
                 # Back to stage 1 (re-create the coordinator for simplicity)
                 self.app.action_show_character_creation()
                 event.stop()
             elif self.stage == 2 and key == 's':
-                # Finish character creation
+                # Finish character creation - validate stats first
                 try:
+                    from characters import validate_stat_allocation
+                    if self.character_data.get('stats'):
+                        is_valid, msg = validate_stat_allocation(
+                            self.character_data['stats'],
+                            self.character_data.get('background')
+                        )
+                        if not is_valid:
+                            try:
+                                self.app.show_notification(f"❌ Cannot finish: {msg}", timeout=3.0)
+                            except:
+                                pass
+                            event.stop()
+                            return
+                    
                     if hasattr(self.app, 'handle_create_character_from_coordinator'):
                         self.app.handle_create_character_from_coordinator(self)
                     else:
                         if self.game_instance:
                             self.game_instance.character_created = True
                         self.app.action_show_main_menu()
-                except Exception:
-                    self.app.action_show_main_menu()
+                except Exception as e:
+                    try:
+                        self.app.show_notification(f"Error: {e}", timeout=3.0)
+                    except:
+                        pass
+                    # Don't proceed if there's an error
                 event.stop()
         except Exception:
             pass
     
     def generate_character_stats(self):
-        """Generate character stats"""
+        """Initialize character stats with base values (all 30)"""
         if GAME_AVAILABLE:
-            from characters import create_character_stats
-            self.character_data['stats'] = create_character_stats()
-            self.update_step_display()
-            self.update_progress_bar()
+            from characters import create_base_character_stats, STAT_NAMES
+            self.character_data['stats'] = create_base_character_stats()
+            # Initialize selected stat index to first stat
+            self._selected_stat_index = 0
+            self._update_stats_display()
+            try:
+                self.app.show_notification(
+                    "✅ Stats initialized. Use V/K/I/A/C/F/S to select stats, +/- to adjust. Spend up to 30 points.",
+                    timeout=4.0
+                )
+            except:
+                pass
+    
+    def adjust_stat(self, stat_code, direction):
+        """Adjust a stat up or down (direction: +1 or -1)"""
+        from characters import STAT_NAMES, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE, validate_stat_allocation
+        
+        if not self.character_data.get('stats'):
+            self.generate_character_stats()
+        
+        stats = self.character_data['stats']
+        
+        if stat_code not in stats:
+            return
+        
+        current_value = stats[stat_code]
+        base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+        current_total = sum(stats.values())
+        allocated_points = current_total - base_total
+        remaining_points = POINT_BUY_POINTS - allocated_points
+        
+        if direction > 0:  # Increase
+            if current_value < MAX_STAT_VALUE and remaining_points > 0:
+                stats[stat_code] += 1
+                self._update_stats_display()
+        elif direction < 0:  # Decrease
+            if current_value > BASE_STAT_VALUE:
+                stats[stat_code] -= 1
+                self._update_stats_display()
+        
+        # Show validation status
+        is_valid, msg = validate_stat_allocation(stats, self.character_data.get('background'))
+        try:
+            if is_valid:
+                self.app.show_notification(f"✓ {msg}", timeout=1.5)
+            else:
+                self.app.show_notification(f"⚠ {msg}", timeout=2.5)
+        except:
+            pass
     
     def select_species(self, species_name):
         """Select a species"""
@@ -1421,7 +1634,7 @@ class ArchaeologyScreen(Static):
                             civs = ["No civilizations discovered yet", "Explore and excavate to uncover history"]
                     except:
                         civs = [
-                            "�🔮 Zenthorian Empire - Crystal Age",
+                            "🔮 Zenthorian Empire - Crystal Age",
                             "🌊 Oreon Civilization - Aquatic Dominion", 
                             "⭐ Myridian Builders - Stellar Navigation",
                             "🧠 Aetheris Collective - Consciousness Transfer",
@@ -1594,68 +1807,39 @@ class CharacterScreen(Static):
                     yield Static("⚡ CHARACTER ATTRIBUTES", classes="section_header")
                     
                     if self.game_instance and self.game_instance.character_stats:
+                        from characters import STAT_NAMES, calculate_derived_attributes
                         stats_display = ""
                         
-                        # Organize stats into categories
-                        stat_categories = {
-                            "🎖️ Command": ['leadership', 'charisma', 'strategy'],
-                            "⚔️ Military": ['combat', 'tactics', 'piloting'],
-                            "🔧 Technical": ['engineering', 'research', 'hacking'],
-                            "🤝 Social": ['diplomacy', 'trading', 'espionage'],
-                            "🗺️ Frontier": ['navigation', 'survival', 'archaeology']
-                        }
+                        stats = self.game_instance.character_stats
                         
-                        for category, stat_names in stat_categories.items():
-                            stats_display += f"[bold cyan]{category}[/bold cyan]\n"
+                        # Display the 7 core stats
+                        stats_display += "[bold cyan]⚡ Core Characteristics[/bold cyan]\n"
+                        for stat_code in STAT_NAMES.keys():
+                            value = stats.get(stat_code, 30)
+                            stat_name = STAT_NAMES[stat_code]
                             
-                            for stat_name in stat_names:
-                                if stat_name in self.game_instance.character_stats:
-                                    value = self.game_instance.character_stats[stat_name]
-                                    # Create visual bar with colors based on value
-                                    filled = "█" * value
-                                    empty = "░" * (10 - value)
-                                    
-                                    # Color coding for stats
-                                    if value >= 8:
-                                        color = "bright_green"
-                                    elif value >= 6:
-                                        color = "green"  
-                                    elif value >= 4:
-                                        color = "yellow"
-                                    else:
-                                        color = "red"
-                                    
-                                    # Pad stat name to 12 characters for alignment
-                                    padded_name = f"{stat_name.title()}:".ljust(12)
-                                    stats_display += f"  [white]{padded_name}[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                            # Create visual bar (value out of 100)
+                            bar_length = 20
+                            filled = "█" * int((value / 100) * bar_length)
+                            empty = "░" * (bar_length - len(filled))
                             
-                            stats_display += "\n"
+                            if value >= 70:
+                                color = "bold green"
+                            elif value >= 50:
+                                color = "yellow"
+                            else:
+                                color = "white"
+                            
+                            stats_display += f"  [{color}]{stat_code:3s}[/{color}] {stat_name:20s} [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value:3d}[/{color}]/100\n"
                         
-                        # Add any remaining stats not in categories
-                        all_categorized_stats = []
-                        for stat_list in stat_categories.values():
-                            all_categorized_stats.extend(stat_list)
-                        
-                        uncategorized_stats = []
-                        for stat_name, value in self.game_instance.character_stats.items():
-                            if stat_name not in all_categorized_stats:
-                                uncategorized_stats.append((stat_name, value))
-                        
-                        if uncategorized_stats:
-                            stats_display += "[bold cyan]📊 Other[/bold cyan]\n"
-                            for stat_name, value in uncategorized_stats:
-                                filled = "█" * value
-                                empty = "░" * (10 - value)
-                                if value >= 6:
-                                    color = "green"
-                                elif value >= 4:
-                                    color = "yellow"
-                                else:
-                                    color = "red"
-                                
-                                # Pad stat name to 12 characters for alignment
-                                padded_name = f"{stat_name.title()}:".ljust(12)
-                                stats_display += f"  [white]{padded_name}[/white] [{color}]{filled}[/{color}][dim]{empty}[/dim] [{color}]{value}[/{color}]/10\n"
+                        # Display derived attributes
+                        try:
+                            derived = calculate_derived_attributes(stats)
+                            stats_display += "\n[bold cyan]📊 Derived Attributes[/bold cyan]\n"
+                            for attr, val in derived.items():
+                                stats_display += f"  {attr}: {val}\n"
+                        except Exception:
+                            pass
                         
                         yield Static(stats_display.rstrip(), id="stats_display")
                     else:
@@ -3186,33 +3370,9 @@ class Game7019App(App):
         self.game_instance.character_background = "Frontier Survivor"
         self.game_instance.credits = 15000
         
-        # Initialize character stats with all new attributes
-        self.game_instance.character_stats = {
-            # Core Command Attributes
-            "leadership": 7,
-            "charisma": 6,
-            "strategy": 8,
-            
-            # Combat & Military
-            "combat": 6,
-            "tactics": 7,
-            "piloting": 8,
-            
-            # Technical & Science
-            "engineering": 8,
-            "research": 9,
-            "hacking": 5,
-            
-            # Social & Economic
-            "diplomacy": 7,
-            "trading": 6,
-            "espionage": 4,
-            
-            # Exploration & Survival
-            "navigation": 9,
-            "survival": 8,
-            "archaeology": 7
-        }
+        # Initialize character stats with base values (all 30, point-buy done in UI)
+        from characters import create_base_character_stats
+        self.game_instance.character_stats = create_base_character_stats()
         
         # Initialize profession system if available
         if hasattr(self.game_instance, 'profession_system'):
@@ -3664,7 +3824,8 @@ class Game7019App(App):
         """Generate random character stats"""
         if GAME_AVAILABLE:
             # Store stats on the app instance for now
-            self.char_generated_stats = create_character_stats()
+            from characters import create_base_character_stats
+            self.char_generated_stats = create_base_character_stats()
             self.update_character_preview_from_app()
             self.show_notification("📊 Character stats generated!")
         else:
@@ -3673,7 +3834,8 @@ class Game7019App(App):
     def handle_reroll_stats(self):
         """Reroll character stats"""
         if GAME_AVAILABLE and hasattr(self, 'char_generated_stats') and self.char_generated_stats:
-            self.char_generated_stats = create_character_stats()
+            from characters import create_base_character_stats
+            self.char_generated_stats = create_base_character_stats()
             self.update_character_preview_from_app()
             self.show_notification("🎲 Stats rerolled!")
         else:

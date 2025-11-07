@@ -16,7 +16,7 @@ def demonstrate_character_creation():
     
     # Import modules
     from species import get_playable_species
-    from characters import character_classes, character_backgrounds, create_character_stats
+    from characters import character_classes, character_backgrounds, create_base_character_stats
     from factions import factions
     from research import research_categories
     from game import Game
@@ -74,7 +74,8 @@ def demonstrate_character_creation():
     # Step 6: Roll Stats
     print("📍 STEP 6: Roll Stats")
     print("━" * 30)
-    character_data['stats'] = create_character_stats()
+    from characters import create_base_character_stats
+    character_data['stats'] = create_base_character_stats()
     for stat, value in character_data['stats'].items():
         print(f"  📊 {stat}: {value}")
     print("✅ Stats generated!\n")

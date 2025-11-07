@@ -18,7 +18,8 @@ import math
 # Import game modules
 try:
     from game import Game
-    from characters import character_classes, character_backgrounds, create_character_stats
+    from characters import character_classes, create_character_stats, calculate_derived_attributes, DERIVED_METRIC_INFO
+    from backgrounds import backgrounds as background_data, get_background_list, apply_background_bonuses
     from species import species_database, get_playable_species
     from factions import factions
     from research import research_categories
@@ -28,7 +29,9 @@ try:
 except ImportError:
     GAME_AVAILABLE = False
     character_classes = {}
-    character_backgrounds = {}
+    background_data = {}
+    get_background_list = lambda: []
+    apply_background_bonuses = lambda stats, bg: stats
     species_database = {}
     factions = {}
     research_categories = {}
@@ -285,7 +288,7 @@ class CharacterCreationScreen(Screen):
         
         # Selection lists
         self.species_list = list(get_playable_species().keys()) if GAME_AVAILABLE else ["Terran"]
-        self.background_list = list(character_backgrounds.keys()) if GAME_AVAILABLE else ["Merchant"]
+        self.background_list = get_background_list() if GAME_AVAILABLE else ["Orbital Foundling"]
         self.faction_list = list(factions.keys()) if GAME_AVAILABLE else ["Independent"]
         self.class_list = list(character_classes.keys()) if GAME_AVAILABLE else ["Explorer"]
         
@@ -333,14 +336,125 @@ class CharacterCreationScreen(Screen):
                     lines.append(f"      {desc}...")
                     
         elif self.stage == "background":
-            lines.append("SELECT YOUR BACKGROUND:")
-            lines.append("")
-            for i, bg in enumerate(self.background_list):
-                cursor = ">" if i == self.current_index else " "
-                lines.append(f"  {cursor} {chr(97 + i)}) {bg}")
-                if GAME_AVAILABLE and bg in character_backgrounds:
-                    desc = character_backgrounds[bg].get('description', '')[:60]
-                    lines.append(f"      {desc}...")
+            # Ensure background list is populated
+            if not self.background_list or len(self.background_list) == 0:
+                try:
+                    if GAME_AVAILABLE:
+                        self.background_list = get_background_list()
+                    else:
+                        self.background_list = ["Orbital Foundling"]
+                except Exception as e:
+                    lines.append(f"ERROR loading backgrounds: {e}")
+                    self.background_list = ["Orbital Foundling"]
+            
+            # Show error if still empty
+            if not self.background_list or len(self.background_list) == 0:
+                lines.append("SELECT YOUR BACKGROUND:")
+                lines.append("")
+                lines.append("  ERROR: No backgrounds available!")
+                lines.append("  Please check that backgrounds.py exists and is valid.")
+                lines.append("")
+            else:
+                # Ensure current_index is valid
+                if self.current_index >= len(self.background_list):
+                    self.current_index = 0
+                if self.current_index < 0:
+                    self.current_index = 0
+                
+                lines.append("SELECT YOUR BACKGROUND:")
+                lines.append("")
+                
+                # Calculate scrolling window (show 10 items at a time for backgrounds)
+                visible_count = 10
+                scroll_offset = max(0, self.current_index - visible_count + 3)
+                visible_backgrounds = self.background_list[scroll_offset:scroll_offset + visible_count] if self.background_list else []
+                
+                # Get current background details
+                if self.background_list and len(self.background_list) > 0 and 0 <= self.current_index < len(self.background_list):
+                    current_bg_name = self.background_list[self.current_index]
+                    current_bg = background_data.get(current_bg_name, {}) if GAME_AVAILABLE else {}
+                else:
+                    current_bg_name = ""
+                    current_bg = {}
+            
+                # Build the detail lines for the right panel
+                detail_lines = []
+                if GAME_AVAILABLE and current_bg:
+                    detail_lines.append(f"│ BACKGROUND DETAILS")
+                    detail_lines.append(f"│ " + "─" * 38)
+                    
+                    # Description
+                    desc = current_bg.get('description', '')
+                    if desc:
+                        detail_lines.append(f"│ Description:")
+                        words = desc.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
+                    
+                    # Stat Bonuses
+                    bonuses = current_bg.get('stat_bonuses', {})
+                    if bonuses:
+                        detail_lines.append(f"│ Stat Bonuses:")
+                        for stat, bonus in bonuses.items():
+                            detail_lines.append(f"│   +{bonus} {stat}")
+                        detail_lines.append(f"│")
+                    
+                    # Talent
+                    talent = current_bg.get('talent', '')
+                    if talent:
+                        detail_lines.append(f"│ Talent:")
+                        words = talent.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                
+                # Build left column (background list) and combine with right column
+                # Show backgrounds on left, details for selected on right (similar to faction display)
+                for i, bg in enumerate(visible_backgrounds):
+                    actual_index = i + scroll_offset
+                    cursor = ">" if actual_index == self.current_index else " "
+                    
+                    # Left side: background name (40 chars wide)
+                    left_text = f"  {cursor} {bg}"[:38].ljust(38)
+                    
+                    # Right side: show detail lines only for the currently selected background
+                    if actual_index == self.current_index:
+                        # For selected item, show first detail line on same row
+                        if detail_lines:
+                            right_text = detail_lines[0] if len(detail_lines) > 0 else "│"
+                        else:
+                            right_text = "│"
+                    else:
+                        right_text = "│"
+                    
+                    lines.append(left_text + "  " + right_text)
+                
+                # After the list, show remaining details for the selected background
+                if detail_lines and len(detail_lines) > 1:
+                    # Add remaining detail lines below the list
+                    for detail_line in detail_lines[1:]:
+                        left_text = " " * 40
+                        lines.append(left_text + "  " + detail_line)
+                
+                # Show scroll indicator if needed
+                if self.background_list and len(self.background_list) > visible_count:
+                    lines.append("")
+                    scroll_info = f"  [{self.current_index + 1}/{len(self.background_list)}] (Use j/k to scroll)"
+                    lines.append(scroll_info)
                     
         elif self.stage == "faction":
             # Two-column layout: faction list on left, details on right
@@ -440,15 +554,96 @@ class CharacterCreationScreen(Screen):
                     lines.append(f"      {desc}...")
                     
         elif self.stage == "stats":
-            lines.append("YOUR CHARACTER STATS:")
+            from characters import STAT_NAMES, STAT_DESCRIPTIONS, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE, validate_stat_allocation
+            lines.append("YOUR CHARACTER STATS (Point-Buy System):")
+            lines.append("")
+            lines.append(f"  All stats start at {BASE_STAT_VALUE}. You may spend up to {POINT_BUY_POINTS} points.")
+            lines.append(f"  Maximum {MAX_STAT_VALUE} per stat. Leaving points unspent is allowed.")
             lines.append("")
             if self.character_data['stats']:
-                for stat, value in self.character_data['stats'].items():
-                    lines.append(f"  {stat.ljust(15)}: {value}")
+                stats = self.character_data['stats']
+                # Calculate base total (accounting for background bonuses)
+                base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+                
+                # Show background bonuses if applicable
+                if self.character_data.get('background'):
+                    bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+                    if bg:
+                        bonuses = bg.get('stat_bonuses', {})
+                        if bonuses:
+                            # Subtract background bonuses from total to get allocated points correctly
+                            bg_bonus_total = sum(bonuses.values())
+                            base_total += bg_bonus_total
+                
+                current_total = sum(stats.values())
+                allocated_points = current_total - base_total
+                remaining_points = POINT_BUY_POINTS - allocated_points
+                
+                lines.append(f"  Points Remaining: {remaining_points}/{POINT_BUY_POINTS}")
+                if self.character_data.get('background'):
+                    bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+                    if bg:
+                        bonuses = bg.get('stat_bonuses', {})
+                        if bonuses:
+                            bonus_str = ", ".join([f"+{v} {k}" for k, v in bonuses.items()])
+                            lines.append(f"  Background Bonuses: {bonus_str}")
+                lines.append("")
+                
+                # Get selected stat index (default to 0 if not set)
+                selected_index = getattr(self, '_selected_stat_index', 0)
+                stat_codes = list(STAT_NAMES.keys())
+                
+                for i, stat_code in enumerate(stat_codes):
+                    value = stats.get(stat_code, BASE_STAT_VALUE)
+                    stat_name = STAT_NAMES[stat_code]
+                    
+                    # Show cursor indicator for selected stat
+                    cursor = ">" if i == selected_index else " "
+                    
+                    # Show if this stat has a background bonus
+                    bg_bonus = ""
+                    if self.character_data.get('background'):
+                        bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+                        if bg:
+                            bonuses = bg.get('stat_bonuses', {})
+                            if stat_code in bonuses:
+                                bg_bonus = f" (+{bonuses[stat_code]})"
+                    
+                    # Highlight selected stat
+                    if i == selected_index:
+                        lines.append(f"  {cursor} [{stat_code}] {stat_name}: {value}/{MAX_STAT_VALUE}{bg_bonus} ← →")
+                    else:
+                        lines.append(f"  {cursor}  {stat_code}  {stat_name}: {value}/{MAX_STAT_VALUE}{bg_bonus}")
+                
+                lines.append("")
+                derived = calculate_derived_attributes(stats)
+                if derived:
+                    lines.append("  Derived Metrics:")
+                    for name, value in derived.items():
+                        info = DERIVED_METRIC_INFO.get(name, {})
+                        formula = info.get("formula")
+                        description = info.get("description")
+                        metric_line = f"    {name}: {value}"
+                        if formula:
+                            metric_line += f"  [{formula}]"
+                        if description:
+                            metric_line += f" - {description}"
+                        lines.append(metric_line)
+                    lines.append("")
+
+                is_valid, msg = validate_stat_allocation(stats, self.character_data.get('background'))
+                if is_valid:
+                    lines.append(f"  ✓ {msg}")
+                else:
+                    lines.append(f"  ⚠ {msg}")
             else:
-                lines.append("  Press 'r' to roll stats")
+                lines.append("  Press 'r' to initialize stats (all start at 30)")
             lines.append("")
-            lines.append("  Press Enter to accept, 'r' to reroll")
+            lines.append("  Controls:")
+            lines.append("    ↑/↓ - Navigate between stats")
+            lines.append("    ←/→ - Decrease/Increase selected stat")
+            lines.append("    r - Initialize/Reset stats")
+            lines.append("    Enter - Accept and continue")
             
         elif self.stage == "name":
             lines.append("ENTER YOUR CHARACTER NAME:")
@@ -467,9 +662,12 @@ class CharacterCreationScreen(Screen):
             lines.append(f"  Class:      {self.character_data['class']}")
             lines.append("")
             if self.character_data['stats']:
+                from characters import STAT_NAMES
                 lines.append("  Stats:")
-                for stat, value in self.character_data['stats'].items():
-                    lines.append(f"    {stat.ljust(15)}: {value}")
+                for stat_code in STAT_NAMES.keys():
+                    value = self.character_data['stats'].get(stat_code, 30)
+                    stat_name = STAT_NAMES[stat_code]
+                    lines.append(f"    {stat_code} ({stat_name}): {value}/100")
             lines.append("")
             lines.append("  Press Enter to start game, 'b' to go back")
         
@@ -477,29 +675,113 @@ class CharacterCreationScreen(Screen):
         lines.append("─" * 80)
         if self.stage == "faction":
             lines.append(f"[j/k or ↑/↓: scroll] [Enter: confirm] [H: history] [q: quit]")
+        elif self.stage == "background":
+            lines.append(f"[j/k or ↑/↓: scroll] [Enter: confirm] [H: history] [q: quit]")
         else:
             lines.append(f"[j/k or ↑/↓: navigate] [a-z: quick select] [Enter: confirm] [H: history] [q: quit]")
         
-        self.query_one("#main_display", Static).update("\n".join(lines))
+        try:
+            display_text = "\n".join(lines)
+            self.query_one("#main_display", Static).update(display_text)
+        except Exception as e:
+            # Fallback display if there's an error
+            try:
+                error_msg = f"Display Error: {e}\nCurrent Stage: {self.stage}\nBackground List Length: {len(self.background_list) if self.background_list else 0}"
+                self.query_one("#main_display", Static).update(error_msg)
+                if hasattr(self, 'query_one'):
+                    try:
+                        self.query_one(MessageLog).add_message(f"Display error: {e}")
+                    except:
+                        pass
+            except:
+                pass
         
     def on_key(self, event) -> None:
         """Handle keyboard input"""
         key = event.key
+        # Also check event.character for special keys like + and -
+        char = getattr(event, 'character', None)
+        
         
         # Quit with 'q' (except when typing name)
         if key == "q" and self.stage != "name":
             self.app.exit()
             return
         
-        # Navigation keys (vim-style and arrows)
-        if key in ["j", "down"]:
-            self.move_cursor(1)
-        elif key in ["k", "up"]:
-            self.move_cursor(-1)
-        elif key == "enter":
+        # Handle stats stage with arrow key navigation
+        if self.stage == "stats":
+            from characters import STAT_NAMES
+            stat_codes = list(STAT_NAMES.keys())
+            
+            # Initialize selected stat index if not set
+            if not hasattr(self, '_selected_stat_index'):
+                self._selected_stat_index = 0
+            
+            # Reset stats
+            if key == "r" or char == "r":
+                self.roll_stats()
+                return
+            
+            # Navigate between stats (up/down arrows)
+            elif key in ["up", "k"]:
+                self._selected_stat_index = (self._selected_stat_index - 1) % len(stat_codes)
+                stat_code = stat_codes[self._selected_stat_index]
+                self.query_one(MessageLog).add_message(f"Selected {STAT_NAMES[stat_code]}")
+                self.update_display()
+                event.prevent_default()
+                event.stop()
+                return
+            elif key in ["down", "j"]:
+                self._selected_stat_index = (self._selected_stat_index + 1) % len(stat_codes)
+                stat_code = stat_codes[self._selected_stat_index]
+                self.query_one(MessageLog).add_message(f"Selected {STAT_NAMES[stat_code]}")
+                self.update_display()
+                event.prevent_default()
+                event.stop()
+                return
+            
+            # Adjust selected stat (left/right arrows)
+            elif key in ["left", "h"]:
+                # Decrease stat
+                self._selected_stat_code = stat_codes[self._selected_stat_index]
+                event.prevent_default()
+                event.stop()
+                self.adjust_stat(-1)
+                return
+            elif key in ["right", "l"]:
+                # Increase stat
+                self._selected_stat_code = stat_codes[self._selected_stat_index]
+                event.prevent_default()
+                event.stop()
+                self.adjust_stat(+1)
+                return
+            
+            # Accept stats and continue
+            elif key == "enter":
+                self.action_confirm()
+                return
+        
+        # Navigation keys (vim-style and arrows) - only when not in stats stage
+        # Background stage also uses j/k navigation
+        if self.stage not in ["stats", "name"]:
+            if key in ["j", "down"]:
+                self.move_cursor(1)
+                event.stop()
+                return
+            elif key in ["k", "up"]:
+                self.move_cursor(-1)
+                event.stop()
+                return
+        
+        # Enter key handling (stats stage handled above with return)
+        # Handle Enter key for all stages except stats (which is handled above)
+        if key == "enter" and self.stage != "stats":
+            # Call action_confirm which handles stage transitions
             self.action_confirm()
-        elif key == "r" and self.stage == "stats":
-            self.roll_stats()
+            # CRITICAL: Stop event propagation to prevent double-processing
+            event.stop()
+            event.prevent_default()
+            return
         elif key == "b" and self.stage == "confirm":
             self.stage = "name"
             self.current_index = 0
@@ -524,8 +806,21 @@ class CharacterCreationScreen(Screen):
         """Move selection cursor"""
         if self.stage in ["stats", "name", "confirm"]:
             return
-            
+        
+        # Get the current list for this stage
         current_list = self.get_current_list()
+        if not current_list or len(current_list) == 0:
+            # If list is empty, try to populate it
+            if self.stage == "background" and (not self.background_list or len(self.background_list) == 0):
+                try:
+                    if GAME_AVAILABLE:
+                        self.background_list = get_background_list()
+                        current_list = self.background_list
+                except Exception:
+                    pass
+            if not current_list or len(current_list) == 0:
+                return  # Can't navigate if no list
+        
         self.current_index = (self.current_index + delta) % len(current_list)
         self.update_display()
         
@@ -545,15 +840,64 @@ class CharacterCreationScreen(Screen):
         """Confirm current selection and move to next stage"""
         if self.stage == "species":
             self.character_data['species'] = self.species_list[self.current_index]
+            # Ensure background list is populated
+            if not self.background_list or len(self.background_list) == 0:
+                try:
+                    if GAME_AVAILABLE:
+                        self.background_list = get_background_list()
+                    else:
+                        self.background_list = ["Orbital Foundling"]
+                except Exception as e:
+                    self.query_one(MessageLog).add_message(f"Error loading backgrounds: {e}")
+                    self.background_list = ["Orbital Foundling"]
+            
+            # Verify background list is populated before moving to background stage
+            if not self.background_list or len(self.background_list) == 0:
+                self.query_one(MessageLog).add_message(f"ERROR: Cannot load backgrounds! Please check backgrounds.py")
+                return  # Don't proceed if we can't load backgrounds
+            
             self.stage = "background"
             self.current_index = 0
             self.query_one(MessageLog).add_message(f"Selected species: {self.character_data['species']}")
+            self.query_one(MessageLog).add_message(f"Now select your background ({len(self.background_list)} available)")
+            self.update_display()
+            return
             
         elif self.stage == "background":
+            # Ensure background list is populated and current_index is valid
+            if not self.background_list or len(self.background_list) == 0:
+                try:
+                    if GAME_AVAILABLE:
+                        self.background_list = get_background_list()
+                    else:
+                        self.background_list = ["Orbital Foundling"]
+                except Exception as e:
+                    self.query_one(MessageLog).add_message(f"Error loading backgrounds: {e}")
+                    self.background_list = ["Orbital Foundling"]
+            
+            if self.current_index >= len(self.background_list):
+                self.current_index = 0
+            
+            if len(self.background_list) == 0:
+                self.query_one(MessageLog).add_message("ERROR: No backgrounds available!")
+                return
+            
             self.character_data['background'] = self.background_list[self.current_index]
             self.stage = "faction"
             self.current_index = 0
-            self.query_one(MessageLog).add_message(f"Selected background: {self.character_data['background']}")
+            bg_name = self.character_data['background']
+            bg = background_data.get(bg_name, {}) if GAME_AVAILABLE else {}
+            if bg:
+                bonuses = bg.get('stat_bonuses', {})
+                if bonuses:
+                    bonus_str = ", ".join([f"+{v} {k}" for k, v in bonuses.items()])
+                    self.query_one(MessageLog).add_message(f"Selected background: {bg_name} ({bonus_str})")
+                else:
+                    self.query_one(MessageLog).add_message(f"Selected background: {bg_name}")
+            else:
+                self.query_one(MessageLog).add_message(f"Selected background: {bg_name}")
+            self.update_display()
+            return
             
         elif self.stage == "faction":
             self.character_data['faction'] = self.faction_list[self.current_index]
@@ -570,8 +914,14 @@ class CharacterCreationScreen(Screen):
             
         elif self.stage == "stats":
             if self.character_data['stats']:
-                self.stage = "name"
-                self.query_one(MessageLog).add_message("Stats accepted. Enter your name.")
+                # Validate stats before proceeding
+                from characters import validate_stat_allocation
+                is_valid, msg = validate_stat_allocation(self.character_data['stats'])
+                if is_valid:
+                    self.stage = "name"
+                    self.query_one(MessageLog).add_message("Stats accepted. Enter your name.")
+                else:
+                    self.query_one(MessageLog).add_message(f"Cannot proceed: {msg}")
             else:
                 self.roll_stats()
                 
@@ -585,22 +935,132 @@ class CharacterCreationScreen(Screen):
         elif self.stage == "confirm":
             # Start the game!
             self.app.push_screen(MainGameScreen(self.character_data))
+            return  # Don't update display after starting game
             
+        # Only update display if we didn't return early
         self.update_display()
         
     def roll_stats(self):
-        """Roll character stats"""
+        """Initialize character stats with base values and apply background bonuses"""
         if GAME_AVAILABLE:
-            self.character_data['stats'] = create_character_stats()
+            from characters import create_base_character_stats
+            base_stats = create_base_character_stats()
+            
+            # Apply background bonuses if a background was selected
+            if self.character_data.get('background'):
+                self.character_data['stats'] = apply_background_bonuses(
+                    base_stats, 
+                    self.character_data['background']
+                )
+                bg_name = self.character_data['background']
+                bg = background_data.get(bg_name, {})
+                if bg:
+                    bonuses = bg.get('stat_bonuses', {})
+                    if bonuses:
+                        bonus_str = ", ".join([f"+{v} {k}" for k, v in bonuses.items()])
+                        self.query_one(MessageLog).add_message(f"Stats initialized with background bonuses: {bonus_str}")
+                    else:
+                        self.query_one(MessageLog).add_message("Stats initialized! Use ↑/↓ to navigate, ←/→ to adjust.")
+                else:
+                    self.query_one(MessageLog).add_message("Stats initialized! Use ↑/↓ to navigate, ←/→ to adjust.")
+            else:
+                self.character_data['stats'] = base_stats
+                self.query_one(MessageLog).add_message("Stats initialized! Use ↑/↓ to navigate, ←/→ to adjust.")
         else:
-            self.character_data['stats'] = {
-                'Strength': random.randint(3, 18),
-                'Dexterity': random.randint(3, 18),
-                'Intelligence': random.randint(3, 18),
-                'Wisdom': random.randint(3, 18),
-                'Charisma': random.randint(3, 18),
-            }
-        self.query_one(MessageLog).add_message("Stats rolled! Press 'r' to reroll or Enter to accept.")
+            from characters import create_base_character_stats
+            self.character_data['stats'] = create_base_character_stats()
+            self.query_one(MessageLog).add_message("Stats initialized! Use ↑/↓ to navigate, ←/→ to adjust.")
+        # Always set default selected stat index
+        self._selected_stat_index = 0
+        self.update_display()
+    
+    def adjust_stat(self, direction):
+        """Adjust the currently selected stat"""
+        from characters import STAT_NAMES, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE
+        
+        if not self.character_data.get('stats'):
+            self.roll_stats()
+            return
+        
+        # Ensure we have a selected stat index
+        if not hasattr(self, '_selected_stat_index'):
+            self._selected_stat_index = 0
+        
+        stat_codes = list(STAT_NAMES.keys())
+        if self._selected_stat_index < 0 or self._selected_stat_index >= len(stat_codes):
+            self._selected_stat_index = 0
+        
+        stats = self.character_data['stats']
+        stat_code = stat_codes[self._selected_stat_index]
+        
+        # Update the selected stat code for display purposes
+        self._selected_stat_code = stat_code
+        
+        if stat_code not in stats:
+            # Invalid stat code, reset to first
+            self._selected_stat_index = 0
+            stat_code = stat_codes[0]
+            self._selected_stat_code = stat_code
+        
+        current_value = stats[stat_code]
+        
+        # Calculate base total (accounting for background bonuses)
+        base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+        if self.character_data.get('background'):
+            bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+            if bg:
+                bonuses = bg.get('stat_bonuses', {})
+                if bonuses:
+                    bg_bonus_total = sum(bonuses.values())
+                    base_total += bg_bonus_total
+        
+        # Calculate minimum value for this stat (including background bonus)
+        base_value_for_stat = BASE_STAT_VALUE
+        if self.character_data.get('background'):
+            bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+            if bg:
+                bonuses = bg.get('stat_bonuses', {})
+                if stat_code in bonuses:
+                    base_value_for_stat += bonuses[stat_code]
+        
+        current_total = sum(stats.values())
+        allocated_points = current_total - base_total
+        remaining_points = POINT_BUY_POINTS - allocated_points
+        
+        if direction > 0:  # Increase
+            if current_value < MAX_STAT_VALUE and remaining_points > 0:
+                # Directly modify the dictionary to ensure the change is made
+                self.character_data['stats'][stat_code] = current_value + 1
+                new_value = self.character_data['stats'][stat_code]
+                # Recalculate remaining points with background bonuses
+                new_total = sum(self.character_data['stats'].values())
+                new_allocated = new_total - base_total
+                new_remaining = POINT_BUY_POINTS - new_allocated
+                self.query_one(MessageLog).add_message(f"Increased {STAT_NAMES[stat_code]} to {new_value} (Remaining: {new_remaining})")
+            else:
+                if current_value >= MAX_STAT_VALUE:
+                    self.query_one(MessageLog).add_message(f"{STAT_NAMES[stat_code]} is at maximum ({MAX_STAT_VALUE})")
+                elif remaining_points <= 0:
+                    self.query_one(MessageLog).add_message(f"No points remaining to allocate")
+        elif direction < 0:  # Decrease
+            if current_value > base_value_for_stat:
+                # Directly modify the dictionary to ensure the change is made
+                self.character_data['stats'][stat_code] = current_value - 1
+                new_value = self.character_data['stats'][stat_code]
+                # Recalculate remaining points
+                new_base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+                if self.character_data.get('background'):
+                    bg = background_data.get(self.character_data['background'], {}) if GAME_AVAILABLE else {}
+                    if bg:
+                        bonuses = bg.get('stat_bonuses', {})
+                        if bonuses:
+                            new_base_total += sum(bonuses.values())
+                new_remaining = POINT_BUY_POINTS - (sum(self.character_data['stats'].values()) - new_base_total)
+                self.query_one(MessageLog).add_message(f"Decreased {STAT_NAMES[stat_code]} to {new_value} (Remaining: {new_remaining})")
+            else:
+                self.query_one(MessageLog).add_message(f"{STAT_NAMES[stat_code]} is at minimum ({base_value_for_stat})")
+        
+        # Force update the display to show changes
         self.update_display()
     
     def action_show_history(self):
@@ -2530,9 +2990,34 @@ class StatusScreen(Screen):
         lines.append("")
         
         if self.character_data.get('stats'):
-            lines.append("STATISTICS:")
-            for stat, value in self.character_data['stats'].items():
-                lines.append(f"  {stat.ljust(15)}: {value}")
+            from characters import (
+                STAT_NAMES,
+                BASE_STAT_VALUE,
+                calculate_derived_attributes,
+                DERIVED_METRIC_INFO,
+            )
+
+            stats = self.character_data['stats']
+            lines.append("STATISTICS (Core Attributes):")
+            for code in STAT_NAMES.keys():
+                value = stats.get(code, BASE_STAT_VALUE)
+                stat_name = STAT_NAMES[code]
+                lines.append(f"  {code} ({stat_name}): {value}/100")
+
+            derived = calculate_derived_attributes(stats)
+            if derived:
+                lines.append("")
+                lines.append("DERIVED METRICS:")
+                for name, value in derived.items():
+                    info = DERIVED_METRIC_INFO.get(name, {})
+                    formula = info.get("formula")
+                    description = info.get("description")
+                    metric_line = f"  {name}: {value}"
+                    if formula:
+                        metric_line += f"  [{formula}]"
+                    if description:
+                        metric_line += f" - {description}"
+                    lines.append(metric_line)
         
         lines.append("")
         # Economy and progression
