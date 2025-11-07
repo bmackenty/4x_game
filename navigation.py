@@ -190,10 +190,9 @@ class Galaxy:
         print(f"Loaded {len(predefined)} predefined star systems")
     
     def generate_faction_zones(self):
-        """Load predefined faction zones from systems.py and add additional procedural zones"""
-        from factions import factions
+        """Load predefined faction zones from systems.py (no procedural generation)"""
         
-        # Load predefined faction zones from systems.py
+        # Load ONLY predefined faction zones from systems.py
         for faction_name, zone_data in FACTION_ZONES.items():
             # Find all systems that belong to this faction
             faction_systems = []
@@ -206,30 +205,6 @@ class Galaxy:
                 'radius': zone_data['radius'],
                 'systems': faction_systems,
                 'description': zone_data.get('description', '')
-            }
-        
-        # Add additional faction zones in unclaimed space for factions without predefined zones
-        faction_names = list(factions.keys())
-        factions_without_zones = [f for f in faction_names if f not in self.faction_zones]
-        
-        # Create zones for some remaining factions to leave neutral space
-        num_additional_zones = min(len(factions_without_zones), 8)
-        selected_factions = random.sample(factions_without_zones, num_additional_zones) if factions_without_zones else []
-        
-        for faction_name in selected_factions:
-            # Random center point for faction zone in unclaimed space
-            center_x = random.randint(100, self.size_x - 100)
-            center_y = random.randint(100, self.size_y - 100)
-            center_z = random.randint(50, self.size_z - 50)
-            
-            # Zone radius based on faction influence
-            radius = random.randint(40, 70)
-            
-            self.faction_zones[faction_name] = {
-                'center': (center_x, center_y, center_z),
-                'radius': radius,
-                'systems': [],
-                'description': f'Extended territory of {faction_name}'
             }
     
     def get_faction_for_location(self, x, y, z):
