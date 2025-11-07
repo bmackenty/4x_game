@@ -250,8 +250,8 @@ class Galaxy:
         
         # Calculate how many systems we already have
         existing_count = len(self.systems)
-        target_total = random.randint(80, 120)
-        num_to_generate = max(0, target_total - existing_count)
+        # Only generate 5 additional systems to supplement the predefined ones
+        num_to_generate = 5
         
         print(f"Generating {num_to_generate} additional procedural systems...")
         
