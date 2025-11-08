@@ -431,23 +431,19 @@ class CharacterCreationScreen(Screen):
                     # Left side: background name (40 chars wide)
                     left_text = f"  {cursor} {bg}"[:38].ljust(38)
                     
-                    # Right side: show detail lines only for the currently selected background
-                    if actual_index == self.current_index:
-                        # For selected item, show first detail line on same row
-                        if detail_lines:
-                            right_text = detail_lines[0] if len(detail_lines) > 0 else "│"
-                        else:
-                            right_text = "│"
+                    # Right side: show detail lines top-aligned (like faction panel)
+                    if i < len(detail_lines):
+                        right_text = detail_lines[i]
                     else:
                         right_text = "│"
                     
                     lines.append(left_text + "  " + right_text)
                 
                 # After the list, show remaining details for the selected background
-                if detail_lines and len(detail_lines) > 1:
+                if detail_lines and len(detail_lines) > len(visible_backgrounds):
                     # Add remaining detail lines below the list
-                    for detail_line in detail_lines[1:]:
-                        left_text = " " * 40
+                    for detail_line in detail_lines[len(visible_backgrounds):]:
+                        left_text = " " * 38
                         lines.append(left_text + "  " + detail_line)
                 
                 # Show scroll indicator if needed
