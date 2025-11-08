@@ -498,11 +498,12 @@ class Ship:
         
         # Component tracking for upgrade system
         self.components = {
-            "hull": "Light Hull",  # Default starter hull
-            "engine": "Ion Drive",  # Default starter engine
-            "weapons": ["Pulse Cannons"],  # List of installed weapons
-            "shields": ["Basic Deflectors"],  # List of installed shields
-            "special": []  # List of special systems
+            "hull": "Valkyrie Lattice Frame",
+            "engine": "Helios Lance Drive",
+            "weapons": ["Frontier Coilgun Battery"],
+            "shields": ["Aurelian Bulwark"],
+            "sensors": ["Oracle Crown Array"],
+            "support": ["Entropy Sink Array"],
         }
         
         # Ship stats based on class
@@ -534,45 +535,45 @@ class Ship:
     def calculate_stats_from_components(self):
         """Calculate ship stats from installed components"""
         try:
-            from ship_builder import ship_components
-            
-            # Reset stats
-            health = 0
-            cargo_space = 0
-            speed_mod = 1.0
-            fuel_efficiency = 1.0
-            scan_range = 5.0  # Base scan range
-            
-            # Hull stats
-            if self.components.get("hull"):
-                hull = ship_components["Hull Types"][self.components["hull"]]
-                health = hull.get("health", 100)
-                cargo_space = hull.get("cargo_space", 100)
-                speed_mod = hull.get("speed_modifier", 1.0)
-            
-            # Engine stats
-            if self.components.get("engine"):
-                engine = ship_components["Engines"][self.components["engine"]]
-                fuel_efficiency = engine.get("fuel_efficiency", 1.0)
-                speed_mod *= engine.get("speed", 1.0)
-            
-            # Special system bonuses
-            if self.components.get("special"):
-                for system_name in self.components["special"]:
-                    system = ship_components["Special Systems"][system_name]
-                    if "cargo_bonus" in system:
-                        cargo_space += system["cargo_bonus"]
-                    if "scan_range" in system:
-                        scan_range = system["scan_range"]
-            
-            # Apply calculated stats
-            self.max_cargo = int(cargo_space)
-            self.max_fuel = int(100 * fuel_efficiency)  # Base 100 fuel scaled by efficiency
-            self.fuel = min(self.fuel, self.max_fuel)  # Don't exceed new max
-            self.jump_range = int(15 * speed_mod)  # Base 15 range scaled by speed
-            self.health = health
-            self.scan_range = scan_range
-            
+            from ship_builder import aggregate_component_metadata, compute_ship_profile
+
+            profile = compute_ship_profile(self.components or {})
+            metadata = aggregate_component_metadata(self.components or {})
+
+            self.attribute_profile = profile
+            self.component_metadata = metadata
+            self.failure_risk = metadata.get("combined_failure_chance", 0.0)
+
+            # Derive legacy stats from the profile so existing systems keep working.
+            hull_integrity = profile.get("hull_integrity", 30.0)
+            mass_efficiency = profile.get("mass_efficiency", 30.0)
+            energy_storage = profile.get("energy_storage", 30.0)
+            engine_efficiency = profile.get("engine_efficiency", 30.0)
+            engine_output = profile.get("engine_output", 30.0)
+            ftl_capacity = profile.get("ftl_jump_capacity", 30.0)
+            detection_range = profile.get("detection_range", 30.0)
+            etheric_sensitivity = profile.get("etheric_sensitivity", 20.0)
+
+            self.health = max(100, int(hull_integrity * 10))
+            self.max_cargo = max(30, int(mass_efficiency * 3 + hull_integrity))
+
+            fuel_capacity = max(
+                40,
+                int(energy_storage * 2 + engine_efficiency * 1.5),
+            )
+            self.max_fuel = fuel_capacity
+            self.fuel = min(self.fuel, self.max_fuel)
+
+            self.jump_range = max(
+                5,
+                int(ftl_capacity / 2 + engine_output / 6),
+            )
+
+            self.scan_range = max(
+                5.0,
+                detection_range / 3.0 + etheric_sensitivity / 6.0,
+            )
+
         except ImportError:
             # Fallback if ship_builder not available
             pass

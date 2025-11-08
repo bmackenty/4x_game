@@ -4,6 +4,8 @@ NetHack-Style Interface for 4X Game
 Pure keyboard control, ASCII-based UI inspired by NetHack/Roguelikes
 """
 
+from typing import Mapping, Optional
+
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import Static, Label
@@ -26,6 +28,16 @@ try:
     from research import research_categories
     from navigation import Ship
     from galactic_history import generate_epoch_history
+    from ship_builder import (
+        ship_components,
+        calculate_power_usage,
+        compute_ship_profile,
+        aggregate_component_metadata,
+        collect_component_entries,
+        COMPONENT_CATEGORY_LABELS,
+    )
+    from ship_classes import ship_classes
+    from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
     GAME_AVAILABLE = True
 except ImportError:
     GAME_AVAILABLE = False
@@ -37,6 +49,21 @@ except ImportError:
     factions = {}
     research_categories = {}
     generate_epoch_history = None
+    ship_components = {}
+    ship_classes = {}
+    def calculate_power_usage(_components):  # type: ignore
+        return {}
+    def compute_ship_profile(_components):  # type: ignore
+        return {}
+    def aggregate_component_metadata(_components):  # type: ignore
+        return {"total_cost": 0.0, "combined_failure_chance": 0.0, "faction_locks": [], "entries": []}
+    def collect_component_entries(_components):  # type: ignore
+        return []
+    COMPONENT_CATEGORY_LABELS = {}
+    SHIP_ATTRIBUTE_CATEGORIES = []
+    SHIP_ATTRIBUTE_DEFINITIONS = {}
+    def calculate_derived_attributes(_stats):  # type: ignore
+        return {}
 
 
 class MessageLog(Static):
@@ -1289,6 +1316,7 @@ class MainGameScreen(Screen):
         Binding("r", "research", "Research", show=True),
         Binding("s", "status", "Status", show=True),
         Binding("h,H", "history", "History", show=True),
+        Binding("p", "player_ship", "Player Ship", show=True),
     ]
     
     def __init__(self, character_data):
@@ -1428,6 +1456,12 @@ class MainGameScreen(Screen):
         """Show detailed status"""
         self.query_one(MessageLog).add_message("Opening status screen...")
         self.app.push_screen(StatusScreen(self.character_data, self.game))
+        self.advance_turn()
+
+    def action_player_ship(self):
+        """Show player ship overview"""
+        self.query_one(MessageLog).add_message("Inspecting player ship...")
+        self.app.push_screen(PlayerShipScreen(self.game))
         self.advance_turn()
         
     def action_quit_game(self):
@@ -3521,6 +3555,340 @@ class StatusScreen(Screen):
     def action_pop_screen(self):
         """Handle 'q' or ESC to go back to previous screen"""
         self.app.pop_screen()
+
+
+class PlayerShipScreen(Screen):
+    """Detailed player ship overview and component browser."""
+
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("j,down", "next_component", "Next Component", show=False),
+        Binding("k,up", "prev_component", "Previous Component", show=False),
+    ]
+
+    def __init__(self, game):
+        super().__init__()
+        self.game = game
+        self.selection_index = 0
+        self._component_entries: list[dict] = []
+
+    def compose(self) -> ComposeResult:
+        yield Static(id="ship_display")
+        yield MessageLog()
+
+    # Action aliases for bindings
+    def action_next_component(self):
+        self._move_selection(1)
+
+    def action_prev_component(self):
+        self._move_selection(-1)
+
+    def on_mount(self):
+        self.update_display()
+        self.query_one(MessageLog).add_message("Viewing player ship overview.", "bright_cyan")
+
+    def on_key(self, event) -> None:
+        key = event.key
+        if key in ("j", "down"):
+            event.stop()
+            event.prevent_default()
+            self._move_selection(1)
+        elif key in ("k", "up"):
+            event.stop()
+            event.prevent_default()
+            self._move_selection(-1)
+
+    def action_pop_screen(self):
+        self.app.pop_screen()
+
+    def _get_ship(self):
+        if not self.game:
+            return None
+        navigation = getattr(self.game, "navigation", None)
+        if not navigation:
+            return None
+        return getattr(navigation, "current_ship", None)
+
+    def _move_selection(self, delta: int):
+        if not self._component_entries:
+            return
+        self.selection_index = (self.selection_index + delta) % len(self._component_entries)
+        self.update_display()
+
+    def update_display(self):
+        ship = self._get_ship()
+        lines: list[str] = []
+        lines.append("═" * 80)
+        lines.append("PLAYER SHIP OVERVIEW".center(80))
+        lines.append("═" * 80)
+        lines.append("")
+
+        if not ship:
+            lines.append("  No ship is currently active.")
+            lines.append("  Launch or select a vessel from the navigation controls to view details.")
+            lines.append("")
+            lines.append("─" * 80)
+            lines.append("[q/ESC: Back]")
+            self._component_entries = []
+            self.selection_index = 0
+            self.query_one("#ship_display", Static).update("\n".join(lines))
+            return
+
+        class_info = ship_classes.get(ship.ship_class, {}) if GAME_AVAILABLE else {}
+        lines.append(f"  Name:  {ship.name}")
+        lines.append(f"  Class: {ship.ship_class}")
+        if class_info.get("Class"):
+            lines.append(f"  Role:  {class_info.get('Class')}")
+        if class_info.get("Description"):
+            for chunk in textwrap.wrap(class_info["Description"], width=76):
+                lines.append(f"  {chunk}")
+        lines.append("")
+
+        attributes = [
+            ("Hull Integrity", getattr(ship, "health", "—")),
+            ("Fuel", f"{getattr(ship, 'fuel', 0)}/{getattr(ship, 'max_fuel', 0)}"),
+            ("Jump Range", f"{getattr(ship, 'jump_range', 0)} units"),
+            ("Cargo Capacity", f"{getattr(ship, 'max_cargo', 0)} units"),
+            ("Scan Range", f"{getattr(ship, 'scan_range', 0)} units"),
+        ]
+
+        power_summary = {}
+        if ship_components:
+            try:
+                power_summary = calculate_power_usage(getattr(ship, "components", {}))
+            except Exception:
+                power_summary = {}
+        if power_summary:
+            used = power_summary.get("power_used")
+            output = power_summary.get("power_output")
+            percent = power_summary.get("power_percentage")
+            if used is not None and output is not None:
+                attributes.append(("Power Usage", f"{used}/{output}"))
+            if percent is not None and output:
+                attributes.append(("Power Load", f"{percent:.1f}%"))
+
+        lines.append("  Ship Attributes:")
+        for label, value in attributes:
+            lines.append(f"    {label:<18}: {value}")
+        lines.append("")
+
+        self._component_entries = self._build_component_entries(ship)
+        if self.selection_index >= len(self._component_entries):
+            self.selection_index = max(0, len(self._component_entries) - 1)
+
+        profile = getattr(ship, "attribute_profile", None)
+        metadata = getattr(ship, "component_metadata", None)
+        if profile is None or metadata is None:
+            try:
+                profile = compute_ship_profile(getattr(ship, "components", {}))
+                metadata = aggregate_component_metadata(getattr(ship, "components", {}))
+            except Exception:
+                profile = {}
+                metadata = {"total_cost": 0.0, "combined_failure_chance": 0.0, "faction_locks": [], "entries": []}
+
+        detail_block = self._component_detail_block(self._component_entries[self.selection_index])
+
+        lines.append("─" * 80)
+        lines.append("SHIP COMPONENTS")
+        lines.append("")
+
+        if not self._component_entries:
+            lines.append("  No components installed.")
+        else:
+            left_width = 38
+            detail_lines = []
+            if detail_block:
+                detail_lines = detail_block
+            else:
+                detail_lines.append("│")
+
+            highlight_index = self.selection_index
+            visible_count = 12
+            start_index = max(0, min(highlight_index - 3, len(self._component_entries) - visible_count))
+            end_index = min(len(self._component_entries), start_index + visible_count)
+
+            for idx in range(start_index, min(end_index, len(self._component_entries))):
+                entry = self._component_entries[idx]
+                cursor = ">" if idx == self.selection_index else " "
+                label = entry.get("label", "")
+                left_text = f"  {cursor} {label}"[:left_width].ljust(left_width)
+                right_text = detail_lines[0] if idx == self.selection_index else "│"
+                lines.append(left_text + "  " + right_text)
+
+            # Detail header and body rendered after list to keep it anchored
+            detail_prefix = " " * left_width + "  "
+            lines.append(detail_prefix + "│ COMPONENT DETAILS")
+            lines.append(detail_prefix + "│ " + "─" * 38)
+            for extra in detail_lines[1:]:
+                lines.append(detail_prefix + extra)
+
+        lines.append("")
+        lines.append("─" * 80)
+        lines.append("ATTRIBUTE SUMMARY")
+        lines.append("")
+        self._append_attribute_summary(lines, profile, metadata)
+
+        lines.append("")
+        lines.append("─" * 80)
+        lines.append("CREW ROSTER (COMING SOON)")
+        lines.append("")
+        lines.append("  Crew assignments will allow specialists to enhance ship attributes in a future update.")
+        lines.append("")
+        lines.append("─" * 80)
+        lines.append("[j/k or ↑/↓: navigate components] [q/ESC: Back]")
+
+        self.query_one("#ship_display", Static).update("\n".join(lines))
+
+    def _build_component_entries(self, ship) -> list[dict]:
+        entries: list[dict] = []
+
+        if getattr(ship, "ship_class", None):
+            entries.append(
+                {"category": "class", "name": ship.ship_class, "label": f"Ship Class: {ship.ship_class}"}
+            )
+
+        components = getattr(ship, "components", {}) or {}
+        collected = collect_component_entries(components)
+
+        counters: dict[str, int] = {}
+        multi_categories = {"weapons", "shields", "support", "computing", "communications", "crew_modules"}
+
+        for entry in collected:
+            category = entry["category"]
+            counters[category] = counters.get(category, 0) + 1
+            display_label = entry["label"]
+            if category in multi_categories:
+                display_label = f"{display_label} {counters[category]}"
+            entries.append(
+                {
+                    "category": category,
+                    "name": entry["name"],
+                    "label": f"{display_label}: {entry['name']}",
+                    "display_category": entry["label"],
+                    "data": entry["data"],
+                }
+            )
+
+        if not entries:
+            entries.append({"category": None, "name": None, "label": "No components installed", "data": None})
+
+        return entries
+
+    def _component_detail_block(self, entry: dict) -> list[str]:
+        category = entry.get("category")
+        if category == "class":
+            return self._format_class_details(entry.get("name"))
+
+        if not category or not entry.get("name"):
+            return ["│ No component selected."]
+
+        data = entry.get("data")
+        if not data:
+            return [f"│ Data unavailable for {entry.get('name')}"]
+
+        display_category = entry.get("display_category") or entry.get("label") or "Component"
+        return self._format_generic_component_details(display_category, entry["name"], data)
+
+    def _format_class_details(self, class_name: Optional[str]) -> list[str]:
+        lines: list[str] = []
+        if not class_name:
+            lines.append("│ No ship class information available.")
+            return lines
+
+        data = ship_classes.get(class_name, {}) if GAME_AVAILABLE else {}
+        lines.append(f"│ Class: {class_name}")
+        role = data.get("Class")
+        if role:
+            lines.append(f"│ Role: {role}")
+        description = data.get("Description")
+        if description:
+            lines.append("│")
+            lines.append("│ Description:")
+            lines.extend(self._wrap_detail_text(description))
+        else:
+            lines.append("│ No additional information available.")
+        return lines
+
+    def _format_generic_component_details(self, label: str, name: str, data: dict) -> list[str]:
+        lines = [f"│ {label}: {name}"]
+
+        cost = self._format_number(data.get("cost"))
+        failure = data.get("failure_chance")
+        failure_text = f"{float(failure) * 100:.1f}%" if isinstance(failure, (int, float)) else "—"
+        lines.append(f"│ Cost: {cost}   Failure Chance: {failure_text}")
+
+        factions = data.get("faction_lock")
+        if factions:
+            if isinstance(factions, str):
+                faction_text = factions
+            else:
+                faction_text = ", ".join(str(f) for f in factions)
+            lines.append(f"│ Faction Lock: {faction_text}")
+
+        lore = data.get("lore") or data.get("description")
+        if lore:
+            lines.append("│")
+            lines.append("│ Lore:")
+            lines.extend(self._wrap_detail_text(lore))
+
+        attributes = data.get("attributes", {})
+        if attributes:
+            lines.append("│")
+            lines.append("│ Attribute Deltas:")
+            top_deltas = sorted(attributes.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
+            for attr_id, delta in top_deltas:
+                attr_meta = SHIP_ATTRIBUTE_DEFINITIONS.get(attr_id, {})
+                attr_name = attr_meta.get("name", attr_id.replace("_", " ").title())
+                lines.append(f"│   {attr_name}: {delta:+.1f}")
+
+        return lines
+
+    def _append_attribute_summary(self, lines: list[str], profile: Mapping[str, float], metadata: Mapping[str, object]) -> None:
+        if not profile:
+            lines.append("  Unable to compute attribute profile for this vessel.")
+            return
+
+        lines.append("  Category Averages:")
+        for category in SHIP_ATTRIBUTE_CATEGORIES:
+            values = [profile.get(attr, 0.0) for attr in category.get("attributes", []) if attr in profile]
+            if not values:
+                continue
+            average = sum(values) / len(values)
+            lines.append(f"    {category['name']:<32} {average:5.1f}")
+
+        top_attributes = sorted(profile.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        if top_attributes:
+            lines.append("")
+            lines.append("  Top Attributes:")
+            for attr_id, value in top_attributes:
+                attr_meta = SHIP_ATTRIBUTE_DEFINITIONS.get(attr_id, {})
+                attr_name = attr_meta.get("name", attr_id.replace("_", " ").title())
+                lines.append(f"    {attr_name:<32} {value:5.1f}")
+
+        total_cost = metadata.get("total_cost", 0.0)
+        failure = metadata.get("combined_failure_chance", 0.0)
+        faction_locks = metadata.get("faction_locks") or []
+
+        lines.append("")
+        lines.append(f"  Total Component Cost: {int(total_cost):,} credits")
+        lines.append(f"  Combined Failure Chance: {float(failure) * 100:.1f}%")
+        if faction_locks:
+            lines.append(f"  Faction Locks: {', '.join(faction_locks)}")
+
+    def _wrap_detail_text(self, text: str) -> list[str]:
+        chunks = textwrap.wrap(text, width=36, break_long_words=True, break_on_hyphens=False)
+        if not chunks:
+            return ["│   "]
+        return [f"│   {chunk}" for chunk in chunks]
+
+    def _format_number(self, value):
+        if value is None:
+            return "—"
+        if isinstance(value, int):
+            return f"{value:,}"
+        if isinstance(value, float):
+            return f"{value:,.2f}"
+        return str(value)
 
 
 class NetHackInterface(App):
