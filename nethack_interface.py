@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 import random
 import math
+import textwrap
 
 # Import game modules
 try:
@@ -326,14 +327,128 @@ class CharacterCreationScreen(Screen):
         
         # Show current selection list
         if self.stage == "species":
-            lines.append("SELECT YOUR SPECIES:")
-            lines.append("")
-            for i, species in enumerate(self.species_list):
-                cursor = ">" if i == self.current_index else " "
-                lines.append(f"  {cursor} {chr(97 + i)}) {species}")
-                if GAME_AVAILABLE and species in species_database:
-                    desc = species_database[species].get('description', '')[:60]
-                    lines.append(f"      {desc}...")
+            if not self.species_list or len(self.species_list) == 0:
+                lines.append("SELECT YOUR SPECIES:")
+                lines.append("")
+                lines.append("  ERROR: No species available!")
+                lines.append("  Please confirm species.py defines playable species.")
+                lines.append("")
+            else:
+                if self.current_index >= len(self.species_list):
+                    self.current_index = 0
+                if self.current_index < 0:
+                    self.current_index = 0
+                
+                lines.append("SELECT YOUR SPECIES:")
+                lines.append("")
+                
+                visible_count = 10
+                scroll_offset = max(0, self.current_index - visible_count + 3)
+                visible_species = self.species_list[scroll_offset:scroll_offset + visible_count]
+                
+                if self.species_list and 0 <= self.current_index < len(self.species_list):
+                    current_species_name = self.species_list[self.current_index]
+                    current_species = species_database.get(current_species_name, {}) if GAME_AVAILABLE else {}
+                else:
+                    current_species_name = ""
+                    current_species = {}
+                
+                def wrap_detail(prefix: str, text: str):
+                    if not text:
+                        return []
+                    wrapped = [prefix]
+                    words = text.split()
+                    line = ""
+                    for word in words:
+                        if len(line) + len(word) + 1 <= 36:
+                            line += (word + " ")
+                        else:
+                            wrapped.append(f"│   {line.strip()}")
+                            line = word + " "
+                    if line:
+                        wrapped.append(f"│   {line.strip()}")
+                    return wrapped
+                
+                detail_lines = []
+                if GAME_AVAILABLE and current_species:
+                    detail_lines.append("│ SPECIES DETAILS")
+                    detail_lines.append("│ " + "─" * 38)
+                    
+                    desc = current_species.get("description", "")
+                    if desc:
+                        detail_lines.extend(wrap_detail("│ Description:", desc))
+                        detail_lines.append("│")
+                    
+                    category = current_species.get("category")
+                    if category:
+                        detail_lines.append(f"│ Category: {category}")
+                    homeworld = current_species.get("homeworld")
+                    if homeworld:
+                        detail_lines.append(f"│ Homeworld: {homeworld}")
+                    alliance = current_species.get("alliance_status")
+                    if alliance:
+                        detail_lines.append(f"│ Alliance Status: {alliance}")
+                    population = current_species.get("population")
+                    if population:
+                        detail_lines.append(f"│ Population: {population}")
+                    if len(detail_lines) > 2:
+                        detail_lines.append("│")
+                    
+                    biology = current_species.get("biology", "")
+                    if biology:
+                        detail_lines.extend(wrap_detail("│ Biology:", biology))
+                        detail_lines.append("│")
+                    
+                    cognition = current_species.get("cognition", "")
+                    if cognition:
+                        detail_lines.extend(wrap_detail("│ Cognition:", cognition))
+                        detail_lines.append("│")
+                    
+                    culture = current_species.get("culture", "")
+                    if culture:
+                        detail_lines.extend(wrap_detail("│ Culture:", culture))
+                        detail_lines.append("│")
+                    
+                    technology = current_species.get("technology", "")
+                    if technology:
+                        detail_lines.extend(wrap_detail("│ Technology:", technology))
+                        detail_lines.append("│")
+                    
+                    traits = current_species.get("special_traits", [])
+                    if traits:
+                        detail_lines.append("│ Special Traits:")
+                        for trait in traits:
+                            detail_lines.append(f"│   - {trait}")
+                        detail_lines.append("│")
+                    
+                    starting_bonuses = current_species.get("starting_bonuses", {})
+                    if starting_bonuses:
+                        detail_lines.append("│ Starting Bonuses:")
+                        for bonus_name, bonus_value in starting_bonuses.items():
+                            detail_lines.append(f"│   {bonus_name.replace('_', ' ').title()}: {bonus_value}")
+                else:
+                    detail_lines.append("│ SPECIES DETAILS")
+                    detail_lines.append("│ " + "─" * 38)
+                    detail_lines.append("│")
+                    detail_lines.append("│ No additional information available.")
+                
+                for i, species in enumerate(visible_species):
+                    actual_index = i + scroll_offset
+                    cursor = ">" if actual_index == self.current_index else " "
+                    letter = chr(97 + actual_index) if actual_index < 26 else " "
+                    left_text = f"  {cursor} {letter}) {species}"[:38].ljust(38)
+                    right_text = detail_lines[i] if i < len(detail_lines) else "│"
+                    lines.append(left_text + "  " + right_text)
+                
+                if detail_lines and len(detail_lines) > len(visible_species):
+                    for detail_line in detail_lines[len(visible_species):]:
+                        left_text = " " * 38
+                        lines.append(left_text + "  " + detail_line)
+                
+                if len(self.species_list) > visible_count:
+                    lines.append("")
+                    scroll_info = f"  [{self.current_index + 1}/{len(self.species_list)}] (Use j/k to scroll)"
+                    lines.append(scroll_info)
                     
         elif self.stage == "background":
             # Ensure background list is populated
@@ -540,14 +655,106 @@ class CharacterCreationScreen(Screen):
                 lines.append(scroll_info)
                     
         elif self.stage == "class":
-            lines.append("SELECT YOUR CLASS:")
-            lines.append("")
-            for i, cls in enumerate(self.class_list):
-                cursor = ">" if i == self.current_index else " "
-                lines.append(f"  {cursor} {chr(97 + i)}) {cls}")
-                if GAME_AVAILABLE and cls in character_classes:
-                    desc = character_classes[cls].get('description', '')[:60]
-                    lines.append(f"      {desc}...")
+            if not self.class_list or len(self.class_list) == 0:
+                lines.append("SELECT YOUR CLASS:")
+                lines.append("")
+                lines.append("  ERROR: No classes available!")
+                lines.append("  Please check that characters.py defines character classes.")
+                lines.append("")
+            else:
+                if self.current_index >= len(self.class_list):
+                    self.current_index = 0
+                if self.current_index < 0:
+                    self.current_index = 0
+                
+                lines.append("SELECT YOUR CLASS:")
+                lines.append("")
+                
+                visible_count = 10
+                scroll_offset = max(0, self.current_index - visible_count + 3)
+                visible_classes = self.class_list[scroll_offset:scroll_offset + visible_count]
+                
+                if self.class_list and 0 <= self.current_index < len(self.class_list):
+                    current_class_name = self.class_list[self.current_index]
+                    current_class = character_classes.get(current_class_name, {}) if GAME_AVAILABLE else {}
+                else:
+                    current_class_name = ""
+                    current_class = {}
+                
+                detail_lines = []
+                if GAME_AVAILABLE and current_class:
+                    detail_lines.append("│ CLASS DETAILS")
+                    detail_lines.append("│ " + "─" * 38)
+                    
+                    desc = current_class.get('description', '')
+                    if desc:
+                        detail_lines.append("│ Description:")
+                        words = desc.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append("│")
+                    
+                    credits = current_class.get('starting_credits')
+                    if credits is not None:
+                        detail_lines.append(f"│ Starting Credits: {credits}")
+                    
+                    for key, label in [
+                        ("starting_ships", "Starting Ships"),
+                        ("starting_stations", "Starting Stations"),
+                        ("starting_platforms", "Starting Platforms"),
+                    ]:
+                        items = current_class.get(key, [])
+                        if items:
+                            detail_lines.append(f"│ {label}:")
+                            for item in items:
+                                detail_lines.append(f"│   - {item}")
+                            detail_lines.append("│")
+                    
+                    bonuses = current_class.get('bonuses', {})
+                    if bonuses:
+                        detail_lines.append("│ Bonuses:")
+                        for bonus_name, bonus_value in bonuses.items():
+                            percent = round(bonus_value * 100)
+                            detail_lines.append(f"│   {bonus_name.replace('_', ' ').title()}: +{percent}%")
+                        detail_lines.append("│")
+                    
+                    skills = current_class.get('skills', [])
+                    if skills:
+                        detail_lines.append("│ Skills:")
+                        for skill in skills:
+                            detail_lines.append(f"│   - {skill}")
+                else:
+                    detail_lines.append("│ CLASS DETAILS")
+                    detail_lines.append("│ " + "─" * 38)
+                    detail_lines.append("│")
+                    detail_lines.append("│ No additional information available.")
+                
+                for i, cls in enumerate(visible_classes):
+                    actual_index = i + scroll_offset
+                    cursor = ">" if actual_index == self.current_index else " "
+                    left_text = f"  {cursor} {chr(97 + actual_index)}) {cls}"[:38].ljust(38)
+                    if i < len(detail_lines):
+                        right_text = detail_lines[i]
+                    else:
+                        right_text = "│"
+                    lines.append(left_text + "  " + right_text)
+                
+                if detail_lines and len(detail_lines) > len(visible_classes):
+                    for detail_line in detail_lines[len(visible_classes):]:
+                        left_text = " " * 38
+                        lines.append(left_text + "  " + detail_line)
+                
+                if len(self.class_list) > visible_count:
+                    lines.append("")
+                    scroll_info = f"  [{self.current_index + 1}/{len(self.class_list)}] (Use j/k to scroll)"
+                    lines.append(scroll_info)
                     
         elif self.stage == "stats":
             from characters import STAT_NAMES, STAT_DESCRIPTIONS, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE, validate_stat_allocation
@@ -669,7 +876,9 @@ class CharacterCreationScreen(Screen):
         
         lines.append("")
         lines.append("─" * 80)
-        if self.stage == "faction":
+        if self.stage == "name":
+            lines.append(f"[Type to enter name] [Backspace: delete] [Enter: confirm]")
+        elif self.stage == "faction":
             lines.append(f"[j/k or ↑/↓: scroll] [Enter: confirm] [H: history] [q: quit]")
         elif self.stage == "background":
             lines.append(f"[j/k or ↑/↓: scroll] [Enter: confirm] [H: history] [q: quit]")
@@ -793,10 +1002,15 @@ class CharacterCreationScreen(Screen):
             if key == "backspace" and len(self.character_data['name']) > 0:
                 self.character_data['name'] = self.character_data['name'][:-1]
                 self.update_display()
+                event.stop()
+                event.prevent_default()
             elif len(key) == 1 and (key.isalnum() or key == " "):
                 if len(self.character_data['name']) < 20:
                     self.character_data['name'] += key
                     self.update_display()
+                event.stop()
+                event.prevent_default()
+            return
                     
     def move_cursor(self, delta: int):
         """Move selection cursor"""
@@ -2973,126 +3187,336 @@ class StatusScreen(Screen):
         yield MessageLog()
         
     def on_mount(self):
+        character = self.character_data or {}
+        game = self.game
+
+        inner_width = 78
+        left_width = 35
+        right_width = 35
+
+        def colorize(line: str, style: str) -> str:
+            return f"[{style}]{line}[/{style}]"
+
+        def fmt_line(text: str = "") -> str:
+            trimmed = text[: inner_width - 2]
+            return f"║ {trimmed.ljust(inner_width - 2)} ║"
+
+        def fmt_center(text: str) -> str:
+            trimmed = text[:inner_width]
+            return f"║{trimmed.center(inner_width)}║"
+
+        def fmt_two_col(left: str, right: str) -> str:
+            left_trimmed = left[:left_width]
+            right_trimmed = right[:right_width]
+            content = f"{left_trimmed.ljust(left_width)} │ {right_trimmed.ljust(right_width)}"
+            return f"║ {content.ljust(inner_width - 2)} ║"
+
+        def wrap_column(text: str, width: int) -> list[str]:
+            if not text:
+                return [""]
+            wrapped = textwrap.wrap(text, width=width, break_long_words=True, break_on_hyphens=False)
+            return wrapped or [text[:width]]
+
+        def render_two_col_pair(left_text: str, right_text: str) -> list[str]:
+            left_chunks = wrap_column(left_text, left_width)
+            right_chunks = wrap_column(right_text, right_width)
+            rows = []
+            for idx in range(max(len(left_chunks), len(right_chunks))):
+                left_part = left_chunks[idx] if idx < len(left_chunks) else ""
+                right_part = right_chunks[idx] if idx < len(right_chunks) else ""
+                rows.append(fmt_two_col(left_part, right_part))
+            return rows
+
+        def render_two_col_block(left_lines: list[str], right_lines: list[str]) -> list[str]:
+            rows = []
+            for idx in range(max(len(left_lines), len(right_lines))):
+                left_part = left_lines[idx] if idx < len(left_lines) else ""
+                right_part = right_lines[idx] if idx < len(right_lines) else ""
+                rows.append(fmt_two_col(left_part, right_part))
+            return rows
+
+        def render_bullets(entries: list[str]) -> list[str]:
+            if not entries:
+                return [fmt_line("• None recorded yet.")]
+            bullet_lines = []
+            for entry in entries:
+                wrapped = textwrap.wrap(entry, width=inner_width - 4, break_long_words=True, break_on_hyphens=False)
+                if not wrapped:
+                    wrapped = [entry[: inner_width - 4]]
+                for idx, chunk in enumerate(wrapped):
+                    prefix = "• " if idx == 0 else "  "
+                    bullet_lines.append(fmt_line(f"{prefix}{chunk}"))
+            return bullet_lines
+
+        def safe_attr(obj, attr):
+            if not obj:
+                return None
+            try:
+                return getattr(obj, attr)
+            except Exception:
+                return None
+
+        def format_number(value):
+            if value is None:
+                return "—"
+            if isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    if value.is_integer():
+                        return f"{int(value):,}"
+                    return f"{value:,.2f}"
+                return f"{value:,}"
+            return str(value)
+
+        name = character.get("name", "—")
+        species_name = character.get("species", "—")
+        class_name = character.get("class", "—")
+        background_name = character.get("background", "—")
+        faction_name = character.get("faction", "—")
+
+        credits_val = format_number(safe_attr(game, "credits"))
+        level_val = format_number(safe_attr(game, "level"))
+        xp_val = format_number(safe_attr(game, "xp"))
+        reputation_val = format_number(safe_attr(game, "reputation"))
+
+        from characters import (
+            STAT_NAMES,
+            BASE_STAT_VALUE,
+            calculate_derived_attributes,
+            DERIVED_METRIC_INFO,
+        )
+
+        stats = character.get("stats", {})
+        derived = calculate_derived_attributes(stats) if stats else {}
+
+        species_info = species_database.get(species_name, {}) if GAME_AVAILABLE else {}
+        background_info = background_data.get(background_name, {}) if GAME_AVAILABLE else {}
+        class_info = character_classes.get(class_name, {}) if GAME_AVAILABLE else {}
+
+        ships = []
+        if game:
+            try:
+                ships.extend(getattr(game, "owned_ships", []) or [])
+            except Exception:
+                pass
+            try:
+                custom = getattr(game, "custom_ships", []) or []
+                for ship in custom:
+                    if isinstance(ship, dict):
+                        ships.append(ship.get("name", "Custom Ship"))
+                    else:
+                        ships.append(str(ship))
+            except Exception:
+                pass
+
+        stations = getattr(game, "owned_stations", []) or []
+        platforms = getattr(game, "owned_platforms", []) or []
+        inventory = getattr(game, "inventory", {}) or {}
+
+        def gather_events() -> list[str]:
+            if not game:
+                return []
+            for attr in ("recent_events", "event_log", "events", "history_log"):
+                value = safe_attr(game, attr)
+                if value:
+                    if isinstance(value, list):
+                        entries = []
+                        for item in value[-6:]:
+                            if isinstance(item, dict):
+                                title = item.get("title") or item.get("name") or item.get("event")
+                                desc = item.get("description") or item.get("summary")
+                                if title and desc:
+                                    entries.append(f"{title}: {desc}")
+                                elif title:
+                                    entries.append(str(title))
+                                else:
+                                    entries.append(str(item))
+                            else:
+                                entries.append(str(item))
+                        return entries
+                    return [str(value)]
+            return []
+
+        event_entries = gather_events()
+
+        def gather_decorations() -> list[str]:
+            decorations = []
+            for source in (
+                character.get("decorations"),
+                character.get("awards"),
+                safe_attr(game, "decorations"),
+                safe_attr(game, "awards"),
+                safe_attr(game, "commendations"),
+            ):
+                if not source:
+                    continue
+                if isinstance(source, list):
+                    decorations.extend([str(item) for item in source])
+                else:
+                    decorations.append(str(source))
+            return decorations
+
+        decoration_entries = gather_decorations()
+
+        talent_entries = []
+        for talent in character.get("talents", []) or []:
+            talent_entries.append(f"Personal Talent: {talent}")
+
+        if background_info:
+            talent = background_info.get("talent")
+            if talent:
+                talent_entries.append(f"Background Talent: {talent}")
+            for trait in background_info.get("traits", []) or []:
+                talent_entries.append(f"Background Trait: {trait}")
+            bonuses = background_info.get("stat_bonuses", {})
+            for stat_code, bonus_val in bonuses.items():
+                talent_entries.append(f"Background Bonus: +{bonus_val} {stat_code}")
+
+        if species_info:
+            for trait in species_info.get("special_traits", []) or []:
+                talent_entries.append(f"Species Trait: {trait}")
+
+        if class_info:
+            for skill in class_info.get("skills", []) or []:
+                talent_entries.append(f"Class Skill: {skill}")
+            bonuses = class_info.get("bonuses", {})
+            for bonus_name, bonus_value in bonuses.items():
+                percent = round(bonus_value * 100) if isinstance(bonus_value, (int, float)) else bonus_value
+                if isinstance(percent, (int, float)):
+                    talent_entries.append(f"Class Bonus: {bonus_name.replace('_', ' ').title()} +{percent}%")
+                else:
+                    talent_entries.append(f"Class Bonus: {bonus_name.replace('_', ' ').title()} {percent}")
+
+        top_border = "╔" + "═" * inner_width + "╗"
+        section_divider = "╠" + "═" * inner_width + "╣"
+        sub_divider = "╟" + "─" * inner_width + "╢"
+        bottom_border = "╚" + "═" * inner_width + "╝"
+
         lines = []
-        lines.append("═" * 80)
-        lines.append("CHARACTER STATUS".center(80))
-        lines.append("═" * 80)
-        lines.append("")
-        lines.append(f"Name:       {self.character_data['name']}")
-        lines.append(f"Species:    {self.character_data['species']}")
-        lines.append(f"Class:      {self.character_data['class']}")
-        lines.append(f"Background: {self.character_data['background']}")
-        lines.append(f"Faction:    {self.character_data['faction']}")
-        lines.append("")
-        
-        if self.character_data.get('stats'):
-            from characters import (
-                STAT_NAMES,
-                BASE_STAT_VALUE,
-                calculate_derived_attributes,
-                DERIVED_METRIC_INFO,
-            )
+        lines.append(colorize(top_border, "bold cyan"))
+        lines.append(colorize(fmt_center("CHARACTER SHEET"), "bold cyan"))
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("IDENTITY & ORIGINS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
 
-            stats = self.character_data['stats']
-            lines.append("STATISTICS (Core Attributes):")
-            for code in STAT_NAMES.keys():
+        identity_pairs = [
+            (f"Name: {name}", f"Species: {species_name}"),
+            (f"Class: {class_name}", f"Background: {background_name}"),
+            (f"Faction: {faction_name}", f"Level: {level_val}"),
+            (f"Credits: {credits_val}", f"Experience: {xp_val}"),
+        ]
+
+        if reputation_val != "—":
+            identity_pairs.append((f"Reputation: {reputation_val}", ""))
+
+        for left_text, right_text in identity_pairs:
+            lines.extend(render_two_col_pair(left_text, right_text))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("ATTRIBUTES"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        stat_lines = []
+        if stats:
+            for code, stat_name in STAT_NAMES.items():
                 value = stats.get(code, BASE_STAT_VALUE)
-                stat_name = STAT_NAMES[code]
-                lines.append(f"  {code} ({stat_name}): {value}/100")
+                stat_lines.append(f"{code} {stat_name:<18} {value:>3}/100")
+        else:
+            stat_lines.append("No core attributes recorded.")
 
-            derived = calculate_derived_attributes(stats)
-            if derived:
-                lines.append("")
-                lines.append("DERIVED METRICS:")
-                for name, value in derived.items():
-                    info = DERIVED_METRIC_INFO.get(name, {})
-                    formula = info.get("formula")
-                    description = info.get("description")
-                    metric_line = f"  {name}: {value}"
-                    if formula:
-                        metric_line += f"  [{formula}]"
-                    if description:
-                        metric_line += f" - {description}"
-                    lines.append(metric_line)
-        
-        lines.append("")
-        # Economy and progression
-        if self.game:
-            try:
-                lines.append(f"Credits:    {self.game.credits:,}")
-            except Exception:
-                pass
-            try:
-                lines.append(f"Level:      {self.game.level}")
-            except Exception:
-                pass
-            try:
-                lines.append(f"Experience: {self.game.xp}")
-            except Exception:
-                pass
-        
-        # Divider
-        lines.append("")
-        lines.append("─" * 80)
-        lines.append("ASSETS")
-        lines.append("")
-        
-        # Ships
-        if self.game:
-            ship_names = []
-            try:
-                ship_names.extend(self.game.owned_ships)
-            except Exception:
-                pass
-            try:
-                # custom_ships may be dicts with 'name'
-                ship_names.extend([s.get('name', 'Unnamed Custom Ship') for s in getattr(self.game, 'custom_ships', [])])
-            except Exception:
-                pass
-            if ship_names:
-                lines.append("Ships:")
-                for s in ship_names:
-                    lines.append(f"  • {s}")
-            else:
-                lines.append("Ships:  None")
-            lines.append("")
-        
-        # Bases: Stations and Platforms
-        if self.game:
-            stations = getattr(self.game, 'owned_stations', []) or []
-            platforms = getattr(self.game, 'owned_platforms', []) or []
-            lines.append("Stations:")
-            if stations:
-                for st in stations:
-                    lines.append(f"  • {st}")
-            else:
-                lines.append("  None")
-            lines.append("")
-            lines.append("Platforms:")
-            if platforms:
-                for pf in platforms:
-                    lines.append(f"  • {pf}")
-            else:
-                lines.append("  None")
-            lines.append("")
-        
-        # Goods / Inventory
-        if self.game:
-            inv = getattr(self.game, 'inventory', {}) or {}
-            lines.append("Inventory:")
-            if inv:
-                for item, qty in inv.items():
-                    lines.append(f"  {item}: {qty}")
-            else:
-                lines.append("  Empty")
-            lines.append("")
-            
-        lines.append("")
-        lines.append("─" * 80)
-        lines.append("[q/ESC: Back]")
-        
+        derived_lines = []
+        if derived:
+            for metric_name, metric_value in derived.items():
+                name_slice = metric_name[:20]
+                value_str = format_number(metric_value)
+                combined = f"{name_slice:<20}{value_str:>{right_width - 20}}"
+                derived_lines.append(combined)
+        else:
+            derived_lines.append("No derived metrics calculated.")
+
+        lines.extend(render_two_col_block(stat_lines, derived_lines))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("TALENTS & TRAINING"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+        lines.extend(render_bullets(talent_entries))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("RECENT EVENTS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+        lines.extend(render_bullets(event_entries or ["No notable events logged yet."]))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("HONORS & DECORATIONS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+        lines.extend(render_bullets(decoration_entries))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("FLEET & HOLDINGS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        fleet_left = ["Ships"]
+        if ships:
+            for ship in ships:
+                chunks = wrap_column(ship, left_width - 2)
+                for idx, chunk in enumerate(chunks):
+                    prefix = "• " if idx == 0 else "  "
+                    fleet_left.append(f"{prefix}{chunk}")
+        else:
+            fleet_left.append("• None")
+
+        holdings = []
+        if stations:
+            holdings.append("Stations")
+            for station in stations:
+                chunks = wrap_column(station, right_width - 2)
+                for idx, chunk in enumerate(chunks):
+                    prefix = "• " if idx == 0 else "  "
+                    holdings.append(f"{prefix}{chunk}")
+        if platforms:
+            holdings.append("Platforms")
+            for platform in platforms:
+                chunks = wrap_column(platform, right_width - 2)
+                for idx, chunk in enumerate(chunks):
+                    prefix = "• " if idx == 0 else "  "
+                    holdings.append(f"{prefix}{chunk}")
+
+        if not holdings:
+            holdings = ["Installations", "• None"]
+
+        lines.extend(render_two_col_block(fleet_left, holdings))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("CARGO MANIFEST"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        cargo_entries = []
+        if inventory:
+            items = list(inventory.items())
+            overflow = 0
+            max_entries = 8
+            if len(items) > max_entries:
+                overflow = len(items) - max_entries
+                items = items[:max_entries]
+            for item_name, quantity in items:
+                cargo_entries.append(f"{item_name}: {quantity}")
+            if overflow:
+                cargo_entries.append(f"… plus {overflow} additional item(s)")
+        else:
+            cargo_entries.append("Cargo hold is currently empty.")
+
+        lines.extend(render_bullets(cargo_entries))
+
+        lines.append(colorize(bottom_border, "bold cyan"))
+        lines.append("[dim white][q/ESC: Back][/dim white]")
+
         self.query_one("#status_display", Static).update("\n".join(lines))
-        self.query_one(MessageLog).add_message("Status displayed. Press 'q' to return.")
+        self.query_one(MessageLog).add_message("Status displayed. Press 'q' to return.", "cyan")
 
     def action_pop_screen(self):
         """Handle 'q' or ESC to go back to previous screen"""
