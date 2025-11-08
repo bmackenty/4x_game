@@ -4,7 +4,7 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 
 ## Game Features
 
-- **Character Creation**: 6 unique character classes with different starting bonuses and backgrounds
+- **Character Creation**: Multi-stage flow with 11 playable classes, 18+ narrative backgrounds (each with stat boosts and signature talents), faction alignment, research focuses, and point-buy stat allocation
 - **Ship Building**: Custom ship construction system with hull types, engines, weapons, shields, and special systems
 - **Space Navigation**: 3D galaxy with 30-40 star systems to explore using X,Y,Z coordinates
 - **Scanning Range**: Ships detect nearby planets, stations, and resources; upgrade scanners for extended range
@@ -34,9 +34,9 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
    python3 game.py
    ```
 
-2. Create your commander profile and choose a character class and background
-3. Start with credits based on your character class (8k-15k)
-4. Use the main menu to:
+3. Create your commander profile and complete the multi-step character creation flow (species → background → faction → class → research focus → stats → name)
+4. Start with credits and assets based on your class (8k-15k credits plus class/background bonuses)
+5. Use the main menu to:
    - Browse available assets and commodities
    - Trade goods for profit
    - Purchase ships, stations, and manufacturing platforms
@@ -53,7 +53,7 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 - Unique character stats and abilities
 
 **Main Activities:**
-1. **Character Creation** - Choose from 6 classes (Merchant, Explorer, Industrial Magnate, Military Commander, Diplomat, Scientist) and 6 backgrounds
+1. **Character Creation** - Build a commander by selecting species, one of 11 classes (including new options like Smuggler, Archaeologist, Corporate Spy, Bounty Hunter, and Terraformer), and more than 18 narrative backgrounds with unique talents before allocating stats via point-buy
 2. **Browse Catalogs** - Learn about available ships, stations, platforms, and goods
 3. **Trade Commodities** - Buy low, sell high to increase your credits
 4. **Purchase Assets** - Invest in ships (50k-150k), stations (500k), or platforms (250k)
@@ -72,16 +72,42 @@ A simple text-based 4X strategy game set in a futuristic space-faring civilizati
 - Space Stations: 500,000 credits each
 - Manufacturing Platforms: 250,000 credits each
 
-## Character Classes
+## Character Creation
 
-All characters start with a **Basic Transport** (starter ship) plus class-specific bonuses:
+All characters begin with a **Basic Transport** and class/background-specific bonuses. The revamped creation flow now walks you through species, backgrounds, factions, research focuses, stat allocation, and final confirmation inside the Textual interface.
 
-**Merchant Captain**: Trade specialist with bonus credits and Aurora-Class Freighter
-**Explorer**: Frontier scout with exploration bonuses and Stellar Voyager
-**Industrial Magnate**: Manufacturing expert with production bonuses and Nanoforge Spires platform
-**Military Commander**: Combat veteran with tactical advantages and Aurora Ascendant cruiser
-**Diplomat**: Negotiation specialist with communication advantages and Celestium-Class Communication Ship
-**Scientist**: Research focused with technology bonuses, Nebula Drifter ship, and Archive of Echoes station
+### Classes
+
+- **Merchant Captain**: Trade specialist with bonus credits, negotiation perks, and an `Aurora-Class Freighter`.
+- **Explorer**: Frontier scout focused on discovery with fuel efficiency and a `Stellar Voyager`.
+- **Industrial Magnate**: Production powerhouse starting with the `Nanoforge Spires` platform and discounts on construction.
+- **Military Commander**: Tactical veteran commanding the `Aurora Ascendant` and strong combat readiness.
+- **Diplomat**: Alliance broker with the `Celestium-Class Communication Ship`, exceptional relations, and intel access.
+- **Scientist**: Research prodigy piloting the `Nebula Drifter` and operating the `Archive of Echoes` station.
+- **Smuggler**: Stealth operative flying the `Shadow Runner` with contraband profits and black-market access.
+- **Archaeologist**: Relic hunter aboard the `Deep Explorer`, excels at artifact discovery and ancient tech.
+- **Corporate Spy**: Espionage expert in the `Phantom Interceptor`, excels at intelligence, sabotage, and infiltration.
+- **Bounty Hunter**: Elite tracker flying the `Pursuit Vessel`, strong combat initiative and capture bonuses.
+- **Terraformer**: Environmental engineer with the `Genesis Transport` and an `Atmospheric Processor` platform.
+
+### Backgrounds & Talents
+
+Choose from more than 18 narrative backgrounds—each adds stat bonuses and a unique talent that can trigger in play. Examples include:
+
+- **Orbital Foundling**: Gains microgravity adaptation with boosts to `KIN` and `SYN`.
+- **AI Scribe**: Halves analysis times thanks to cognitive compression, boosting `INT` and `COH`.
+- **Voidfarer Crew**: Immune to spatial disorientation, bolstering `AEF` and `VIT`.
+- **Quantum Savant**: Predict outcomes with quantum insight, ramping `INT` by 2.
+- **Brewmasters' Acolyte**: Inspires allies via crafted drinks, increasing `AEF` and `INF`.
+
+Each background feeds directly into the stat validator, ensuring bonuses are reflected while you allocate points.
+
+### Stat & Derived Metrics System
+
+- **Base Attributes**: Seven stats (`VIT`, `KIN`, `INT`, `AEF`, `COH`, `INF`, `SYN`) start at 30. Allocate 30 additional points with per-stat caps at 100.
+- **Background Integration**: Stat bonuses from backgrounds apply automatically and update minimum thresholds.
+- **Validation**: Real-time checks prevent over-allocation or dropping below background-adjusted minimums.
+- **Derived Metrics**: Automatic readouts for `Health`, `Etheric Capacity`, `Processing Speed`, `Adaptation Index`, and more help interpret your build before committing.
 
 ## Ship Building
 
