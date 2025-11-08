@@ -3698,29 +3698,29 @@ class PlayerShipScreen(Screen):
             left_width = 38
             detail_lines = []
             if detail_block:
-                detail_lines = detail_block
+                detail_lines.extend(["│ COMPONENT DETAILS", "│ " + "─" * 38])
+                detail_lines.extend(detail_block)
             else:
-                detail_lines.append("│")
+                detail_lines.append("│ COMPONENT DETAILS")
+                detail_lines.append("│ " + "─" * 38)
 
             highlight_index = self.selection_index
             visible_count = 12
             start_index = max(0, min(highlight_index - 3, len(self._component_entries) - visible_count))
             end_index = min(len(self._component_entries), start_index + visible_count)
 
-            for idx in range(start_index, min(end_index, len(self._component_entries))):
-                entry = self._component_entries[idx]
-                cursor = ">" if idx == self.selection_index else " "
+            for row_idx, entry_index in enumerate(range(start_index, end_index)):
+                entry = self._component_entries[entry_index]
+                cursor = ">" if entry_index == self.selection_index else " "
                 label = entry.get("label", "")
                 left_text = f"  {cursor} {label}"[:left_width].ljust(left_width)
-                right_text = detail_lines[0] if idx == self.selection_index else "│"
+                right_text = detail_lines[row_idx] if row_idx < len(detail_lines) else "│"
                 lines.append(left_text + "  " + right_text)
 
-            # Detail header and body rendered after list to keep it anchored
-            detail_prefix = " " * left_width + "  "
-            lines.append(detail_prefix + "│ COMPONENT DETAILS")
-            lines.append(detail_prefix + "│ " + "─" * 38)
-            for extra in detail_lines[1:]:
-                lines.append(detail_prefix + extra)
+            if len(detail_lines) > (end_index - start_index):
+                padding = " " * left_width
+                for extra in detail_lines[(end_index - start_index):]:
+                    lines.append(f"{padding}  {extra}")
 
         lines.append("")
         lines.append("─" * 80)
