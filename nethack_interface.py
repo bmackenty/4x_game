@@ -3704,22 +3704,21 @@ class PlayerShipScreen(Screen):
                 detail_lines.append("│ COMPONENT DETAILS")
                 detail_lines.append("│ " + "─" * 38)
 
-            highlight_index = self.selection_index
             visible_count = 12
-            start_index = max(0, min(highlight_index - 3, len(self._component_entries) - visible_count))
-            end_index = min(len(self._component_entries), start_index + visible_count)
+            scroll_offset = max(0, self.selection_index - visible_count + 3)
+            visible_entries = self._component_entries[scroll_offset:scroll_offset + visible_count]
 
-            for row_idx, entry_index in enumerate(range(start_index, end_index)):
-                entry = self._component_entries[entry_index]
-                cursor = ">" if entry_index == self.selection_index else " "
+            for i, entry in enumerate(visible_entries):
+                actual_index = scroll_offset + i
+                cursor = ">" if actual_index == self.selection_index else " "
                 label = entry.get("label", "")
                 left_text = f"  {cursor} {label}"[:left_width].ljust(left_width)
-                right_text = detail_lines[row_idx] if row_idx < len(detail_lines) else "│"
+                right_text = detail_lines[i] if i < len(detail_lines) else "│"
                 lines.append(left_text + "  " + right_text)
 
-            if len(detail_lines) > (end_index - start_index):
+            if detail_lines and len(detail_lines) > len(visible_entries):
                 padding = " " * left_width
-                for extra in detail_lines[(end_index - start_index):]:
+                for extra in detail_lines[len(visible_entries):]:
                     lines.append(f"{padding}  {extra}")
 
         lines.append("")
