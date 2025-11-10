@@ -1476,6 +1476,7 @@ class MapScreen(Screen):
         Binding("escape,q", "pop_screen", "Back", show=True),
         Binding("n", "news", "News", show=True),
         Binding("f", "toggle_factions", "Toggle Factions", show=True),
+        Binding("e", "toggle_ether", "Toggle Ether Energy", show=True),
         Binding("h,H", "history", "History", show=True),
     ]
     
@@ -1498,6 +1499,11 @@ class MapScreen(Screen):
         self.show_faction_zones = False
         # Faction color mapping (persistent across updates)
         self.faction_colors = {}
+        # Ether energy overlay toggle
+        self.show_ether_energy = False
+        # Fuel recharge tracking (when fuel is depleted)
+        self.fuel_recharge_counter = 0
+        self.fuel_recharge_target = 3  # Alternates between 3 and 4
     
     def compose(self) -> ComposeResult:
         yield Static(id="map_display")
@@ -1576,6 +1582,51 @@ class MapScreen(Screen):
                     if faction:
                         # Mark this cell as being in faction space with a subtle background character
                         virtual_buf[py][px] = ("░", None, faction)
+        
+        # If ether energy overlay is enabled, draw ether energy for all space
+        if self.show_ether_energy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+            # Draw ether energy for every cell in the virtual buffer
+            for py in range(self.virtual_height):
+                for px in range(self.virtual_width):
+                    # Convert virtual coords back to galaxy coords
+                    gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
+                    gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
+                    gz = int(galaxy.size_z / 2)  # Use middle z-plane for 2D visualization
+                    
+                    # Get friction at this location
+                    friction = galaxy.ether_energy.get_friction_at(gx, gy, gz)
+                    
+                    # Determine color based on friction level (show all space, including neutral)
+                    if friction < 0.85:
+                        # Low drag (enhances fuel) - green shades
+                        dot_char = "·"
+                        dot_color = "bright_green" if friction < 0.7 else "green"
+                    elif friction < 0.95:
+                        # Mild enhancement - cyan
+                        dot_char = "·"
+                        dot_color = "cyan"
+                    elif friction < 1.05:
+                        # Neutral - dim white/gray
+                        dot_char = "·"
+                        dot_color = "dim white"
+                    elif friction < 1.3:
+                        # Mild drag - yellow
+                        dot_char = "·"
+                        dot_color = "yellow"
+                    elif friction < 1.6:
+                        # Moderate drag - orange/red
+                        dot_char = "·"
+                        dot_color = "bright_yellow"
+                    else:
+                        # High drag - red shades
+                        dot_char = "·"
+                        dot_color = "red" if friction < 2.0 else "bright_red"
+                    
+                    # Only draw if cell is empty or has space background (don't overwrite systems/ships)
+                    current_char, current_data, current_faction = virtual_buf[py][px]
+                    if current_char in (" ", ".", "░"):
+                        # Draw ether energy dot
+                        virtual_buf[py][px] = (dot_char, {"ether_friction": friction, "ether_color": dot_color}, None)
         
         # Get objects in scan range if ship has scanning capability
         scanned_systems = set()
@@ -1668,6 +1719,8 @@ class MapScreen(Screen):
         header = "GALAXY MAP"
         if self.show_faction_zones:
             header += " - FACTION ZONES"
+        if self.show_ether_energy:
+            header += " - ETHER ENERGY"
         text.append(header.center(self.viewport_width) + "\n", style="bold yellow")
         text.append("═" * self.viewport_width + "\n", style="bold cyan")
         
@@ -1679,6 +1732,11 @@ class MapScreen(Screen):
                     virtual_x = self.viewport_x + x
                     if 0 <= virtual_x < self.virtual_width:
                         char, sys_data, faction = virtual_buf[virtual_y][virtual_x]
+                        
+                        # Check if this is an ether energy dot
+                        ether_color = None
+                        if isinstance(sys_data, dict) and "ether_color" in sys_data:
+                            ether_color = sys_data.get("ether_color")
                         
                         # Determine base style based on character type
                         base_style = None
@@ -1739,6 +1797,9 @@ class MapScreen(Screen):
                                 base_style = f"dim {faction_color}"
                             else:
                                 base_style = "dim white"
+                        elif char == "·" and ether_color:
+                            # Ether energy dot
+                            base_style = ether_color
                         
                         if base_style:
                             text.append(char, style=base_style)
@@ -1781,6 +1842,29 @@ class MapScreen(Screen):
                 faction_color = self.faction_colors.get(current_faction, "white")
                 text.append(f"{current_faction}", style=f"bold {faction_color}")
         
+        # Show current ether energy friction if overlay is enabled
+        if self.show_ether_energy and ship and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+            sx, sy, sz = ship.coordinates
+            friction = galaxy.ether_energy.get_friction_at(sx, sy, sz)
+            friction_level = galaxy.ether_energy.get_friction_level(friction)
+            
+            # Color based on friction
+            if friction < 0.85:
+                friction_color = "bright_green"
+            elif friction < 0.95:
+                friction_color = "green"
+            elif friction < 1.05:
+                friction_color = "white"
+            elif friction < 1.3:
+                friction_color = "yellow"
+            elif friction < 1.6:
+                friction_color = "bright_yellow"
+            else:
+                friction_color = "red"
+            
+            text.append(f" | Ether: ", style="white")
+            text.append(f"{friction_level} ({friction:.2f}x)", style=friction_color)
+        
         # Show nearby NPCs
         if nav and hasattr(nav, 'npc_ships') and ship:
             nearby_npcs = []
@@ -1803,6 +1887,21 @@ class MapScreen(Screen):
             text.append("Colored backgrounds = faction zones  ", style="white")
             text.append("░ ", style="dim white")
             text.append("= faction space\n", style="white")
+        
+        if self.show_ether_energy:
+            text.append("Ether Energy: ", style="bold bright_magenta")
+            text.append("· ", style="bright_green")
+            text.append("Low Drag  ", style="white")
+            text.append("· ", style="green")
+            text.append("Enhancement  ", style="white")
+            text.append("· ", style="cyan")
+            text.append("Mild Enhancement  ", style="white")
+            text.append("· ", style="yellow")
+            text.append("Mild Drag  ", style="white")
+            text.append("· ", style="bright_yellow")
+            text.append("Moderate Drag  ", style="white")
+            text.append("· ", style="red")
+            text.append("High Drag\n", style="white")
         
         text.append("Legend: ", style="white")
         text.append("@ ", style="bold bright_white on blue")
@@ -1830,7 +1929,7 @@ class MapScreen(Screen):
         text.append("a ", style="dim white")
         text.append("Asteroids\n", style="white")
         
-        text.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions | H: History]\n", style="dim white")
+        text.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions | e: Toggle Ether | H: History]\n", style="dim white")
         
         self.query_one("#map_display", Static).update(text)
     
@@ -1863,6 +1962,16 @@ class MapScreen(Screen):
             msg_log.add_message("Faction zones: ON", "bright_cyan")
         else:
             msg_log.add_message("Faction zones: OFF", "white")
+        self.update_map()
+    
+    def action_toggle_ether(self):
+        """Toggle ether energy overlay visualization"""
+        self.show_ether_energy = not self.show_ether_energy
+        msg_log = self.query_one(MessageLog)
+        if self.show_ether_energy:
+            msg_log.add_message("Ether energy overlay: ON", "bright_magenta")
+        else:
+            msg_log.add_message("Ether energy overlay: OFF", "white")
         self.update_map()
 
     def on_key(self, event) -> None:
@@ -1898,7 +2007,7 @@ class MapScreen(Screen):
         # Calculate distance moved (Euclidean distance)
         distance = math.sqrt((new_x - old_x)**2 + (new_y - old_y)**2)
         
-        # Only consume fuel if actually moving
+        # Handle fuel consumption and recharge
         if distance > 0:
             # Import fuel calculation function
             try:
@@ -1906,22 +2015,42 @@ class MapScreen(Screen):
                 target_coords = (new_x, new_y, old_z)
                 fuel_needed = calculate_fuel_consumption(ship, distance, target_coords, self.game)
                 
-                # Check if ship has enough fuel
-                if fuel_needed > ship.fuel:
-                    msg_log = self.query_one(MessageLog)
-                    msg_log.add_message(f"Insufficient fuel! Need {fuel_needed}, have {ship.fuel}", "red")
-                    return  # Don't move if insufficient fuel
-                
-                # Consume fuel
-                ship.fuel -= fuel_needed
-                
-                # Show low fuel warning
-                if ship.fuel <= 10:
-                    msg_log = self.query_one(MessageLog)
-                    if ship.fuel <= 0:
-                        msg_log.add_message("⚠️ Fuel depleted! Ship cannot move further.", "red")
+                # If ship has fuel, consume it normally
+                if ship.fuel > 0:
+                    if fuel_needed > ship.fuel:
+                        # Use remaining fuel
+                        ship.fuel = 0
                     else:
+                        # Consume fuel
+                        ship.fuel -= fuel_needed
+                    
+                    # Show low fuel warning
+                    if ship.fuel <= 10 and ship.fuel > 0:
+                        msg_log = self.query_one(MessageLog)
                         msg_log.add_message(f"⚠️ Low fuel warning: {ship.fuel}/{ship.max_fuel} remaining", "yellow")
+                    elif ship.fuel <= 0:
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message("⚠️ Fuel depleted! Movement will slowly recharge fuel.", "yellow")
+                        self.fuel_recharge_counter = 0  # Reset counter when fuel hits 0
+                        self.fuel_recharge_target = 3  # Reset target when fuel hits 0
+                else:
+                    # Ship is out of fuel - allow movement and recharge slowly
+                    self.fuel_recharge_counter += 1
+                    
+                    # Recharge fuel every 3-4 key presses (alternating pattern)
+                    if self.fuel_recharge_counter >= self.fuel_recharge_target:
+                        # Recharge a small amount of fuel (1-2 units)
+                        recharge_amount = random.randint(1, 2)
+                        ship.fuel = min(ship.fuel + recharge_amount, ship.max_fuel)
+                        self.fuel_recharge_counter = 0  # Reset counter
+                        # Alternate between 3 and 4 for next recharge
+                        self.fuel_recharge_target = 4 if self.fuel_recharge_target == 3 else 3
+                        
+                        msg_log = self.query_one(MessageLog)
+                        if ship.fuel < ship.max_fuel:
+                            msg_log.add_message(f"⚡ Emergency fuel recharge: {ship.fuel}/{ship.max_fuel} (slow recharge active)", "cyan")
+                        else:
+                            msg_log.add_message("⚡ Fuel fully recharged! Normal fuel consumption resumed.", "bright_green")
             except ImportError:
                 # Fallback if navigation module not available
                 pass

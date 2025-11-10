@@ -72,13 +72,27 @@ def calculate_fuel_consumption(ship, distance, target_coords=None, game=None):
     # Apply all multipliers
     fuel_needed = base_fuel * efficiency_multiplier * crew_multiplier * output_multiplier
     
-    # FUTURE: Ether energy coefficient
-    # This will be implemented when ether energy system is added
-    # It will act as a coefficient/drag factor based on etheric conditions at location
-    ether_coefficient = 1.0  # Placeholder - will be calculated from ether energy at target_coords
-    # Example future implementation:
-    # if target_coords and game and hasattr(game, 'ether_system'):
-    #     ether_coefficient = game.ether_system.get_ether_drag(target_coords)
+    # Ether energy coefficient (friction)
+    # Acts as a coefficient/drag factor based on etheric conditions at location
+    ether_coefficient = 1.0  # Default neutral
+    if target_coords:
+        # Try to get ether energy from galaxy
+        if hasattr(ship, 'coordinates'):
+            # Get galaxy from ship's context if available
+            try:
+                # Check if ship has a reference to galaxy or game
+                galaxy = None
+                if game and hasattr(game, 'navigation') and hasattr(game.navigation, 'galaxy'):
+                    galaxy = game.navigation.galaxy
+                
+                if galaxy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+                    # Use average friction along the path (simplified: use target location)
+                    ether_coefficient = galaxy.ether_energy.get_friction_at(
+                        target_coords[0], target_coords[1], target_coords[2]
+                    )
+            except Exception:
+                pass  # Fallback to neutral if any error
+    
     fuel_needed *= ether_coefficient
     
     # Check for dangerous regions (existing system)
@@ -248,6 +262,13 @@ class Galaxy:
         self.size_z = 200  # Galaxy depth - substantially increased
         self.systems = {}
         self.faction_zones = {}  # {faction_name: [(center_x, center_y, center_z), radius]}
+        
+        # Initialize ether energy system
+        try:
+            from ether_energy import EtherEnergySystem
+            self.ether_energy = EtherEnergySystem(self.size_x, self.size_y, self.size_z)
+        except ImportError:
+            self.ether_energy = None
         
         # Load predefined systems from systems.py
         self.load_predefined_systems()
