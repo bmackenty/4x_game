@@ -1890,11 +1890,50 @@ class MapScreen(Screen):
         step_x = max(1, round(galaxy.size_x / self.virtual_width))
         step_y = max(1, round(galaxy.size_y / self.virtual_height))
 
+        # Calculate distance moved and fuel consumption
+        old_x, old_y, old_z = ship.coordinates
+        new_x = max(0, min(galaxy.size_x, old_x + dx * step_x))
+        new_y = max(0, min(galaxy.size_y, old_y + dy * step_y))
+        
+        # Calculate distance moved (Euclidean distance)
+        distance = math.sqrt((new_x - old_x)**2 + (new_y - old_y)**2)
+        
+        # Only consume fuel if actually moving
+        if distance > 0:
+            # Import fuel calculation function
+            try:
+                from navigation import calculate_fuel_consumption
+                target_coords = (new_x, new_y, old_z)
+                fuel_needed = calculate_fuel_consumption(ship, distance, target_coords, self.game)
+                
+                # Check if ship has enough fuel
+                if fuel_needed > ship.fuel:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message(f"Insufficient fuel! Need {fuel_needed}, have {ship.fuel}", "red")
+                    return  # Don't move if insufficient fuel
+                
+                # Consume fuel
+                ship.fuel -= fuel_needed
+                
+                # Show low fuel warning
+                if ship.fuel <= 10:
+                    msg_log = self.query_one(MessageLog)
+                    if ship.fuel <= 0:
+                        msg_log.add_message("⚠️ Fuel depleted! Ship cannot move further.", "red")
+                    else:
+                        msg_log.add_message(f"⚠️ Low fuel warning: {ship.fuel}/{ship.max_fuel} remaining", "yellow")
+            except ImportError:
+                # Fallback if navigation module not available
+                pass
+        
         # Move within galaxy bounds
-        x, y, z = ship.coordinates
-        x = max(0, min(galaxy.size_x, x + dx * step_x))
-        y = max(0, min(galaxy.size_y, y + dy * step_y))
-        ship.coordinates = (x, y, z)
+        ship.coordinates = (new_x, new_y, old_z)
+        
+        # Update coordinates for NPC encounter check
+        x, y, z = new_x, new_y, old_z
+        
+        # Update map to show new position and fuel level
+        self.update_map()
         
         # Track moves and update events every 3 moves
         self.move_count += 1

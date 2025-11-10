@@ -14,6 +14,81 @@ import random
 import math
 from systems import system_registry, SYSTEM_TYPES, FACTION_ZONES
 
+
+def calculate_fuel_consumption(ship, distance, target_coords=None, game=None):
+    """
+    Calculate fuel consumption for a jump based on distance, engine efficiency,
+    crew efficiency, engine type, and environmental factors.
+    
+    Args:
+        ship: Ship object with components and attributes
+        distance: Distance to travel in units
+        target_coords: Target coordinates (for future ether energy system)
+        game: Game object (for future ether energy system)
+    
+    Returns:
+        int: Fuel units needed for the jump
+    """
+    # Base fuel consumption: 2 fuel per unit distance
+    base_fuel = distance * 2.0
+    
+    # Get engine efficiency from ship attributes
+    engine_efficiency = 30.0  # Default baseline
+    engine_output = 30.0  # Default baseline
+    crew_efficiency = 30.0  # Default baseline (placeholder for future crew system)
+    
+    # Try to get attributes from ship profile
+    if hasattr(ship, 'attribute_profile') and ship.attribute_profile:
+        engine_efficiency = ship.attribute_profile.get('engine_efficiency', 30.0)
+        engine_output = ship.attribute_profile.get('engine_output', 30.0)
+        crew_efficiency = ship.attribute_profile.get('crew_efficiency', 30.0)
+    
+    # Convert efficiency from 0-100 scale to multiplier
+    # Baseline (30) = 1.0x, higher = more efficient (less fuel), lower = less efficient (more fuel)
+    # Formula: efficiency_multiplier = 1.0 - ((engine_efficiency - 30) / 100)
+    # This means:
+    # - 30 efficiency = 1.0x (baseline)
+    # - 50 efficiency = 0.8x (20% fuel savings)
+    # - 10 efficiency = 1.2x (20% fuel penalty)
+    efficiency_multiplier = 1.0 - ((engine_efficiency - 30.0) / 100.0)
+    efficiency_multiplier = max(0.5, min(1.5, efficiency_multiplier))  # Clamp between 0.5x and 1.5x
+    
+    # Crew efficiency modifier (placeholder - will be enhanced when crew system is implemented)
+    # Baseline (30) = 1.0x, higher = better crew = less fuel waste
+    crew_multiplier = 1.0 - ((crew_efficiency - 30.0) / 150.0)  # Smaller impact than engine
+    crew_multiplier = max(0.8, min(1.2, crew_multiplier))  # Clamp between 0.8x and 1.2x
+    
+    # Engine type modifier (based on engine output)
+    # Higher output engines may be less efficient but faster
+    # Lower output engines may be more efficient but slower
+    # For now, we'll use a simple modifier based on output
+    # High output (50+) = slight fuel penalty, low output (10-) = slight fuel bonus
+    output_multiplier = 1.0
+    if engine_output > 50:
+        output_multiplier = 1.1  # High output = 10% fuel penalty
+    elif engine_output < 10:
+        output_multiplier = 0.9  # Low output = 10% fuel bonus
+    
+    # Apply all multipliers
+    fuel_needed = base_fuel * efficiency_multiplier * crew_multiplier * output_multiplier
+    
+    # FUTURE: Ether energy coefficient
+    # This will be implemented when ether energy system is added
+    # It will act as a coefficient/drag factor based on etheric conditions at location
+    ether_coefficient = 1.0  # Placeholder - will be calculated from ether energy at target_coords
+    # Example future implementation:
+    # if target_coords and game and hasattr(game, 'ether_system'):
+    #     ether_coefficient = game.ether_system.get_ether_drag(target_coords)
+    fuel_needed *= ether_coefficient
+    
+    # Check for dangerous regions (existing system)
+    if game and hasattr(game, 'event_system'):
+        if game.event_system.is_location_dangerous(target_coords):
+            fuel_needed *= 1.5  # 50% fuel penalty in dangerous regions
+    
+    # Round to nearest integer
+    return max(1, int(round(fuel_needed)))
+
 class NPCShip:
     """NPC ship that moves around the galaxy"""
     def __init__(self, name, ship_class, start_coords, galaxy):
@@ -578,26 +653,24 @@ class Ship:
             # Fallback if ship_builder not available
             pass
     
-    def can_jump_to(self, target_coords, galaxy):
+    def can_jump_to(self, target_coords, galaxy, game=None):
         """Check if ship can jump to target coordinates"""
         distance = galaxy.calculate_distance(self.coordinates, target_coords)
-        fuel_needed = int(distance * 2)  # 2 fuel per unit distance
+        fuel_needed = calculate_fuel_consumption(self, distance, target_coords, game)
         
         return distance <= self.jump_range and fuel_needed <= self.fuel
     
     def jump_to(self, target_coords, galaxy, game=None):
         """Jump to target coordinates"""
-        if self.can_jump_to(target_coords, galaxy):
+        if self.can_jump_to(target_coords, galaxy, game):
             distance = galaxy.calculate_distance(self.coordinates, target_coords)
-            fuel_needed = int(distance * 2)
+            fuel_needed = calculate_fuel_consumption(self, distance, target_coords, game)
             
-            # Check for dangerous regions
+            # Check for dangerous regions (warning message)
             danger_warning = ""
             if game and hasattr(game, 'event_system'):
                 if game.event_system.is_location_dangerous(target_coords):
                     danger_warning = " WARNING: Entering dangerous region!"
-                    # Increase fuel cost in dangerous regions
-                    fuel_needed = int(fuel_needed * 1.5)
             
             self.coordinates = target_coords
             self.fuel -= fuel_needed
@@ -799,12 +872,12 @@ class NavigationSystem:
         if nearby_systems:
             print("Systems within jump range:")
             for i, (system, distance) in enumerate(nearby_systems[:10], 1):
-                fuel_cost = int(distance * 2)
+                coords = system['coordinates']
+                fuel_cost = calculate_fuel_consumption(self.current_ship, distance, coords, self.game)
                 status = "✓" if system["visited"] else "?"
                 reachable = "✓" if fuel_cost <= self.current_ship.fuel else "✗"
                 
                 # Check for bots and stations at this location
-                coords = system['coordinates']
                 extra_info = []
                 
                 # Check for stations
@@ -868,7 +941,7 @@ class NavigationSystem:
             
             target = (x, y, z)
             distance = self.galaxy.calculate_distance(self.current_ship.coordinates, target)
-            fuel_needed = int(distance * 2)
+            fuel_needed = calculate_fuel_consumption(self.current_ship, distance, target, self.game)
             
             print(f"\nTarget: ({x}, {y}, {z})")
             print(f"Distance: {distance:.1f} units")
@@ -913,7 +986,7 @@ class NavigationSystem:
         
         print("\nAvailable destinations:")
         for i, (system, distance) in enumerate(nearby_systems[:10], 1):
-            fuel_cost = int(distance * 2)
+            fuel_cost = calculate_fuel_consumption(self.current_ship, distance, system['coordinates'], self.game)
             can_reach = "✓" if fuel_cost <= self.current_ship.fuel else "✗"
             print(f"{i}. {system['name']} - Distance: {distance:.1f} - Fuel: {fuel_cost} {can_reach}")
         
@@ -921,7 +994,7 @@ class NavigationSystem:
             choice = int(input("\nSelect destination (number): ")) - 1
             if 0 <= choice < len(nearby_systems):
                 system, distance = nearby_systems[choice]
-                fuel_cost = int(distance * 2)
+                fuel_cost = calculate_fuel_consumption(self.current_ship, distance, system['coordinates'], self.game)
                 
                 if fuel_cost > self.current_ship.fuel:
                     print("Insufficient fuel!")
