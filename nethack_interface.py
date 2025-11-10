@@ -38,6 +38,7 @@ try:
     )
     from ship_classes import ship_classes
     from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
+    from save_game import get_save_files, save_game, load_game
     GAME_AVAILABLE = True
 except ImportError:
     GAME_AVAILABLE = False
@@ -64,6 +65,9 @@ except ImportError:
     SHIP_ATTRIBUTE_DEFINITIONS = {}
     def calculate_derived_attributes(_stats):  # type: ignore
         return {}
+    get_save_files = lambda: []
+    save_game = lambda game, name=None: False
+    load_game = lambda game, path: False
 
 
 class MessageLog(Static):
@@ -291,6 +295,175 @@ class GalacticHistoryScreen(Screen):
     def action_pop_screen(self):
         """Return to previous screen"""
         self.app.pop_screen()
+
+
+class MainMenuScreen(Screen):
+    """Main menu screen - New Game / Load Game"""
+    
+    BINDINGS = [
+        Binding("escape,q", "quit", "Quit", show=True),
+        Binding("n", "new_game", "New Game", show=True),
+        Binding("l", "load_game", "Load Game", show=True),
+        Binding("j,down", "move_down", "Down", show=False),
+        Binding("k,up", "move_up", "Up", show=False),
+        Binding("enter", "select", "Select", show=True),
+    ]
+    
+    def __init__(self):
+        super().__init__()
+        self.selected_index = 0
+        self.menu_items = ["New Game", "Load Game"]
+        self.save_files = []
+        self.show_saves = False
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="menu_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        """Initialize the menu"""
+        if GAME_AVAILABLE:
+            self.save_files = get_save_files()
+        self.update_display()
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message("Welcome to Galactic Empire 4X!", "bright_cyan")
+        msg_log.add_message("Press 'n' for New Game, 'l' for Load Game, or use arrow keys", "white")
+    
+    def update_display(self):
+        """Update the menu display"""
+        lines = []
+        lines.append("═" * 80)
+        lines.append("GALACTIC EMPIRE 4X".center(80))
+        lines.append("═" * 80)
+        lines.append("")
+        
+        if not self.show_saves:
+            # Main menu
+            lines.append("MAIN MENU".center(80))
+            lines.append("")
+            
+            for idx, item in enumerate(self.menu_items):
+                cursor = ">" if idx == self.selected_index else " "
+                lines.append(f"  {cursor} {item}")
+            
+            lines.append("")
+            lines.append("─" * 80)
+            lines.append("[n: New Game] [l: Load Game] [q/ESC: Quit]")
+        else:
+            # Load game menu
+            lines.append("LOAD GAME".center(80))
+            lines.append("")
+            
+            if not self.save_files:
+                lines.append("  No save files found.")
+                lines.append("")
+                lines.append("  Start a new game to create a save file.")
+            else:
+                for idx, save in enumerate(self.save_files):
+                    cursor = ">" if idx == self.selected_index else " "
+                    save_name = save.get('name', 'Unnamed Save')
+                    player_name = save.get('player_name', 'Unknown')
+                    character_class = save.get('character_class', 'Unknown')
+                    credits = save.get('credits', 0)
+                    turn = save.get('turn', 0)
+                    timestamp = save.get('timestamp', '')
+                    
+                    # Format timestamp if available
+                    if timestamp:
+                        try:
+                            from datetime import datetime
+                            dt = datetime.fromisoformat(timestamp)
+                            time_str = dt.strftime("%Y-%m-%d %H:%M")
+                        except Exception:
+                            time_str = timestamp[:16] if len(timestamp) > 16 else timestamp
+                    else:
+                        time_str = ""
+                    
+                    lines.append(f"  {cursor} {save_name}")
+                    lines.append(f"      Player: {player_name} | Class: {character_class}")
+                    lines.append(f"      Credits: {credits:,} | Turn: {turn} | {time_str}")
+                    lines.append("")
+            
+            lines.append("─" * 80)
+            lines.append("[j/k or ↑/↓: Navigate] [Enter: Load] [ESC: Back]")
+        
+        self.query_one("#menu_display", Static).update("\n".join(lines))
+    
+    def action_new_game(self):
+        """Start a new game"""
+        self.app.push_screen(CharacterCreationScreen())
+    
+    def action_load_game(self):
+        """Show load game menu"""
+        if not self.show_saves:
+            if not self.save_files:
+                msg_log = self.query_one(MessageLog)
+                msg_log.add_message("No save files found. Starting new game instead.", "yellow")
+                self.action_new_game()
+                return
+            self.show_saves = True
+            self.selected_index = 0
+            self.update_display()
+        else:
+            self.action_select()
+    
+    def action_select(self):
+        """Select current menu item"""
+        if not self.show_saves:
+            if self.selected_index == 0:  # New Game
+                self.action_new_game()
+            elif self.selected_index == 1:  # Load Game
+                self.action_load_game()
+        else:
+            # Load selected save file
+            if 0 <= self.selected_index < len(self.save_files):
+                save_file = self.save_files[self.selected_index]
+                save_path = save_file.get('path')
+                
+                if save_path:
+                    # Create game instance and load
+                    game = Game()
+                    if load_game(game, save_path):
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message(f"Loaded: {save_file.get('name', 'Save')}", "green")
+                        # Push main game screen
+                        self.app.push_screen(MainGameScreen(game=game))
+                    else:
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message("Failed to load save file! Check console for errors.", "red")
+                        import traceback
+                        traceback.print_exc()
+    
+    def action_move_down(self):
+        """Move selection down"""
+        if self.show_saves:
+            if self.selected_index < len(self.save_files) - 1:
+                self.selected_index += 1
+                self.update_display()
+        else:
+            if self.selected_index < len(self.menu_items) - 1:
+                self.selected_index += 1
+                self.update_display()
+    
+    def action_move_up(self):
+        """Move selection up"""
+        if self.selected_index > 0:
+            self.selected_index -= 1
+            self.update_display()
+    
+    def action_quit(self):
+        """Quit the application"""
+        self.app.exit()
+    
+    def on_key(self, event):
+        """Handle key events"""
+        key = event.key
+        if key == "escape" and self.show_saves:
+            self.show_saves = False
+            self.selected_index = 0
+            self.update_display()
+            event.stop()
+            event.prevent_default()
 
 
 class CharacterCreationScreen(Screen):
@@ -1310,6 +1483,7 @@ class MainGameScreen(Screen):
     
     BINDINGS = [
         Binding("q", "quit_game", "Quit", show=False),
+        Binding("ctrl+s", "save_game", "Save", show=True),
         Binding("i", "inventory", "Inventory", show=True),
         Binding("m", "map", "Map", show=True),
         Binding("n", "news", "News", show=True),
@@ -1319,48 +1493,62 @@ class MainGameScreen(Screen):
         Binding("p", "player_ship", "Player Ship", show=True),
     ]
     
-    def __init__(self, character_data):
+    def __init__(self, character_data=None, game=None):
         super().__init__()
-        self.character_data = character_data
-        self.game = Game() if GAME_AVAILABLE else None
-        self.turn_count = 0
+        # Can be initialized with character_data (new game) or game (loaded game)
+        if game:
+            self.game = game
+            # Reconstruct character_data from game for display purposes
+            self.character_data = {
+                'name': game.player_name,
+                'species': game.character_species,
+                'background': game.character_background,
+                'faction': game.character_faction,
+                'class': game.character_class,
+                'stats': game.character_stats,
+            }
+        else:
+            self.character_data = character_data
+            self.game = Game() if GAME_AVAILABLE else None
+            
+            # Initialize game with character
+            if self.game and self.character_data:
+                self.game.player_name = character_data['name']
+                self.game.character_species = character_data['species']
+                self.game.character_background = character_data['background']
+                self.game.character_faction = character_data['faction']
+                self.game.character_class = character_data['class']
+                self.game.character_stats = character_data['stats']
+                self.game.character_created = True
+
+                # Ensure player starts with a ship, based on class defaults
+                try:
+                    cls = self.game.character_class
+                    if cls and cls in character_classes:
+                        class_info = character_classes[cls]
+                        # Add any class-defined starting ships
+                        if 'starting_ships' in class_info:
+                            for ship_name in class_info['starting_ships']:
+                                if ship_name not in self.game.owned_ships:
+                                    self.game.owned_ships.append(ship_name)
+                    # Fallback: always grant a Basic Transport if still no ships
+                    if not self.game.owned_ships:
+                        self.game.owned_ships.append("Basic Transport")
+                except Exception:
+                    # Conservative fallback if anything goes wrong
+                    if not self.game.owned_ships:
+                        self.game.owned_ships.append("Basic Transport")
+
+                # Ensure navigation has a current ship to use on the map
+                try:
+                    if hasattr(self.game, 'navigation') and self.game.navigation and not self.game.navigation.current_ship:
+                        first_ship = self.game.owned_ships[0] if self.game.owned_ships else "Basic Transport"
+                        # Use the ship name as class for standard ships to match Navigation expectations
+                        self.game.navigation.current_ship = Ship(first_ship, first_ship)
+                except Exception:
+                    pass
         
-        # Initialize game with character
-        if self.game:
-            self.game.player_name = character_data['name']
-            self.game.character_species = character_data['species']
-            self.game.character_background = character_data['background']
-            self.game.character_faction = character_data['faction']
-            self.game.character_class = character_data['class']
-            self.game.character_stats = character_data['stats']
-            self.game.character_created = True
-
-            # Ensure player starts with a ship, based on class defaults
-            try:
-                cls = self.game.character_class
-                if cls and cls in character_classes:
-                    class_info = character_classes[cls]
-                    # Add any class-defined starting ships
-                    if 'starting_ships' in class_info:
-                        for ship_name in class_info['starting_ships']:
-                            if ship_name not in self.game.owned_ships:
-                                self.game.owned_ships.append(ship_name)
-                # Fallback: always grant a Basic Transport if still no ships
-                if not self.game.owned_ships:
-                    self.game.owned_ships.append("Basic Transport")
-            except Exception:
-                # Conservative fallback if anything goes wrong
-                if not self.game.owned_ships:
-                    self.game.owned_ships.append("Basic Transport")
-
-            # Ensure navigation has a current ship to use on the map
-            try:
-                if hasattr(self.game, 'navigation') and self.game.navigation and not self.game.navigation.current_ship:
-                    first_ship = self.game.owned_ships[0] if self.game.owned_ships else "Basic Transport"
-                    # Use the ship name as class for standard ships to match Navigation expectations
-                    self.game.navigation.current_ship = Ship(first_ship, first_ship)
-            except Exception:
-                pass
+        self.turn_count = 0
 
     def action_history(self):
         """Open the Galactic History screen"""
@@ -1375,7 +1563,10 @@ class MainGameScreen(Screen):
     def on_mount(self):
         """Initialize the game screen"""
         self.update_display()
-        self.query_one(MessageLog).add_message(f"Welcome, {self.character_data['name']}!")
+        if self.character_data:
+            self.query_one(MessageLog).add_message(f"Welcome, {self.character_data['name']}!")
+        elif self.game:
+            self.query_one(MessageLog).add_message(f"Welcome back, {self.game.player_name}!")
         self.query_one(MessageLog).add_message("Press 'n' for news, 'm' for map, 'i' for inventory, 's' for status")
         if self.game and self.game.owned_ships:
             starter = ", ".join(self.game.owned_ships)
@@ -1384,7 +1575,13 @@ class MainGameScreen(Screen):
     def update_display(self):
         """Update the main display"""
         # Status bar
-        status = f"[{self.character_data['name']}] [{self.character_data['class']}] "
+        if self.character_data:
+            status = f"[{self.character_data['name']}] [{self.character_data['class']}] "
+        elif self.game:
+            status = f"[{self.game.player_name}] [{self.game.character_class}] "
+        else:
+            status = "[Unknown] "
+        
         if self.game:
             status += f"Credits: {self.game.credits:,} | "
             status += f"Location: {self.game.current_location.get('name', 'Unknown') if hasattr(self.game, 'current_location') and self.game.current_location else 'Space'}"
@@ -1397,9 +1594,16 @@ class MainGameScreen(Screen):
         lines.append("GALACTIC EMPIRE MANAGEMENT".center(80))
         lines.append("═" * 80)
         lines.append("")
-        lines.append(f"Commander: {self.character_data['name']}")
-        lines.append(f"Species: {self.character_data['species']} | Class: {self.character_data['class']}")
-        lines.append(f"Faction: {self.character_data['faction']} | Background: {self.character_data['background']}")
+        
+        if self.character_data:
+            lines.append(f"Commander: {self.character_data['name']}")
+            lines.append(f"Species: {self.character_data['species']} | Class: {self.character_data['class']}")
+            lines.append(f"Faction: {self.character_data['faction']} | Background: {self.character_data['background']}")
+        elif self.game:
+            lines.append(f"Commander: {self.game.player_name}")
+            lines.append(f"Species: {self.game.character_species} | Class: {self.game.character_class}")
+            lines.append(f"Faction: {self.game.character_faction} | Background: {self.game.character_background}")
+        
         lines.append("")
         lines.append("─" * 80)
         lines.append("")
@@ -1464,8 +1668,59 @@ class MainGameScreen(Screen):
         self.app.push_screen(PlayerShipScreen(self.game))
         self.advance_turn()
         
+    def action_save_game(self):
+        """Manually save the game"""
+        if self.game and GAME_AVAILABLE:
+            try:
+                from save_game import save_game, _debug_log
+                _debug_log("Manual save triggered")
+                save_name = f"{self.game.player_name}_{self.game.character_class}"
+                if save_game(self.game, save_name):
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message("Game saved successfully!", "green")
+                else:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message("Save failed! Check save_debug.log for details.", "yellow")
+            except Exception as e:
+                msg_log = self.query_one(MessageLog)
+                msg_log.add_message(f"Save error: {e}", "red")
+                import traceback
+                traceback.print_exc()
+        else:
+            msg_log = self.query_one(MessageLog)
+            msg_log.add_message("Cannot save: Game not available", "yellow")
+    
     def action_quit_game(self):
-        """Quit the game"""
+        """Quit the game and save"""
+        print(f"[QUIT DEBUG] action_quit_game called!")
+        print(f"[QUIT DEBUG] self.game = {self.game}")
+        print(f"[QUIT DEBUG] GAME_AVAILABLE = {GAME_AVAILABLE}")
+        
+        if self.game and GAME_AVAILABLE:
+            # Auto-save before quitting
+            try:
+                print(f"[QUIT] Attempting to save game...")
+                print(f"[QUIT] Player name: {self.game.player_name}, Class: {self.game.character_class}")
+                save_name = f"{self.game.player_name}_{self.game.character_class}"
+                print(f"[QUIT] Save name will be: {save_name}")
+                if save_game(self.game, save_name):
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message("Game saved successfully!", "green")
+                    print("[QUIT] Save successful!")
+                else:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message("Warning: Save failed! Check console for errors.", "yellow")
+                    print("[QUIT] Save failed!")
+                    import traceback
+                    traceback.print_exc()
+            except Exception as e:
+                msg_log = self.query_one(MessageLog)
+                msg_log.add_message(f"Warning: Could not save game: {e}", "yellow")
+                print(f"[QUIT] Exception during save: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"[QUIT] Game not available or no game object. GAME_AVAILABLE={GAME_AVAILABLE}, game={self.game}")
         self.app.exit()
 
 
@@ -4095,8 +4350,27 @@ class NetHackInterface(App):
     TITLE = "Galactic Empire 4X"
     
     def on_mount(self):
-        """Start with character creation"""
-        self.push_screen(CharacterCreationScreen())
+        """Start with main menu"""
+        self.push_screen(MainMenuScreen())
+    
+    def on_exit(self):
+        """Called when app is exiting - save game if possible"""
+        print("[APP EXIT] App is exiting, attempting to save...")
+        try:
+            # Try to get the current screen
+            current_screen = self.screen
+            if isinstance(current_screen, MainGameScreen):
+                if hasattr(current_screen, 'game') and current_screen.game and GAME_AVAILABLE:
+                    print("[APP EXIT] Found MainGameScreen with game, saving...")
+                    save_name = f"{current_screen.game.player_name}_{current_screen.game.character_class}"
+                    if save_game(current_screen.game, save_name):
+                        print("[APP EXIT] Save successful!")
+                    else:
+                        print("[APP EXIT] Save failed!")
+        except Exception as e:
+            print(f"[APP EXIT] Error during save: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 class RepairScreen(Screen):

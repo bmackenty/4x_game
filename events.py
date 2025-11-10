@@ -909,6 +909,9 @@ class EventSystem:
         """Update active events and generate new ones"""
         current_time = datetime.now()
         
+        # Filter out any non-Event objects (safety check for corrupted data)
+        self.active_events = [e for e in self.active_events if isinstance(e, Event)]
+        
         # Remove expired events
         expired_events = []
         for event in self.active_events:
