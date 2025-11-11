@@ -99,17 +99,17 @@ class EtherEnergySystem:
         # Zone types with their friction characteristics
         zone_types = [
             # Low friction zones (enhance fuel efficiency)
-            ("Void Current", 0.6, 0.7),  # Strong enhancement
-            ("Ether Stream", 0.75, 0.85),  # Moderate enhancement
-            ("Cosmic Breeze", 0.85, 0.95),  # Mild enhancement
+            ("Void Current", 0.4, 0.5),  # Strong enhancement
+            ("Ether Stream", 0.55, 0.65),  # Moderate enhancement
+            ("Cosmic Breeze", 0.7, 0.8),  # Mild enhancement
             
             # High friction zones (reduce fuel efficiency)
-            ("Flux Storm", 1.3, 1.5),  # Moderate penalty
-            ("Etheric Turbulence", 1.5, 1.8),  # Strong penalty
-            ("Void Rift", 1.8, 2.2),  # Very strong penalty
+            ("Flux Storm", 1.1, 1.25),  # Moderate penalty
+            ("Etheric Turbulence", 1.25, 1.4),  # Strong penalty
+            ("Void Rift", 1.4, 1.6),  # Very strong penalty
             
             # Neutral zones (slight variation)
-            ("Stable Ether", 0.95, 1.05),  # Nearly neutral
+            ("Stable Ether", 0.85, 0.95),  # Nearly neutral
         ]
         
         # Generate 15-25 zones
@@ -155,7 +155,7 @@ class EtherEnergySystem:
         combined_friction = sum(frictions) / len(frictions)
         
         # Clamp to reasonable range
-        return max(0.5, min(2.0, combined_friction))
+        return max(0.3, min(1.8, combined_friction))
     
     def get_zone_at(self, x: int, y: int, z: int) -> Optional[EtherEnergyZone]:
         """Get the primary zone at given coordinates (strongest effect)"""

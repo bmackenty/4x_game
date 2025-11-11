@@ -585,8 +585,8 @@ class Ship:
         self.name = name
         self.ship_class = ship_class
         self.coordinates = (50, 50, 25)  # Start at galaxy center
-        self.fuel = 100
-        self.max_fuel = 100
+        self.fuel = 200
+        self.max_fuel = 200
         self.jump_range = 15  # Maximum jump distance
         self.cargo = {}
         self.max_cargo = 100
@@ -613,13 +613,13 @@ class Ship:
         else:
             # Legacy system for backwards compatibility
             ship_stats = {
-                "Basic Transport": {"fuel": 100, "range": 15, "cargo": 100},
-                "Starter Vessel": {"fuel": 100, "range": 15, "cargo": 100},
-                "Aurora-Class Freighter": {"fuel": 150, "range": 20, "cargo": 200},
-                "Stellar Voyager": {"fuel": 200, "range": 25, "cargo": 75},
-                "Aurora Ascendant": {"fuel": 120, "range": 18, "cargo": 80},
-                "Nebula Drifter": {"fuel": 180, "range": 22, "cargo": 90},
-                "Celestium-Class Communication Ship": {"fuel": 130, "range": 20, "cargo": 60}
+                "Basic Transport": {"fuel": 200, "range": 15, "cargo": 100},
+                "Starter Vessel": {"fuel": 200, "range": 15, "cargo": 100},
+                "Aurora-Class Freighter": {"fuel": 300, "range": 20, "cargo": 200},
+                "Stellar Voyager": {"fuel": 400, "range": 25, "cargo": 75},
+                "Aurora Ascendant": {"fuel": 240, "range": 18, "cargo": 80},
+                "Nebula Drifter": {"fuel": 360, "range": 22, "cargo": 90},
+                "Celestium-Class Communication Ship": {"fuel": 260, "range": 20, "cargo": 60}
             }
             
             stats = ship_stats.get(self.ship_class, ship_stats["Basic Transport"])
@@ -654,8 +654,8 @@ class Ship:
             self.max_cargo = max(30, int(mass_efficiency * 3 + hull_integrity))
 
             fuel_capacity = max(
-                40,
-                int(energy_storage * 2 + engine_efficiency * 1.5),
+                80,
+                int(energy_storage * 3 + engine_efficiency * 2.5),
             )
             self.max_fuel = fuel_capacity
             self.fuel = min(self.fuel, self.max_fuel)
