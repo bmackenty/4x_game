@@ -592,6 +592,10 @@ class Ship:
         self.max_cargo = 100
         self.scan_range = 5.0  # Default scanning range in map units
         
+        # Crew system
+        self.crew = []  # List of CrewMember objects
+        self.max_crew = 10  # Default crew capacity
+        
         # Component tracking for upgrade system
         self.components = {
             "hull": "Valkyrie Lattice Frame",
@@ -629,12 +633,27 @@ class Ship:
             self.max_cargo = stats["cargo"]
     
     def calculate_stats_from_components(self):
-        """Calculate ship stats from installed components"""
+        """Calculate ship stats from installed components and crew bonuses"""
         try:
             from ship_builder import aggregate_component_metadata, compute_ship_profile
 
             profile = compute_ship_profile(self.components or {})
             metadata = aggregate_component_metadata(self.components or {})
+
+            # Apply crew bonuses to the profile
+            if hasattr(self, 'crew') and self.crew:
+                try:
+                    from crew import calculate_crew_bonuses
+                    crew_bonuses = calculate_crew_bonuses(self.crew)
+                    
+                    # Add crew bonuses to profile
+                    for stat, bonus in crew_bonuses.items():
+                        if stat in profile:
+                            profile[stat] = profile[stat] + bonus
+                        else:
+                            profile[stat] = 30.0 + bonus  # Base value + bonus
+                except ImportError:
+                    pass
 
             self.attribute_profile = profile
             self.component_metadata = metadata

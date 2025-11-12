@@ -3981,48 +3981,37 @@ class StatusScreen(Screen):
 
 
 class PlayerShipScreen(Screen):
-    """Detailed player ship overview and component browser."""
+    """Detailed player ship overview styled like the character sheet."""
 
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("j,down", "next_component", "Next Component", show=False),
-        Binding("k,up", "prev_component", "Previous Component", show=False),
+        Binding("j,down", "scroll_down", "Scroll Down", show=True),
+        Binding("k,up", "scroll_up", "Scroll Up", show=True),
     ]
 
     def __init__(self, game):
         super().__init__()
         self.game = game
-        self.selection_index = 0
-        self._component_entries: list[dict] = []
+        self.scroll_position = 0
 
     def compose(self) -> ComposeResult:
         yield Static(id="ship_display")
         yield MessageLog()
 
-    # Action aliases for bindings
-    def action_next_component(self):
-        self._move_selection(1)
-
-    def action_prev_component(self):
-        self._move_selection(-1)
-
     def on_mount(self):
         self.update_display()
-        self.query_one(MessageLog).add_message("Viewing player ship overview.", "bright_cyan")
-
-    def on_key(self, event) -> None:
-        key = event.key
-        if key in ("j", "down"):
-            event.stop()
-            event.prevent_default()
-            self._move_selection(1)
-        elif key in ("k", "up"):
-            event.stop()
-            event.prevent_default()
-            self._move_selection(-1)
+        self.query_one(MessageLog).add_message("Viewing ship overview.", "bright_cyan")
 
     def action_pop_screen(self):
         self.app.pop_screen()
+
+    def action_scroll_down(self):
+        self.scroll_position += 1
+        self.update_display()
+
+    def action_scroll_up(self):
+        self.scroll_position = max(0, self.scroll_position - 1)
+        self.update_display()
 
     def _get_ship(self):
         if not self.game:
@@ -4032,285 +4021,393 @@ class PlayerShipScreen(Screen):
             return None
         return getattr(navigation, "current_ship", None)
 
-    def _move_selection(self, delta: int):
-        if not self._component_entries:
-            return
-        self.selection_index = (self.selection_index + delta) % len(self._component_entries)
-        self.update_display()
-
     def update_display(self):
         ship = self._get_ship()
-        lines: list[str] = []
-        lines.append("═" * 80)
-        lines.append("PLAYER SHIP OVERVIEW".center(80))
-        lines.append("═" * 80)
-        lines.append("")
-
+        
         if not ship:
+            lines = []
+            lines.append("═" * 80)
+            lines.append("SHIP SHEET".center(80))
+            lines.append("═" * 80)
+            lines.append("")
             lines.append("  No ship is currently active.")
-            lines.append("  Launch or select a vessel from the navigation controls to view details.")
+            lines.append("  Launch or select a vessel from the navigation controls.")
             lines.append("")
             lines.append("─" * 80)
             lines.append("[q/ESC: Back]")
-            self._component_entries = []
-            self.selection_index = 0
             self.query_one("#ship_display", Static).update("\n".join(lines))
             return
 
-        class_info = ship_classes.get(ship.ship_class, {}) if GAME_AVAILABLE else {}
-        lines.append(f"  Name:  {ship.name}")
-        lines.append(f"  Class: {ship.ship_class}")
-        if class_info.get("Class"):
-            lines.append(f"  Role:  {class_info.get('Class')}")
-        if class_info.get("Description"):
-            for chunk in textwrap.wrap(class_info["Description"], width=76):
-                lines.append(f"  {chunk}")
-        lines.append("")
+        # Render the ship sheet using character sheet style formatting
+        content_lines = self._render_ship_sheet(ship)
+        
+        # Handle scrolling
+        terminal_height = 40  # Approximate visible lines
+        total_lines = len(content_lines)
+        max_scroll = max(0, total_lines - terminal_height + 3)
+        self.scroll_position = max(0, min(self.scroll_position, max_scroll))
+        
+        visible_lines = content_lines[self.scroll_position:self.scroll_position + terminal_height]
+        
+        # Add scroll indicator
+        if self.scroll_position > 0 or total_lines > terminal_height:
+            scroll_info = f"[Line {self.scroll_position + 1}-{min(self.scroll_position + terminal_height, total_lines)}/{total_lines}]"
+            if self.scroll_position < max_scroll:
+                visible_lines.append(f"[j/↓: Scroll Down] [k/↑: Scroll Up] [q/ESC: Back] {scroll_info}".center(80))
+            else:
+                visible_lines.append(f"[k/↑: Scroll Up] [q/ESC: Back] {scroll_info}".center(80))
+        else:
+            visible_lines.append("[q/ESC: Back]".center(80))
+        
+        self.query_one("#ship_display", Static).update("\n".join(visible_lines))
 
-        attributes = [
-            ("Hull Integrity", getattr(ship, "health", "—")),
-            ("Fuel", f"{getattr(ship, 'fuel', 0)}/{getattr(ship, 'max_fuel', 0)}"),
-            ("Jump Range", f"{getattr(ship, 'jump_range', 0)} units"),
-            ("Cargo Capacity", f"{getattr(ship, 'max_cargo', 0)} units"),
-            ("Scan Range", f"{getattr(ship, 'scan_range', 0)} units"),
-        ]
+    def _render_ship_sheet(self, ship) -> list[str]:
+        """Render ship sheet in the same style as character sheet"""
+        
+        # Constants for formatting - match character sheet exactly
+        inner_width = 78
+        left_width = 35
+        right_width = 35
 
-        power_summary = {}
-        if ship_components:
-            try:
-                power_summary = calculate_power_usage(getattr(ship, "components", {}))
-            except Exception:
-                power_summary = {}
-        if power_summary:
-            used = power_summary.get("power_used")
-            output = power_summary.get("power_output")
-            percent = power_summary.get("power_percentage")
-            if used is not None and output is not None:
-                attributes.append(("Power Usage", f"{used}/{output}"))
-            if percent is not None and output:
-                attributes.append(("Power Load", f"{percent:.1f}%"))
+        def colorize(text, style):
+            return f"[{style}]{text}[/{style}]"
 
-        lines.append("  Ship Attributes:")
-        for label, value in attributes:
-            lines.append(f"    {label:<18}: {value}")
-        lines.append("")
+        def fmt_center(text):
+            trimmed = text[:inner_width]
+            return f"║{trimmed.center(inner_width)}║"
 
-        self._component_entries = self._build_component_entries(ship)
-        if self.selection_index >= len(self._component_entries):
-            self.selection_index = max(0, len(self._component_entries) - 1)
+        def fmt_line(text=""):
+            trimmed = text[:inner_width - 2]
+            return f"║ {trimmed.ljust(inner_width - 2)} ║"
 
+        def fmt_two_col(left, right):
+            left_trimmed = left[:left_width]
+            right_trimmed = right[:right_width]
+            content = f"{left_trimmed.ljust(left_width)} │ {right_trimmed.ljust(right_width)}"
+            return f"║ {content.ljust(inner_width - 2)} ║"
+
+        def wrap_column(text, width):
+            return textwrap.wrap(text, width=width, break_long_words=True, break_on_hyphens=False) or [text[:width]]
+
+        def render_two_col_pair(left_text, right_text):
+            left_chunks = wrap_column(left_text, left_width)
+            right_chunks = wrap_column(right_text, right_width)
+            rows = []
+            for idx in range(max(len(left_chunks), len(right_chunks))):
+                left_part = left_chunks[idx] if idx < len(left_chunks) else ""
+                right_part = right_chunks[idx] if idx < len(right_chunks) else ""
+                rows.append(fmt_two_col(left_part, right_part))
+            return rows
+
+        def render_two_col_block(left_lines, right_lines):
+            rows = []
+            for idx in range(max(len(left_lines), len(right_lines))):
+                left_part = left_lines[idx] if idx < len(left_lines) else ""
+                right_part = right_lines[idx] if idx < len(right_lines) else ""
+                rows.append(fmt_two_col(left_part, right_part))
+            return rows
+
+        def render_bullets(entries):
+            if not entries:
+                return [fmt_line("• None")]
+            bullet_lines = []
+            for entry in entries:
+                wrapped = textwrap.wrap(entry, width=inner_width - 4, break_long_words=True, break_on_hyphens=False)
+                if not wrapped:
+                    wrapped = [entry[: inner_width - 4]]
+                for idx, chunk in enumerate(wrapped):
+                    prefix = "• " if idx == 0 else "  "
+                    bullet_lines.append(fmt_line(f"{prefix}{chunk}"))
+            return bullet_lines
+
+        def format_number(value):
+            if value is None:
+                return "—"
+            if isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    if value.is_integer():
+                        return f"{int(value):,}"
+                    return f"{value:,.2f}"
+                return f"{value:,}"
+            return str(value)
+
+        # Gather ship data
+        ship_name = getattr(ship, "name", "Unknown Vessel")
+        ship_class = getattr(ship, "ship_class", "Unknown Class")
+        coords = getattr(ship, "coordinates", (0, 0, 0))
+        
+        # Get class info
+        class_info = ship_classes.get(ship_class, {}) if GAME_AVAILABLE else {}
+        class_role = class_info.get("Class", "—")
+        class_desc = class_info.get("Description", "")
+        
+        # Get component info
+        components = getattr(ship, "components", {}) or {}
         profile = getattr(ship, "attribute_profile", None)
         metadata = getattr(ship, "component_metadata", None)
+        
         if profile is None or metadata is None:
             try:
-                profile = compute_ship_profile(getattr(ship, "components", {}))
-                metadata = aggregate_component_metadata(getattr(ship, "components", {}))
+                profile = compute_ship_profile(components)
+                metadata = aggregate_component_metadata(components)
             except Exception:
                 profile = {}
                 metadata = {"total_cost": 0.0, "combined_failure_chance": 0.0, "faction_locks": [], "entries": []}
+        
+        # Calculate stats
+        health = format_number(getattr(ship, "health", None))
+        fuel = f"{format_number(getattr(ship, 'fuel', 0))}/{format_number(getattr(ship, 'max_fuel', 0))}"
+        jump_range = f"{format_number(getattr(ship, 'jump_range', 0))} units"
+        cargo = format_number(getattr(ship, "max_cargo", 0))
+        scan_range = f"{format_number(getattr(ship, 'scan_range', 0))} units"
+        
+        # Power usage
+        power_summary = {}
+        if ship_components:
+            try:
+                power_summary = calculate_power_usage(components)
+            except Exception:
+                power_summary = {}
+        
+        power_used = format_number(power_summary.get("power_used"))
+        power_output = format_number(power_summary.get("power_output"))
+        power_pct = power_summary.get("power_percentage")
+        power_load = f"{power_pct:.1f}%" if power_pct is not None else "—"
+        
+        total_cost = format_number(metadata.get("total_cost", 0))
+        failure_chance = metadata.get("combined_failure_chance", 0.0)
+        failure_pct = f"{float(failure_chance) * 100:.1f}%" if isinstance(failure_chance, (int, float)) else "—"
+        faction_locks = metadata.get("faction_locks", [])
+        
+        # Build the sheet
+        top_border = "╔" + "═" * inner_width + "╗"
+        section_divider = "╠" + "═" * inner_width + "╣"
+        sub_divider = "╟" + "─" * inner_width + "╢"
+        bottom_border = "╚" + "═" * inner_width + "╝"
 
-        detail_block = self._component_detail_block(self._component_entries[self.selection_index])
+        lines = []
+        lines.append(colorize(top_border, "bold cyan"))
+        lines.append(colorize(fmt_center("SHIP SHEET"), "bold cyan"))
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("VESSEL IDENTITY"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
 
-        lines.append("─" * 80)
-        lines.append("SHIP COMPONENTS")
-        lines.append("")
+        identity_pairs = [
+            (f"Name: {ship_name}", f"Class: {ship_class}"),
+            (f"Role: {class_role}", f"Location: {coords}"),
+        ]
 
-        if not self._component_entries:
-            lines.append("  No components installed.")
-        else:
-            left_width = 38
-            detail_lines = []
-            if detail_block:
-                detail_lines.extend(["│ COMPONENT DETAILS", "│ " + "─" * 38])
-                detail_lines.extend(detail_block)
-            else:
-                detail_lines.append("│ COMPONENT DETAILS")
-                detail_lines.append("│ " + "─" * 38)
+        for left_text, right_text in identity_pairs:
+            lines.extend(render_two_col_pair(left_text, right_text))
 
-            visible_count = 12
-            scroll_offset = max(0, self.selection_index - visible_count + 3)
-            visible_entries = self._component_entries[scroll_offset:scroll_offset + visible_count]
+        if class_desc:
+            lines.append(fmt_line())
+            lines.append(fmt_line("Description:"))
+            desc_lines = wrap_column(class_desc, inner_width - 2)
+            for desc_line in desc_lines:
+                lines.append(fmt_line(f"  {desc_line}"))
 
-            for i, entry in enumerate(visible_entries):
-                actual_index = scroll_offset + i
-                cursor = ">" if actual_index == self.selection_index else " "
-                label = entry.get("label", "")
-                left_text = f"  {cursor} {label}"[:left_width].ljust(left_width)
-                right_text = detail_lines[i] if i < len(detail_lines) else "│"
-                lines.append(left_text + "  " + right_text)
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("SHIP STATISTICS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
 
-            if detail_lines and len(detail_lines) > len(visible_entries):
-                padding = " " * left_width
-                for extra in detail_lines[len(visible_entries):]:
-                    lines.append(f"{padding}  {extra}")
+        stat_pairs = [
+            (f"Hull Integrity: {health}", f"Power Load: {power_load}"),
+            (f"Fuel Reserves: {fuel}", f"Power Usage: {power_used}/{power_output}"),
+            (f"Jump Range: {jump_range}", f"Scan Range: {scan_range}"),
+            (f"Cargo Capacity: {cargo} units", f"Failure Risk: {failure_pct}"),
+        ]
 
-        lines.append("")
-        lines.append("─" * 80)
-        lines.append("ATTRIBUTE SUMMARY")
-        lines.append("")
-        self._append_attribute_summary(lines, profile, metadata)
+        for left_text, right_text in stat_pairs:
+            lines.extend(render_two_col_pair(left_text, right_text))
 
-        lines.append("")
-        lines.append("─" * 80)
-        lines.append("CREW ROSTER (COMING SOON)")
-        lines.append("")
-        lines.append("  Crew assignments will allow specialists to enhance ship attributes in a future update.")
-        lines.append("")
-        lines.append("─" * 80)
-        lines.append("[j/k or ↑/↓: navigate components] [q/ESC: Back]")
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("INSTALLED COMPONENTS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
 
-        self.query_one("#ship_display", Static).update("\n".join(lines))
-
-    def _build_component_entries(self, ship) -> list[dict]:
-        entries: list[dict] = []
-
-        if getattr(ship, "ship_class", None):
-            entries.append(
-                {"category": "class", "name": ship.ship_class, "label": f"Ship Class: {ship.ship_class}"}
-            )
-
-        components = getattr(ship, "components", {}) or {}
-        collected = collect_component_entries(components)
-
-        counters: dict[str, int] = {}
-        multi_categories = {"weapons", "shields", "support", "computing", "communications", "crew_modules"}
-
-        for entry in collected:
-            category = entry["category"]
-            counters[category] = counters.get(category, 0) + 1
-            display_label = entry["label"]
-            if category in multi_categories:
-                display_label = f"{display_label} {counters[category]}"
-            entries.append(
-                {
-                    "category": category,
-                    "name": entry["name"],
-                    "label": f"{display_label}: {entry['name']}",
-                    "display_category": entry["label"],
-                    "data": entry["data"],
-                }
-            )
-
-        if not entries:
-            entries.append({"category": None, "name": None, "label": "No components installed", "data": None})
-
-        return entries
-
-    def _component_detail_block(self, entry: dict) -> list[str]:
-        category = entry.get("category")
-        if category == "class":
-            return self._format_class_details(entry.get("name"))
-
-        if not category or not entry.get("name"):
-            return ["│ No component selected."]
-
-        data = entry.get("data")
-        if not data:
-            return [f"│ Data unavailable for {entry.get('name')}"]
-
-        display_category = entry.get("display_category") or entry.get("label") or "Component"
-        return self._format_generic_component_details(display_category, entry["name"], data)
-
-    def _format_class_details(self, class_name: Optional[str]) -> list[str]:
-        lines: list[str] = []
-        if not class_name:
-            lines.append("│ No ship class information available.")
-            return lines
-
-        data = ship_classes.get(class_name, {}) if GAME_AVAILABLE else {}
-        lines.append(f"│ Class: {class_name}")
-        role = data.get("Class")
-        if role:
-            lines.append(f"│ Role: {role}")
-        description = data.get("Description")
-        if description:
-            lines.append("│")
-            lines.append("│ Description:")
-            lines.extend(self._wrap_detail_text(description))
-        else:
-            lines.append("│ No additional information available.")
-        return lines
-
-    def _format_generic_component_details(self, label: str, name: str, data: dict) -> list[str]:
-        lines = [f"│ {label}: {name}"]
-
-        cost = self._format_number(data.get("cost"))
-        failure = data.get("failure_chance")
-        failure_text = f"{float(failure) * 100:.1f}%" if isinstance(failure, (int, float)) else "—"
-        lines.append(f"│ Cost: {cost}   Failure Chance: {failure_text}")
-
-        factions = data.get("faction_lock")
-        if factions:
-            if isinstance(factions, str):
-                faction_text = factions
-            else:
-                faction_text = ", ".join(str(f) for f in factions)
-            lines.append(f"│ Faction Lock: {faction_text}")
-
-        lore = data.get("lore") or data.get("description")
-        if lore:
-            lines.append("│")
-            lines.append("│ Lore:")
-            lines.extend(self._wrap_detail_text(lore))
-
-        attributes = data.get("attributes", {})
-        if attributes:
-            lines.append("│")
-            lines.append("│ Attribute Deltas:")
-            top_deltas = sorted(attributes.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
-            for attr_id, delta in top_deltas:
-                attr_meta = SHIP_ATTRIBUTE_DEFINITIONS.get(attr_id, {})
-                attr_name = attr_meta.get("name", attr_id.replace("_", " ").title())
-                lines.append(f"│   {attr_name}: {delta:+.1f}")
-
-        return lines
-
-    def _append_attribute_summary(self, lines: list[str], profile: Mapping[str, float], metadata: Mapping[str, object]) -> None:
-        if not profile:
-            lines.append("  Unable to compute attribute profile for this vessel.")
-            return
-
-        lines.append("  Category Averages:")
-        for category in SHIP_ATTRIBUTE_CATEGORIES:
-            values = [profile.get(attr, 0.0) for attr in category.get("attributes", []) if attr in profile]
-            if not values:
+        # List components
+        component_entries = []
+        for category in ["hull", "engine", "weapons", "shields", "sensors", "support", "computing", "communications", "crew_modules"]:
+            comp = components.get(category)
+            if not comp:
                 continue
-            average = sum(values) / len(values)
-            lines.append(f"    {category['name']:<32} {average:5.1f}")
+            
+            category_label = category.replace("_", " ").title()
+            
+            if isinstance(comp, list):
+                for idx, item in enumerate(comp, 1):
+                    if isinstance(item, dict):
+                        item_name = item.get("name", "Unknown")
+                    else:
+                        item_name = str(item)
+                    component_entries.append(f"{category_label} {idx}: {item_name}")
+            else:
+                if isinstance(comp, dict):
+                    comp_name = comp.get("name", "Unknown")
+                else:
+                    comp_name = str(comp)
+                component_entries.append(f"{category_label}: {comp_name}")
 
-        top_attributes = sorted(profile.items(), key=lambda kv: kv[1], reverse=True)[:5]
-        if top_attributes:
-            lines.append("")
-            lines.append("  Top Attributes:")
+        lines.extend(render_bullets(component_entries if component_entries else ["No components installed"]))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("ATTRIBUTE PROFILE"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        if profile:
+            # Show category averages
+            category_lines = []
+            attribute_lines = []
+            
+            for category in SHIP_ATTRIBUTE_CATEGORIES:
+                values = [profile.get(attr, 0.0) for attr in category.get("attributes", []) if attr in profile]
+                if not values:
+                    continue
+                average = sum(values) / len(values)
+                category_lines.append(f"{category['name']:<24} {average:5.1f}")
+
+            # Top attributes
+            top_attributes = sorted(profile.items(), key=lambda kv: kv[1], reverse=True)[:8]
             for attr_id, value in top_attributes:
                 attr_meta = SHIP_ATTRIBUTE_DEFINITIONS.get(attr_id, {})
                 attr_name = attr_meta.get("name", attr_id.replace("_", " ").title())
-                lines.append(f"    {attr_name:<32} {value:5.1f}")
+                attribute_lines.append(f"{attr_name:<24} {value:5.1f}")
 
-        total_cost = metadata.get("total_cost", 0.0)
-        failure = metadata.get("combined_failure_chance", 0.0)
-        faction_locks = metadata.get("faction_locks") or []
+            lines.extend(render_two_col_block(category_lines, attribute_lines))
+        else:
+            lines.append(fmt_line("  Unable to compute attribute profile."))
 
-        lines.append("")
-        lines.append(f"  Total Component Cost: {int(total_cost):,} credits")
-        lines.append(f"  Combined Failure Chance: {float(failure) * 100:.1f}%")
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("COMPONENT SUMMARY"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        summary_pairs = [
+            (f"Total Component Cost: {total_cost} credits", ""),
+            (f"Combined Failure Chance: {failure_pct}", ""),
+        ]
+        
         if faction_locks:
-            lines.append(f"  Faction Locks: {', '.join(faction_locks)}")
+            faction_lock_text = f"Faction Locks: {', '.join(str(f) for f in faction_locks)}"
+            summary_pairs.append((faction_lock_text, ""))
 
-    def _wrap_detail_text(self, text: str) -> list[str]:
-        chunks = textwrap.wrap(text, width=36, break_long_words=True, break_on_hyphens=False)
-        if not chunks:
-            return ["│   "]
-        return [f"│   {chunk}" for chunk in chunks]
+        for left_text, right_text in summary_pairs:
+            lines.extend(render_two_col_pair(left_text, right_text))
 
-    def _format_number(self, value):
-        if value is None:
-            return "—"
-        if isinstance(value, int):
-            return f"{value:,}"
-        if isinstance(value, float):
-            return f"{value:,.2f}"
-        return str(value)
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("CARGO MANIFEST"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        cargo_items = getattr(ship, "cargo", {}) or {}
+        cargo_entries = []
+        if cargo_items:
+            for item_name, quantity in cargo_items.items():
+                cargo_entries.append(f"{item_name}: {quantity}")
+        
+        lines.extend(render_bullets(cargo_entries if cargo_entries else ["Empty cargo hold"]))
+
+        lines.append(fmt_line())
+        lines.append(colorize(section_divider, "bold cyan"))
+        lines.append(colorize(fmt_center("CREW & OPERATIONS"), "bold yellow"))
+        lines.append(colorize(sub_divider, "bold cyan"))
+
+        # Get crew-related data
+        crew_efficiency = profile.get("crew_efficiency", 30.0) if profile else 30.0
+        crew_morale = profile.get("crew_morale", 30.0) if profile else 30.0
+        
+        # Get actual crew members
+        crew_members = getattr(ship, "crew", [])
+        max_crew = getattr(ship, "max_crew", 10)
+        
+        crew_left = []
+        crew_right = []
+        
+        # List crew members
+        if crew_members:
+            crew_left.append(f"Crew Roster ({len(crew_members)}/{max_crew})")
+            for crew_member in crew_members:
+                name = crew_member.name if hasattr(crew_member, 'name') else "Unknown"
+                crew_type = crew_member.crew_type if hasattr(crew_member, 'crew_type') else "Crew"
+                level = crew_member.level if hasattr(crew_member, 'level') else 1
+                crew_left.append(f"• {name} ({crew_type} Lv{level})")
+        else:
+            crew_left.append(f"Crew Roster (0/{max_crew})")
+            crew_left.append("• No crew assigned")
+            crew_left.append("")
+            crew_left.append("Visit colonies and stations")
+            crew_left.append("to recruit crew members")
+        
+        # Crew modules
+        crew_modules = components.get("crew_modules", [])
+        if crew_modules:
+            crew_left.append("")
+            crew_left.append("Crew Facilities:")
+            if isinstance(crew_modules, list):
+                for module in crew_modules[:2]:  # Show first 2
+                    if isinstance(module, dict):
+                        module_name = module.get("name", "Unknown")
+                    else:
+                        module_name = str(module)
+                    crew_left.append(f"  • {module_name}")
+            else:
+                if isinstance(crew_modules, dict):
+                    module_name = crew_modules.get("name", "Unknown")
+                else:
+                    module_name = str(crew_modules)
+                crew_left.append(f"  • {module_name}")
+        
+        # Crew performance stats
+        crew_right.append("Crew Performance")
+        crew_right.append(f"Efficiency: {crew_efficiency:.1f}/100")
+        crew_right.append(f"Morale: {crew_morale:.1f}/100")
+        crew_right.append("")
+        
+        # Efficiency/morale interpretation
+        if crew_efficiency >= 70:
+            crew_right.append("Status: Highly Efficient")
+        elif crew_efficiency >= 50:
+            crew_right.append("Status: Competent")
+        elif crew_efficiency >= 30:
+            crew_right.append("Status: Adequate")
+        else:
+            crew_right.append("Status: Struggling")
+        
+        if crew_morale >= 70:
+            crew_right.append("Morale: Excellent")
+        elif crew_morale >= 50:
+            crew_right.append("Morale: Good")
+        elif crew_morale >= 30:
+            crew_right.append("Morale: Fair")
+        else:
+            crew_right.append("Morale: Poor")
+        
+        # Show crew bonuses if any crew
+        if crew_members:
+            crew_right.append("")
+            crew_right.append("Active Crew Bonuses:")
+            try:
+                from crew import calculate_crew_bonuses
+                crew_bonuses = calculate_crew_bonuses(crew_members)
+                bonus_count = 0
+                for stat, value in sorted(crew_bonuses.items(), key=lambda x: -x[1])[:4]:
+                    stat_name = stat.replace("_", " ").title()
+                    crew_right.append(f"  +{value:.1f} {stat_name}")
+                    bonus_count += 1
+                if len(crew_bonuses) > 4:
+                    crew_right.append(f"  ...and {len(crew_bonuses) - 4} more")
+            except ImportError:
+                pass
+        
+        lines.extend(render_two_col_block(crew_left, crew_right))
+
+        lines.append(fmt_line())
+        lines.append(colorize(bottom_border, "bold cyan"))
+
+        return lines
 
 
 class NetHackInterface(App):
