@@ -64,6 +64,32 @@ def get_save_files() -> List[Dict[str, Any]]:
     return saves
 
 
+def delete_save_file(save_path: str) -> bool:
+    """
+    Delete a save file
+    
+    Args:
+        save_path: Path to the save file to delete
+    
+    Returns:
+        True if deletion successful, False otherwise
+    """
+    try:
+        save_file = Path(save_path)
+        if save_file.exists() and save_file.suffix == '.json':
+            save_file.unlink()
+            _debug_log(f"Deleted save file: {save_path}")
+            return True
+        else:
+            _debug_log(f"Save file not found or invalid: {save_path}")
+            return False
+    except Exception as e:
+        error_msg = f"Error deleting save file: {e}"
+        _debug_log(error_msg)
+        print(f"[DELETE ERROR] {error_msg}")
+        return False
+
+
 def save_game(game, save_name: Optional[str] = None) -> bool:
     """
     Save game state to a JSON file

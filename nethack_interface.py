@@ -38,7 +38,7 @@ try:
     )
     from ship_classes import ship_classes
     from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
-    from save_game import get_save_files, save_game, load_game
+    from save_game import get_save_files, save_game, load_game, delete_save_file
     GAME_AVAILABLE = True
 except ImportError:
     GAME_AVAILABLE = False
@@ -307,6 +307,9 @@ class MainMenuScreen(Screen):
         Binding("j,down", "move_down", "Down", show=False),
         Binding("k,up", "move_up", "Up", show=False),
         Binding("enter", "select", "Select", show=True),
+        Binding("d", "delete_save", "Delete", show=False),
+        Binding("y", "confirm_delete", "Yes", show=False),
+        Binding("N", "cancel_delete", "No", show=False),
     ]
     
     def __init__(self):
@@ -315,6 +318,7 @@ class MainMenuScreen(Screen):
         self.menu_items = ["New Game", "Load Game"]
         self.save_files = []
         self.show_saves = False
+        self.confirming_delete = False
     
     def compose(self) -> ComposeResult:
         yield Static(id="menu_display")
@@ -335,6 +339,8 @@ class MainMenuScreen(Screen):
         lines.append("═" * 80)
         lines.append("GALACTIC EMPIRE 4X".center(80))
         lines.append("═" * 80)
+        lines.append("")
+        lines.append("7019 mind your assumptions".center(80))
         lines.append("")
         
         if not self.show_saves:
@@ -385,16 +391,31 @@ class MainMenuScreen(Screen):
                     lines.append("")
             
             lines.append("─" * 80)
-            lines.append("[j/k or ↑/↓: Navigate] [Enter: Load] [ESC: Back]")
+            if self.confirming_delete:
+                lines.append("")
+                save_name = self.save_files[self.selected_index].get('name', 'Unnamed Save')
+                lines.append(f"⚠ DELETE CONFIRMATION ⚠".center(80))
+                lines.append("")
+                lines.append(f"Are you sure you want to delete '{save_name}'?".center(80))
+                lines.append("")
+                lines.append("This action cannot be undone!".center(80))
+                lines.append("")
+                lines.append("[y: Yes, Delete] [N/ESC: No, Cancel]".center(80))
+            else:
+                lines.append("[j/k or ↑/↓: Navigate] [Enter: Load] [d: Delete] [ESC: Back]")
         
         self.query_one("#menu_display", Static).update("\n".join(lines))
     
     def action_new_game(self):
         """Start a new game"""
+        if self.confirming_delete:
+            return  # Don't allow this during confirmation
         self.app.push_screen(CharacterCreationScreen())
     
     def action_load_game(self):
         """Show load game menu"""
+        if self.confirming_delete:
+            return  # Don't allow this during confirmation
         if not self.show_saves:
             if not self.save_files:
                 msg_log = self.query_one(MessageLog)
@@ -403,12 +424,15 @@ class MainMenuScreen(Screen):
                 return
             self.show_saves = True
             self.selected_index = 0
+            self.confirming_delete = False  # Reset confirmation state
             self.update_display()
         else:
             self.action_select()
     
     def action_select(self):
         """Select current menu item"""
+        if self.confirming_delete:
+            return  # Don't allow selection during confirmation
         if not self.show_saves:
             if self.selected_index == 0:  # New Game
                 self.action_new_game()
@@ -436,6 +460,8 @@ class MainMenuScreen(Screen):
     
     def action_move_down(self):
         """Move selection down"""
+        if self.confirming_delete:
+            return  # Don't allow navigation during confirmation
         if self.show_saves:
             if self.selected_index < len(self.save_files) - 1:
                 self.selected_index += 1
@@ -447,6 +473,8 @@ class MainMenuScreen(Screen):
     
     def action_move_up(self):
         """Move selection up"""
+        if self.confirming_delete:
+            return  # Don't allow navigation during confirmation
         if self.selected_index > 0:
             self.selected_index -= 1
             self.update_display()
@@ -455,12 +483,68 @@ class MainMenuScreen(Screen):
         """Quit the application"""
         self.app.exit()
     
+    def action_delete_save(self):
+        """Initiate delete save file"""
+        if self.show_saves and not self.confirming_delete:
+            if not self.save_files:
+                msg_log = self.query_one(MessageLog)
+                msg_log.add_message("No save files to delete", "yellow")
+                return
+            if 0 <= self.selected_index < len(self.save_files):
+                self.confirming_delete = True
+                self.update_display()
+                msg_log = self.query_one(MessageLog)
+                save_name = self.save_files[self.selected_index].get('name', 'Unnamed Save')
+                msg_log.add_message(f"Confirm deletion of '{save_name}'? (y/N)", "yellow")
+    
+    def action_confirm_delete(self):
+        """Confirm and execute delete"""
+        if self.confirming_delete and self.show_saves:
+            if 0 <= self.selected_index < len(self.save_files):
+                save_file = self.save_files[self.selected_index]
+                save_path = save_file.get('path')
+                save_name = save_file.get('name', 'Unnamed Save')
+                
+                if save_path and GAME_AVAILABLE:
+                    if delete_save_file(save_path):
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message(f"Deleted: {save_name}", "green")
+                        # Refresh save files list
+                        self.save_files = get_save_files()
+                        # Adjust selected index if needed
+                        if self.selected_index >= len(self.save_files):
+                            self.selected_index = max(0, len(self.save_files) - 1)
+                    else:
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message(f"Failed to delete: {save_name}", "red")
+                
+                self.confirming_delete = False
+                self.update_display()
+    
+    def action_cancel_delete(self):
+        """Cancel delete confirmation"""
+        if self.confirming_delete:
+            self.confirming_delete = False
+            self.update_display()
+            msg_log = self.query_one(MessageLog)
+            msg_log.add_message("Delete cancelled", "white")
+    
     def on_key(self, event):
         """Handle key events"""
         key = event.key
-        if key == "escape" and self.show_saves:
+        if self.confirming_delete:
+            if key == "escape" or key == "n":
+                self.action_cancel_delete()
+                event.stop()
+                event.prevent_default()
+            elif key == "y":
+                self.action_confirm_delete()
+                event.stop()
+                event.prevent_default()
+        elif key == "escape" and self.show_saves:
             self.show_saves = False
             self.selected_index = 0
+            self.confirming_delete = False
             self.update_display()
             event.stop()
             event.prevent_default()
