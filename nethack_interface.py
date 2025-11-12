@@ -5216,9 +5216,9 @@ class ColonyInteractionScreen(Screen):
     
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("1", "action_1", "Trade", show=False),
-        Binding("2", "action_2", "Recruit", show=False),
-        Binding("3", "action_3", "Diplomacy", show=False),
+        Binding("1", "trade", "Trade", show=False),
+        Binding("2", "recruit", "Recruit", show=False),
+        Binding("3", "diplomacy", "Diplomacy", show=False),
     ]
     
     def __init__(self, game, system, planet):
@@ -5309,18 +5309,498 @@ class ColonyInteractionScreen(Screen):
     def action_pop_screen(self):
         self.app.pop_screen()
     
-    def action_1(self):
+    def action_trade(self):
         self.query_one(MessageLog).add_message("Opening local trade markets...", "cyan")
-        # Could open a special trading screen with local goods
-        self.query_one(MessageLog).add_message("Local trade interface coming soon!", "yellow")
+        self.app.push_screen(ColonyTradeScreen(self.game, self.system, self.planet))
     
-    def action_2(self):
+    def action_recruit(self):
+        """Open crew recruitment screen"""
         self.query_one(MessageLog).add_message("Accessing recruitment office...", "cyan")
-        self.query_one(MessageLog).add_message("Crew recruitment coming soon!", "yellow")
+        # Determine location type for crew recruitment
+        station_types = self.system.get("stations", [])
+        if station_types:
+            # Use first station type as location
+            location_type = station_types[0].get("type", "Trading Hub")
+        else:
+            # Default for colonies
+            location_type = "Trading Hub"
+        
+        self.app.push_screen(CrewRecruitmentScreen(self.game, self.system, location_type))
     
-    def action_3(self):
+    def action_diplomacy(self):
         self.query_one(MessageLog).add_message("Initiating diplomatic protocols...", "cyan")
         self.query_one(MessageLog).add_message("Diplomacy system coming soon!", "yellow")
+
+
+class ColonyTradeScreen(Screen):
+    """Screen for trading agricultural goods at colonies"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("j,down", "move_down", "Down", show=False),
+        Binding("k,up", "move_up", "Up", show=False),
+        Binding("b", "buy_selected", "Buy", show=True),
+        Binding("s", "sell_selected", "Sell", show=True),
+        Binding("+", "increase_qty", "+", show=False),
+        Binding("-", "decrease_qty", "-", show=False),
+    ]
+    
+    def __init__(self, game, system, planet):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.planet = planet
+        self.selected_index = 0
+        self.quantity = 1
+        self.available_goods = []
+        
+    def compose(self) -> ComposeResult:
+        yield Static(id="colony_trade_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.generate_available_goods()
+        self.render_trade()
+        self.query_one(MessageLog).add_message("Welcome to the local market", "green")
+    
+    def generate_available_goods(self):
+        """Generate agricultural goods available at this colony"""
+        import random
+        from goods import commodities
+        
+        # Get agricultural goods from goods.py
+        agricultural_goods = commodities.get("Bio-Materials and Agriculture", [])
+        
+        # Create copies with pricing
+        all_goods = []
+        for good in agricultural_goods:
+            # Base price is the value from goods.py multiplied by 10 for reasonable trading
+            good_copy = {
+                "name": good["name"],
+                "base_price": good["value"] * 10,
+                "description": good["description"]
+            }
+            all_goods.append(good_copy)
+        
+        # Select 5-8 random goods available at this colony
+        num_goods = random.randint(5, min(8, len(all_goods)))
+        colony_goods = random.sample(all_goods, num_goods)
+        
+        # Add random price variation and stock to colony goods
+        for good in colony_goods:
+            price_variance = random.uniform(0.8, 1.2)
+            good["price"] = int(good["base_price"] * price_variance)
+            good["stock"] = random.randint(20, 200)
+        
+        # Get player's cargo to add any goods they have but aren't sold here
+        ship = None
+        if self.game and hasattr(self.game, 'navigation'):
+            ship = getattr(self.game.navigation, 'current_ship', None)
+        
+        if ship and hasattr(ship, 'cargo'):
+            # Add any goods from player's cargo that aren't already in the market
+            colony_good_names = {g['name'] for g in colony_goods}
+            for cargo_item in ship.cargo.keys():
+                if cargo_item not in colony_good_names:
+                    # Find this good in the master list
+                    for good in all_goods:
+                        if good['name'] == cargo_item:
+                            # Add it to available goods with no stock (player can only sell)
+                            good_copy = {
+                                "name": good["name"],
+                                "base_price": good["base_price"],
+                                "description": good["description"],
+                                "price": good["base_price"],  # Use base price
+                                "stock": 0  # Colony doesn't have any
+                            }
+                            colony_goods.append(good_copy)
+                            break
+        
+        self.available_goods = colony_goods
+    
+    def render_trade(self):
+        text = Text()
+        
+        # Header
+        text.append("╔" + "═" * 78 + "╗\n", style="bold green")
+        text.append(f"║{'COLONY AGRICULTURAL MARKET'.center(78)}║\n", style="bold green")
+        text.append("╠" + "═" * 78 + "╣\n", style="bold green")
+        text.append(f"║ Location: {self.system['name']:<65} ║\n", style="white")
+        text.append(f"║ Planet: {self.planet.get('name', 'Unknown'):<67} ║\n", style="white")
+        
+        # Get current ship info
+        ship = None
+        if self.game and hasattr(self.game, 'navigation'):
+            ship = getattr(self.game.navigation, 'current_ship', None)
+        
+        if ship:
+            cargo_used = sum(ship.cargo.values()) if hasattr(ship, 'cargo') else 0
+            max_cargo = getattr(ship, 'max_cargo', 100)
+            text.append(f"║ Cargo: {cargo_used}/{max_cargo:<66} ║\n", style="yellow")
+        
+        credits = getattr(self.game, 'credits', 0)
+        text.append(f"║ Your Credits: {credits:,}{' ' * (64 - len(f'{credits:,}'))}║\n", style="green")
+        text.append(f"║ Quantity: {self.quantity}{' ' * (68 - len(str(self.quantity)))}║\n", style="cyan")
+        
+        text.append("╠" + "═" * 78 + "╣\n", style="bold green")
+        text.append(f"║{'AVAILABLE GOODS'.center(78)}║\n", style="bold yellow")
+        text.append("╟" + "─" * 78 + "╢\n", style="bold green")
+        
+        # List available goods
+        if not self.available_goods:
+            text.append("║ No goods available for trade.{:<46}║\n".format(""), style="dim white")
+        else:
+            for idx, good in enumerate(self.available_goods):
+                # Selection indicator
+                if idx == self.selected_index:
+                    prefix = "▶ "
+                    style = "bold bright_white"
+                else:
+                    prefix = "  "
+                    style = "white"
+                
+                # Good name and price
+                stock_display = f"{good['stock']:>3}" if good['stock'] > 0 else "---"
+                name_line = f"{prefix}{good['name']:<20} {good['price']:>5} cr/unit  Stock: {stock_display}"
+                text.append(f"║ {name_line:<76} ║\n", style=style)
+                
+                # Description
+                desc_line = f"  {good['description']}"
+                text.append(f"║ {desc_line:<76} ║\n", style="dim white" if idx != self.selected_index else "white")
+                
+                # Show how much player has in cargo
+                if ship and hasattr(ship, 'cargo'):
+                    player_has = ship.cargo.get(good['name'], 0)
+                    if player_has > 0:
+                        has_line = f"  You have: {player_has} units"
+                        text.append(f"║ {has_line:<76} ║\n", style="dim cyan")
+                    elif good['stock'] == 0:
+                        # Colony doesn't carry this item
+                        no_stock_line = f"  (Colony doesn't buy/sell this item)"
+                        text.append(f"║ {no_stock_line:<76} ║\n", style="dim yellow")
+                
+                if idx < len(self.available_goods) - 1:
+                    text.append("║" + "─" * 78 + "║\n", style="dim green")
+        
+        text.append("╚" + "═" * 78 + "╝\n", style="bold green")
+        text.append("\n")
+        text.append("[↑/↓ or j/k: Select] [+/-: Quantity] [b: Buy] [s: Sell] [q/ESC: Back]\n", style="white")
+        
+        self.query_one("#colony_trade_display", Static).update(text)
+    
+    def action_move_down(self):
+        if self.available_goods:
+            self.selected_index = (self.selected_index + 1) % len(self.available_goods)
+            self.render_trade()
+    
+    def action_move_up(self):
+        if self.available_goods:
+            self.selected_index = (self.selected_index - 1) % len(self.available_goods)
+            self.render_trade()
+    
+    def action_increase_qty(self):
+        self.quantity = min(100, self.quantity + 1)
+        self.render_trade()
+    
+    def action_decrease_qty(self):
+        self.quantity = max(1, self.quantity - 1)
+        self.render_trade()
+    
+    def action_buy_selected(self):
+        """Buy the selected good"""
+        if not self.available_goods or self.selected_index >= len(self.available_goods):
+            self.query_one(MessageLog).add_message("No good selected", "red")
+            return
+        
+        good = self.available_goods[self.selected_index]
+        
+        # Check if enough stock
+        if good['stock'] < self.quantity:
+            self.query_one(MessageLog).add_message(f"Not enough stock! Only {good['stock']} available.", "red")
+            return
+        
+        # Calculate cost
+        total_cost = good['price'] * self.quantity
+        
+        # Check if player can afford
+        credits = getattr(self.game, 'credits', 0)
+        if credits < total_cost:
+            self.query_one(MessageLog).add_message(f"Not enough credits! Need {total_cost:,} (have {credits:,})", "red")
+            return
+        
+        # Check cargo space
+        ship = None
+        if self.game and hasattr(self.game, 'navigation'):
+            ship = getattr(self.game.navigation, 'current_ship', None)
+        
+        if ship:
+            if not hasattr(ship, 'cargo'):
+                ship.cargo = {}
+            
+            cargo_used = sum(ship.cargo.values())
+            max_cargo = getattr(ship, 'max_cargo', 100)
+            
+            if cargo_used + self.quantity > max_cargo:
+                available_space = max_cargo - cargo_used
+                self.query_one(MessageLog).add_message(f"Not enough cargo space! Only {available_space} units available.", "red")
+                return
+            
+            # Complete the purchase
+            ship.cargo[good['name']] = ship.cargo.get(good['name'], 0) + self.quantity
+            self.game.credits -= total_cost
+            good['stock'] -= self.quantity
+            
+            self.query_one(MessageLog).add_message(
+                f"Bought {self.quantity} units of {good['name']} for {total_cost:,} credits!",
+                "green"
+            )
+            
+            self.render_trade()
+        else:
+            self.query_one(MessageLog).add_message("No ship available", "red")
+    
+    def action_sell_selected(self):
+        """Sell the selected good"""
+        if not self.available_goods or self.selected_index >= len(self.available_goods):
+            self.query_one(MessageLog).add_message("No good selected", "red")
+            return
+        
+        good = self.available_goods[self.selected_index]
+        
+        # Get ship cargo
+        ship = None
+        if self.game and hasattr(self.game, 'navigation'):
+            ship = getattr(self.game.navigation, 'current_ship', None)
+        
+        if not ship or not hasattr(ship, 'cargo'):
+            self.query_one(MessageLog).add_message("Nothing to sell", "red")
+            return
+        
+        # Check if player has this good
+        player_has = ship.cargo.get(good['name'], 0)
+        if player_has < self.quantity:
+            self.query_one(MessageLog).add_message(f"You only have {player_has} units!", "red")
+            return
+        
+        # Calculate sale price (80% of buy price)
+        sale_price = int(good['price'] * 0.8)
+        total_sale = sale_price * self.quantity
+        
+        # Complete the sale
+        ship.cargo[good['name']] -= self.quantity
+        if ship.cargo[good['name']] == 0:
+            del ship.cargo[good['name']]
+        
+        self.game.credits += total_sale
+        good['stock'] += self.quantity
+        
+        self.query_one(MessageLog).add_message(
+            f"Sold {self.quantity} units of {good['name']} for {total_sale:,} credits!",
+            "green"
+        )
+        
+        self.render_trade()
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
+
+
+class CrewRecruitmentScreen(Screen):
+    """Screen for recruiting crew members at colonies and stations"""
+    
+    BINDINGS = [
+        Binding("escape,q", "pop_screen", "Back", show=True),
+        Binding("j,down", "move_down", "Down", show=False),
+        Binding("k,up", "move_up", "Up", show=False),
+        Binding("enter", "recruit_selected", "Recruit", show=True),
+    ]
+    
+    def __init__(self, game, system, location_type):
+        super().__init__()
+        self.game = game
+        self.system = system
+        self.location_type = location_type
+        self.selected_index = 0
+        self.available_crew = []
+    
+    def compose(self) -> ComposeResult:
+        yield Static(id="crew_recruit_display")
+        yield MessageLog()
+    
+    def on_mount(self):
+        self.generate_available_crew()
+        self.render_recruitment()
+        self.query_one(MessageLog).add_message("Welcome to the recruitment office", "green")
+    
+    def generate_available_crew(self):
+        """Generate available crew based on location"""
+        import random
+        from crew import CREW_TYPES, get_available_crew_at_location, CrewMember
+        
+        # Get crew types available at this location
+        available_types = get_available_crew_at_location(self.location_type)
+        
+        # Generate 3-6 random crew members
+        num_crew = random.randint(3, 6)
+        self.available_crew = []
+        
+        for _ in range(num_crew):
+            if available_types:
+                crew_type = random.choice(available_types)
+                crew = CrewMember(crew_type)
+                self.available_crew.append(crew)
+    
+    def render_recruitment(self):
+        from crew import CREW_TYPES
+        
+        text = Text()
+        
+        # Header
+        text.append("╔" + "═" * 78 + "╗\n", style="bold cyan")
+        text.append(f"║{'CREW RECRUITMENT OFFICE'.center(78)}║\n", style="bold cyan")
+        text.append("╠" + "═" * 78 + "╣\n", style="bold cyan")
+        text.append(f"║ Location: {self.system['name']:<65} ║\n", style="white")
+        text.append(f"║ Type: {self.location_type:<69} ║\n", style="white")
+        
+        # Get current ship info
+        ship = None
+        if self.game and hasattr(self.game, 'navigation'):
+            ship = getattr(self.game.navigation, 'current_ship', None)
+        
+        if ship:
+            current_crew = len(getattr(ship, 'crew', []))
+            max_crew = getattr(ship, 'max_crew', 10)
+            text.append(f"║ Ship Crew: {current_crew}/{max_crew:<63} ║\n", style="yellow")
+        
+        credits = getattr(self.game, 'credits', 0)
+        text.append(f"║ Your Credits: {credits:,}{' ' * (64 - len(f'{credits:,}'))}║\n", style="green")
+        
+        text.append("╠" + "═" * 78 + "╣\n", style="bold cyan")
+        text.append(f"║{'AVAILABLE CREW'.center(78)}║\n", style="bold yellow")
+        text.append("╟" + "─" * 78 + "╢\n", style="bold cyan")
+        
+        # List available crew
+        if not self.available_crew:
+            text.append("║ No crew available for recruitment at this time.{:<33}║\n".format(""), style="dim white")
+        else:
+            for idx, crew in enumerate(self.available_crew):
+                crew_data = CREW_TYPES[crew.crew_type]
+                
+                # Selection indicator
+                if idx == self.selected_index:
+                    prefix = "▶ "
+                    style = "bold bright_white"
+                else:
+                    prefix = "  "
+                    style = "white"
+                
+                # Crew name and type
+                name_line = f"{prefix}{crew.name} - {crew.crew_type} (Lv{crew.level})"
+                text.append(f"║ {name_line:<76} ║\n", style=style)
+                
+                # Salary
+                salary = crew.get_salary()
+                salary_line = f"  Salary: {salary} credits/month"
+                text.append(f"║ {salary_line:<76} ║\n", style="yellow" if idx == self.selected_index else "dim yellow")
+                
+                # Bonuses (show top 2)
+                bonuses = crew.get_bonuses()
+                bonus_items = sorted(bonuses.items(), key=lambda x: -x[1])[:2]
+                for stat, value in bonus_items:
+                    stat_name = stat.replace("_", " ").title()
+                    bonus_line = f"    +{value:.1f} {stat_name}"
+                    text.append(f"║ {bonus_line:<76} ║\n", style="green" if idx == self.selected_index else "dim green")
+                
+                # Rarity
+                rarity = crew_data["rarity"].upper()
+                rarity_colors = {
+                    "COMMON": "white",
+                    "UNCOMMON": "bright_green",
+                    "RARE": "bright_blue",
+                    "LEGENDARY": "bright_magenta"
+                }
+                rarity_style = rarity_colors.get(rarity, "white")
+                text.append(f"║   [{rarity}]{' ' * (73 - len(rarity))}║\n", style=rarity_style)
+                
+                if idx < len(self.available_crew) - 1:
+                    text.append("║" + "─" * 78 + "║\n", style="dim cyan")
+        
+        text.append("╚" + "═" * 78 + "╝\n", style="bold cyan")
+        text.append("\n")
+        text.append("[↑/↓ or j/k: Select] [Enter: Recruit] [q/ESC: Back]\n", style="white")
+        
+        self.query_one("#crew_recruit_display", Static).update(text)
+    
+    def action_move_down(self):
+        if self.available_crew:
+            self.selected_index = (self.selected_index + 1) % len(self.available_crew)
+            self.render_recruitment()
+    
+    def action_move_up(self):
+        if self.available_crew:
+            self.selected_index = (self.selected_index - 1) % len(self.available_crew)
+            self.render_recruitment()
+    
+    def action_recruit_selected(self):
+        """Recruit the selected crew member"""
+        if not self.available_crew or self.selected_index >= len(self.available_crew):
+            self.query_one(MessageLog).add_message("No crew member selected", "red")
+            return
+        
+        # Get current ship
+        if not self.game or not hasattr(self.game, 'navigation'):
+            self.query_one(MessageLog).add_message("No ship available", "red")
+            return
+        
+        ship = getattr(self.game.navigation, 'current_ship', None)
+        if not ship:
+            self.query_one(MessageLog).add_message("No ship available", "red")
+            return
+        
+        # Check crew capacity
+        current_crew = getattr(ship, 'crew', [])
+        max_crew = getattr(ship, 'max_crew', 10)
+        
+        if len(current_crew) >= max_crew:
+            self.query_one(MessageLog).add_message("Ship crew capacity full! Upgrade crew modules to expand.", "red")
+            return
+        
+        # Get selected crew
+        crew = self.available_crew[self.selected_index]
+        salary = crew.get_salary()
+        
+        # Check if player can afford (using salary as hiring bonus)
+        credits = getattr(self.game, 'credits', 0)
+        hiring_cost = salary * 2  # 2 months salary as signing bonus
+        
+        if credits < hiring_cost:
+            self.query_one(MessageLog).add_message(f"Not enough credits! Need {hiring_cost:,} (have {credits:,})", "red")
+            return
+        
+        # Recruit the crew member
+        if not hasattr(ship, 'crew'):
+            ship.crew = []
+        
+        ship.crew.append(crew)
+        self.game.credits -= hiring_cost
+        
+        # Recalculate ship stats with new crew bonuses
+        ship.calculate_stats_from_components()
+        
+        # Remove from available list
+        self.available_crew.pop(self.selected_index)
+        if self.selected_index >= len(self.available_crew) and self.selected_index > 0:
+            self.selected_index -= 1
+        
+        self.query_one(MessageLog).add_message(
+            f"Recruited {crew.name} ({crew.crew_type})! Paid {hiring_cost:,} credits signing bonus.",
+            "green"
+        )
+        
+        self.render_recruitment()
+    
+    def action_pop_screen(self):
+        self.app.pop_screen()
 
 
 class MiningScreen(Screen):
