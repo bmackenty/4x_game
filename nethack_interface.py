@@ -3259,6 +3259,7 @@ class TradingScreen(Screen):
         self.selected_index = 0
         self.quantity = 1
         self.trade_scroll_offset = 0  # For scrolling long lists
+        self.no_demand_items = []  # inventory items with no demand at this market
 
     def compose(self) -> ComposeResult:
         yield Static(id="trade_display")
@@ -3308,7 +3309,17 @@ class TradingScreen(Screen):
                     price = market['prices'][commodity]
                     demand = market['demand'][commodity]
                     self.sell_items.append((commodity, owned_qty, price, demand))
-            self.sell_items.sort(key=lambda x: x[2], reverse=True)
+            # Track items with no demand to inform the player and include them in the list (disabled)
+            self.no_demand_items = []
+            for commodity, owned_qty in inv.items():
+                if owned_qty <= 0:
+                    continue
+                if commodity not in market['demand'] or market['demand'][commodity] <= 0:
+                    self.no_demand_items.append(commodity)
+                    price = market['prices'].get(commodity, 0)
+                    self.sell_items.append((commodity, owned_qty, price, 0))
+            # Sort: put no-demand items at the bottom, otherwise by price desc
+            self.sell_items.sort(key=lambda x: (x[3] == 0, -x[2]))
         finally:
             # Clamp selection index
             items = self.buy_items if self.mode == "buy" else self.sell_items
@@ -3347,6 +3358,13 @@ class TradingScreen(Screen):
         else:
             lines.append(f"Mode: {'BUY' if self.mode == 'buy' else 'SELL'}    [Tab: toggle | M: analysis | O: routes]")
         lines.append("")
+        # Notice for items you carry that have no demand here
+        if self.no_demand_items:
+            preview = ", ".join(self.no_demand_items[:5])
+            more = len(self.no_demand_items) - 5
+            suffix = f" (+{more} more)" if more > 0 else ""
+            lines.append(f"No market demand for: {preview}{suffix}")
+            lines.append("")
         lines.append("─" * 80)
         lines.append("")
 
@@ -3456,11 +3474,17 @@ class TradingScreen(Screen):
                     lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {supply:>6}")
                 else:
                     name, owned, price, demand = entry
-                    lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {owned:>3}/{demand:<3}")
+                    suffix = " [no demand]" if demand == 0 else ""
+                    lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {owned:>3}/{demand:<3}{suffix}")
             
             # Show scroll indicator if more items below
             if end_idx < total_items:
                 lines.append(f"  ▼ ({total_items - end_idx} items below)")
+
+            # Optional note about no-demand items
+            if self.mode == "sell" and any(e[3] == 0 for e in items):
+                lines.append("")
+                lines.append("Items marked [no demand] cannot be sold here.")
 
             # Selected item details
             sel = items[self.selected_index]
@@ -5337,272 +5361,404 @@ class ColonyTradeScreen(Screen):
     
     BINDINGS = [
         Binding("escape,q", "pop_screen", "Back", show=True),
-        Binding("j,down", "move_down", "Down", show=False),
-        Binding("k,up", "move_up", "Up", show=False),
-        Binding("b", "buy_selected", "Buy", show=True),
-        Binding("s", "sell_selected", "Sell", show=True),
-        Binding("+", "increase_qty", "+", show=False),
-        Binding("-", "decrease_qty", "-", show=False),
+        Binding("tab", "toggle_mode", "Toggle Buy/Sell", show=True),
+        Binding("enter", "confirm", "Confirm", show=True),
+        Binding("j,down", "cursor_down", "Down", show=False),
+        Binding("k,up", "cursor_up", "Up", show=False),
+        Binding("+", "inc_qty", "+", show=False),
+        Binding("-", "dec_qty", "-", show=False),
+        Binding("b", "confirm_buy", "Buy", show=True),
+        Binding("s", "confirm_sell", "Sell", show=True),
+        Binding("m", "toggle_analysis", "Market", show=True),
+        Binding("o", "show_opportunities", "Opportunities", show=True),
     ]
-    
+
     def __init__(self, game, system, planet):
         super().__init__()
         self.game = game
         self.system = system
         self.planet = planet
+        self.mode = "buy"  # or "sell" or "analysis" or "opportunities"
+        self.buy_items = []   # list of (name, price, supply)
+        self.sell_items = []  # list of (name, owned_qty, price, demand)
         self.selected_index = 0
         self.quantity = 1
-        self.available_goods = []
-        
+        self.trade_scroll_offset = 0
+        self.available_goods = []  # colony market goods with price/stock
+        self.good_base_prices = {}  # base prices for agricultural goods
+        self.no_demand_items = []   # cargo items not tradable at this colony
+
     def compose(self) -> ComposeResult:
         yield Static(id="colony_trade_display")
         yield MessageLog()
-    
+
     def on_mount(self):
         self.generate_available_goods()
-        self.render_trade()
-        self.query_one(MessageLog).add_message("Welcome to the local market", "green")
-    
+        self.refresh_lists()
+        self.update_display()
+        self.query_one(MessageLog).add_message("Trading at colony market. Tab toggles Buy/Sell.", "green")
+
     def generate_available_goods(self):
-        """Generate agricultural goods available at this colony"""
+        """Generate agricultural goods available at this colony, with price variance.
+
+        Also include any items in the player's cargo that aren't in the colony's list
+        (with stock=0) so they can be sold here.
+        """
         import random
         from goods import commodities
-        
-        # Get agricultural goods from goods.py
-        agricultural_goods = commodities.get("Bio-Materials and Agriculture", [])
-        
-        # Create copies with pricing
-        all_goods = []
-        for good in agricultural_goods:
-            # Base price is the value from goods.py multiplied by 10 for reasonable trading
-            good_copy = {
-                "name": good["name"],
-                "base_price": good["value"] * 10,
-                "description": good["description"]
-            }
-            all_goods.append(good_copy)
-        
-        # Select 5-8 random goods available at this colony
-        num_goods = random.randint(5, min(8, len(all_goods)))
-        colony_goods = random.sample(all_goods, num_goods)
-        
-        # Add random price variation and stock to colony goods
+
+        # Build base catalog from agricultural goods
+        agri_goods = commodities.get("Bio-Materials and Agriculture", [])
+        self.good_base_prices = {}
+        catalog = []
+        for g in agri_goods:
+            base = int(g.get("value", 0) * 10)
+            self.good_base_prices[g["name"]] = base
+            catalog.append({
+                "name": g["name"],
+                "base_price": base,
+                "description": g.get("description", "")
+            })
+
+        # Pick a subset to stock at this colony and apply variance/stock
+        if catalog:
+            num = random.randint(5, min(8, len(catalog)))
+            colony_goods = random.sample(catalog, num)
+        else:
+            colony_goods = []
         for good in colony_goods:
             price_variance = random.uniform(0.8, 1.2)
             good["price"] = int(good["base_price"] * price_variance)
             good["stock"] = random.randint(20, 200)
-        
-        # Get player's cargo to add any goods they have but aren't sold here
-        ship = None
-        if self.game and hasattr(self.game, 'navigation'):
-            ship = getattr(self.game.navigation, 'current_ship', None)
-        
-        if ship and hasattr(ship, 'cargo'):
-            # Add any goods from player's cargo that aren't already in the market
-            colony_good_names = {g['name'] for g in colony_goods}
-            for cargo_item in ship.cargo.keys():
-                if cargo_item not in colony_good_names:
-                    # Find this good in the master list
-                    for good in all_goods:
-                        if good['name'] == cargo_item:
-                            # Add it to available goods with no stock (player can only sell)
-                            good_copy = {
-                                "name": good["name"],
-                                "base_price": good["base_price"],
-                                "description": good["description"],
-                                "price": good["base_price"],  # Use base price
-                                "stock": 0  # Colony doesn't have any
-                            }
-                            colony_goods.append(good_copy)
-                            break
-        
+
+        # Include cargo-only items so they appear in sell list even if not stocked
+        ship = getattr(getattr(self.game, 'navigation', None), 'current_ship', None)
+        colony_good_names = {g["name"] for g in colony_goods}
+        if ship and hasattr(ship, 'cargo') and ship.cargo:
+            for item in ship.cargo.keys():
+                if item not in colony_good_names and item in self.good_base_prices:
+                    colony_goods.append({
+                        "name": item,
+                        "base_price": int(self.good_base_prices[item]),
+                        "description": "",
+                        "price": int(self.good_base_prices[item]),
+                        "stock": 0  # not stocked; sell-only until you sell some
+                    })
+
         self.available_goods = colony_goods
-    
-    def render_trade(self):
-        text = Text()
-        
-        # Header
-        text.append("╔" + "═" * 78 + "╗\n", style="bold green")
-        text.append(f"║{'COLONY AGRICULTURAL MARKET'.center(78)}║\n", style="bold green")
-        text.append("╠" + "═" * 78 + "╣\n", style="bold green")
-        text.append(f"║ Location: {self.system['name']:<65} ║\n", style="white")
-        text.append(f"║ Planet: {self.planet.get('name', 'Unknown'):<67} ║\n", style="white")
-        
-        # Get current ship info
-        ship = None
-        if self.game and hasattr(self.game, 'navigation'):
-            ship = getattr(self.game.navigation, 'current_ship', None)
-        
-        if ship:
-            cargo_used = sum(ship.cargo.values()) if hasattr(ship, 'cargo') else 0
-            max_cargo = getattr(ship, 'max_cargo', 100)
-            text.append(f"║ Cargo: {cargo_used}/{max_cargo:<66} ║\n", style="yellow")
-        
-        credits = getattr(self.game, 'credits', 0)
-        text.append(f"║ Your Credits: {credits:,}{' ' * (64 - len(f'{credits:,}'))}║\n", style="green")
-        text.append(f"║ Quantity: {self.quantity}{' ' * (68 - len(str(self.quantity)))}║\n", style="cyan")
-        
-        text.append("╠" + "═" * 78 + "╣\n", style="bold green")
-        text.append(f"║{'AVAILABLE GOODS'.center(78)}║\n", style="bold yellow")
-        text.append("╟" + "─" * 78 + "╢\n", style="bold green")
-        
-        # List available goods
-        if not self.available_goods:
-            text.append("║ No goods available for trade.{:<46}║\n".format(""), style="dim white")
+
+    def refresh_lists(self):
+        """Build buy/sell lists to mirror TradingScreen behavior."""
+        self.buy_items = []
+        self.sell_items = []
+
+        # Buy list from colony market goods (only those with stock)
+        for good in self.available_goods:
+            supply = max(0, int(good.get('stock', 0)))
+            price = int(good.get('price', good.get('base_price', 0)))
+            if supply > 0 and price > 0:
+                self.buy_items.append((good['name'], price, supply))
+        self.buy_items.sort(key=lambda x: x[1])
+
+        # Sell list from ship cargo (allow selling any agricultural goods you carry)
+        ship = getattr(getattr(self.game, 'navigation', None), 'current_ship', None)
+        cargo = getattr(ship, 'cargo', {}) if ship and hasattr(ship, 'cargo') else {}
+        market_price = {g['name']: int(g.get('price', g.get('base_price', 0))) for g in self.available_goods}
+        self.no_demand_items = []
+        for item, owned_qty in (cargo.items() if cargo else []):
+            if owned_qty <= 0:
+                continue
+            price = market_price.get(item, int(self.good_base_prices.get(item, 0)))
+            demand = 9999 if price > 0 else 0
+            self.sell_items.append((item, owned_qty, price, demand))
+            if price <= 0:
+                # Not an agricultural good (or no price here) -> no market demand notice
+                self.no_demand_items.append(item)
+        # Sort: put no-demand items at the bottom, otherwise by price desc
+        self.sell_items.sort(key=lambda x: (x[3] == 0, -x[2]))
+
+        # Clamp selection and sane quantity
+        items = self.buy_items if self.mode == "buy" else self.sell_items
+        if not items:
+            self.selected_index = 0
         else:
-            for idx, good in enumerate(self.available_goods):
-                # Selection indicator
-                if idx == self.selected_index:
-                    prefix = "▶ "
-                    style = "bold bright_white"
-                else:
-                    prefix = "  "
-                    style = "white"
-                
-                # Good name and price
-                stock_display = f"{good['stock']:>3}" if good['stock'] > 0 else "---"
-                name_line = f"{prefix}{good['name']:<20} {good['price']:>5} cr/unit  Stock: {stock_display}"
-                text.append(f"║ {name_line:<76} ║\n", style=style)
-                
-                # Description
-                desc_line = f"  {good['description']}"
-                text.append(f"║ {desc_line:<76} ║\n", style="dim white" if idx != self.selected_index else "white")
-                
-                # Show how much player has in cargo
-                if ship and hasattr(ship, 'cargo'):
-                    player_has = ship.cargo.get(good['name'], 0)
-                    if player_has > 0:
-                        has_line = f"  You have: {player_has} units"
-                        text.append(f"║ {has_line:<76} ║\n", style="dim cyan")
-                    elif good['stock'] == 0:
-                        # Colony doesn't carry this item
-                        no_stock_line = f"  (Colony doesn't buy/sell this item)"
-                        text.append(f"║ {no_stock_line:<76} ║\n", style="dim yellow")
-                
-                if idx < len(self.available_goods) - 1:
-                    text.append("║" + "─" * 78 + "║\n", style="dim green")
-        
-        text.append("╚" + "═" * 78 + "╝\n", style="bold green")
-        text.append("\n")
-        text.append("[↑/↓ or j/k: Select] [+/-: Quantity] [b: Buy] [s: Sell] [q/ESC: Back]\n", style="white")
-        
-        self.query_one("#colony_trade_display", Static).update(text)
-    
-    def action_move_down(self):
-        if self.available_goods:
-            self.selected_index = (self.selected_index + 1) % len(self.available_goods)
-            self.render_trade()
-    
-    def action_move_up(self):
-        if self.available_goods:
-            self.selected_index = (self.selected_index - 1) % len(self.available_goods)
-            self.render_trade()
-    
-    def action_increase_qty(self):
-        self.quantity = min(100, self.quantity + 1)
-        self.render_trade()
-    
-    def action_decrease_qty(self):
-        self.quantity = max(1, self.quantity - 1)
-        self.render_trade()
-    
-    def action_buy_selected(self):
-        """Buy the selected good"""
-        if not self.available_goods or self.selected_index >= len(self.available_goods):
-            self.query_one(MessageLog).add_message("No good selected", "red")
-            return
-        
-        good = self.available_goods[self.selected_index]
-        
-        # Check if enough stock
-        if good['stock'] < self.quantity:
-            self.query_one(MessageLog).add_message(f"Not enough stock! Only {good['stock']} available.", "red")
-            return
-        
-        # Calculate cost
-        total_cost = good['price'] * self.quantity
-        
-        # Check if player can afford
+            self.selected_index = max(0, min(self.selected_index, len(items) - 1))
+        if self.quantity <= 0:
+            self.quantity = 1
+
+    def update_display(self):
+        lines = []
+        lines.append("═" * 80)
+        title = f"COLONY MARKET - {self.system.get('name', 'Unknown System')} / {self.planet.get('name', 'Unknown')}"
+        lines.append(title.center(80))
+        lines.append("═" * 80)
+        lines.append("")
+
+        # Status bar
         credits = getattr(self.game, 'credits', 0)
-        if credits < total_cost:
-            self.query_one(MessageLog).add_message(f"Not enough credits! Need {total_cost:,} (have {credits:,})", "red")
-            return
-        
-        # Check cargo space
-        ship = None
-        if self.game and hasattr(self.game, 'navigation'):
-            ship = getattr(self.game.navigation, 'current_ship', None)
-        
-        if ship:
-            if not hasattr(ship, 'cargo'):
-                ship.cargo = {}
-            
-            cargo_used = sum(ship.cargo.values())
-            max_cargo = getattr(ship, 'max_cargo', 100)
-            
-            if cargo_used + self.quantity > max_cargo:
-                available_space = max_cargo - cargo_used
-                self.query_one(MessageLog).add_message(f"Not enough cargo space! Only {available_space} units available.", "red")
-                return
-            
-            # Complete the purchase
-            ship.cargo[good['name']] = ship.cargo.get(good['name'], 0) + self.quantity
-            self.game.credits -= total_cost
-            good['stock'] -= self.quantity
-            
-            self.query_one(MessageLog).add_message(
-                f"Bought {self.quantity} units of {good['name']} for {total_cost:,} credits!",
-                "green"
-            )
-            
-            self.render_trade()
+        lines.append(f"Credits: {credits:,}")
+
+        # Cargo status (use game's helper for consistency)
+        cargo = self.game.get_cargo_status() if hasattr(self.game, 'get_cargo_status') else {'used':0,'max':0,'percentage':0,'available':0}
+        bar_w = 20
+        filled = int((cargo['percentage'] / 100) * bar_w) if cargo['max'] > 0 else 0
+        bar = "[" + ("█" * filled) + ("·" * (bar_w - filled)) + "]"
+        lines.append(f"Cargo: {cargo['used']}/{cargo['max']} {bar} {cargo['percentage']:.0f}%")
+
+        # Mode display
+        if self.mode == "analysis":
+            lines.append("Mode: MARKET ANALYSIS    [M to return to trading]")
+        elif self.mode == "opportunities":
+            lines.append("Mode: TRADE OPPORTUNITIES    [O to return to trading]")
         else:
-            self.query_one(MessageLog).add_message("No ship available", "red")
-    
-    def action_sell_selected(self):
-        """Sell the selected good"""
-        if not self.available_goods or self.selected_index >= len(self.available_goods):
-            self.query_one(MessageLog).add_message("No good selected", "red")
+            lines.append(f"Mode: {'BUY' if self.mode == 'buy' else 'SELL'}    [Tab: toggle | M: analysis | O: routes]")
+        lines.append("")
+        # Notice for cargo items with no demand in this colony market
+        if self.no_demand_items:
+            preview = ", ".join(self.no_demand_items[:5])
+            more = len(self.no_demand_items) - 5
+            suffix = f" (+{more} more)" if more > 0 else ""
+            lines.append(f"No market demand here for: {preview}{suffix}")
+            lines.append("")
+        lines.append("─" * 80)
+        lines.append("")
+
+        # Content
+        if self.mode == "analysis":
+            self._display_market_analysis(lines)
+        elif self.mode == "opportunities":
+            self._display_trade_opportunities(lines)
+        else:
+            self._display_trade_list(lines)
+
+        lines.append("")
+        lines.append("─" * 80)
+        if self.mode in ["analysis", "opportunities"]:
+            lines.append("[M/O: Toggle view] [q/ESC: Back]")
+        else:
+            lines.append("[Tab: Toggle] [Enter: Confirm] [+/−: Qty] [j/k/↑/↓: Move] [M: Analysis] [O: Routes] [q/ESC: Back]")
+
+        self.query_one("#colony_trade_display", Static).update("\n".join(lines))
+
+    def _display_market_analysis(self, lines):
+        lines.append("MARKET ANALYSIS (Colony)")
+        lines.append("")
+        if self.buy_items:
+            lines.append(f"{'Commodity':<25} {'Price':>10} {'Supply':>10}")
+            lines.append("-" * 50)
+            for commodity, price, supply in self.buy_items[:10]:
+                lines.append(f"{commodity:<25} {price:>10,} cr {supply:>10}")
+        else:
+            lines.append("  No goods available to buy here.")
+        lines.append("")
+        if self.sell_items:
+            lines.append(f"{'You can sell':<25} {'Price':>10} {'You have':>10}")
+            lines.append("-" * 50)
+            for commodity, owned, price, demand in self.sell_items[:10]:
+                lines.append(f"{commodity:<25} {price:>10,} cr {owned:>10}")
+        else:
+            lines.append("  You have no goods to sell.")
+
+    def _display_trade_opportunities(self, lines):
+        lines.append("LOCAL OPPORTUNITIES (Colony)")
+        lines.append("")
+        lines.append("Colony markets focus on agricultural goods. Profits vary with supply.")
+        lines.append("Tip: Buy when supply is high, sell when your cargo is valuable elsewhere.")
+
+    def _display_trade_list(self, lines):
+        items = self.buy_items if self.mode == "buy" else self.sell_items
+        if not items:
+            if self.mode == "buy":
+                lines.append("No commodities available to buy here.")
+            else:
+                lines.append("No sellable inventory here.")
             return
-        
-        good = self.available_goods[self.selected_index]
-        
-        # Get ship cargo
-        ship = None
-        if self.game and hasattr(self.game, 'navigation'):
-            ship = getattr(self.game.navigation, 'current_ship', None)
-        
-        if not ship or not hasattr(ship, 'cargo'):
-            self.query_one(MessageLog).add_message("Nothing to sell", "red")
-            return
-        
-        # Check if player has this good
-        player_has = ship.cargo.get(good['name'], 0)
-        if player_has < self.quantity:
-            self.query_one(MessageLog).add_message(f"You only have {player_has} units!", "red")
-            return
-        
-        # Calculate sale price (80% of buy price)
-        sale_price = int(good['price'] * 0.8)
-        total_sale = sale_price * self.quantity
-        
-        # Complete the sale
-        ship.cargo[good['name']] -= self.quantity
-        if ship.cargo[good['name']] == 0:
-            del ship.cargo[good['name']]
-        
-        self.game.credits += total_sale
-        good['stock'] += self.quantity
-        
-        self.query_one(MessageLog).add_message(
-            f"Sold {self.quantity} units of {good['name']} for {total_sale:,} credits!",
-            "green"
-        )
-        
-        self.render_trade()
-    
+
+        # Scrolling window
+        max_visible = 20
+        total_items = len(items)
+        if self.selected_index < self.trade_scroll_offset:
+            self.trade_scroll_offset = self.selected_index
+        elif self.selected_index >= self.trade_scroll_offset + max_visible:
+            self.trade_scroll_offset = self.selected_index - max_visible + 1
+        self.trade_scroll_offset = max(0, min(self.trade_scroll_offset, max(0, total_items - max_visible)))
+
+        header = ("#  Commodity                     Price        Avail/Demand")
+        lines.append(header)
+        lines.append("-" * len(header))
+        if self.trade_scroll_offset > 0:
+            lines.append(f"  ▲ ({self.trade_scroll_offset} items above)")
+
+        end_idx = min(self.trade_scroll_offset + max_visible, total_items)
+        for i in range(self.trade_scroll_offset, end_idx):
+            entry = items[i]
+            cursor = ">" if i == self.selected_index else " "
+            if self.mode == "buy":
+                name, price, supply = entry
+                lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {supply:>6}")
+            else:
+                name, owned, price, demand = entry
+                suffix = " [no demand]" if demand == 0 else ""
+                lines.append(f" {cursor} {i+1:2d}. {name:<28} {price:>8,} cr     {owned:>3}/{demand:<3}{suffix}")
+
+        if end_idx < total_items:
+            lines.append(f"  ▼ ({total_items - end_idx} items below)")
+
+        # Optional note about no-demand items
+        if self.mode == "sell" and any(e[3] == 0 for e in items):
+            lines.append("")
+            lines.append("Items marked [no demand] cannot be sold here.")
+
+        # Selected details
+        sel = items[self.selected_index]
+        lines.append("")
+        if self.mode == "buy":
+            name, price, supply = sel
+            credits = getattr(self.game, 'credits', 0)
+            max_afford = credits // price if price > 0 else 0
+            cargo = self.game.get_cargo_status() if hasattr(self.game, 'get_cargo_status') else {'available': 0}
+            max_cargo_space = cargo.get('available', 0)
+            max_buy = max(0, min(supply, max_afford, max_cargo_space))
+            total = self.quantity * price
+            lines.append(f"Selected: {name} | Price: {price:,} | Supply: {supply}")
+            lines.append(f"Qty: {self.quantity} (max {max_buy}: credits={max_afford}, cargo={max_cargo_space})   Total: {total:,}  [+/- to adjust, Enter/B to buy]")
+        else:
+            name, owned, price, demand = sel
+            max_sell = max(0, min(owned, demand))
+            total = self.quantity * price
+            lines.append(f"Selected: {name} | Price: {price:,} | You: {owned} | Demand: {demand}")
+            lines.append(f"Qty: {self.quantity} (max {max_sell})  Value: {total:,}  [+/- to adjust, Enter/S to sell]")
+
+    # Actions to mirror TradingScreen UX
     def action_pop_screen(self):
         self.app.pop_screen()
+
+    def action_toggle_mode(self):
+        if self.mode in ["analysis", "opportunities"]:
+            self.mode = "buy"
+        else:
+            self.mode = "sell" if self.mode == "buy" else "buy"
+        self.quantity = 1
+        self.selected_index = 0
+        self.trade_scroll_offset = 0
+        self.refresh_lists()
+        self.update_display()
+
+    def action_toggle_analysis(self):
+        if self.mode == "analysis":
+            self.mode = "buy"
+        else:
+            self.mode = "analysis"
+        self.trade_scroll_offset = 0
+        self.update_display()
+
+    def action_show_opportunities(self):
+        if self.mode == "opportunities":
+            self.mode = "buy"
+        else:
+            self.mode = "opportunities"
+        self.trade_scroll_offset = 0
+        self.update_display()
+
+    def action_cursor_down(self):
+        if self.mode in ["analysis", "opportunities"]:
+            return
+        items = self.buy_items if self.mode == "buy" else self.sell_items
+        if items:
+            self.selected_index = (self.selected_index + 1) % len(items)
+            self.update_display()
+
+    def action_cursor_up(self):
+        if self.mode in ["analysis", "opportunities"]:
+            return
+        items = self.buy_items if self.mode == "buy" else self.sell_items
+        if items:
+            self.selected_index = (self.selected_index - 1) % len(items)
+            self.update_display()
+
+    def action_inc_qty(self):
+        self.quantity += 1
+        self.update_display()
+
+    def action_dec_qty(self):
+        if self.quantity > 1:
+            self.quantity -= 1
+            self.update_display()
+
+    def action_confirm_buy(self):
+        if self.mode != "buy":
+            return
+        self.action_confirm()
+
+    def action_confirm_sell(self):
+        if self.mode != "sell":
+            return
+        self.action_confirm()
+
+    def action_confirm(self):
+        if self.mode in ["analysis", "opportunities"]:
+            return
+        items = self.buy_items if self.mode == "buy" else self.sell_items
+        if not items:
+            return
+        sel = items[self.selected_index]
+        try:
+            if self.mode == "buy":
+                name, price, supply = sel
+                credits = getattr(self.game, 'credits', 0)
+                cargo = self.game.get_cargo_status() if hasattr(self.game, 'get_cargo_status') else {'available': 0}
+                max_afford = (credits // price) if price > 0 else 0
+                max_cargo_space = cargo.get('available', 0)
+                qty = max(0, min(self.quantity, supply, max_afford, max_cargo_space))
+                if qty <= 0:
+                    self.query_one(MessageLog).add_message("Cannot buy: adjust quantity, credits, or cargo space.")
+                    return
+                ship = getattr(getattr(self.game, 'navigation', None), 'current_ship', None)
+                if not ship:
+                    self.query_one(MessageLog).add_message("No ship available.", "red")
+                    return
+                if not hasattr(ship, 'cargo'):
+                    ship.cargo = {}
+                ship.cargo[name] = ship.cargo.get(name, 0) + qty
+                self.game.credits -= price * qty
+                for g in self.available_goods:
+                    if g['name'] == name:
+                        g['stock'] = max(0, int(g.get('stock', 0)) - qty)
+                        break
+                self.query_one(MessageLog).add_message(f"Bought {qty} units of {name} for {(price*qty):,} credits!", "green")
+            else:
+                name, owned, price, demand = sel
+                qty = max(0, min(self.quantity, owned, demand))
+                if qty <= 0:
+                    self.query_one(MessageLog).add_message("Cannot sell: adjust quantity or demand.")
+                    return
+                ship = getattr(getattr(self.game, 'navigation', None), 'current_ship', None)
+                if not ship or not hasattr(ship, 'cargo'):
+                    self.query_one(MessageLog).add_message("Nothing to sell", "red")
+                    return
+                ship.cargo[name] = max(0, ship.cargo.get(name, 0) - qty)
+                if ship.cargo.get(name, 0) == 0:
+                    del ship.cargo[name]
+                self.game.credits += price * qty
+                found = False
+                for g in self.available_goods:
+                    if g['name'] == name:
+                        g['stock'] = int(g.get('stock', 0)) + qty
+                        found = True
+                        break
+                if not found:
+                    self.available_goods.append({
+                        "name": name,
+                        "base_price": int(self.good_base_prices.get(name, price)),
+                        "description": "",
+                        "price": price,
+                        "stock": qty
+                    })
+                self.query_one(MessageLog).add_message(f"Sold {qty} units of {name} for {(price*qty):,} credits!", "green")
+        finally:
+            self.quantity = 1
+            self.refresh_lists()
+            self.update_display()
 
 
 class CrewRecruitmentScreen(Screen):
