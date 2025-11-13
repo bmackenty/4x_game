@@ -128,143 +128,23 @@ class GalacticHistoryScreen(Screen):
         msg_log = self.query_one(MessageLog)
         msg_log.add_message("Galactic History - Use j/k or arrows to scroll, q to return", "cyan")
     
-    def _build_history_lines(self):
-        """Build the complete history lines list once"""
-        self.history_lines = []
-        
-        if not self.history_data:
-            return
-        
-        for epoch in self.history_data:
-            # Epoch header
-            self.history_lines.append(("═" * 120, "bold bright_cyan"))
-            self.history_lines.append((f"{epoch['name']}", "bold bright_yellow"))
-            self.history_lines.append((f"Years {epoch['start_year']:,} – {epoch['end_year']:,} (Duration: {epoch['end_year'] - epoch['start_year']:,} years)", "bright_white"))
-            self.history_lines.append(("─" * 120, "dim white"))
-            self.history_lines.append((f"Themes: {', '.join(epoch['themes'])}", "cyan"))
-            self.history_lines.append(("", "white"))
-            
-            # Cataclysms
-            if epoch.get('cataclysms'):
-                self.history_lines.append(("⚠ Major Cataclysms:", "bold red"))
-                for cataclysm in epoch['cataclysms']:
-                    self.history_lines.append((f"  • {cataclysm}", "bright_red"))
-                self.history_lines.append(("", "white"))
-            
-            # Faction Formations
-            if epoch.get('faction_formations'):
-                self.history_lines.append(("🏛️  Faction Formations:", "bold bright_green"))
-                for faction in epoch['faction_formations']:
-                    self.history_lines.append((f"  • Year {faction['year']:,}: {faction['event']}", "bright_white"))
-                self.history_lines.append(("", "white"))
-            
-            # Mysteries
-            if epoch.get('mysteries'):
-                self.history_lines.append(("✦ Mysteries of This Age:", "bold magenta"))
-                for mystery in epoch['mysteries']:
-                    self.history_lines.append((f"  • {mystery}", "bright_magenta"))
-                self.history_lines.append(("", "white"))
-            
-            # Civilizations
-            self.history_lines.append(("Civilizations of This Epoch:", "bold green"))
-            self.history_lines.append(("", "white"))
-            
-            for civ in epoch['civilizations']:
-                self.history_lines.append((f"┌─ {civ['name']}", "bold bright_white"))
-                self.history_lines.append((f"│  Species: {civ['species']}", "white"))
-                self.history_lines.append((f"│  Traits: {', '.join(civ['traits'])}", "dim cyan"))
-                self.history_lines.append((f"│  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "yellow"))
-                self.history_lines.append((f"│  Duration: {civ['collapsed'] - civ['founded']:,} years", "dim yellow"))
-                self.history_lines.append((f"│", "white"))
-                self.history_lines.append((f"│  Remnants:", "bright_blue"))
-                self.history_lines.append((f"│    {civ['remnants']}", "dim blue"))
-                
-                if civ.get('notable_events'):
-                    self.history_lines.append((f"│", "white"))
-                    self.history_lines.append((f"│  Notable Events:", "bright_green"))
-                    for event in civ['notable_events']:
-                        year = event.get('year', '?')
-                        desc = event.get('description', str(event))
-                        self.history_lines.append((f"│    • Year {year}: {desc}", "dim green"))
-                
-                self.history_lines.append((f"└{'─' * 118}", "dim white"))
-                self.history_lines.append(("", "white"))
-            
-            self.history_lines.append(("", "white"))
-    
-    def _generate_demo_history(self):
-        """Generate simple demo history when galactic_history module is unavailable"""
-        return [
-            {
-                "name": "The Dawn of Echoes",
-                "start_year": 0,
-                "end_year": 3000,
-                "themes": ["emergence", "first contact"],
-                "cataclysms": ["Etheric Resonance Collapse"],
-                "mysteries": ["The Great Silence returns for 73 years"],
-                "civilizations": [
-                    {
-                        "name": "Aethori Bio-Architects",
-                        "type": "Bio-Architects",
-                        "traits": ["organic cities", "living ships", "gene-forged citizens"],
-                        "founded": 200,
-                        "collapsed": 2800,
-                        "remnants": "Overgrown megastructures pulsate faintly, still alive after millennia.",
-                        "notable_events": [
-                            "The Aethori Bio-Architects encountered a planet disappears and reappears inverted."
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "The Age of Expansion",
-                "start_year": 3000,
-                "end_year": 10000,
-                "themes": ["colonization", "conflict"],
-                "cataclysms": ["AI Schism of the Ascendant Mind", "Stellar Network Implosion"],
-                "mysteries": [],
-                "civilizations": [
-                    {
-                        "name": "Voryx Quantum Dynasties",
-                        "type": "Quantum Dynasties",
-                        "traits": ["temporal control", "superposition rulers", "probability warfare"],
-                        "founded": 3500,
-                        "collapsed": 9500,
-                        "remnants": "Temporal scars linger, with entire regions flickering between timelines.",
-                        "notable_events": [
-                            "The Voryx Quantum Dynasties encountered a ship exits FTL before it departs."
-                        ]
-                    }
-                ]
-            }
-        ]
-        
     def update_display(self):
-        """Render the galactic history"""
-        text = Text()
+        """Update the history display"""
+        # Get display dimensions
+        visible_height = 30
+        start_line = self.history_scroll_offset
+        end_line = min(start_line + visible_height, len(self.history_lines))
         
-        # Header
-        text.append("═" * 120 + "\n", style="bold cyan")
-        text.append("GALACTIC HISTORY".center(120) + "\n", style="bold yellow")
-        text.append("The Ages of the Known Galaxy".center(120) + "\n", style="dim white")
-        text.append("═" * 120 + "\n", style="bold cyan")
+        # Build the visible text
+        from rich.text import Text
+        text = Text()
+        text.append("═" * 120 + "\n", style="bold white")
+        text.append("GALACTIC HISTORY".center(120) + "\n", style="bold bright_cyan")
+        text.append("═" * 120 + "\n", style="bold white")
         text.append("\n")
         
-        if not self.history_lines:
-            text.append("History data unavailable.\n", style="red")
-            text.append("\n")
-            text.append("Press 'q' to return\n", style="dim white")
-            self.query_one("#history_display", Static).update(text)
-            return
-        
-        # Apply scroll offset and render visible lines
-        visible_height = 35  # Number of lines visible
-        start_line = self.history_scroll_offset
-        end_line = start_line + visible_height
-        
-        visible_lines = self.history_lines[start_line:end_line]
-        
-        for line_text, line_style in visible_lines:
+        # Show visible history lines
+        for line_text, line_style in self.history_lines[start_line:end_line]:
             text.append(line_text + "\n", style=line_style)
         
         # Scroll indicator
@@ -387,30 +267,9 @@ class MainMenuScreen(Screen):
                     
                     lines.append(f"  {cursor} {save_name}")
                     lines.append(f"      Player: {player_name} | Class: {character_class}")
-                    lines.append(f"      Credits: {credits:,} | Turn: {turn} | {time_str}")
-                    lines.append("")
-            
-            lines.append("─" * 80)
-            if self.confirming_delete:
-                lines.append("")
-                save_name = self.save_files[self.selected_index].get('name', 'Unnamed Save')
-                lines.append(f"⚠ DELETE CONFIRMATION ⚠".center(80))
-                lines.append("")
-                lines.append(f"Are you sure you want to delete '{save_name}'?".center(80))
-                lines.append("")
-                lines.append("This action cannot be undone!".center(80))
-                lines.append("")
-                lines.append("[y: Yes, Delete] [N/ESC: No, Cancel]".center(80))
-            else:
-                lines.append("[j/k or ↑/↓: Navigate] [Enter: Load] [d: Delete] [ESC: Back]")
         
+        # Update the display
         self.query_one("#menu_display", Static).update("\n".join(lines))
-    
-    def action_new_game(self):
-        """Start a new game"""
-        if self.confirming_delete:
-            return  # Don't allow this during confirmation
-        self.app.push_screen(CharacterCreationScreen())
     
     def action_load_game(self):
         """Show load game menu"""
@@ -428,6 +287,10 @@ class MainMenuScreen(Screen):
             self.update_display()
         else:
             self.action_select()
+    
+    def action_new_game(self):
+        """Start character creation for a new game"""
+        self.app.push_screen(CharacterCreationScreen())
     
     def action_select(self):
         """Select current menu item"""
@@ -572,13 +435,16 @@ class CharacterCreationScreen(Screen):
         }
         
         # Selection lists
-        self.species_list = list(get_playable_species().keys()) if GAME_AVAILABLE else ["Terran"]
+        # Show all species, but only allow selection of playable (Terran)
+        from species import species_database
+        self.species_list = list(species_database.keys()) if GAME_AVAILABLE else ["Terran"]
         self.background_list = get_background_list() if GAME_AVAILABLE else ["Orbital Foundling"]
         self.faction_list = list(factions.keys()) if GAME_AVAILABLE else ["Independent"]
         self.class_list = list(character_classes.keys()) if GAME_AVAILABLE else ["Explorer"]
-        
         # Current selection index
         self.current_index = 0
+        # Only allow playable species to be selected
+        self.playable_species = set(get_playable_species().keys()) if GAME_AVAILABLE else {"Terran"}
         
     def compose(self) -> ComposeResult:
         """Compose the character creation screen"""
@@ -637,32 +503,29 @@ class CharacterCreationScreen(Screen):
                     current_species_name = ""
                     current_species = {}
                 
-                def wrap_detail(prefix: str, text: str):
-                    if not text:
-                        return []
-                    wrapped = [prefix]
-                    words = text.split()
-                    line = ""
-                    for word in words:
-                        if len(line) + len(word) + 1 <= 36:
-                            line += (word + " ")
-                        else:
-                            wrapped.append(f"│   {line.strip()}")
-                            line = word + " "
-                    if line:
-                        wrapped.append(f"│   {line.strip()}")
-                    return wrapped
-                
+                # Build detail lines (same format as background/faction screens)
                 detail_lines = []
                 if GAME_AVAILABLE and current_species:
-                    detail_lines.append("│ SPECIES DETAILS")
-                    detail_lines.append("│ " + "─" * 38)
+                    detail_lines.append(f"│ SPECIES DETAILS")
+                    detail_lines.append(f"│ " + "─" * 38)
                     
+                    # Description
                     desc = current_species.get("description", "")
                     if desc:
-                        detail_lines.extend(wrap_detail("│ Description:", desc))
-                        detail_lines.append("│")
+                        detail_lines.append(f"│ Description:")
+                        words = desc.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
                     
+                    # Short fields
                     category = current_species.get("category")
                     if category:
                         detail_lines.append(f"│ Category: {category}")
@@ -671,60 +534,114 @@ class CharacterCreationScreen(Screen):
                         detail_lines.append(f"│ Homeworld: {homeworld}")
                     alliance = current_species.get("alliance_status")
                     if alliance:
-                        detail_lines.append(f"│ Alliance Status: {alliance}")
+                        detail_lines.append(f"│ Alliance: {alliance}")
                     population = current_species.get("population")
                     if population:
                         detail_lines.append(f"│ Population: {population}")
                     if len(detail_lines) > 2:
-                        detail_lines.append("│")
+                        detail_lines.append(f"│")
                     
+                    # Biology
                     biology = current_species.get("biology", "")
                     if biology:
-                        detail_lines.extend(wrap_detail("│ Biology:", biology))
-                        detail_lines.append("│")
+                        detail_lines.append(f"│ Biology:")
+                        words = biology.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
                     
+                    # Cognition
                     cognition = current_species.get("cognition", "")
                     if cognition:
-                        detail_lines.extend(wrap_detail("│ Cognition:", cognition))
-                        detail_lines.append("│")
+                        detail_lines.append(f"│ Cognition:")
+                        words = cognition.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
                     
+                    # Culture
                     culture = current_species.get("culture", "")
                     if culture:
-                        detail_lines.extend(wrap_detail("│ Culture:", culture))
-                        detail_lines.append("│")
+                        detail_lines.append(f"│ Culture:")
+                        words = culture.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
                     
+                    # Technology
                     technology = current_species.get("technology", "")
                     if technology:
-                        detail_lines.extend(wrap_detail("│ Technology:", technology))
-                        detail_lines.append("│")
+                        detail_lines.append(f"│ Technology:")
+                        words = technology.split()
+                        line = ""
+                        for word in words:
+                            if len(line) + len(word) + 1 <= 36:
+                                line += (word + " ")
+                            else:
+                                detail_lines.append(f"│   {line.strip()}")
+                                line = word + " "
+                        if line:
+                            detail_lines.append(f"│   {line.strip()}")
+                        detail_lines.append(f"│")
                     
+                    # Special Traits
                     traits = current_species.get("special_traits", [])
                     if traits:
-                        detail_lines.append("│ Special Traits:")
+                        detail_lines.append(f"│ Special Traits:")
                         for trait in traits:
                             detail_lines.append(f"│   - {trait}")
-                        detail_lines.append("│")
+                        detail_lines.append(f"│")
                     
+                    # Starting Bonuses
                     starting_bonuses = current_species.get("starting_bonuses", {})
                     if starting_bonuses:
-                        detail_lines.append("│ Starting Bonuses:")
+                        detail_lines.append(f"│ Starting Bonuses:")
                         for bonus_name, bonus_value in starting_bonuses.items():
-                            detail_lines.append(f"│   {bonus_name.replace('_', ' ').title()}: {bonus_value}")
-                else:
-                    detail_lines.append("│ SPECIES DETAILS")
-                    detail_lines.append("│ " + "─" * 38)
-                    detail_lines.append("│")
-                    detail_lines.append("│ No additional information available.")
+                            detail_lines.append(f"│   +{bonus_value} {bonus_name.replace('_', ' ').title()}")
                 
+                # Two-column layout: species list on left, details for selected species on right, top-aligned
                 for i, species in enumerate(visible_species):
                     actual_index = i + scroll_offset
+                    is_playable = species in self.playable_species
                     cursor = ">" if actual_index == self.current_index else " "
                     letter = chr(97 + actual_index) if actual_index < 26 else " "
-                    left_text = f"  {cursor} {letter}) {species}"[:38].ljust(38)
-                    right_text = detail_lines[i] if i < len(detail_lines) else "│"
+                    
+                    # Build species name with note BEFORE padding
+                    species_display = species if is_playable else f"{species} (not playable)"
+                    left_text = f"  {cursor} {letter}) {species_display}"[:38].ljust(38)
+                    
+                    # Right side: show detail lines top-aligned (like background/faction panel)
+                    if i < len(detail_lines):
+                        right_text = detail_lines[i]
+                    else:
+                        right_text = "│"
+                    
                     lines.append(left_text + "  " + right_text)
                 
+                # After the list, show remaining details for the selected species
                 if detail_lines and len(detail_lines) > len(visible_species):
+                    # Add remaining detail lines below the list
                     for detail_line in detail_lines[len(visible_species):]:
                         left_text = " " * 38
                         lines.append(left_text + "  " + detail_line)
@@ -1634,27 +1551,27 @@ class MainGameScreen(Screen):
         
         self.turn_count = 0
 
-    def action_history(self):
-        """Open the Galactic History screen"""
-        self.app.push_screen(GalacticHistoryScreen())
-        
-    def compose(self) -> ComposeResult:
-        """Compose the main game screen"""
-        yield Static(id="status_bar")
-        yield Static(id="main_area")
-        yield MessageLog()
-        
-    def on_mount(self):
-        """Initialize the game screen"""
-        self.update_display()
-        if self.character_data:
-            self.query_one(MessageLog).add_message(f"Welcome, {self.character_data['name']}!")
-        elif self.game:
-            self.query_one(MessageLog).add_message(f"Welcome back, {self.game.player_name}!")
-        self.query_one(MessageLog).add_message("Press 'n' for news, 'm' for map, 'i' for inventory, 's' for status")
-        if self.game and self.game.owned_ships:
-            starter = ", ".join(self.game.owned_ships)
-            self.query_one(MessageLog).add_message(f"Starter ship(s): {starter}")
+    def action_confirm(self):
+        """Confirm current selection and advance to next stage"""
+        if self.stage == "species":
+            if self.species_list and 0 <= self.current_index < len(self.species_list):
+                selected_species = self.species_list[self.current_index]
+                # Only allow playable species
+                if selected_species in self.playable_species:
+                    self.character_data['species'] = selected_species
+                    self.stage = "background"
+                    self.current_index = 0
+                    self.update_display()
+                    self.query_one(MessageLog).add_message(f"Selected species: {selected_species}")
+                    self.query_one(MessageLog).add_message("Select your background.")
+                else:
+                    self.query_one(MessageLog).add_message(f"{selected_species} is not playable.", "red")
+            else:
+                self.query_one(MessageLog).add_message("No species selected.", "red")
+        elif self.stage == "background":
+            if self.game and self.game.owned_ships:
+                starter = ", ".join(self.game.owned_ships)
+                self.query_one(MessageLog).add_message(f"Starter ship(s): {starter}")
         
     def update_display(self):
         """Update the main display"""
