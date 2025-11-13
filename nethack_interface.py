@@ -175,6 +175,101 @@ class GalacticHistoryScreen(Screen):
     def action_pop_screen(self):
         """Return to previous screen"""
         self.app.pop_screen()
+    
+    def _build_history_lines(self):
+        """Build the formatted history lines from history data"""
+        self.history_lines = []
+        
+        if not self.history_data:
+            self.history_lines.append(("No history data available.", "dim white"))
+            return
+        
+        for epoch in self.history_data:
+            # Epoch header
+            self.history_lines.append(("═" * 120, "bold white"))
+            self.history_lines.append((f"  {epoch['name']}", "bold bright_cyan"))
+            duration = epoch['end_year'] - epoch['start_year']
+            self.history_lines.append((f"  Years {epoch['start_year']:,} – {epoch['end_year']:,} (Duration: {duration:,} years)", "cyan"))
+            self.history_lines.append(("─" * 120, "white"))
+            self.history_lines.append((f"  Themes: {', '.join(epoch['themes'])}", "bright_white"))
+            self.history_lines.append(("", "white"))
+            
+            # Cataclysms
+            if epoch.get('cataclysms'):
+                self.history_lines.append(("  ⚠ Major Cataclysms:", "bold red"))
+                for cataclysm in epoch['cataclysms']:
+                    self.history_lines.append((f"    • {cataclysm}", "bright_red"))
+                self.history_lines.append(("", "white"))
+            
+            # Faction Formations
+            if epoch.get('faction_formations'):
+                self.history_lines.append(("  🏛️  Faction Formations:", "bold magenta"))
+                for faction in epoch['faction_formations']:
+                    self.history_lines.append((f"    • Year {faction['year']:,}: {faction['event']}", "bright_magenta"))
+                self.history_lines.append(("", "white"))
+            
+            # Mysteries
+            if epoch.get('mysteries'):
+                self.history_lines.append(("  ✦ Mysteries of This Age:", "bold bright_yellow"))
+                for mystery in epoch['mysteries']:
+                    self.history_lines.append((f"    • {mystery}", "yellow"))
+                self.history_lines.append(("", "white"))
+            
+            # Civilizations
+            self.history_lines.append(("  Civilizations of This Epoch:", "bold bright_green"))
+            self.history_lines.append(("", "white"))
+            
+            for civ in epoch['civilizations']:
+                self.history_lines.append((f"  ┌─ {civ['name']}", "bright_green"))
+                self.history_lines.append((f"  │  Species: {civ['species']}", "green"))
+                self.history_lines.append((f"  │  Traits: {', '.join(civ['traits'])}", "green"))
+                civ_duration = civ['collapsed'] - civ['founded']
+                self.history_lines.append((f"  │  Founded: Year {civ['founded']:,} | Collapsed: Year {civ['collapsed']:,}", "green"))
+                self.history_lines.append((f"  │  Duration: {civ_duration:,} years", "green"))
+                self.history_lines.append(("  │", "green"))
+                self.history_lines.append(("  │  Remnants:", "green"))
+                self.history_lines.append((f"  │    {civ['remnants']}", "dim green"))
+                
+                if civ.get('notable_events'):
+                    self.history_lines.append(("  │", "green"))
+                    self.history_lines.append(("  │  Notable Events:", "green"))
+                    for event in civ['notable_events']:
+                        self.history_lines.append((f"  │    • {event}", "bright_green"))
+                
+                self.history_lines.append(("  └" + "─" * 118, "green"))
+                self.history_lines.append(("", "white"))
+            
+            self.history_lines.append(("", "white"))
+    
+    def _generate_demo_history(self):
+        """Generate demo history when galactic_history module isn't available"""
+        return [
+            {
+                'name': 'The First Dawn (Demo Mode)',
+                'start_year': 0,
+                'end_year': 10000,
+                'themes': ['Exploration', 'Discovery', 'First Contact'],
+                'cataclysms': ['The Great Silence - All FTL communication ceased for 100 years'],
+                'faction_formations': [
+                    {'year': 5000, 'name': 'Terran Coalition', 'event': 'Unified human government formed after First Contact War'}
+                ],
+                'mysteries': ['The Origin of the Ancient Gateways'],
+                'civilizations': [
+                    {
+                        'name': 'Proto-Terran Alliance',
+                        'type': 'Federation',
+                        'traits': ['Exploratory', 'Diplomatic'],
+                        'founded': 2500,
+                        'collapsed': 9500,
+                        'remnants': 'Formed the basis of modern Terran government structures',
+                        'notable_events': [
+                            'First successful FTL jump (Year 2500)',
+                            'Discovery of alien ruins on Mars (Year 3200)'
+                        ]
+                    }
+                ]
+            }
+        ]
 
 
 class MainMenuScreen(Screen):
@@ -431,10 +526,16 @@ class CharacterCreationScreen(Screen):
         self.background_list = get_background_list() if GAME_AVAILABLE else ["Orbital Foundling"]
         self.faction_list = list(factions.keys()) if GAME_AVAILABLE else ["Independent"]
         self.class_list = list(character_classes.keys()) if GAME_AVAILABLE else ["Explorer"]
-        # Current selection index
-        self.current_index = 0
         # Only allow playable species to be selected
         self.playable_species = set(get_playable_species().keys()) if GAME_AVAILABLE else {"Terran"}
+        # Current selection index - start with first playable species
+        self.current_index = 0
+        # Ensure we start on a playable species
+        if self.species_list:
+            for i, species in enumerate(self.species_list):
+                if species in self.playable_species:
+                    self.current_index = i
+                    break
         
     def compose(self) -> ComposeResult:
         """Compose the character creation screen"""
@@ -1012,16 +1113,18 @@ class CharacterCreationScreen(Screen):
                 lines.append("")
                 derived = calculate_derived_attributes(stats)
                 if derived:
-                    lines.append("  Derived Metrics:")
+                    lines.append("  [bold bright_cyan]Derived Metrics:[/bold bright_cyan]")
                     for name, value in derived.items():
                         info = DERIVED_METRIC_INFO.get(name, {})
                         formula = info.get("formula")
                         description = info.get("description")
-                        metric_line = f"    {name}: {value}"
+                        
+                        # Color the metric name and value
+                        metric_line = f"    [bright_yellow]{name}:[/bright_yellow] [bright_white]{value}[/bright_white]"
                         if formula:
-                            metric_line += f"  [{formula}]"
+                            metric_line += f"  [dim cyan][{formula}][/dim cyan]"
                         if description:
-                            metric_line += f" - {description}"
+                            metric_line += f" [italic dim white]- {description}[/italic dim white]"
                         lines.append(metric_line)
                     lines.append("")
 
@@ -1185,9 +1288,19 @@ class CharacterCreationScreen(Screen):
         # Quick letter selection (skip for faction since there are too many)
         elif len(key) == 1 and key.isalpha() and self.stage not in ["name", "stats", "confirm", "faction"]:
             idx = ord(key.lower()) - ord('a')
-            if 0 <= idx < len(self.get_current_list()):
-                self.current_index = idx
-                self.action_confirm()
+            current_list = self.get_current_list()
+            if 0 <= idx < len(current_list):
+                # For species selection, verify it's playable before allowing quick select
+                if self.stage == "species":
+                    species_name = current_list[idx]
+                    if species_name in self.playable_species:
+                        self.current_index = idx
+                        self.action_confirm()
+                    else:
+                        self.query_one(MessageLog).add_message(f"{species_name} is not playable. Only Terran is available.", "yellow")
+                else:
+                    self.current_index = idx
+                    self.action_confirm()
         # Name entry
         elif self.stage == "name":
             if key == "backspace" and len(self.character_data['name']) > 0:
@@ -1222,6 +1335,7 @@ class CharacterCreationScreen(Screen):
             if not current_list or len(current_list) == 0:
                 return  # Can't navigate if no list
         
+        # Allow cursor to move freely through all items
         self.current_index = (self.current_index + delta) % len(current_list)
         self.update_display()
         
@@ -1240,7 +1354,13 @@ class CharacterCreationScreen(Screen):
     def action_confirm(self):
         """Confirm current selection and move to next stage"""
         if self.stage == "species":
-            self.character_data['species'] = self.species_list[self.current_index]
+            selected_species = self.species_list[self.current_index]
+            # Verify the selected species is playable
+            if selected_species not in self.playable_species:
+                self.query_one(MessageLog).add_message(f"{selected_species} is not playable. Please select Terran.", "yellow")
+                return
+            
+            self.character_data['species'] = selected_species
             # Ensure background list is populated
             if not self.background_list or len(self.background_list) == 0:
                 try:
