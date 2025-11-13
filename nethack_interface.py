@@ -178,7 +178,12 @@ class GalacticHistoryScreen(Screen):
 
 
 class MainMenuScreen(Screen):
+    def on_mount(self):
+        self.update_display()
     """Main menu screen - New Game / Load Game"""
+    def compose(self) -> ComposeResult:
+        yield Static(id="menu_display")
+        yield MessageLog()
     
     BINDINGS = [
         Binding("escape,q", "quit", "Quit", show=True),
@@ -187,9 +192,9 @@ class MainMenuScreen(Screen):
         Binding("j,down", "move_down", "Down", show=False),
         Binding("k,up", "move_up", "Up", show=False),
         Binding("enter", "select", "Select", show=True),
-        Binding("d", "delete_save", "Delete", show=False),
-        Binding("y", "confirm_delete", "Yes", show=False),
-        Binding("N", "cancel_delete", "No", show=False),
+        Binding("d", "delete_save", "Delete", show=True),
+        Binding("y", "confirm_delete", "Yes", show=True),
+        Binding("N", "cancel_delete", "No", show=True),
     ]
     
     def __init__(self):
@@ -199,20 +204,7 @@ class MainMenuScreen(Screen):
         self.save_files = []
         self.show_saves = False
         self.confirming_delete = False
-    
-    def compose(self) -> ComposeResult:
-        yield Static(id="menu_display")
-        yield MessageLog()
-    
-    def on_mount(self):
-        """Initialize the menu"""
-        if GAME_AVAILABLE:
-            self.save_files = get_save_files()
-        self.update_display()
-        msg_log = self.query_one(MessageLog)
-        msg_log.add_message("Welcome to Galactic Empire 4X!", "bright_cyan")
-        msg_log.add_message("Press 'n' for New Game, 'l' for Load Game, or use arrow keys", "white")
-    
+
     def update_display(self):
         """Update the menu display"""
         lines = []
@@ -222,16 +214,14 @@ class MainMenuScreen(Screen):
         lines.append("")
         lines.append("7019 mind your assumptions".center(80))
         lines.append("")
-        
+
         if not self.show_saves:
             # Main menu
             lines.append("MAIN MENU".center(80))
             lines.append("")
-            
             for idx, item in enumerate(self.menu_items):
                 cursor = ">" if idx == self.selected_index else " "
                 lines.append(f"  {cursor} {item}")
-            
             lines.append("")
             lines.append("─" * 80)
             lines.append("[n: New Game] [l: Load Game] [q/ESC: Quit]")
@@ -239,7 +229,6 @@ class MainMenuScreen(Screen):
             # Load game menu
             lines.append("LOAD GAME".center(80))
             lines.append("")
-            
             if not self.save_files:
                 lines.append("  No save files found.")
                 lines.append("")
@@ -253,7 +242,6 @@ class MainMenuScreen(Screen):
                     credits = save.get('credits', 0)
                     turn = save.get('turn', 0)
                     timestamp = save.get('timestamp', '')
-                    
                     # Format timestamp if available
                     if timestamp:
                         try:
@@ -264,10 +252,11 @@ class MainMenuScreen(Screen):
                             time_str = timestamp[:16] if len(timestamp) > 16 else timestamp
                     else:
                         time_str = ""
-                    
                     lines.append(f"  {cursor} {save_name}")
                     lines.append(f"      Player: {player_name} | Class: {character_class}")
-        
+                lines.append("")
+        lines.append("─" * 80)
+        lines.append("[enter: Load] [d: Delete] [ESC: Back] [q: Quit]")
         # Update the display
         self.query_one("#menu_display", Static).update("\n".join(lines))
     
@@ -276,6 +265,7 @@ class MainMenuScreen(Screen):
         if self.confirming_delete:
             return  # Don't allow this during confirmation
         if not self.show_saves:
+            self.save_files = get_save_files() if GAME_AVAILABLE else []
             if not self.save_files:
                 msg_log = self.query_one(MessageLog)
                 msg_log.add_message("No save files found. Starting new game instead.", "yellow")
