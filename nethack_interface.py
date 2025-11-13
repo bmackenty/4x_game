@@ -1550,6 +1550,19 @@ class MainGameScreen(Screen):
                     pass
         
         self.turn_count = 0
+    
+    def compose(self) -> ComposeResult:
+        """Compose the main game screen"""
+        yield Static(id="status_bar")
+        yield Static(id="main_area")
+        yield MessageLog()
+    
+    def on_mount(self):
+        """Initialize the main game screen"""
+        self.update_display()
+        msg_log = self.query_one(MessageLog)
+        msg_log.add_message("Welcome to Galactic Empire!", "bright_cyan")
+        msg_log.add_message("Use hotkeys to navigate: [i]nventory, [m]ap, [n]ews, [s]tatus", "white")
 
     def action_confirm(self):
         """Confirm current selection and advance to next stage"""
@@ -1705,19 +1718,28 @@ class MainGameScreen(Screen):
                 save_name = f"{self.game.player_name}_{self.game.character_class}"
                 print(f"[QUIT] Save name will be: {save_name}")
                 if save_game(self.game, save_name):
-                    msg_log = self.query_one(MessageLog)
-                    msg_log.add_message("Game saved successfully!", "green")
                     print("[QUIT] Save successful!")
+                    try:
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message("Game saved successfully!", "green")
+                    except:
+                        pass  # MessageLog might not be available during exit
                 else:
-                    msg_log = self.query_one(MessageLog)
-                    msg_log.add_message("Warning: Save failed! Check console for errors.", "yellow")
                     print("[QUIT] Save failed!")
+                    try:
+                        msg_log = self.query_one(MessageLog)
+                        msg_log.add_message("Warning: Save failed! Check console for errors.", "yellow")
+                    except:
+                        pass
                     import traceback
                     traceback.print_exc()
             except Exception as e:
-                msg_log = self.query_one(MessageLog)
-                msg_log.add_message(f"Warning: Could not save game: {e}", "yellow")
                 print(f"[QUIT] Exception during save: {e}")
+                try:
+                    msg_log = self.query_one(MessageLog)
+                    msg_log.add_message(f"Warning: Could not save game: {e}", "yellow")
+                except:
+                    pass  # MessageLog might not be available during exit
                 import traceback
                 traceback.print_exc()
         else:
