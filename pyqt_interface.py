@@ -65,10 +65,11 @@ from PyQt6.QtWidgets import (
 # - If that fails (e.g., standalone import for docs), fall back to stubs.
 try:
     from game import Game
-    from characters import character_classes, create_character_stats, calculate_derived_attributes, DERIVED_METRIC_INFO
+    from characters import create_character_stats, calculate_derived_attributes, DERIVED_METRIC_INFO
     from backgrounds import backgrounds as background_data, get_background_list, apply_background_bonuses
     from species import species_database, get_playable_species
     from factions import factions
+    from classes import classes, get_available_classes
     from research import research_categories
     from navigation import Ship
     from galactic_history import generate_epoch_history
@@ -556,13 +557,13 @@ class CharacterCreationDialog(QDialog):
             self.playable_species = set(get_playable_species().keys())
             self.background_list = get_background_list()
             self.faction_list = list(factions.keys())
-            self.class_list = list(character_classes.keys())
+            self.class_list = []  # Will be populated after background selection
             self.species_database = species_database
             self.background_data = background_data
             self.factions = factions
-            self.character_classes = character_classes
+            self.character_classes = classes
             
-            print(f"Loaded: {len(self.species_list)} species, {len(self.background_list)} backgrounds, {len(self.faction_list)} factions, {len(self.class_list)} classes")
+            print(f"Loaded: {len(self.species_list)} species, {len(self.background_list)} backgrounds, {len(self.faction_list)} factions, {len(classes)} total classes")
         else:
             print("DEBUG: GAME_AVAILABLE is False")
             self._set_demo_data()
@@ -1061,44 +1062,41 @@ class CharacterCreationDialog(QDialog):
                     detail_lines.append(f"│   {line.strip()}")
                 detail_lines.append("│")
             
-            # Starting credits
-            credits = current_class.get('starting_credits')
-            if credits is not None:
-                detail_lines.append(f"│ Starting Credits: {credits:,}")
-            
-            # Starting assets
-            for key, label in [
-                ("starting_ships", "Starting Ships"),
-                ("starting_stations", "Starting Stations"),
-                ("starting_platforms", "Starting Platforms"),
-            ]:
-                items = current_class.get(key, [])
-                if items:
-                    detail_lines.append(f"│ {label}:")
-                    for item in items:
-                        detail_lines.append(f"│   - {item}")
-                    detail_lines.append("│")
-            
-            # Bonuses
-            bonuses = current_class.get('bonuses', {})
-            if bonuses:
-                detail_lines.append("│ Bonuses:")
-                for bonus_name, bonus_value in bonuses.items():
-                    percent = round(bonus_value * 100)
-                    detail_lines.append(f"│   {bonus_name.replace('_', ' ').title()}: +{percent}%")
+            # Primary stats
+            primary_stats = current_class.get('primary_stats', [])
+            if primary_stats:
+                detail_lines.append(f"│ Primary Stats: {', '.join(primary_stats)}")
                 detail_lines.append("│")
             
-            # Skills
-            skills = current_class.get('skills', [])
-            if skills:
-                detail_lines.append("│ Skills:")
-                for skill in skills:
-                    detail_lines.append(f"│   - {skill}")
+            # Career path
+            career = current_class.get('career_path', '')
+            if career:
+                detail_lines.append(f"│ Career: {career}")
+                detail_lines.append("│")
+            
+            # Starting abilities
+            abilities = current_class.get('starting_abilities', [])
+            if abilities:
+                detail_lines.append("│ Starting Abilities:")
+                for ability in abilities[:3]:  # Show first 3
+                    detail_lines.append(f"│   - {ability}")
+                detail_lines.append("│")
+            
+            # Starting equipment
+            equipment = current_class.get('starting_equipment', [])
+            if equipment:
+                detail_lines.append("│ Starting Equipment:")
+                for item in equipment[:3]:  # Show first 3
+                    detail_lines.append(f"│   - {item}")
         
-        # Two-column layout
-        visible_count = min(10, len(self.class_list))
-        for i, char_class in enumerate(self.class_list[:visible_count]):
-            cursor = ">" if i == self.current_index else " "
+        # Two-column layout with scrolling
+        visible_count = 15
+        scroll_offset = max(0, self.current_index - visible_count + 5)
+        visible_classes = self.class_list[scroll_offset:scroll_offset + visible_count]
+        
+        for i, char_class in enumerate(visible_classes):
+            actual_index = i + scroll_offset
+            cursor = ">" if actual_index == self.current_index else " "
             left_text = f"  {cursor} {char_class}"[:38].ljust(38)
             
             # Right side: detail lines
@@ -1110,13 +1108,16 @@ class CharacterCreationDialog(QDialog):
             lines.append(left_text + "  " + right_text)
         
         # Remaining detail lines
-        if len(detail_lines) > visible_count:
-            for detail_line in detail_lines[visible_count:]:
+        if len(detail_lines) > len(visible_classes):
+            for detail_line in detail_lines[len(visible_classes):]:
                 left_text = " " * 38
                 lines.append(left_text + "  " + detail_line)
         
         lines.append("")
-        lines.append(f"[{self.current_index + 1}/{len(self.class_list)}]")
+        if len(self.class_list) > visible_count:
+            lines.append(f"[{self.current_index + 1}/{len(self.class_list)}] (Use ↑/↓ to scroll)")
+        else:
+            lines.append(f"[{self.current_index + 1}/{len(self.class_list)}]")
         
         return lines
     
@@ -1348,6 +1349,12 @@ class CharacterCreationDialog(QDialog):
             
         elif self.stage == "faction":
             self.character_data['faction'] = self.faction_list[self.current_index]
+            # Populate class list based on selected background
+            if self.character_data['background']:
+                self.class_list = get_available_classes(self.character_data['background'])
+                print(f"Filtered to {len(self.class_list)} classes for background: {self.character_data['background']}")
+            else:
+                self.class_list = list(self.character_classes.keys())
             self.stage = "class"
             self.current_index = 0
             
@@ -1585,6 +1592,12 @@ class RoguelikeMainWindow(QMainWindow):
         # View menu actions.
         self.action_view_history = QAction("Galactic History", self)
         self.action_view_history.triggered.connect(self.on_view_history)
+        
+        self.action_character_sheet = QAction("Character Sheet", self)
+        self.action_character_sheet.triggered.connect(self.on_character_sheet)
+        
+        self.action_overview = QAction("Overview", self)
+        self.action_overview.triggered.connect(self.on_overview)
 
         # Help menu actions.
         self.action_about = QAction("About", self)
@@ -1601,7 +1614,9 @@ class RoguelikeMainWindow(QMainWindow):
         menu_game.addAction(self.action_quit)
 
         menu_view = self.menuBar().addMenu("&View")
+        menu_view.addAction(self.action_overview)
         menu_view.addAction(self.action_view_history)
+        menu_view.addAction(self.action_character_sheet)
 
         menu_help = self.menuBar().addMenu("&Help")
         menu_help.addAction(self.action_about)
@@ -1621,7 +1636,9 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_new_game.setShortcut("N")
         self.action_load_game.setShortcut("L")
         self.action_save_game.setShortcut("S")
+        self.action_overview.setShortcut("O")
         self.action_view_history.setShortcut("H")
+        self.action_character_sheet.setShortcut("C")
         self.action_quit.setShortcut("Q")
 
     # ------------------------------------------------------------------
@@ -1724,7 +1741,8 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("─" * width)
         lines.append("")
         lines.append("Use the Game menu or keyboard shortcuts to continue.".center(width))
-        lines.append(" [N] New Game | [L] Load Game | [S] Save Game | [H] History ".center(width))
+        lines.append(" [N] New Game | [L] Load Game | [S] Save Game ".center(width))
+        lines.append(" [C] Character Sheet | [H] History | [O] Overview ".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
@@ -1896,6 +1914,218 @@ class RoguelikeMainWindow(QMainWindow):
         dlg = GalacticHistoryDialog(self)
         dlg.exec()
 
+    def on_character_sheet(self) -> None:
+        """
+        Handler for "Character Sheet" action.
+        
+        Shows detailed character information including stats, background, class, etc.
+        """
+        if not self.game:
+            QMessageBox.warning(
+                self,
+                "No Active Game",
+                "There is no active game. Start or load a game first.",
+            )
+            return
+        
+        self.render_character_sheet()
+        self.message_log.add_message("Character sheet displayed. Press Overview (O) to return.", "[VIEW]")
+
+    def on_overview(self) -> None:
+        """Handler for returning to game overview."""
+        if self.game:
+            self.render_game_overview()
+            self.message_log.add_message("Returned to overview.", "[VIEW]")
+        else:
+            self.render_main_menu()
+
+    def render_character_sheet(self) -> None:
+        """Render a detailed character sheet similar to nethack_interface style."""
+        if not self.game:
+            self.main_view.setPlainText("No active game.")
+            return
+        
+        # Calculate width
+        fm = self.main_view.fontMetrics()
+        char_width = fm.horizontalAdvance('=')
+        viewport_width = self.main_view.viewport().width()
+        usable_width = viewport_width - 20
+        width = min(80, max(80, usable_width // char_width))
+        
+        inner_width = width - 4
+        left_width = (inner_width - 3) // 2
+        right_width = inner_width - left_width - 3
+        
+        def fmt_line(text: str = "") -> str:
+            trimmed = text[:inner_width]
+            return f"║ {trimmed.ljust(inner_width)} ║"
+        
+        def fmt_center(text: str) -> str:
+            trimmed = text[:inner_width]
+            return f"║{trimmed.center(inner_width + 2)}║"
+        
+        def fmt_two_col(left: str, right: str) -> str:
+            left_trimmed = left[:left_width]
+            right_trimmed = right[:right_width]
+            content = f"{left_trimmed.ljust(left_width)} │ {right_trimmed.ljust(right_width)}"
+            return f"║ {content} ║"
+        
+        # Gather character data
+        character = getattr(self.game, 'character', {})
+        name = character.get('name', getattr(self.game, 'player_name', '—'))
+        species_name = character.get('species', getattr(self.game, 'species', '—'))
+        class_name = character.get('class', getattr(self.game, 'character_class', '—'))
+        background_name = character.get('background', '—')
+        faction_name = character.get('faction', '—')
+        
+        credits = getattr(self.game, 'credits', 0)
+        turn = getattr(self.game, 'turn', 0)
+        level = getattr(self.game, 'level', 1)
+        
+        stats = character.get('stats', {})
+        derived = calculate_derived_attributes(stats) if stats and GAME_AVAILABLE else {}
+        
+        # Build the sheet
+        lines = []
+        lines.append("╔" + "═" * (inner_width + 2) + "╗")
+        lines.append(fmt_center("CHARACTER SHEET"))
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("IDENTITY & ORIGINS"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        # Identity section
+        identity_data = [
+            (f"Name: {name}", f"Species: {species_name}"),
+            (f"Class: {class_name}", f"Background: {background_name}"),
+            (f"Faction: {faction_name}", f"Level: {level}"),
+            (f"Credits: {credits:,}", f"Turn: {turn}"),
+        ]
+        
+        for left, right in identity_data:
+            lines.append(fmt_two_col(left, right))
+        
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("ATTRIBUTES"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        # Stats section (two columns: base stats | derived stats)
+        if GAME_AVAILABLE:
+            from characters import STAT_NAMES, BASE_STAT_VALUE
+            
+            stat_lines = []
+            for code, stat_name in STAT_NAMES.items():
+                value = stats.get(code, BASE_STAT_VALUE)
+                stat_lines.append(f"{code} {stat_name:<15} {value:>3}")
+            
+            derived_lines = []
+            for metric_name, metric_value in list(derived.items())[:8]:
+                if isinstance(metric_value, float):
+                    if metric_value >= 1000:
+                        value_str = f"{metric_value:,.0f}"
+                    else:
+                        value_str = f"{metric_value:.1f}"
+                else:
+                    value_str = str(metric_value)
+                name_short = metric_name[:18]
+                derived_lines.append(f"{name_short:<18} {value_str}")
+            
+            max_rows = max(len(stat_lines), len(derived_lines))
+            for i in range(max_rows):
+                left = stat_lines[i] if i < len(stat_lines) else ""
+                right = derived_lines[i] if i < len(derived_lines) else ""
+                lines.append(fmt_two_col(left, right))
+        else:
+            lines.append(fmt_line("Stats unavailable (game modules not loaded)"))
+        
+        # Background & Class info
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("BACKGROUND & CLASS"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        if GAME_AVAILABLE and background_name != '—':
+            from backgrounds import backgrounds as background_data
+            from classes import classes
+            
+            bg_info = background_data.get(background_name, {})
+            class_info = classes.get(class_name, {})
+            
+            if bg_info:
+                bg_desc = bg_info.get('description', '')
+                if bg_desc:
+                    wrapped = textwrap.wrap(bg_desc, width=inner_width - 2)
+                    lines.append(fmt_line(f"Background: {background_name}"))
+                    for line in wrapped:
+                        lines.append(fmt_line(f"  {line}"))
+                    lines.append(fmt_line())
+            
+            if class_info:
+                class_desc = class_info.get('description', '')
+                career = class_info.get('career_path', '')
+                if class_desc:
+                    wrapped = textwrap.wrap(class_desc, width=inner_width - 2)
+                    lines.append(fmt_line(f"Class: {class_name}"))
+                    for line in wrapped:
+                        lines.append(fmt_line(f"  {line}"))
+                    if career:
+                        lines.append(fmt_line(f"  Career: {career}"))
+        else:
+            lines.append(fmt_line("No background/class information available"))
+        
+        # Assets section
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("FLEET & HOLDINGS"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        ships = []
+        try:
+            ships.extend(getattr(self.game, "owned_ships", []) or [])
+            custom = getattr(self.game, "custom_ships", []) or []
+            for ship in custom:
+                if isinstance(ship, dict):
+                    ships.append(ship.get("name", "Custom Ship"))
+                else:
+                    ships.append(str(ship))
+        except:
+            pass
+        
+        stations = getattr(self.game, "owned_stations", []) or []
+        platforms = getattr(self.game, "owned_platforms", []) or []
+        
+        fleet_left = ["Ships:"]
+        if ships:
+            for ship in ships[:5]:  # Show first 5
+                fleet_left.append(f"  • {ship}")
+            if len(ships) > 5:
+                fleet_left.append(f"  … plus {len(ships) - 5} more")
+        else:
+            fleet_left.append("  • None")
+        
+        holdings = ["Installations:"]
+        if stations:
+            for station in stations[:3]:
+                holdings.append(f"  • {station}")
+        if platforms:
+            for platform in platforms[:2]:
+                holdings.append(f"  • {platform}")
+        if not stations and not platforms:
+            holdings.append("  • None")
+        
+        max_rows = max(len(fleet_left), len(holdings))
+        for i in range(max_rows):
+            left = fleet_left[i] if i < len(fleet_left) else ""
+            right = holdings[i] if i < len(holdings) else ""
+            lines.append(fmt_two_col(left, right))
+        
+        lines.append("╚" + "═" * (inner_width + 2) + "╝")
+        lines.append("")
+        lines.append("[Press O to return to overview]".center(width))
+        
+        self.main_view.setPlainText("\n".join(lines))
+        self.status_bar.showMessage("Character Sheet | Press O to return")
+
     def on_about(self) -> None:
         """
         Show an About dialog with basic information.
@@ -1915,6 +2145,8 @@ class RoguelikeMainWindow(QMainWindow):
               • N: New Game
               • L: Load Game
               • S: Save Game
+              • O: Overview
+              • C: Character Sheet
               • H: Galactic History
               • Q: Quit
             """
