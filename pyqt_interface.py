@@ -44,11 +44,13 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
+    QPushButton,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -63,12 +65,31 @@ from PyQt6.QtWidgets import (
 # - If that fails (e.g., standalone import for docs), fall back to stubs.
 try:
     from game import Game
+    from characters import character_classes, create_character_stats, calculate_derived_attributes, DERIVED_METRIC_INFO
+    from backgrounds import backgrounds as background_data, get_background_list, apply_background_bonuses
+    from species import species_database, get_playable_species
+    from factions import factions
+    from research import research_categories
+    from navigation import Ship
     from galactic_history import generate_epoch_history
-    from save_game import get_save_files, save_game, load_game
+    from ship_builder import (
+        ship_components,
+        calculate_power_usage,
+        compute_ship_profile,
+        aggregate_component_metadata,
+        collect_component_entries,
+        COMPONENT_CATEGORY_LABELS,
+    )
+    from ship_classes import ship_classes
+    from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
+    from save_game import get_save_files, save_game, load_game, delete_save_file
     GAME_AVAILABLE = True
-except ImportError:
+    print(f"SUCCESS: Game modules loaded. Factions count: {len(factions)}")
+
+except ImportError as e:
     # Fallback stubs so the UI can still be imported without the engine.
     GAME_AVAILABLE = False
+    print(f"FAILED: Import error at module level: {e}")
 
     class Game:  # type: ignore[no-redef]
         """Minimal stub for Game when engine is unavailable."""
@@ -202,17 +223,17 @@ class MessageLogWidget(QPlainTextEdit):
 
         # Configure widget appearance for an old-school text UI feel.
         self.setReadOnly(True)
-        font = QFont("Courier")
+        font = QFont("Menlo")
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.setFont(font)
         self.setMaximumHeight(120)  # keep it to roughly 6–8 lines
-        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         
-        # Terminal-style black background with green text
+        # Terminal-style black background with white text
         self.setStyleSheet("""
             QPlainTextEdit {
                 background-color: #000000;
-                color: #00FF00;
+                color: #FFFFFF;
                 border: 1px solid #00AA00;
             }
         """)
@@ -275,16 +296,16 @@ class GalacticHistoryDialog(QDialog):
         self.text_area = QPlainTextEdit(self)
         self.text_area.setReadOnly(True)
 
-        font = QFont("Courier")
+        font = QFont("Menlo")
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.text_area.setFont(font)
-        self.text_area.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.text_area.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         
-        # Terminal-style black background with green text
+        # Terminal-style black background with white text
         self.text_area.setStyleSheet("""
             QPlainTextEdit {
                 background-color: #000000;
-                color: #00FF00;
+                color: #FFFFFF;
                 border: 1px solid #00AA00;
             }
         """)
@@ -499,6 +520,982 @@ class LoadGameDialog(QDialog):
 
 
 # ---------------------------------------------------------------------------
+# Character creation dialog
+# ---------------------------------------------------------------------------
+
+
+class CharacterCreationDialog(QDialog):
+    """
+    Multi-stage character creation wizard dialog.
+    
+    Mimics the flow from nethack_interface.py:
+    species -> background -> faction -> class -> stats -> name -> confirm
+    """
+    
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        
+        self.setWindowTitle("Character Creation")
+        self.resize(1000, 700)
+        
+        # Character data
+        self.stage = "species"
+        self.character_data = {
+            'species': None,
+            'background': None,
+            'faction': None,
+            'class': None,
+            'stats': None,
+            'name': "",
+        }
+        
+        # Import game modules for data
+        if GAME_AVAILABLE:
+            # Use the already-imported module-level data
+            self.species_list = list(species_database.keys())
+            self.playable_species = set(get_playable_species().keys())
+            self.background_list = get_background_list()
+            self.faction_list = list(factions.keys())
+            self.class_list = list(character_classes.keys())
+            self.species_database = species_database
+            self.background_data = background_data
+            self.factions = factions
+            self.character_classes = character_classes
+            
+            print(f"Loaded: {len(self.species_list)} species, {len(self.background_list)} backgrounds, {len(self.faction_list)} factions, {len(self.class_list)} classes")
+        else:
+            print("DEBUG: GAME_AVAILABLE is False")
+            self._set_demo_data()
+        
+        self.current_index = 0
+        # Start on first playable species
+        for i, species in enumerate(self.species_list):
+            if species in self.playable_species:
+                self.current_index = i
+                break
+        
+        # Layout
+        layout = QVBoxLayout(self)
+        
+        # Text display area
+        self.text_area = QPlainTextEdit(self)
+        self.text_area.setReadOnly(True)
+        font = QFont("Menlo")
+        font.setStyleHint(QFont.StyleHint.TypeWriter)
+        self.text_area.setFont(font)
+        self.text_area.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.text_area.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #000000;
+                color: #FFFFFF;
+                border: 1px solid #00AA00;
+            }
+        """)
+        layout.addWidget(self.text_area)
+        
+        # Input area for name entry
+        self.name_input = QLineEdit(self)
+        self.name_input.setFont(font)
+        self.name_input.setMaxLength(50)
+        self.name_input.setPlaceholderText("Enter your character name...")
+        self.name_input.hide()
+        self.name_input.returnPressed.connect(self._handle_name_entry)
+        layout.addWidget(self.name_input)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        self.prev_button = QPushButton("← Previous", self)
+        self.prev_button.clicked.connect(self._go_previous)
+        self.prev_button.setEnabled(False)
+        button_layout.addWidget(self.prev_button)
+        
+        button_layout.addStretch()
+        
+        self.next_button = QPushButton("Confirm Selection →", self)
+        self.next_button.clicked.connect(self._go_next)
+        button_layout.addWidget(self.next_button)
+        
+        self.cancel_button = QPushButton("Cancel", self)
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_button)
+        
+        layout.addLayout(button_layout)
+        
+        # Set focus policy to ensure keyboard events are received
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.text_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        
+        # Initial render
+        self._update_display()
+    
+    def _set_demo_data(self) -> None:
+        """Set demo data when game modules unavailable."""
+        self.species_list = ["Terran"]
+        self.playable_species = {"Terran"}
+        self.background_list = ["Orbital Foundling"]
+        self.faction_list = ["Independent"]
+        self.class_list = ["Explorer"]
+        self.species_database = {}
+        self.background_data = {}
+        self.factions = {}
+        self.character_classes = {}
+    
+    def keyPressEvent(self, event) -> None:  # type: ignore[override]
+        """Handle keyboard navigation."""
+        key = event.key()
+        
+        # Don't intercept keys when name input has focus
+        if self.name_input.hasFocus():
+            super().keyPressEvent(event)
+            return
+        
+        # Stats stage - handle up/down for stat selection and left/right for adjustment
+        if self.stage == "stats":
+            if GAME_AVAILABLE:
+                from characters import STAT_NAMES
+                stat_codes = list(STAT_NAMES.keys())
+                
+                # Initialize selected stat index if not set
+                if not hasattr(self, '_selected_stat_index'):
+                    self._selected_stat_index = 0
+                
+                if key in (Qt.Key.Key_Up, Qt.Key.Key_K):
+                    self._selected_stat_index = (self._selected_stat_index - 1) % len(stat_codes)
+                    self._update_display()
+                    event.accept()
+                    return
+                elif key in (Qt.Key.Key_Down, Qt.Key.Key_J):
+                    self._selected_stat_index = (self._selected_stat_index + 1) % len(stat_codes)
+                    self._update_display()
+                    event.accept()
+                    return
+                elif key in (Qt.Key.Key_Left, Qt.Key.Key_H):
+                    self._adjust_stat(-1)
+                    event.accept()
+                    return
+                elif key in (Qt.Key.Key_Right, Qt.Key.Key_L):
+                    self._adjust_stat(1)
+                    event.accept()
+                    return
+                elif key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:
+                    self._go_next()
+                    event.accept()
+                    return
+        
+        # Up/Down or J/K for navigation in selection stages
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_K):
+            if self.stage not in ("name", "confirm", "stats"):
+                self.current_index = max(0, self.current_index - 1)
+                self._update_display()
+                event.accept()
+        elif key in (Qt.Key.Key_Down, Qt.Key.Key_J):
+            if self.stage not in ("name", "confirm", "stats"):
+                max_idx = self._get_current_list_length() - 1
+                self.current_index = min(max_idx, self.current_index + 1)
+                self._update_display()
+                event.accept()
+        elif key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:
+            if self.stage == "name":
+                self._handle_name_entry()
+            else:
+                self._go_next()
+            event.accept()
+        elif key == Qt.Key.Key_Escape:
+            self.reject()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+    
+    def _get_current_list_length(self) -> int:
+        """Get length of current selection list."""
+        if self.stage == "species":
+            return len(self.species_list)
+        elif self.stage == "background":
+            return len(self.background_list)
+        elif self.stage == "faction":
+            return len(self.faction_list)
+        elif self.stage == "class":
+            return len(self.class_list)
+        return 0
+    
+    def _update_display(self) -> None:
+        """Render the current stage."""
+        lines = []
+        lines.append("═" * 80)
+        lines.append("CHARACTER CREATION".center(80))
+        lines.append("═" * 80)
+        lines.append("")
+        
+        # Show progress
+        lines.append(f"Species:    {self.character_data['species'] or '???'}")
+        lines.append(f"Background: {self.character_data['background'] or '???'}")
+        lines.append(f"Faction:    {self.character_data['faction'] or '???'}")
+        lines.append(f"Class:      {self.character_data['class'] or '???'}")
+        lines.append(f"Name:       {self.character_data['name'] or '???'}")
+        lines.append("")
+        lines.append("─" * 80)
+        lines.append("")
+        
+        if self.stage == "species":
+            lines.extend(self._render_species_selection())
+        elif self.stage == "background":
+            lines.extend(self._render_background_selection())
+        elif self.stage == "faction":
+            lines.extend(self._render_faction_selection())
+        elif self.stage == "class":
+            lines.extend(self._render_class_selection())
+        elif self.stage == "stats":
+            lines.extend(self._render_stats_display())
+        elif self.stage == "name":
+            lines.extend(self._render_name_entry())
+        elif self.stage == "confirm":
+            lines.extend(self._render_confirmation())
+        
+        self.text_area.setPlainText("\n".join(lines))
+        
+        # Update button states
+        self.prev_button.setEnabled(self.stage != "species")
+        if self.stage == "confirm":
+            self.next_button.setText("Create Character")
+        else:
+            self.next_button.setText("Confirm Selection →")
+    
+    def _render_species_selection(self) -> List[str]:
+        """Render species selection screen."""
+        lines = []
+        lines.append("SELECT YOUR SPECIES:")
+        lines.append("")
+        
+        # Get current species details
+        if 0 <= self.current_index < len(self.species_list):
+            current_species_name = self.species_list[self.current_index]
+            current_species = self.species_database.get(current_species_name, {})
+        else:
+            current_species_name = ""
+            current_species = {}
+        
+        # Build detail lines for right panel
+        detail_lines = []
+        if current_species:
+            detail_lines.append("│ SPECIES DETAILS")
+            detail_lines.append("│ " + "─" * 38)
+            
+            # Description
+            desc = current_species.get("description", "")
+            if desc:
+                detail_lines.append("│ Description:")
+                words = desc.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+                detail_lines.append("│")
+            
+            # Category, homeworld, etc.
+            category = current_species.get("category")
+            if category:
+                detail_lines.append(f"│ Category: {category}")
+            homeworld = current_species.get("homeworld")
+            if homeworld:
+                detail_lines.append(f"│ Homeworld: {homeworld}")
+            
+            # Special traits
+            traits = current_species.get("special_traits", [])
+            if traits:
+                detail_lines.append("│")
+                detail_lines.append("│ Special Traits:")
+                for trait in traits:
+                    detail_lines.append(f"│   - {trait}")
+        
+        # Two-column layout: species list on left, details on right
+        visible_count = min(15, len(self.species_list))
+        for i, species in enumerate(self.species_list[:visible_count]):
+            is_playable = species in self.playable_species
+            cursor = ">" if i == self.current_index else " "
+            species_display = species if is_playable else f"{species} (not playable)"
+            left_text = f"  {cursor} {species_display}"[:38].ljust(38)
+            
+            # Right side: detail lines
+            if i < len(detail_lines):
+                right_text = detail_lines[i]
+            else:
+                right_text = "│"
+            
+            lines.append(left_text + "  " + right_text)
+        
+        # Remaining detail lines
+        if len(detail_lines) > visible_count:
+            for detail_line in detail_lines[visible_count:]:
+                left_text = " " * 38
+                lines.append(left_text + "  " + detail_line)
+        
+        lines.append("")
+        lines.append(f"[{self.current_index + 1}/{len(self.species_list)}]")
+        
+        return lines
+    
+    def _render_background_selection(self) -> List[str]:
+        """Render background selection screen."""
+        lines = []
+        lines.append("SELECT YOUR BACKGROUND:")
+        lines.append("")
+        
+        # Get current background details
+        if 0 <= self.current_index < len(self.background_list):
+            current_bg_name = self.background_list[self.current_index]
+            current_bg = self.background_data.get(current_bg_name, {})
+        else:
+            current_bg = {}
+        
+        # Build detail lines for right panel
+        detail_lines = []
+        if current_bg:
+            detail_lines.append("│ BACKGROUND DETAILS")
+            detail_lines.append("│ " + "─" * 38)
+            
+            # Description
+            desc = current_bg.get('description', '')
+            if desc:
+                detail_lines.append("│ Description:")
+                words = desc.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+                detail_lines.append("│")
+            
+            # Stat bonuses
+            bonuses = current_bg.get('stat_bonuses', {})
+            if bonuses:
+                detail_lines.append("│ Stat Bonuses:")
+                for stat, bonus in bonuses.items():
+                    detail_lines.append(f"│   +{bonus} {stat}")
+                detail_lines.append("│")
+            
+            # Talent
+            talent = current_bg.get('talent', '')
+            if talent:
+                detail_lines.append("│ Talent:")
+                words = talent.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+        
+        # Two-column layout with scrolling
+        visible_count = 15
+        scroll_offset = max(0, self.current_index - visible_count + 5)  # Keep selection visible
+        visible_backgrounds = self.background_list[scroll_offset:scroll_offset + visible_count]
+        
+        for i, bg in enumerate(visible_backgrounds):
+            actual_index = i + scroll_offset
+            cursor = ">" if actual_index == self.current_index else " "
+            left_text = f"  {cursor} {bg}"[:38].ljust(38)
+            
+            # Right side: detail lines
+            if i < len(detail_lines):
+                right_text = detail_lines[i]
+            else:
+                right_text = "│"
+            
+            lines.append(left_text + "  " + right_text)
+        
+        # Remaining detail lines below the background list
+        if len(detail_lines) > len(visible_backgrounds):
+            for detail_line in detail_lines[len(visible_backgrounds):]:
+                left_text = " " * 38
+                lines.append(left_text + "  " + detail_line)
+        
+        lines.append("")
+        if len(self.background_list) > visible_count:
+            lines.append(f"[{self.current_index + 1}/{len(self.background_list)}] (Use ↑/↓ to scroll)")
+        else:
+            lines.append(f"[{self.current_index + 1}/{len(self.background_list)}]")
+        
+        return lines
+    
+    def _render_faction_selection(self) -> List[str]:
+        """Render faction selection screen."""
+        lines = []
+        lines.append("SELECT YOUR FACTION:")
+        lines.append("")
+        
+        # Get current faction details
+        if 0 <= self.current_index < len(self.faction_list):
+            current_faction_name = self.faction_list[self.current_index]
+            current_faction = self.factions.get(current_faction_name, {})
+        else:
+            current_faction = {}
+        
+        # Build detail lines for right panel
+        detail_lines = []
+        if current_faction:
+            detail_lines.append("│ FACTION DETAILS")
+            detail_lines.append("│ " + "─" * 38)
+            detail_lines.append(f"│ Philosophy: {current_faction.get('philosophy', 'Unknown')}")
+            detail_lines.append(f"│ Focus: {current_faction.get('primary_focus', 'Unknown')}")
+            detail_lines.append(f"│ Government: {current_faction.get('government_type', 'Unknown')}")
+            detail_lines.append("│")
+            
+            # Description
+            desc = current_faction.get('description', '')
+            if desc:
+                detail_lines.append("│ Description:")
+                words = desc.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+                detail_lines.append("│")
+            
+            # Origin story
+            origin = current_faction.get('origin_story', '')
+            if origin:
+                detail_lines.append("│ Origin:")
+                words = origin.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+                detail_lines.append("│")
+            
+            # Founding info
+            epoch = current_faction.get('founding_epoch', 'Unknown')
+            year = current_faction.get('founding_year', '?')
+            detail_lines.append(f"│ Founded: {epoch}")
+            detail_lines.append(f"│ Year: {year}")
+        
+        # Two-column layout with scrolling
+        visible_count = 20
+        scroll_offset = max(0, self.current_index - 10) if len(self.faction_list) > visible_count else 0
+        end_index = min(scroll_offset + visible_count, len(self.faction_list))
+        visible_factions = self.faction_list[scroll_offset:end_index]
+        
+        for i, faction in enumerate(visible_factions):
+            actual_index = i + scroll_offset
+            cursor = ">" if actual_index == self.current_index else " "
+            left_text = f"  {cursor} {faction}"[:38].ljust(38)
+            
+            # Right side: detail lines
+            if i < len(detail_lines):
+                right_text = detail_lines[i]
+            else:
+                right_text = "│"
+            
+            lines.append(left_text + "  " + right_text)
+        
+        # Remaining detail lines below the faction list
+        if len(detail_lines) > len(visible_factions):
+            for detail_line in detail_lines[len(visible_factions):]:
+                left_text = " " * 38
+                lines.append(left_text + "  " + detail_line)
+        
+        lines.append("")
+        if len(self.faction_list) > visible_count:
+            lines.append(f"[{self.current_index + 1}/{len(self.faction_list)}] (Use ↑/↓ to scroll)")
+        else:
+            lines.append(f"[{self.current_index + 1}/{len(self.faction_list)}]")
+        
+        return lines
+    
+    def _render_class_selection(self) -> List[str]:
+        """Render class selection screen."""
+        lines = []
+        lines.append("SELECT YOUR CLASS:")
+        lines.append("")
+        
+        # Get current class details
+        if 0 <= self.current_index < len(self.class_list):
+            current_class_name = self.class_list[self.current_index]
+            current_class = self.character_classes.get(current_class_name, {})
+        else:
+            current_class = {}
+        
+        # Build detail lines for right panel
+        detail_lines = []
+        if current_class:
+            detail_lines.append("│ CLASS DETAILS")
+            detail_lines.append("│ " + "─" * 38)
+            
+            # Description
+            desc = current_class.get('description', '')
+            if desc:
+                detail_lines.append("│ Description:")
+                words = desc.split()
+                line = ""
+                for word in words:
+                    if len(line) + len(word) + 1 <= 36:
+                        line += (word + " ")
+                    else:
+                        detail_lines.append(f"│   {line.strip()}")
+                        line = word + " "
+                if line:
+                    detail_lines.append(f"│   {line.strip()}")
+                detail_lines.append("│")
+            
+            # Starting credits
+            credits = current_class.get('starting_credits')
+            if credits is not None:
+                detail_lines.append(f"│ Starting Credits: {credits:,}")
+            
+            # Starting assets
+            for key, label in [
+                ("starting_ships", "Starting Ships"),
+                ("starting_stations", "Starting Stations"),
+                ("starting_platforms", "Starting Platforms"),
+            ]:
+                items = current_class.get(key, [])
+                if items:
+                    detail_lines.append(f"│ {label}:")
+                    for item in items:
+                        detail_lines.append(f"│   - {item}")
+                    detail_lines.append("│")
+            
+            # Bonuses
+            bonuses = current_class.get('bonuses', {})
+            if bonuses:
+                detail_lines.append("│ Bonuses:")
+                for bonus_name, bonus_value in bonuses.items():
+                    percent = round(bonus_value * 100)
+                    detail_lines.append(f"│   {bonus_name.replace('_', ' ').title()}: +{percent}%")
+                detail_lines.append("│")
+            
+            # Skills
+            skills = current_class.get('skills', [])
+            if skills:
+                detail_lines.append("│ Skills:")
+                for skill in skills:
+                    detail_lines.append(f"│   - {skill}")
+        
+        # Two-column layout
+        visible_count = min(10, len(self.class_list))
+        for i, char_class in enumerate(self.class_list[:visible_count]):
+            cursor = ">" if i == self.current_index else " "
+            left_text = f"  {cursor} {char_class}"[:38].ljust(38)
+            
+            # Right side: detail lines
+            if i < len(detail_lines):
+                right_text = detail_lines[i]
+            else:
+                right_text = "│"
+            
+            lines.append(left_text + "  " + right_text)
+        
+        # Remaining detail lines
+        if len(detail_lines) > visible_count:
+            for detail_line in detail_lines[visible_count:]:
+                left_text = " " * 38
+                lines.append(left_text + "  " + detail_line)
+        
+        lines.append("")
+        lines.append(f"[{self.current_index + 1}/{len(self.class_list)}]")
+        
+        return lines
+    
+    def _render_stats_display(self) -> List[str]:
+        """Render interactive point-buy stat allocation screen."""
+        lines = []
+        lines.append("YOUR CHARACTER STATS (Point-Buy System):")
+        lines.append("")
+        
+        if not GAME_AVAILABLE:
+            lines.append("Stats calculation unavailable (game modules not loaded).")
+            lines.append("")
+            lines.append("Press Enter to continue...")
+            return lines
+        
+        try:
+            from characters import STAT_NAMES, STAT_DESCRIPTIONS, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE
+            
+            # Initialize stats if not already set
+            if not self.character_data.get('stats'):
+                base_stats = create_character_stats()
+                # Apply background bonuses
+                if self.character_data['background']:
+                    bg = self.background_data.get(self.character_data['background'], {})
+                    stat_bonuses = bg.get('stat_bonuses', {})
+                    for stat, bonus in stat_bonuses.items():
+                        if stat in base_stats:
+                            base_stats[stat] += bonus
+                self.character_data['stats'] = base_stats
+                self._selected_stat_index = 0
+            
+            stats = self.character_data['stats']
+            
+            # Calculate points
+            base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+            if self.character_data.get('background'):
+                bg = self.background_data.get(self.character_data['background'], {})
+                stat_bonuses = bg.get('stat_bonuses', {})
+                if stat_bonuses:
+                    bg_bonus_total = sum(stat_bonuses.values())
+                    base_total += bg_bonus_total
+            
+            current_total = sum(stats.values())
+            allocated_points = current_total - base_total
+            remaining_points = POINT_BUY_POINTS - allocated_points
+            
+            lines.append(f"  All stats start at {BASE_STAT_VALUE}. You may spend up to {POINT_BUY_POINTS} points.")
+            lines.append(f"  Maximum {MAX_STAT_VALUE} per stat. Use ↑/↓ to select, ←/→ to adjust.")
+            lines.append("")
+            lines.append(f"  Points Remaining: {remaining_points}/{POINT_BUY_POINTS}")
+            
+            # Show background bonuses if applicable
+            if self.character_data.get('background'):
+                bg = self.background_data.get(self.character_data['background'], {})
+                stat_bonuses = bg.get('stat_bonuses', {})
+                if stat_bonuses:
+                    bonus_str = ", ".join([f"+{v} {k}" for k, v in stat_bonuses.items()])
+                    lines.append(f"  Background Bonuses: {bonus_str}")
+            
+            lines.append("")
+            lines.append("─" * 80)
+            lines.append("")
+            
+            # Get selected stat index
+            selected_index = getattr(self, '_selected_stat_index', 0)
+            stat_codes = list(STAT_NAMES.keys())
+            
+            # Display stats
+            for i, stat_code in enumerate(stat_codes):
+                value = stats.get(stat_code, BASE_STAT_VALUE)
+                stat_name = STAT_NAMES[stat_code]
+                
+                # Show cursor indicator for selected stat
+                cursor = ">" if i == selected_index else " "
+                
+                # Show if this stat has a background bonus
+                bg_bonus = ""
+                if self.character_data.get('background'):
+                    bg = self.background_data.get(self.character_data['background'], {})
+                    stat_bonuses = bg.get('stat_bonuses', {})
+                    if stat_code in stat_bonuses:
+                        bg_bonus = f" (+{stat_bonuses[stat_code]} background)"
+                
+                # Create stat bar
+                bar_length = 20
+                filled = min(int((value / MAX_STAT_VALUE) * bar_length), bar_length)
+                bar = "█" * filled + "░" * (bar_length - filled)
+                
+                # Main stat line
+                lines.append(f"  {cursor} {stat_code}: {value:3d} {bar} {stat_name}{bg_bonus}")
+                
+                # Show description for selected stat
+                if i == selected_index:
+                    desc = STAT_DESCRIPTIONS.get(stat_code, '')
+                    if desc:
+                        lines.append(f"      {desc}")
+                
+                lines.append("")
+            
+            lines.append("─" * 80)
+            lines.append("")
+            
+            # Calculate and show derived stats
+            derived = calculate_derived_attributes(stats)
+            lines.append("DERIVED METRICS:")
+            lines.append("")
+            
+            # Show in two columns
+            derived_items = list(derived.items())
+            for i in range(0, len(derived_items), 2):
+                metric_name, metric_value = derived_items[i]
+                metric_info = DERIVED_METRIC_INFO.get(metric_name, {})
+                display_name = metric_info.get('name', metric_name)
+                
+                if isinstance(metric_value, float):
+                    if metric_value >= 1000:
+                        value_str = f"{metric_value:,.0f}"
+                    else:
+                        value_str = f"{metric_value:.1f}"
+                else:
+                    value_str = str(metric_value)
+                
+                left_text = f"  {display_name}: {value_str}".ljust(38)
+                
+                if i + 1 < len(derived_items):
+                    metric_name2, metric_value2 = derived_items[i + 1]
+                    metric_info2 = DERIVED_METRIC_INFO.get(metric_name2, {})
+                    display_name2 = metric_info2.get('name', metric_name2)
+                    
+                    if isinstance(metric_value2, float):
+                        if metric_value2 >= 1000:
+                            value_str2 = f"{metric_value2:,.0f}"
+                        else:
+                            value_str2 = f"{metric_value2:.1f}"
+                    else:
+                        value_str2 = str(metric_value2)
+                    
+                    right_text = f"{display_name2}: {value_str2}"
+                else:
+                    right_text = ""
+                
+                lines.append(left_text + "  " + right_text)
+            
+        except Exception as e:
+            import traceback
+            lines.append(f"Error calculating stats: {e}")
+            lines.append("")
+            lines.append("Traceback:")
+            for line in traceback.format_exc().split('\n'):
+                if line:
+                    lines.append(f"  {line}")
+            lines.append("")
+            print(f"Stats error: {e}")
+            traceback.print_exc()
+        
+        lines.append("")
+        lines.append("─" * 80)
+        lines.append("Use ↑/↓ to select stat, ←/→ to adjust | Press Enter when done")
+        
+        return lines
+    
+    def _render_name_entry(self) -> List[str]:
+        """Render name entry screen."""
+        lines = []
+        lines.append("ENTER YOUR CHARACTER NAME:")
+        lines.append("")
+        lines.append("Choose a name for your commander.")
+        lines.append("")
+        lines.append("(Type your name in the text field below and press Enter)")
+        
+        return lines
+    
+    def _render_confirmation(self) -> List[str]:
+        """Render final confirmation screen."""
+        lines = []
+        lines.append("CONFIRM YOUR CHARACTER:")
+        lines.append("")
+        lines.append(f"Species:    {self.character_data['species']}")
+        lines.append(f"Background: {self.character_data['background']}")
+        lines.append(f"Faction:    {self.character_data['faction']}")
+        lines.append(f"Class:      {self.character_data['class']}")
+        lines.append(f"Name:       {self.character_data['name']}")
+        lines.append("")
+        
+        # Show stats summary if available
+        if self.character_data.get('stats'):
+            lines.append("─" * 80)
+            lines.append("FINAL STATS:")
+            lines.append("")
+            
+            if GAME_AVAILABLE:
+                from characters import STAT_NAMES
+                stats = self.character_data['stats']
+                stat_codes = list(STAT_NAMES.keys())
+                
+                # Show stats in two columns
+                for i in range(0, len(stat_codes), 2):
+                    left_stat = stat_codes[i]
+                    left_value = stats.get(left_stat, 30)
+                    left_name = STAT_NAMES[left_stat]
+                    left_text = f"  {left_stat} ({left_name}): {left_value}".ljust(38)
+                    
+                    if i + 1 < len(stat_codes):
+                        right_stat = stat_codes[i + 1]
+                        right_value = stats.get(right_stat, 30)
+                        right_name = STAT_NAMES[right_stat]
+                        right_text = f"{right_stat} ({right_name}): {right_value}"
+                    else:
+                        right_text = ""
+                    
+                    lines.append(left_text + "  " + right_text)
+                
+                lines.append("")
+                
+                # Show a few key derived stats
+                try:
+                    derived = calculate_derived_attributes(stats)
+                    lines.append("Key Derived Stats:")
+                    lines.append(f"  Health: {derived.get('Health', 0)}")
+                    lines.append(f"  Etheric Capacity: {derived.get('Etheric Capacity', 0)}")
+                    lines.append(f"  Processing Speed: {derived.get('Processing Speed', 0)}")
+                except:
+                    pass
+            lines.append("")
+        
+        lines.append("─" * 80)
+        lines.append("Press 'Create Character' to begin your journey,")
+        lines.append("or 'Previous' to make changes.")
+        
+        return lines
+    
+    def _go_next(self) -> None:
+        """Advance to next stage."""
+        if self.stage == "species":
+            # Validate playable species
+            selected_species = self.species_list[self.current_index]
+            if selected_species not in self.playable_species:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Selection",
+                    f"{selected_species} is not a playable species. Please select a playable species."
+                )
+                return
+            
+            self.character_data['species'] = selected_species
+            self.stage = "background"
+            self.current_index = 0
+            
+        elif self.stage == "background":
+            self.character_data['background'] = self.background_list[self.current_index]
+            self.stage = "faction"
+            self.current_index = 0
+            
+        elif self.stage == "faction":
+            self.character_data['faction'] = self.faction_list[self.current_index]
+            self.stage = "class"
+            self.current_index = 0
+            
+        elif self.stage == "class":
+            self.character_data['class'] = self.class_list[self.current_index]
+            self.stage = "stats"
+            
+        elif self.stage == "stats":
+            self.stage = "name"
+            self.name_input.show()
+            self.name_input.setFocus()
+            
+        elif self.stage == "name":
+            self._handle_name_entry()
+            return
+            
+        elif self.stage == "confirm":
+            # Create character and close dialog
+            self.accept()
+            return
+        
+        self._update_display()
+    
+    def _go_previous(self) -> None:
+        """Go back to previous stage."""
+        if self.stage == "confirm":
+            self.stage = "name"
+            self.name_input.show()
+            self.name_input.setFocus()
+        elif self.stage == "name":
+            self.stage = "stats"
+            self.name_input.hide()
+        elif self.stage == "stats":
+            self.stage = "class"
+            self.current_index = self.class_list.index(self.character_data['class']) if self.character_data['class'] else 0
+        elif self.stage == "class":
+            self.stage = "faction"
+            self.current_index = self.faction_list.index(self.character_data['faction']) if self.character_data['faction'] else 0
+        elif self.stage == "faction":
+            self.stage = "background"
+            self.current_index = self.background_list.index(self.character_data['background']) if self.character_data['background'] else 0
+        elif self.stage == "background":
+            self.stage = "species"
+            self.current_index = self.species_list.index(self.character_data['species']) if self.character_data['species'] else 0
+        
+        self._update_display()
+    
+    def _handle_name_entry(self) -> None:
+        """Handle name input completion."""
+        name = self.name_input.text().strip()
+        if not name:
+            QMessageBox.warning(
+                self,
+                "Name Required",
+                "Please enter a name for your character."
+            )
+            return
+        
+        self.character_data['name'] = name
+        self.name_input.hide()
+        self.stage = "confirm"
+        self._update_display()
+    
+    def _adjust_stat(self, direction: int) -> None:
+        """Adjust the currently selected stat by the given direction (+1 or -1)."""
+        if not GAME_AVAILABLE:
+            return
+        
+        from characters import STAT_NAMES, BASE_STAT_VALUE, POINT_BUY_POINTS, MAX_STAT_VALUE
+        
+        if not self.character_data.get('stats'):
+            return
+        
+        # Ensure we have a selected stat index
+        if not hasattr(self, '_selected_stat_index'):
+            self._selected_stat_index = 0
+        
+        stats = self.character_data['stats']
+        stat_codes = list(STAT_NAMES.keys())
+        
+        if self._selected_stat_index < 0 or self._selected_stat_index >= len(stat_codes):
+            self._selected_stat_index = 0
+        
+        stat_code = stat_codes[self._selected_stat_index]
+        current_value = stats.get(stat_code, BASE_STAT_VALUE)
+        
+        # Calculate base total (accounting for background bonuses)
+        base_total = BASE_STAT_VALUE * len(STAT_NAMES)
+        if self.character_data.get('background'):
+            bg = self.background_data.get(self.character_data['background'], {})
+            stat_bonuses = bg.get('stat_bonuses', {})
+            if stat_bonuses:
+                bg_bonus_total = sum(stat_bonuses.values())
+                base_total += bg_bonus_total
+        
+        # Calculate minimum value for this stat (including background bonus)
+        base_value_for_stat = BASE_STAT_VALUE
+        if self.character_data.get('background'):
+            bg = self.background_data.get(self.character_data['background'], {})
+            stat_bonuses = bg.get('stat_bonuses', {})
+            if stat_code in stat_bonuses:
+                base_value_for_stat += stat_bonuses[stat_code]
+        
+        current_total = sum(stats.values())
+        allocated_points = current_total - base_total
+        remaining_points = POINT_BUY_POINTS - allocated_points
+        
+        if direction > 0:  # Increase
+            if current_value < MAX_STAT_VALUE and remaining_points > 0:
+                self.character_data['stats'][stat_code] = current_value + 1
+                self._update_display()
+            else:
+                if current_value >= MAX_STAT_VALUE:
+                    QMessageBox.information(self, "Maximum Reached", f"{STAT_NAMES[stat_code]} is at maximum ({MAX_STAT_VALUE})")
+                elif remaining_points <= 0:
+                    QMessageBox.information(self, "No Points", "No points remaining to allocate")
+        elif direction < 0:  # Decrease
+            if current_value > base_value_for_stat:
+                self.character_data['stats'][stat_code] = current_value - 1
+                self._update_display()
+            else:
+                QMessageBox.information(self, "Minimum Reached", f"{STAT_NAMES[stat_code]} is at minimum ({base_value_for_stat})")
+
+
+
+# ---------------------------------------------------------------------------
 # Main window
 # ---------------------------------------------------------------------------
 
@@ -531,7 +1528,7 @@ class RoguelikeMainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
-        self.setWindowTitle("4X Galactic Empire (PyQt6 Roguelike UI)")
+        self.setWindowTitle(" -= 7019 =-")
         self.resize(1200, 800)
 
         # Reference to active game. None before starting or loading.
@@ -542,16 +1539,16 @@ class RoguelikeMainWindow(QMainWindow):
         # ------------------------------------------------------------------
         self.main_view = QPlainTextEdit(self)
         self.main_view.setReadOnly(True)
-        font = QFont("Courier")
+        font = QFont("Menlo")
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.main_view.setFont(font)
-        self.main_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.main_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         
-        # Terminal-style black background with green text
+        # Terminal-style black background with white text
         self.main_view.setStyleSheet("""
             QPlainTextEdit {
                 background-color: #000000;
-                color: #00FF00;
+                color: #FFFFFF;
                 border: none;
             }
         """)
@@ -662,14 +1659,22 @@ class RoguelikeMainWindow(QMainWindow):
         interactions are handled via menus and shortcuts, not by typing
         letters at a prompt.
         """
+        # Calculate width based on viewport and font metrics
+        fm = self.main_view.fontMetrics()
+        char_width = fm.horizontalAdvance('=')  # Use a typical character
+        viewport_width = self.main_view.viewport().width()
+        # Account for margins and scrollbar
+        usable_width = viewport_width - 20  # Subtract some pixels for margins
+        width = max(80, usable_width // char_width)
+        
         lines: List[str] = []
-        lines.append("═" * 80)
-        lines.append(" GALACTIC EMPIRE 4X ".center(80, " "))
-        lines.append("═" * 80)
+        lines.append("═" * width)
+        lines.append(" GALACTIC EMPIRE 4X ".center(width, " "))
+        lines.append("═" * width)
         lines.append("")
-        lines.append("  7019 • Mind Your Assumptions".center(80))
+        lines.append("  7019 • Mind Your Assumptions".center(width))
         lines.append("")
-        lines.append("  MAIN MENU".center(80))
+        lines.append("  MAIN MENU".center(width))
         lines.append("")
         lines.append("   [N] New Game")
         lines.append("   [L] Load Game")
@@ -677,8 +1682,8 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("   [H] View Galactic History")
         lines.append("   [Q] Quit")
         lines.append("")
-        lines.append("─" * 80)
-        lines.append("Use menu entries or shortcuts: N, L, S, H, Q.".center(80))
+        lines.append("─" * width)
+        lines.append("Use menu entries or shortcuts: N, L, S, H, Q.".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
@@ -715,10 +1720,18 @@ class RoguelikeMainWindow(QMainWindow):
         credits = getattr(self.game, "credits", 0)
         turn = getattr(self.game, "turn", 0)
 
+        # Calculate width based on viewport and font metrics
+        fm = self.main_view.fontMetrics()
+        char_width = fm.horizontalAdvance('=')  # Use a typical character
+        viewport_width = self.main_view.viewport().width()
+        # Account for margins and scrollbar
+        usable_width = viewport_width - 20  # Subtract some pixels for margins
+        width = max(80, usable_width // char_width)
+        
         lines: List[str] = []
-        lines.append("═" * 80)
-        lines.append(f" COMMANDER OVERVIEW ".center(80))
-        lines.append("═" * 80)
+        lines.append("═" * width)
+        lines.append(f" COMMANDER OVERVIEW ".center(width))
+        lines.append("═" * width)
         lines.append("")
         lines.append(f" Name   : {player_name}")
         lines.append(f" Species: {player_species}")
@@ -727,13 +1740,13 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append(f" Credits: {credits:,}")
         lines.append(f" Turn   : {turn}")
         lines.append("")
-        lines.append("─" * 80)
+        lines.append("─" * width)
         lines.append(" (This is a minimal overview. Extend `render_game_overview`")
         lines.append("  to display ships, stations, inventory, navigation, etc.)")
-        lines.append("─" * 80)
+        lines.append("─" * width)
         lines.append("")
-        lines.append("Use the Game menu or keyboard shortcuts to continue.".center(80))
-        lines.append(" [N] New Game | [L] Load Game | [S] Save Game | [H] History ".center(80))
+        lines.append("Use the Game menu or keyboard shortcuts to continue.".center(width))
+        lines.append(" [N] New Game | [L] Load Game | [S] Save Game | [H] History ".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
@@ -749,12 +1762,9 @@ class RoguelikeMainWindow(QMainWindow):
 
         Behaviour:
         ----------
-        - If the engine is available, instantiate a fresh `Game`.
-        - For now, we do not run the full character creation pipeline here.
-          Instead, we rely on the Game constructor, which in your project
-          may trigger or encapsulate that flow (via other UI forms or
-          procedural defaults).
-        - After creating the game, we render an overview and log a message.
+        - Opens the character creation dialog
+        - If user completes character creation, creates a new game with those choices
+        - Renders the game overview
         """
         if not GAME_AVAILABLE:
             QMessageBox.critical(
@@ -765,8 +1775,33 @@ class RoguelikeMainWindow(QMainWindow):
             )
             return
 
+        # Show character creation dialog
+        dlg = CharacterCreationDialog(self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            # User cancelled
+            return
+        
+        # Create game with character data
         self.game = Game()
-        self.message_log.add_message("New game started.", "[GAME]")
+        
+        # Apply character choices to the game
+        # (The Game class should handle applying these attributes)
+        if hasattr(self.game, 'species'):
+            self.game.species = dlg.character_data['species']
+        if hasattr(self.game, 'background'):
+            self.game.background = dlg.character_data['background']
+        if hasattr(self.game, 'faction'):
+            self.game.faction = dlg.character_data['faction']
+        if hasattr(self.game, 'character_class'):
+            self.game.character_class = dlg.character_data['class']
+        if hasattr(self.game, 'player_name'):
+            self.game.player_name = dlg.character_data['name']
+        
+        self.message_log.add_message(
+            f"New game started: {dlg.character_data['name']}, "
+            f"{dlg.character_data['class']} ({dlg.character_data['species']})",
+            "[GAME]"
+        )
         self.render_game_overview()
 
     def on_load_game(self) -> None:
@@ -915,6 +1950,24 @@ class RoguelikeMainWindow(QMainWindow):
 
     def sizeHint(self) -> QSize:  # type: ignore[override]
         return QSize(1200, 800)
+
+    def showEvent(self, event) -> None:  # type: ignore[override]
+        """Re-render after window is shown to get accurate viewport size."""
+        super().showEvent(event)
+        # Render with correct viewport width now that window is visible
+        if self.game is None:
+            self.render_main_menu()
+        else:
+            self.render_game_overview()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        """Re-render content when window is resized to adjust width."""
+        super().resizeEvent(event)
+        # Re-render the current view to adjust to new width
+        if self.game is None:
+            self.render_main_menu()
+        else:
+            self.render_game_overview()
 
 
 # ---------------------------------------------------------------------------
