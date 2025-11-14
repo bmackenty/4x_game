@@ -727,12 +727,14 @@ class CharacterCreationDialog(QDialog):
         lines.append("═" * 80)
         lines.append("")
         
-        # Show progress
-        lines.append(f"Species:    {self.character_data['species'] or '???'}")
-        lines.append(f"Background: {self.character_data['background'] or '???'}")
-        lines.append(f"Faction:    {self.character_data['faction'] or '???'}")
-        lines.append(f"Class:      {self.character_data['class'] or '???'}")
-        lines.append(f"Name:       {self.character_data['name'] or '???'}")
+        # Show progress as a table
+        lines.append("┌────────────┬──────────────────────────┬────────────┬──────────────────────────┐")
+        lines.append(f"│ Species    │ {(self.character_data['species'] or '???')[:24]:<24} │ Background │ {(self.character_data['background'] or '???')[:24]:<24} │")
+        lines.append("├────────────┼──────────────────────────┼────────────┼──────────────────────────┤")
+        lines.append(f"│ Faction    │ {(self.character_data['faction'] or '???')[:24]:<24} │ Class      │ {(self.character_data['class'] or '???')[:24]:<24} │")
+        lines.append("├────────────┴──────────────────────────┴────────────┴──────────────────────────┤")
+        lines.append(f"│ Name: {(self.character_data['name'] or '???')[:71]:<71} │")
+        lines.append("└───────────────────────────────────────────────────────────────────────────────┘")
         lines.append("")
         lines.append("─" * 80)
         lines.append("")
@@ -1121,8 +1123,6 @@ class CharacterCreationDialog(QDialog):
     def _render_stats_display(self) -> List[str]:
         """Render interactive point-buy stat allocation screen."""
         lines = []
-        lines.append("YOUR CHARACTER STATS (Point-Buy System):")
-        lines.append("")
         
         if not GAME_AVAILABLE:
             lines.append("Stats calculation unavailable (game modules not loaded).")
@@ -1161,102 +1161,80 @@ class CharacterCreationDialog(QDialog):
             allocated_points = current_total - base_total
             remaining_points = POINT_BUY_POINTS - allocated_points
             
-            lines.append(f"  All stats start at {BASE_STAT_VALUE}. You may spend up to {POINT_BUY_POINTS} points.")
-            lines.append(f"  Maximum {MAX_STAT_VALUE} per stat. Use ↑/↓ to select, ←/→ to adjust.")
-            lines.append("")
-            lines.append(f"  Points Remaining: {remaining_points}/{POINT_BUY_POINTS}")
+            lines.append(f"STATS: {BASE_STAT_VALUE} base + {POINT_BUY_POINTS} pts max | Remaining: {remaining_points} | ↑/↓ select ←/→ adjust")
             
-            # Show background bonuses if applicable
-            if self.character_data.get('background'):
-                bg = self.background_data.get(self.character_data['background'], {})
-                stat_bonuses = bg.get('stat_bonuses', {})
-                if stat_bonuses:
-                    bonus_str = ", ".join([f"+{v} {k}" for k, v in stat_bonuses.items()])
-                    lines.append(f"  Background Bonuses: {bonus_str}")
-            
-            lines.append("")
-            lines.append("─" * 80)
-            lines.append("")
+            # Calculate derived stats once for display
+            derived = calculate_derived_attributes(stats)
+            derived_items = list(derived.items())
             
             # Get selected stat index
             selected_index = getattr(self, '_selected_stat_index', 0)
             stat_codes = list(STAT_NAMES.keys())
             
-            # Display stats
-            for i, stat_code in enumerate(stat_codes):
-                value = stats.get(stat_code, BASE_STAT_VALUE)
-                stat_name = STAT_NAMES[stat_code]
-                
-                # Show cursor indicator for selected stat
-                cursor = ">" if i == selected_index else " "
-                
-                # Show if this stat has a background bonus
-                bg_bonus = ""
-                if self.character_data.get('background'):
-                    bg = self.background_data.get(self.character_data['background'], {})
-                    stat_bonuses = bg.get('stat_bonuses', {})
-                    if stat_code in stat_bonuses:
-                        bg_bonus = f" (+{stat_bonuses[stat_code]} background)"
-                
-                # Create stat bar
-                bar_length = 20
-                filled = min(int((value / MAX_STAT_VALUE) * bar_length), bar_length)
-                bar = "█" * filled + "░" * (bar_length - filled)
-                
-                # Main stat line
-                lines.append(f"  {cursor} {stat_code}: {value:3d} {bar} {stat_name}{bg_bonus}")
-                
-                # Show description for selected stat
-                if i == selected_index:
-                    desc = STAT_DESCRIPTIONS.get(stat_code, '')
-                    if desc:
-                        lines.append(f"      {desc}")
-                
-                lines.append("")
+            # Two-column layout: Stats on left, Derived on right
+            lines.append("BASE STATS".ljust(40) + " │ DERIVED METRICS")
+            lines.append("─" * 40 + "─┼" + "─" * 38)
             
-            lines.append("─" * 80)
-            lines.append("")
+            # Display stats with derived stats in parallel columns
+            max_rows = max(len(stat_codes), len(derived_items))
             
-            # Calculate and show derived stats
-            derived = calculate_derived_attributes(stats)
-            lines.append("DERIVED METRICS:")
-            lines.append("")
-            
-            # Show in two columns
-            derived_items = list(derived.items())
-            for i in range(0, len(derived_items), 2):
-                metric_name, metric_value = derived_items[i]
-                metric_info = DERIVED_METRIC_INFO.get(metric_name, {})
-                display_name = metric_info.get('name', metric_name)
-                
-                if isinstance(metric_value, float):
-                    if metric_value >= 1000:
-                        value_str = f"{metric_value:,.0f}"
-                    else:
-                        value_str = f"{metric_value:.1f}"
-                else:
-                    value_str = str(metric_value)
-                
-                left_text = f"  {display_name}: {value_str}".ljust(38)
-                
-                if i + 1 < len(derived_items):
-                    metric_name2, metric_value2 = derived_items[i + 1]
-                    metric_info2 = DERIVED_METRIC_INFO.get(metric_name2, {})
-                    display_name2 = metric_info2.get('name', metric_name2)
+            for i in range(max_rows):
+                # Left column: Base stat
+                if i < len(stat_codes):
+                    stat_code = stat_codes[i]
+                    value = stats.get(stat_code, BASE_STAT_VALUE)
                     
-                    if isinstance(metric_value2, float):
-                        if metric_value2 >= 1000:
-                            value_str2 = f"{metric_value2:,.0f}"
+                    # Show cursor indicator for selected stat
+                    cursor = ">" if i == selected_index else " "
+                    
+                    # Show if this stat has a background bonus
+                    bg_bonus = ""
+                    if self.character_data.get('background'):
+                        bg = self.background_data.get(self.character_data['background'], {})
+                        stat_bonuses = bg.get('stat_bonuses', {})
+                        if stat_code in stat_bonuses:
+                            bg_bonus = f" (+{stat_bonuses[stat_code]})"
+                    
+                    # Create stat bar with ASCII characters
+                    bar_length = 10
+                    filled = min(int((value / MAX_STAT_VALUE) * bar_length), bar_length)
+                    bar = "█" * filled + "░" * (bar_length - filled)
+                    
+                    # Build stat line: cursor + code + value + bar + bonus
+                    stat_line = f" {cursor}{stat_code}:{value:3d} [{bar}]{bg_bonus}".ljust(40)
+                else:
+                    stat_line = " " * 40
+                
+                # Right column: Derived stat
+                if i < len(derived_items):
+                    metric_name, metric_value = derived_items[i]
+                    metric_info = DERIVED_METRIC_INFO.get(metric_name, {})
+                    display_name = metric_info.get('name', metric_name)
+                    
+                    if isinstance(metric_value, float):
+                        if metric_value >= 1000:
+                            value_str = f"{metric_value:,.0f}"
                         else:
-                            value_str2 = f"{metric_value2:.1f}"
+                            value_str = f"{metric_value:.1f}"
                     else:
-                        value_str2 = str(metric_value2)
+                        value_str = str(metric_value)
                     
-                    right_text = f"{display_name2}: {value_str2}"
+                    derived_line = f" │ {display_name}: {value_str}"
                 else:
-                    right_text = ""
+                    derived_line = " │"
                 
-                lines.append(left_text + "  " + right_text)
+                lines.append(stat_line + derived_line)
+            
+            # Show description for selected stat (compact, one line)
+            if 0 <= selected_index < len(stat_codes):
+                stat_code = stat_codes[selected_index]
+                stat_name = STAT_NAMES[stat_code]
+                desc = STAT_DESCRIPTIONS.get(stat_code, '')
+                if desc:
+                    # Truncate description if too long
+                    desc_short = desc[:75] + "..." if len(desc) > 75 else desc
+                    lines.append("─" * 40 + "─┼" + "─" * 38)
+                    lines.append(f"{stat_name}: {desc_short}")
             
         except Exception as e:
             import traceback
