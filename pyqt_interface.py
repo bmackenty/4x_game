@@ -35,8 +35,8 @@ from typing import Any, Dict, List, Optional
 import sys
 import textwrap
 
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QFont, QAction
+from PyQt6.QtCore import Qt, QSize, QRegularExpression
+from PyQt6.QtGui import QFont, QAction, QSyntaxHighlighter, QTextCharFormat, QColor
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -261,6 +261,62 @@ class MessageLogWidget(QPlainTextEdit):
         self.setPlainText("\n".join(self._messages))
         # Ensure the view is scrolled to the bottom.
         self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
+
+
+# ---------------------------------------------------------------------------
+# Syntax highlighter for ASCII character sheet
+# ---------------------------------------------------------------------------
+
+class ASCIISheetHighlighter(QSyntaxHighlighter):
+    """Colorize ASCII character sheet lines in the main view.
+
+    - Borders: cyan
+    - Section headers: yellow
+    - Numbers: green
+    - Footer hint: gray
+    """
+
+    def __init__(self, parent_document):
+        super().__init__(parent_document)
+
+        # Define text formats
+        self.cyan_fmt = QTextCharFormat()
+        self.cyan_fmt.setForeground(QColor("#00FFFF"))
+
+        self.yellow_fmt = QTextCharFormat()
+        self.yellow_fmt.setForeground(QColor("#FFFF55"))
+
+        self.green_fmt = QTextCharFormat()
+        self.green_fmt.setForeground(QColor("#00FF00"))
+
+        self.gray_fmt = QTextCharFormat()
+        self.gray_fmt.setForeground(QColor("#808080"))
+
+        # Precompiled patterns
+        self.border_re = QRegularExpression(r"^[╔╚╠╟].*[╗╣╢]$")
+        self.section_re = QRegularExpression(r"^║\s*(CHARACTER SHEET|IDENTITY & ORIGINS|ATTRIBUTES|BACKGROUND & CLASS|FLEET & HOLDINGS|EQUIPMENT)\s*║$")
+        self.hint_re = QRegularExpression(r"^\[Press O to return to overview\]")
+        self.number_re = QRegularExpression(r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b")
+
+    def highlightBlock(self, text: str) -> None:
+        # Borders
+        if self.border_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.cyan_fmt)
+            return
+
+        # Section headers
+        if self.section_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.yellow_fmt)
+
+        # Footer hint
+        if self.hint_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.gray_fmt)
+
+        # Numbers anywhere in the line
+        it = self.number_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.green_fmt)
 
 
 # ---------------------------------------------------------------------------
@@ -1541,6 +1597,12 @@ class RoguelikeMainWindow(QMainWindow):
         
         self.setCentralWidget(self.main_view)
 
+        # Attach syntax highlighter for colorized ASCII sheets
+        try:
+            self._sheet_highlighter = ASCIISheetHighlighter(self.main_view.document())
+        except Exception:
+            self._sheet_highlighter = None
+
         # ------------------------------------------------------------------
         # Message log dock at the bottom
         # ------------------------------------------------------------------
@@ -1944,12 +2006,12 @@ class RoguelikeMainWindow(QMainWindow):
             self.main_view.setPlainText("No active game.")
             return
         
-        # Calculate width
+        # Calculate width - use most of the available viewport width
         fm = self.main_view.fontMetrics()
-        char_width = fm.horizontalAdvance('=')
+        char_width = fm.horizontalAdvance('M')  # Use M for more accurate width
         viewport_width = self.main_view.viewport().width()
-        usable_width = viewport_width - 20
-        width = min(80, max(80, usable_width // char_width))
+        usable_width = viewport_width - 40  # Leave some margin
+        width = max(120, usable_width // char_width)  # Minimum 120 chars, expand to fit window
         
         inner_width = width - 4
         left_width = (inner_width - 3) // 2
@@ -2083,6 +2145,7 @@ class RoguelikeMainWindow(QMainWindow):
             
             bg_info = background_data.get(background_name, {})
             class_info = classes.get(class_name, {})
+            faction_info = factions.get(faction_name, {})
             
             if bg_info:
                 bg_desc = bg_info.get('description', '')
@@ -2103,6 +2166,25 @@ class RoguelikeMainWindow(QMainWindow):
                         lines.append(fmt_line(f"  {line}"))
                     if career:
                         lines.append(fmt_line(f"  Career: {career}"))
+                    lines.append(fmt_line())
+            
+            if faction_info and faction_name != '—':
+                faction_desc = faction_info.get('description', '')
+                philosophy = faction_info.get('philosophy', '')
+                gov_type = faction_info.get('government_type', '')
+                primary_focus = faction_info.get('primary_focus', '')
+                
+                lines.append(fmt_line(f"Faction: {faction_name}"))
+                if philosophy:
+                    lines.append(fmt_line(f"  Philosophy: {philosophy}"))
+                if gov_type:
+                    lines.append(fmt_line(f"  Government: {gov_type}"))
+                if primary_focus:
+                    lines.append(fmt_line(f"  Focus: {primary_focus}"))
+                if faction_desc:
+                    wrapped = textwrap.wrap(faction_desc, width=inner_width - 2)
+                    for line in wrapped:
+                        lines.append(fmt_line(f"  {line}"))
         else:
             lines.append(fmt_line("No background/class information available"))
         
