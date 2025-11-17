@@ -1031,6 +1031,7 @@ class CharacterCreationDialog(QDialog):
         """Render class selection screen."""
         lines = []
         lines.append("SELECT YOUR CLASS:")
+        lines.append("filtered by background choice...")
         lines.append("")
         
         # Get current class details
@@ -1781,17 +1782,15 @@ class RoguelikeMainWindow(QMainWindow):
         self.game = Game()
         
         # Apply character choices to the game
-        # (The Game class should handle applying these attributes)
-        if hasattr(self.game, 'species'):
-            self.game.species = dlg.character_data['species']
-        if hasattr(self.game, 'background'):
-            self.game.background = dlg.character_data['background']
-        if hasattr(self.game, 'faction'):
-            self.game.faction = dlg.character_data['faction']
-        if hasattr(self.game, 'character_class'):
-            self.game.character_class = dlg.character_data['class']
-        if hasattr(self.game, 'player_name'):
-            self.game.player_name = dlg.character_data['name']
+        # (The Game class uses character_species, character_background, character_faction)
+        self.game.character_species = dlg.character_data['species']
+        self.game.character_background = dlg.character_data['background']
+        self.game.character_faction = dlg.character_data['faction']
+        self.game.character_class = dlg.character_data['class']
+        self.game.player_name = dlg.character_data['name']
+        # Persist allocated stats if available
+        if dlg.character_data.get('stats'):
+            self.game.character_stats = dlg.character_data['stats']
         
         self.message_log.add_message(
             f"New game started: {dlg.character_data['name']}, "
@@ -1971,19 +1970,19 @@ class RoguelikeMainWindow(QMainWindow):
             return f"║ {content} ║"
         
         # Gather character data
-        character = getattr(self.game, 'character', {})
-        name = character.get('name', getattr(self.game, 'player_name', '—'))
-        species_name = character.get('species', getattr(self.game, 'species', '—'))
-        class_name = character.get('class', getattr(self.game, 'character_class', '—'))
-        background_name = character.get('background', '—')
-        faction_name = character.get('faction', '—')
+        name = getattr(self.game, 'player_name', '—')
+        species_name = getattr(self.game, 'character_species', '—')
+        class_name = getattr(self.game, 'character_class', '—')
+        background_name = getattr(self.game, 'character_background', '—')
+        faction_name = getattr(self.game, 'character_faction', '—')
         
         credits = getattr(self.game, 'credits', 0)
         turn = getattr(self.game, 'turn', 0)
         level = getattr(self.game, 'level', 1)
         
-        stats = character.get('stats', {})
-        derived = calculate_derived_attributes(stats) if stats and GAME_AVAILABLE else {}
+        # Get stats from game object (Game stores stats in character_stats)
+        stats = getattr(self.game, 'character_stats', {}) or {}
+        derived = {}
         
         # Build the sheet
         lines = []
@@ -2013,27 +2012,61 @@ class RoguelikeMainWindow(QMainWindow):
         if GAME_AVAILABLE:
             from characters import STAT_NAMES, BASE_STAT_VALUE
             
+            # Shorten stat names to fit better
+            stat_name_map = {
+                'VIT': 'Vitality',
+                'KIN': 'Kinetics',
+                'INT': 'Intellect',
+                'AEF': 'Aetheric Aff',  # Shortened
+                'COH': 'Coherence',
+                'INF': 'Influence',
+                'SYN': 'Synthesis'
+            }
+            
+            # Use effective stats for display and derived calculations
+            stat_codes = ['VIT', 'KIN', 'INT', 'AEF', 'COH', 'INF', 'SYN']
+            effective_stats = stats if stats else {code: BASE_STAT_VALUE for code in stat_codes}
+
             stat_lines = []
-            for code, stat_name in STAT_NAMES.items():
-                value = stats.get(code, BASE_STAT_VALUE)
-                stat_lines.append(f"{code} {stat_name:<15} {value:>3}")
+            for code in stat_codes:
+                stat_name = stat_name_map.get(code, STAT_NAMES.get(code, code))
+                value = effective_stats.get(code, BASE_STAT_VALUE)
+                stat_lines.append(f"{code} {stat_name:<13} {value:>3}")
             
-            derived_lines = []
-            for metric_name, metric_value in list(derived.items())[:8]:
-                if isinstance(metric_value, float):
-                    if metric_value >= 1000:
-                        value_str = f"{metric_value:,.0f}"
+            # Compute derived attributes from effective stats
+            derived = calculate_derived_attributes(effective_stats)
+
+            # Pair derived attributes with base stats on the same row using a fixed order
+            derived_order = [
+                "Health",
+                "Etheric Capacity",
+                "Processing Speed",
+                "Adaptation Index",
+                "Resilience Index",
+                "Innovation Quotient",
+                "Etheric Stability",
+            ]
+
+            def fmt_derived(name: str, value) -> str:
+                if isinstance(value, float):
+                    if value >= 1000:
+                        value_str = f"{value:,.0f}"
                     else:
-                        value_str = f"{metric_value:.1f}"
+                        value_str = f"{value:.1f}"
                 else:
-                    value_str = str(metric_value)
-                name_short = metric_name[:18]
-                derived_lines.append(f"{name_short:<18} {value_str}")
-            
-            max_rows = max(len(stat_lines), len(derived_lines))
-            for i in range(max_rows):
-                left = stat_lines[i] if i < len(stat_lines) else ""
-                right = derived_lines[i] if i < len(derived_lines) else ""
+                    value_str = str(value)
+                name_short = name[:18]
+                return f"{name_short:<18} {value_str}"
+
+            # Build derived lines in desired order (pad/truncate to match base stats)
+            ordered_values = [fmt_derived(n, derived.get(n, "")) for n in derived_order]
+            # Ensure we have at least as many derived entries as base stats
+            while len(ordered_values) < len(stat_lines):
+                ordered_values.append("")
+
+            for i in range(len(stat_lines)):
+                left = stat_lines[i]
+                right = ordered_values[i]
                 lines.append(fmt_two_col(left, right))
         else:
             lines.append(fmt_line("Stats unavailable (game modules not loaded)"))
@@ -2118,6 +2151,19 @@ class RoguelikeMainWindow(QMainWindow):
             left = fleet_left[i] if i < len(fleet_left) else ""
             right = holdings[i] if i < len(holdings) else ""
             lines.append(fmt_two_col(left, right))
+        
+        # Equipment section
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("EQUIPMENT"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        equipment = getattr(self.game, "equipment", {}) or {}
+        if equipment:
+            for slot, item in list(equipment.items())[:6]:
+                lines.append(fmt_line(f"  {slot}: {item}"))
+        else:
+            lines.append(fmt_line("  No equipment equipped (not yet implemented)"))
         
         lines.append("╚" + "═" * (inner_width + 2) + "╝")
         lines.append("")
