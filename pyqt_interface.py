@@ -2501,7 +2501,7 @@ class MapScreen(QDialog):
         self.setWindowTitle("Galaxy Map")
         self.setModal(False)
         
-        # Viewport and virtual map dimensions
+        # Viewport and virtual map dimensions (viewport will be sized from window)
         self.viewport_width = 120
         self.viewport_height = 35
         self.virtual_width = 200
@@ -2563,9 +2563,8 @@ class MapScreen(QDialog):
         layout.addWidget(self.status_label)
         
         self.setLayout(layout)
-        
-        # Make it large
-        self.resize(1400, 900)
+        # Start reasonably large; actual text viewport is computed dynamically
+        self.resize(1200, 800)
         
         # Ensure this dialog receives key events even if the text area is focused
         self.map_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -2741,6 +2740,19 @@ class MapScreen(QDialog):
         # Center viewport on ship
         self.center_viewport_on(ship_vx, ship_vy)
         
+        # Determine viewport size from current widget size and font metrics
+        font_metrics = self.map_display.fontMetrics()
+        char_width = max(1, font_metrics.horizontalAdvance("M"))
+        char_height = max(1, font_metrics.height())
+
+        # Leave a small margin so we don't butt up against the edges
+        view_width_chars = max(40, (self.map_display.viewport().width() - 20) // char_width)
+        view_height_chars = max(20, (self.map_display.viewport().height() - 40) // char_height)
+
+        # Clamp viewport to virtual map bounds
+        self.viewport_width = min(self.virtual_width, view_width_chars)
+        self.viewport_height = min(self.virtual_height, view_height_chars)
+
         # Build display text
         lines = []
         
@@ -2837,9 +2849,14 @@ class MapScreen(QDialog):
         """Center the viewport on given virtual coordinates."""
         target_x = vx - self.viewport_width // 2
         target_y = vy - self.viewport_height // 2
-        
-        self.viewport_x = max(0, min(self.virtual_width - self.viewport_width, target_x))
-        self.viewport_y = max(0, min(self.virtual_height - self.viewport_height, target_y))
+
+        self.viewport_x = max(0, min(max(0, self.virtual_width - self.viewport_width), target_x))
+        self.viewport_y = max(0, min(max(0, self.virtual_height - self.viewport_height), target_y))
+
+    def resizeEvent(self, event):  # type: ignore[override]
+        """On resize, recompute viewport dimensions and redraw the map."""
+        super().resizeEvent(event)
+        self.update_map()
     
     def keyPressEvent(self, event):
         """Handle keyboard input."""
@@ -3498,25 +3515,122 @@ class SystemDialog(QDialog):
             )
 
     def do_trade(self) -> None:
-        # Hook into existing trading/market systems if present
-        if hasattr(self.game, "economy") and hasattr(
-            self.game.economy, "open_market_for_system"
-        ):
+        """Show a textual market summary using the EconomicSystem.
+
+        This mirrors the intent of the Textual `TradingScreen` by
+        surfacing best buys/sells, but keeps interaction read-only for
+        now. Actual buy/sell actions can still be done via the CLI.
+        """
+        system_name = self.system.get("name", "Unknown")
+
+        if not hasattr(self.game, "economy") or self.game.economy is None:
+            self.status_label.setText("Trading unavailable: economic system not initialized.")
+            return
+
+        econ = self.game.economy
+        if system_name not in econ.markets:
             try:
-                self.game.economy.open_market_for_system(self.system["name"])
-                self.status_label.setText("Opened market UI (if implemented).")
-            except Exception as e:
-                self.status_label.setText(f"Trade error: {e}")
+                econ.create_market(self.system)
+            except Exception:
+                self.status_label.setText("Failed to initialize market for this system.")
+                return
+
+        try:
+            market_info = econ.get_market_info(system_name)
+        except Exception:
+            self.status_label.setText("Error retrieving market data.")
+            return
+
+        if not market_info:
+            self.status_label.setText("No market data available for this system.")
+            return
+
+        best_buys = market_info.get("best_buys", []) or []
+        best_sells = market_info.get("best_sells", []) or []
+
+        lines: List[str] = []
+        lines.append("╔" + "═" * 78 + "╗")
+        lines.append(f"║ MARKET SUMMARY FOR {system_name[:60]:<60} ║")
+        lines.append("╠" + "═" * 78 + "╣")
+        lines.append(f"║ Credits: {self.game.credits:>12,}                                           ║")
+        lines.append("╟" + "─" * 78 + "╢")
+
+        lines.append("║ Best Buys (cheap here)                    Qty     Price ║")
+        if best_buys:
+            for name, price, supply in best_buys[:5]:
+                lines.append(
+                    f"║   {name[:40]:<40} {supply:>5}  {price:>8,} cr ║"
+                )
         else:
-            self.status_label.setText(
-                "Trading system not integrated in PyQt UI yet."
-            )
+            lines.append("║   No especially cheap commodities detected.           ║")
+
+        lines.append("╟" + "─" * 78 + "╢")
+        lines.append("║ Best Sells (lucrative here)                Demand  Price ║")
+        if best_sells:
+            for name, price, demand in best_sells[:5]:
+                lines.append(
+                    f"║   {name[:40]:<40} {demand:>5}  {price:>8,} cr ║"
+                )
+        else:
+            lines.append("║   No especially profitable sales detected.           ║")
+
+        lines.append("╚" + "═" * 78 + "╝")
+        lines.append("")
+        lines.append("You can trade via the CLI 'Trade Goods' menu for now.")
+
+        # Append summary to the existing system description, above actions
+        full_text = self.display.toPlainText()
+        parts = full_text.split("AVAILABLE ACTIONS:")
+        if len(parts) >= 2:
+            head = parts[0].rstrip()
+            tail = "AVAILABLE ACTIONS:" + parts[1]
+            combined = head + "\n\n" + "\n".join(lines) + "\n\n" + tail
+            self.display.setPlainText(combined)
+        else:
+            # Fallback: just append at the end
+            self.display.appendPlainText("\n" + "\n".join(lines))
+
+        self.status_label.setText("Market data shown. Trading UI can be expanded later.")
 
     def do_shipyard(self, station: dict) -> None:
-        # Placeholder hook for future shipyard UI
-        self.status_label.setText(
-            f"Shipyard at {station.get('name', 'Station')} not implemented yet."
-        )
+        """Summarize shipyard capabilities and tie into upgrade system.
+
+        This is a light-weight analogue to the Textual `ShipyardScreen`.
+        """
+        station_name = station.get("name", "Unknown Station")
+
+        if not hasattr(self.game, "upgrade_system") or self.game.upgrade_system is None:
+            self.status_label.setText("Shipyard unavailable: upgrade system not initialized.")
+            return
+
+        nav = getattr(self.game, "navigation", None)
+        ship = nav.current_ship if nav else None
+        if ship is None:
+            self.status_label.setText("No active ship to refit at the shipyard.")
+            return
+
+        lines: List[str] = []
+        lines.append("╔" + "═" * 78 + "╗")
+        lines.append(f"║ SHIPYARD: {station_name[:65]:<65} ║")
+        lines.append("╠" + "═" * 78 + "╣")
+        lines.append(f"║ Current Ship: {ship.name[:60]:<60} ║")
+        lines.append(f"║ Class: {getattr(ship, 'ship_class', 'Unknown')[:60]:<60} ║")
+        lines.append("╟" + "─" * 78 + "╢")
+        lines.append("║ Detailed hull/upgrade UI is available in the CLI.   ║")
+        lines.append("║ Use 'Ship Builder' and 'Ship Upgrades' menus there. ║")
+        lines.append("╚" + "═" * 78 + "╝")
+
+        full_text = self.display.toPlainText()
+        parts = full_text.split("AVAILABLE ACTIONS:")
+        if len(parts) >= 2:
+            head = parts[0].rstrip()
+            tail = "AVAILABLE ACTIONS:" + parts[1]
+            combined = head + "\n\n" + "\n".join(lines) + "\n\n" + tail
+            self.display.setPlainText(combined)
+        else:
+            self.display.appendPlainText("\n" + "\n".join(lines))
+
+        self.status_label.setText(f"Shipyard at {station_name}: summary shown.")
 
     def do_station_market(self, station: dict) -> None:
         # Placeholder hook for enhanced station markets
@@ -3525,10 +3639,44 @@ class SystemDialog(QDialog):
         )
 
     def do_research(self, station: dict) -> None:
-        # Placeholder hook for research UI
-        self.status_label.setText(
-            f"Research facilities at {station.get('name', 'Station')} not implemented yet."
-        )
+        """Display current research status with station context.
+
+        Mirrors the idea of the Textual `ResearchScreen` but in a
+        compact, read-only summary for now.
+        """
+        station_name = station.get("name", "Research Facility")
+
+        completed = getattr(self.game, "completed_research", []) or []
+        active = getattr(self.game, "active_research", None)
+        progress = getattr(self.game, "research_progress", 0)
+
+        lines: List[str] = []
+        lines.append("╔" + "═" * 78 + "╗")
+        lines.append(f"║ RESEARCH NODE: {station_name[:63]:<63} ║")
+        lines.append("╠" + "═" * 78 + "╣")
+        if active:
+            active_str = str(active)
+            lines.append(f"║ Active Project: {active_str[:60]:<60} ║")
+            lines.append(f"║ Progress: {progress:>3}%{'':<56}║")
+        else:
+            lines.append("║ No active research project.                       ║")
+        lines.append("╟" + "─" * 78 + "╢")
+        lines.append(f"║ Completed Projects: {len(completed):>3}{'':<56}║")
+        lines.append("║ Use CLI 'Research & Development' menu for full   ║")
+        lines.append("║ tech tree browsing and project selection.        ║")
+        lines.append("╚" + "═" * 78 + "╝")
+
+        full_text = self.display.toPlainText()
+        parts = full_text.split("AVAILABLE ACTIONS:")
+        if len(parts) >= 2:
+            head = parts[0].rstrip()
+            tail = "AVAILABLE ACTIONS:" + parts[1]
+            combined = head + "\n\n" + "\n".join(lines) + "\n\n" + tail
+            self.display.setPlainText(combined)
+        else:
+            self.display.appendPlainText("\n" + "\n".join(lines))
+
+        self.status_label.setText("Research status shown. Use CLI for detailed R&D.")
 
     def do_visit_colony(self, planet: dict) -> None:
         name = planet.get("name", "Unnamed World")
