@@ -100,6 +100,48 @@ MYSTERIES = [
     "An archival monument outputs valid predictions, then melts into sand",
 ]
 
+# Counter-narrative themes for social justice perspective
+MARGINALIZED_VOICES = [
+    "displaced refugees fleeing expansion zones",
+    "labor collectives operating outside official recognition",
+    "hybrid populations denied citizenship by purist factions",
+    "survivor communities maintaining pre-catastrophe traditions",
+    "underground resistance movements",
+    "unregistered settlements on frontier worlds",
+    "subjugated species erased from official records",
+    "dissidents imprisoned for questioning dominant narratives",
+    "economic migrants trapped in exploitation cycles",
+    "indigenous populations dispossessed of ancestral territories",
+    "outlawed religious sects preserving alternative cosmologies",
+    "mutual aid networks sustaining the forgotten",
+]
+
+FORGOTTEN_STRUGGLES = [
+    "The silent genocide of non-FTL capable species during terraforming operations",
+    "Mass deportations disguised as voluntary relocation programs",
+    "Forced assimilation campaigns erasing cultural identities",
+    "Economic blockades starving dissident colonies into submission",
+    "Medical experimentation on 'lesser' species justified as research",
+    "Child separation policies targeting mixed-heritage families",
+    "Wage slavery systems maintaining cross-generational poverty",
+    "Environmental destruction of habitable worlds for resource extraction",
+    "Suppression of historical records documenting colonial atrocities",
+    "Systematic denial of etheric access to marginalized populations",
+]
+
+RESISTANCE_VICTORIES = [
+    "Underground railroad networks successfully evacuating thousands from oppression",
+    "Wildcat strikes forcing recognition of workers' rights across sectors",
+    "Cultural preservation movements maintaining forbidden languages and practices",
+    "Sabotage campaigns halting expansion into protected territories",
+    "Mutual aid communes proving alternative economic models viable",
+    "Whistleblowers exposing war crimes despite personal cost",
+    "Inter-species solidarity movements challenging supremacist ideologies",
+    "Autonomous zones establishing self-governance outside imperial control",
+    "Memory keepers documenting truths official histories tried to erase",
+    "Survivor networks healing trauma through collective witness",
+]
+
 # =================
 # Epochs (Canon-led)
 # =================
@@ -180,6 +222,11 @@ class Epoch:
     cataclysms: List[str]
     mysteries: List[str]
     faction_formations: List[Event]
+    # Counter-narrative elements
+    marginalized_voices: List[str] = field(default_factory=list)
+    forgotten_struggles: List[str] = field(default_factory=list)
+    resistance_victories: List[str] = field(default_factory=list)
+    suppressed_histories: List[str] = field(default_factory=list)
 
 # name builders tuned for 7019 “feel”
 PREFIX = ["Aeth", "Vor", "Zyn", "Kry", "Lum", "Xha", "Orr", "Thal", "Mir", "Nex",
@@ -315,6 +362,25 @@ def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
         label = f
         faction_events.append(Event(when, f"{label} coalesces around {rationale}"))
 
+    # Counter-narrative elements (2-4 of each type)
+    marginalized = random.sample(MARGINALIZED_VOICES, k=random.randint(2, 4))
+    struggles = random.sample(FORGOTTEN_STRUGGLES, k=random.randint(2, 3))
+    victories = random.sample(RESISTANCE_VICTORIES, k=random.randint(1, 3))
+    
+    # Generate suppressed histories - stories that don't fit official narratives
+    suppressed = []
+    for _ in range(random.randint(2, 3)):
+        year = random.randint(start, end)
+        events_pool = [
+            f"In {year:,}, evidence suggests a peaceful first contact was deliberately misrepresented as hostile",
+            f"Records from {year:,} hint at a thriving non-hierarchical society later portrayed as 'primitive'",
+            f"Survivors' testimonies from {year:,} contradict official accounts of voluntary migration",
+            f"Archaeological evidence near {year:,} reveals prosperous settlements destroyed without provocation",
+            f"Intercepted communications from {year:,} document orders to falsify resource scarcity reports",
+            f"Witnesses from {year:,} reported seeing refugees turned away, contrary to open-borders propaganda",
+        ]
+        suppressed.append(random.choice(events_pool))
+
     ep = Epoch(
         epoch_id=str(uuid.uuid4())[:8],
         name=epoch_template["name"],
@@ -325,6 +391,10 @@ def generate_epoch(epoch_template: Dict[str, Any]) -> Epoch:
         cataclysms=cats,
         mysteries=mys,
         faction_formations=sorted(faction_events, key=lambda e: e.year),
+        marginalized_voices=marginalized,
+        forgotten_struggles=struggles,
+        resistance_victories=victories,
+        suppressed_histories=suppressed,
     )
 
     # Inject required anchor events/constraints
@@ -388,6 +458,10 @@ class GalacticHistory:
             "cataclysms": e.cataclysms,
             "mysteries": e.mysteries,
             "faction_formations": [{"year": ev.year, "event": ev.description} for ev in e.faction_formations],
+            "marginalized_voices": e.marginalized_voices,
+            "forgotten_struggles": e.forgotten_struggles,
+            "resistance_victories": e.resistance_victories,
+            "suppressed_histories": e.suppressed_histories,
             "civilizations": [
                 {
                     "name": c.name,
@@ -517,6 +591,81 @@ def format_epoch_narrative(epoch: Dict[str, Any]) -> List[str]:
             lines.append(f"These artifacts stand as silent testimony to a people who once dreamed among the stars.")
             lines.append("")
             lines.append("")
+    
+    # COUNTER-NARRATIVE SECTION
+    marginalized = epoch.get('marginalized_voices', [])
+    struggles = epoch.get('forgotten_struggles', [])
+    victories = epoch.get('resistance_victories', [])
+    suppressed = epoch.get('suppressed_histories', [])
+    
+    if marginalized or struggles or victories or suppressed:
+        lines.append("─" * 120)
+        lines.append("")
+        lines.append("VOICES FROM THE MARGINS: AN ALTERNATIVE HISTORY")
+        lines.append("")
+        lines.append("The official histories above chronicle the rise and fall of civilizations, the formation ")
+        lines.append("of factions, and the grand mysteries of the age. But these narratives—curated by the ")
+        lines.append("victorious, compiled by the powerful—tell only part of the story. Below the surface of ")
+        lines.append("recorded history flows another current: the experiences of those written out of the record, ")
+        lines.append("the struggles deemed too inconvenient to remember, the victories too threatening to acknowledge.")
+        lines.append("")
+    
+    if marginalized:
+        lines.append("THE FORGOTTEN PEOPLES")
+        lines.append("")
+        lines.append("While empires celebrated their expansion and factions consolidated their power, countless ")
+        lines.append("communities existed in the shadows and margins of official recognition:")
+        lines.append("")
+        for voice in marginalized:
+            lines.append(f"  ○ {voice.capitalize()}, whose stories were never recorded in the grand archives")
+        lines.append("")
+        lines.append("These populations—deemed unworthy of official notice or deliberately erased from the ")
+        lines.append("historical record—nonetheless maintained their cultures, sustained their communities, ")
+        lines.append("and survived against all odds.")
+        lines.append("")
+    
+    if struggles:
+        lines.append("SILENCED ATROCITIES")
+        lines.append("")
+        lines.append("The triumphant narratives of exploration and progress often gloss over or actively conceal ")
+        lines.append("the violence required to achieve them. Recovered testimonies, suppressed documents, and ")
+        lines.append("archaeological evidence reveal darker truths:")
+        lines.append("")
+        for struggle in struggles:
+            lines.append(f"  ✦ {struggle}")
+        lines.append("")
+        lines.append("These crimes, committed in the name of civilization and progress, were rarely acknowledged ")
+        lines.append("by those who benefited from them. Only through the persistent efforts of survivors, ")
+        lines.append("truth-tellers, and historians working against official censorship do these stories survive.")
+        lines.append("")
+    
+    if suppressed:
+        lines.append("CONTESTED NARRATIVES")
+        lines.append("")
+        lines.append("Alternative sources and suppressed records suggest that many events unfolded quite ")
+        lines.append("differently than official accounts would have us believe:")
+        lines.append("")
+        for sup in suppressed:
+            lines.append(f"  ⚠ {sup}")
+        lines.append("")
+        lines.append("These discrepancies raise uncomfortable questions about whose truths are preserved and ")
+        lines.append("whose are systematically buried.")
+        lines.append("")
+    
+    if victories:
+        lines.append("RESISTANCE AND RESILIENCE")
+        lines.append("")
+        lines.append("Yet the marginalized were not merely victims. Throughout this epoch, acts of resistance, ")
+        lines.append("solidarity, and collective survival challenged dominant narratives and preserved alternatives:")
+        lines.append("")
+        for victory in victories:
+            lines.append(f"  ◈ {victory}")
+        lines.append("")
+        lines.append("These victories—often small, local, and unacknowledged by official historians—represent ")
+        lines.append("the persistent refusal of the oppressed to be erased. They remind us that every age ")
+        lines.append("contains not just the history written by the powerful, but the histories created by those ")
+        lines.append("who resisted them.")
+        lines.append("")
     
     lines.append("")
     return lines
