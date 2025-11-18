@@ -3021,26 +3021,18 @@ class MapScreen(QDialog):
             entered_system["visited"] = True
             
             self.update_map()
-            
-            # Show system info
-            bodies = entered_system.get('celestial_bodies', [])
-            planets = [b for b in bodies if b['object_type'] == 'Planet']
-            stations = entered_system.get('stations', [])
-            
-            info_parts = [f"Arrived at {entered_system['name']}"]
-            
-            if planets:
-                habitable = [p for p in planets if p.get('habitable')]
-                if habitable:
-                    info_parts.append(f"{len(habitable)} habitable planet(s)")
-            
-            if stations:
-                info_parts.append(f"{len(stations)} station(s)")
-            
-            msg = QMessageBox(self)
-            msg.setWindowTitle("System Entry")
-            msg.setText("\n".join(info_parts))
-            msg.exec()
+
+            # Open system interaction dialog
+            try:
+                dlg = SystemDialog(self.game, entered_system, self)
+                dlg.exec()
+                # After closing, refresh map to reflect any changes (fuel, cargo, etc.)
+                self.update_map()
+            except Exception as e:
+                msg = QMessageBox(self)
+                msg.setWindowTitle("System Entry Error")
+                msg.setText(f"Arrived at {entered_system['name']} but could not open system screen.\nError: {e}")
+                msg.exec()
 
 
 class MapHighlighter(QSyntaxHighlighter):
@@ -3120,6 +3112,468 @@ class MapHighlighter(QSyntaxHighlighter):
             m = it.next()
             self.setFormat(m.capturedStart(), m.capturedLength(), self.cyan_fmt)
 
+
+# ---------------------------------------------------------------------------
+# System Interaction Dialog (modeled on SystemInteractionScreen)
+# ---------------------------------------------------------------------------
+
+
+class SystemDialog(QDialog):
+    """Interaction screen when entering a star system: refuel / trade / colony / etc.
+
+    This mirrors the Textual `SystemInteractionScreen` but renders into a
+    QPlainTextEdit with an ASCII layout and handles numeric keypresses.
+    """
+
+    def __init__(self, game, system, parent=None):
+        super().__init__(parent)
+        self.game = game
+        self.system = system
+        self.setWindowTitle(f"System: {system.get('name', 'Unknown')}")
+        self.available_actions = []  # (number, name, handler, description)
+
+        self.init_ui()
+        self.build_available_actions()
+        self.render_system()
+
+    def init_ui(self) -> None:
+        layout = QVBoxLayout()
+
+        self.display = QPlainTextEdit()
+        self.display.setReadOnly(True)
+        self.display.setFont(QFont("Menlo", 10))
+
+        palette = self.display.palette()
+        palette.setColor(QPalette.ColorRole.Base, QColor("#000000"))
+        palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
+        self.display.setPalette(palette)
+
+        layout.addWidget(self.display)
+
+        self.status_label = QLabel("[1-9: Select action] [Q/ESC: Back]")
+        self.status_label.setStyleSheet("color: #808080; padding: 5px;")
+        layout.addWidget(self.status_label)
+
+        self.setLayout(layout)
+        self.resize(1000, 700)
+        self.display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    # ------------------------ action building ------------------------
+
+    def build_available_actions(self) -> None:
+        self.available_actions = []
+        num = 1
+
+        # Refuel
+        self.available_actions.append((num, "Refuel", self.do_refuel, "Refuel your ship (10 cr/unit)"))
+        num += 1
+
+        # Trade (generic, will delegate to game.economy/trade UI if present)
+        self.available_actions.append((num, "Trade", self.do_trade, "Access system markets"))
+        num += 1
+
+        # Stations-based actions
+        stations = self.system.get("stations", [])
+        for station in stations:
+            station_type = station.get("type", "")
+            category = station.get("category", "")
+            name = station.get("name", "Unknown Station")
+
+            # Shipyard
+            if (
+                "Shipwright" in name
+                or "Shipbuilding" in category
+                or "Construction Yard" in station_type
+            ):
+                self.available_actions.append(
+                    (
+                        num,
+                        f"Shipyard ({name})",
+                        lambda s=station: self.do_shipyard(s),
+                        "Build or upgrade ships",
+                    )
+                )
+                num += 1
+
+            # Market / trade hub
+            if (
+                "Trade" in category
+                or "Trade Hub" in station_type
+                or "Market" in name
+            ):
+                self.available_actions.append(
+                    (
+                        num,
+                        f"Market ({name})",
+                        lambda s=station: self.do_station_market(s),
+                        "Access enhanced station markets",
+                    )
+                )
+                num += 1
+
+            # Research
+            if "Research" in category or "Lab" in station_type:
+                self.available_actions.append(
+                    (
+                        num,
+                        f"Research ({name})",
+                        lambda s=station: self.do_research(s),
+                        "Access research facilities",
+                    )
+                )
+                num += 1
+
+        # Bodies-based actions
+        bodies = self.system.get("celestial_bodies", [])
+        habitable_planets = [
+            b
+            for b in bodies
+            if b.get("object_type") == "Planet" and b.get("habitable")
+        ]
+        if habitable_planets:
+            self.available_actions.append(
+                (
+                    num,
+                    "Visit Colony",
+                    lambda p=habitable_planets[0]: self.do_visit_colony(p),
+                    "Interact with planetary inhabitants",
+                )
+            )
+            num += 1
+
+        asteroid_belts = [
+            b for b in bodies if b.get("object_type") == "Asteroid Belt"
+        ]
+        if asteroid_belts:
+            self.available_actions.append(
+                (
+                    num,
+                    "Mine Asteroids",
+                    lambda a=asteroid_belts[0]: self.do_mining(a),
+                    "Extract minerals from asteroid belt",
+                )
+            )
+            num += 1
+
+        # Repair action always available
+        self.available_actions.append(
+            (num, "Repair", self.do_repair, "Repair ship damage")
+        )
+
+    # ----------------------------- rendering -----------------------------
+
+    def render_system(self) -> None:
+        """Render the system screen as ASCII text."""
+        lines: list[str] = []
+
+        width = 80
+        name = self.system.get("name", "Unknown System")
+
+        lines.append("═" * width)
+        lines.append(name.center(width))
+        lines.append("═" * width)
+        lines.append("")
+
+        # Faction control
+        controlling_faction = self.system.get("controlling_faction")
+        if controlling_faction:
+            lines.append(f"⚑ Controlled by: {controlling_faction}")
+
+            if hasattr(self.game, "faction_system") and self.game.faction_system:
+                try:
+                    benefits = self.game.faction_system.get_faction_zone_benefits(
+                        controlling_faction, "system"
+                    )
+                    rep = self.game.faction_system.player_relations.get(
+                        controlling_faction, 0
+                    )
+                    rep_status = self.game.faction_system.get_reputation_status(
+                        controlling_faction
+                    )
+                    lines.append(
+                        f"  Your Reputation: {rep_status} ({rep})"
+                    )
+                    if benefits.get("description"):
+                        desc_list = benefits["description"]
+                        if isinstance(desc_list, list) and desc_list:
+                            lines.append(
+                                "  Active Benefits: "
+                                + ", ".join(desc_list[:2])
+                            )
+                except Exception:
+                    pass
+
+            lines.append("")
+
+        # System stats
+        sys_type = self.system.get("type", "Unknown")
+        population = self.system.get("population", 0)
+        resources = self.system.get("resources", "Unknown")
+        threat = self.system.get("threat_level", 0)
+
+        lines.append(f"Type: {sys_type}")
+        lines.append(f"Population: {population:,}")
+        lines.append(f"Resources: {resources}")
+        lines.append(f"Threat: {threat}/10")
+        lines.append("")
+
+        # Description
+        desc = self.system.get("description", "")
+        if desc:
+            wrapped = textwrap.wrap(desc, width=width - 4)
+            for line in wrapped:
+                lines.append("  " + line)
+            lines.append("")
+
+        # Celestial bodies
+        celestial_bodies = self.system.get("celestial_bodies", [])
+        if celestial_bodies:
+            lines.append("━" * width)
+            lines.append("CELESTIAL BODIES:")
+            lines.append("━" * width)
+
+            planets = [b for b in celestial_bodies if b["object_type"] == "Planet"]
+            moons = [b for b in celestial_bodies if b["object_type"] == "Moon"]
+            asteroids = [
+                b for b in celestial_bodies if b["object_type"] == "Asteroid Belt"
+            ]
+            nebulae = [b for b in celestial_bodies if b["object_type"] == "Nebula"]
+            comets = [b for b in celestial_bodies if b["object_type"] == "Comet"]
+
+            if planets:
+                lines.append("Planets:")
+                for planet in planets:
+                    line = f"  • {planet['name']} - {planet['subtype']}"
+                    tags = []
+                    if planet.get("habitable"):
+                        tags.append("HABITABLE")
+                    if planet.get("has_atmosphere"):
+                        tags.append("Atmosphere")
+                    if tags:
+                        line += " [" + ", ".join(tags) + "]"
+                    lines.append(line)
+
+            if moons:
+                lines.append("Moons:")
+                for moon in moons:
+                    line = f"  • {moon['name']} (orbits {moon['orbits']})"
+                    if moon.get("has_resources"):
+                        line += " [Rich Resources]"
+                    lines.append(line)
+
+            if asteroids:
+                lines.append("Asteroid Belts:")
+                for belt in asteroids:
+                    line = f"  • {belt['name']} - {belt['density']} density"
+                    if belt.get("mineral_rich"):
+                        line += " [Mineral Rich]"
+                    lines.append(line)
+
+            if nebulae:
+                lines.append("Nebulae:")
+                for nebula in nebulae:
+                    line = f"  • {nebula['name']}"
+                    if nebula.get("hazardous"):
+                        line += " [HAZARDOUS]"
+                    lines.append(line)
+
+            if comets:
+                lines.append("Comets:")
+                for comet in comets:
+                    line = f"  • {comet['name']}"
+                    if comet.get("active"):
+                        line += " [Active]"
+                    lines.append(line)
+
+            lines.append("")
+
+        # Space stations
+        stations = self.system.get("stations", [])
+        if stations:
+            lines.append("━" * width)
+            lines.append("SPACE STATIONS:")
+            lines.append("━" * width)
+            for i, station in enumerate(stations, 1):
+                name = station.get("name", "Unknown Station")
+                category = station.get("category", "Unknown")
+                stype = station.get("type", "Unknown")
+                desc = station.get("description", "No description available.")
+                lines.append(f"{i}. {name} [{category}]")
+                lines.append(f"   Type: {stype}")
+                lines.append(f"   {desc}")
+            lines.append("")
+
+        # Ship status
+        nav = getattr(self.game, "navigation", None)
+        ship = nav.current_ship if nav else None
+        if ship:
+            sx, sy, sz = ship.coordinates
+            fuel_pct = ship.fuel / ship.max_fuel if ship.max_fuel > 0 else 0
+            cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+            cargo_pct = (
+                cargo_used / ship.max_cargo if ship.max_cargo > 0 else 0
+            )
+            lines.append("Ship Status:")
+            lines.append(
+                f"  {ship.name}  Fuel: {ship.fuel}/{ship.max_fuel}  Cargo: {cargo_used}/{ship.max_cargo}"
+            )
+            lines.append(
+                f"  Position: ({sx}, {sy}, {sz})  Fuel%: {fuel_pct*100:.1f}%  Cargo%: {cargo_pct*100:.1f}%"
+            )
+            lines.append("")
+
+        # Action list
+        lines.append("━" * width)
+        lines.append("AVAILABLE ACTIONS:")
+        lines.append("━" * width)
+
+        for num, name, handler, desc in self.available_actions:
+            lines.append(f"[{num}] {name} - {desc}")
+
+        lines.append("")
+        lines.append("[1-9] Select action   [q/ESC] Back")
+
+        self.display.setPlainText("\n".join(lines))
+
+    # ---------------------------- key handling ----------------------------
+
+    def keyPressEvent(self, event) -> None:  # type: ignore[override]
+        key = event.key()
+        text = event.text()
+
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Q):
+            self.accept()
+            return
+
+        if text and text.isdigit():
+            num = int(text)
+            self.dispatch_action(num)
+            return
+
+        super().keyPressEvent(event)
+
+    def dispatch_action(self, num: int) -> None:
+        for n, name, handler, desc in self.available_actions:
+            if n == num:
+                handler()
+                # Re-render after any action
+                self.render_system()
+                return
+
+    # ----------------------------- actions -----------------------------
+
+    def do_refuel(self) -> None:
+        nav = getattr(self.game, "navigation", None)
+        ship = nav.current_ship if nav else None
+        if not ship:
+            self.status_label.setText("No active ship to refuel.")
+            return
+
+        missing = ship.max_fuel - ship.fuel
+        if missing <= 0:
+            self.status_label.setText("Fuel tanks already full.")
+            return
+
+        cost_per_unit = 10
+        total_cost = missing * cost_per_unit
+
+        credits = getattr(self.game, "credits", 0)
+        if credits < total_cost:
+            # Partial refuel
+            affordable_units = credits // cost_per_unit
+            if affordable_units <= 0:
+                self.status_label.setText("Not enough credits to refuel.")
+                return
+            ship.fuel += affordable_units
+            self.game.credits -= affordable_units * cost_per_unit
+            self.status_label.setText(
+                f"Partially refueled {affordable_units} units for {affordable_units * cost_per_unit} cr."
+            )
+        else:
+            ship.fuel = ship.max_fuel
+            self.game.credits -= total_cost
+            self.status_label.setText(
+                f"Refueled to full for {total_cost} credits."
+            )
+
+    def do_trade(self) -> None:
+        # Hook into existing trading/market systems if present
+        if hasattr(self.game, "economy") and hasattr(
+            self.game.economy, "open_market_for_system"
+        ):
+            try:
+                self.game.economy.open_market_for_system(self.system["name"])
+                self.status_label.setText("Opened market UI (if implemented).")
+            except Exception as e:
+                self.status_label.setText(f"Trade error: {e}")
+        else:
+            self.status_label.setText(
+                "Trading system not integrated in PyQt UI yet."
+            )
+
+    def do_shipyard(self, station: dict) -> None:
+        # Placeholder hook for future shipyard UI
+        self.status_label.setText(
+            f"Shipyard at {station.get('name', 'Station')} not implemented yet."
+        )
+
+    def do_station_market(self, station: dict) -> None:
+        # Placeholder hook for enhanced station markets
+        self.status_label.setText(
+            f"Station market at {station.get('name', 'Station')} not implemented yet."
+        )
+
+    def do_research(self, station: dict) -> None:
+        # Placeholder hook for research UI
+        self.status_label.setText(
+            f"Research facilities at {station.get('name', 'Station')} not implemented yet."
+        )
+
+    def do_visit_colony(self, planet: dict) -> None:
+        name = planet.get("name", "Unnamed World")
+        subtype = planet.get("subtype", "Planet")
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Visit Colony")
+        msg.setText(
+            f"You spend some time on {name}, a {subtype.lower()} with a thriving colony.\n"
+            "People are busy, markets are active, and stories from across the galaxy drift through the concourses."
+        )
+        msg.exec()
+
+    def do_mining(self, belt: dict) -> None:
+        # Very simple placeholder: gain some credits based on richness
+        richness = "rich" if belt.get("mineral_rich") else "normal"
+        base_reward = 100 if richness == "normal" else 250
+        self.game.credits = getattr(self.game, "credits", 0) + base_reward
+        self.status_label.setText(
+            f"Mining operation complete. Gained {base_reward} credits from {belt.get('name', 'asteroid belt')} ({richness})."
+        )
+
+    def do_repair(self) -> None:
+        nav = getattr(self.game, "navigation", None)
+        ship = nav.current_ship if nav else None
+        if not ship or not hasattr(ship, "health"):
+            self.status_label.setText("No ship or health stat to repair.")
+            return
+
+        # Very simple: restore to 100% for a flat fee
+        current_health = getattr(ship, "health", 100)
+        if current_health >= 100:
+            self.status_label.setText("Ship is already at full structural integrity.")
+            return
+
+        repair_cost = 200
+        credits = getattr(self.game, "credits", 0)
+        if credits < repair_cost:
+            self.status_label.setText("Not enough credits to repair.")
+            return
+
+        self.game.credits -= repair_cost
+        ship.health = 100
+        self.status_label.setText(
+            f"Ship repaired to full integrity for {repair_cost} credits."
+        )
 
 # ---------------------------------------------------------------------------
 # Application entry point
