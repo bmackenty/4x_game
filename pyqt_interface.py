@@ -36,7 +36,7 @@ import sys
 import textwrap
 
 from PyQt6.QtCore import Qt, QSize, QRegularExpression
-from PyQt6.QtGui import QFont, QAction, QSyntaxHighlighter, QTextCharFormat, QColor
+from PyQt6.QtGui import QFont, QAction, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -1613,6 +1613,9 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_ship_status = QAction("Ship Status", self)
         self.action_ship_status.triggered.connect(self.on_ship_status)
         
+        self.action_map = QAction("Galaxy Map", self)
+        self.action_map.triggered.connect(self.on_map)
+        
         self.action_overview = QAction("Overview", self)
         self.action_overview.triggered.connect(self.on_overview)
 
@@ -1635,7 +1638,7 @@ class RoguelikeMainWindow(QMainWindow):
         menu_view.addAction(self.action_view_history)
         menu_view.addAction(self.action_character_sheet)
         menu_view.addAction(self.action_ship_status)
-        menu_view.addAction(self.action_ship_status)
+        menu_view.addAction(self.action_map)
 
         menu_help = self.menuBar().addMenu("&Help")
         menu_help.addAction(self.action_about)
@@ -1659,6 +1662,7 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_view_history.setShortcut("H")
         self.action_character_sheet.setShortcut("C")
         self.action_ship_status.setShortcut("V")
+        self.action_map.setShortcut("M")
         self.action_quit.setShortcut("Q")
 
     # ------------------------------------------------------------------
@@ -1694,11 +1698,14 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("   [N] New Game")
         lines.append("   [L] Load Game")
         lines.append("   [S] Save Game (if a game is active)")
+        lines.append("   [C] Character Sheet (if a game is active)")
+        lines.append("   [V] Vessel Status (if a game is active)")
+        lines.append("   [M] Galaxy Map (if a game is active)")
         lines.append("   [H] View Galactic History")
         lines.append("   [Q] Quit")
         lines.append("")
         lines.append("─" * width)
-        lines.append("Use menu entries or shortcuts: N, L, S, H, Q.".center(width))
+        lines.append("Use menu entries or shortcuts: N, L, S, C, V, H, Q.".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
@@ -1762,7 +1769,7 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("")
         lines.append("Use the Game menu or keyboard shortcuts to continue.".center(width))
         lines.append(" [N] New Game | [L] Load Game | [S] Save Game ".center(width))
-        lines.append(" [C] Character Sheet | [H] History | [O] Overview ".center(width))
+        lines.append(" [C] Character Sheet | [V] Vessel Status | [H] History | [O] Overview ".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
@@ -2384,6 +2391,38 @@ class RoguelikeMainWindow(QMainWindow):
         self.main_view.setPlainText("\n".join(lines))
         self.status_bar.showMessage("Ship Status | Press O to return")
 
+    def on_map(self) -> None:
+        """
+        Handler for "Galaxy Map" action.
+        
+        Opens the full-screen galaxy map with navigation capabilities.
+        """
+        if not self.game:
+            QMessageBox.warning(
+                self,
+                "No Active Game",
+                "There is no active game. Start or load a game first.",
+            )
+            return
+        
+        # Ensure navigation system is initialized
+        if not hasattr(self.game, 'navigation') or not self.game.navigation:
+            QMessageBox.warning(
+                self,
+                "Navigation Unavailable",
+                "Navigation system not initialized.",
+            )
+            return
+        
+        # Open map screen
+        map_screen = MapScreen(self.game, self)
+        map_screen.exec()
+        
+        # Refresh overview after closing map
+        if self.game:
+            self.render_game_overview()
+            self.message_log.add_message("Returned from galaxy map.", "[VIEW]")
+
     def on_about(self) -> None:
         """
         Show an About dialog with basic information.
@@ -2436,6 +2475,650 @@ class RoguelikeMainWindow(QMainWindow):
             self.render_main_menu()
         else:
             self.render_game_overview()
+
+
+# ---------------------------------------------------------------------------
+# Galaxy Map Screen
+# ---------------------------------------------------------------------------
+
+
+class MapScreen(QDialog):
+    """
+    Full-screen Galaxy Map with ASCII visualization.
+    
+    Features:
+    - Virtual map 200x60, viewport 120x35 with scrolling
+    - Faction zone overlay (F key)
+    - Ether energy visualization (E key)
+    - HJKL/arrow navigation with fuel consumption
+    - Scanning range for nearby objects
+    - NPC ship movement and encounters
+    """
+    
+    def __init__(self, game, parent=None):
+        super().__init__(parent)
+        self.game = game
+        self.setWindowTitle("Galaxy Map")
+        self.setModal(False)
+        
+        # Viewport and virtual map dimensions
+        self.viewport_width = 120
+        self.viewport_height = 35
+        self.virtual_width = 200
+        self.virtual_height = 60
+        
+        # Viewport offset (camera position)
+        self.viewport_x = 0
+        self.viewport_y = 0
+        
+        # Toggles
+        self.show_faction_zones = False
+        self.show_ether_energy = False
+        
+        # Faction color mapping
+        self.faction_colors = {}
+        
+        # Fuel recharge tracking
+        self.fuel_recharge_counter = 0
+        self.fuel_recharge_target = 3
+        
+        # Move counter for events
+        self.move_count = 0
+        
+        # Setup UI
+        self.init_ui()
+        
+        # Ensure navigation system has a ship
+        self.ensure_ship()
+        
+        # Initial render
+        self.update_map()
+        
+    def init_ui(self):
+        """Initialize the UI components."""
+        layout = QVBoxLayout()
+        
+        # Map display
+        self.map_display = QPlainTextEdit()
+        self.map_display.setReadOnly(True)
+        self.map_display.setFont(QFont("Menlo", 10))
+        
+        # Apply dark terminal styling
+        palette = self.map_display.palette()
+        palette.setColor(QPalette.ColorRole.Base, QColor("#000000"))
+        palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
+        self.map_display.setPalette(palette)
+        
+        # Install syntax highlighter for colors
+        self.highlighter = MapHighlighter(self.map_display.document())
+        
+        layout.addWidget(self.map_display)
+        
+        # Status bar with instructions
+        self.status_label = QLabel(
+            "[HJKL/Arrows: Move] [F: Faction Zones] [E: Ether Energy] "
+            "[N: News] [H: History] [Q/ESC: Close]"
+        )
+        self.status_label.setStyleSheet("color: #808080; padding: 5px;")
+        layout.addWidget(self.status_label)
+        
+        self.setLayout(layout)
+        
+        # Make it large
+        self.resize(1400, 900)
+        
+        # Ensure this dialog receives key events even if the text area is focused
+        self.map_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        
+    def ensure_ship(self):
+        """Ensure navigation system has a current ship."""
+        try:
+            if hasattr(self.game, 'navigation') and self.game.navigation:
+                if not self.game.navigation.current_ship:
+                    from navigation import Ship
+                    first_ship = self.game.owned_ships[0] if self.game.owned_ships else "Basic Transport"
+                    self.game.navigation.current_ship = Ship(first_ship, first_ship)
+        except Exception as e:
+            print(f"Error ensuring ship: {e}")
+    
+    def update_map(self):
+        """Render the galaxy map."""
+        nav = getattr(self.game, 'navigation', None)
+        if not nav or not nav.galaxy:
+            self.map_display.setPlainText("Galaxy data unavailable")
+            return
+        
+        galaxy = nav.galaxy
+        ship = nav.current_ship
+        
+        if not ship:
+            self.map_display.setPlainText("No ship available")
+            return
+        
+        # Initialize virtual buffer - store (char, system_data, faction_name) tuples
+        virtual_buf = [[(" ", None, None) for _ in range(self.virtual_width)] 
+                       for _ in range(self.virtual_height)]
+        
+        def project(x, y):
+            """Scale galaxy coordinates to virtual map coordinates."""
+            px = int((x / galaxy.size_x) * (self.virtual_width - 1))
+            py = int((y / galaxy.size_y) * (self.virtual_height - 1))
+            px = max(0, min(self.virtual_width - 1, px))
+            py = max(0, min(self.virtual_height - 1, py))
+            return px, py
+        
+        # Draw faction zone backgrounds if enabled
+        if self.show_faction_zones and hasattr(galaxy, 'faction_zones'):
+            from systems import FACTION_COLORS
+            
+            # Build faction color mapping
+            available_colors = [
+                "blue", "red", "green", "magenta", "cyan",
+                "yellow", "bright_blue", "bright_red", "bright_green",
+                "bright_magenta", "bright_cyan"
+            ]
+            for idx, faction_name in enumerate(galaxy.faction_zones.keys()):
+                if faction_name in FACTION_COLORS:
+                    self.faction_colors[faction_name] = FACTION_COLORS[faction_name]
+                else:
+                    self.faction_colors[faction_name] = available_colors[idx % len(available_colors)]
+            
+            # Fill faction backgrounds
+            for py in range(self.virtual_height):
+                for px in range(self.virtual_width):
+                    gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
+                    gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
+                    gz = galaxy.size_z / 2
+                    
+                    faction = galaxy.get_faction_for_location(gx, gy, gz) if hasattr(galaxy, 'get_faction_for_location') else None
+                    
+                    if faction:
+                        virtual_buf[py][px] = ("░", None, faction)
+        
+        # Draw ether energy overlay if enabled
+        if self.show_ether_energy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+            for py in range(self.virtual_height):
+                for px in range(self.virtual_width):
+                    gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
+                    gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
+                    gz = int(galaxy.size_z / 2)
+                    
+                    friction = galaxy.ether_energy.get_friction_at(gx, gy, gz)
+                    
+                    # Determine symbol based on friction
+                    if friction < 0.85:
+                        dot_char = "·"
+                        dot_color = "bright_green" if friction < 0.7 else "green"
+                    elif friction < 0.95:
+                        dot_char = "·"
+                        dot_color = "cyan"
+                    elif friction < 1.05:
+                        dot_char = "·"
+                        dot_color = "dim_white"
+                    elif friction < 1.3:
+                        dot_char = "·"
+                        dot_color = "yellow"
+                    elif friction < 1.6:
+                        dot_char = "·"
+                        dot_color = "bright_yellow"
+                    else:
+                        dot_char = "·"
+                        dot_color = "red" if friction < 2.0 else "bright_red"
+                    
+                    current_char, current_data, current_faction = virtual_buf[py][px]
+                    if current_char in (" ", ".", "░"):
+                        virtual_buf[py][px] = (dot_char, {"ether_friction": friction, "ether_color": dot_color}, None)
+        
+        # Get scanned systems
+        scanned_systems = set()
+        if ship and hasattr(ship, 'get_objects_in_scan_range'):
+            try:
+                scan_results = ship.get_objects_in_scan_range(galaxy)
+                for obj_type, obj_data, distance in scan_results:
+                    if obj_type == 'system':
+                        scanned_systems.add(obj_data['name'])
+            except Exception:
+                pass
+        
+        # Plot systems
+        for sys in galaxy.systems.values():
+            x, y, _ = sys["coordinates"]
+            px, py = project(x, y)
+            
+            has_stations = sys.get("stations") and len(sys.get("stations", [])) > 0
+            if has_stations:
+                ch = "◈" if sys.get("visited") else "◆"
+            else:
+                ch = "*" if sys.get("visited") else "+"
+            
+            faction = sys.get('controlling_faction')
+            virtual_buf[py][px] = (ch, sys, faction)
+            
+            # Add scan icons below systems
+            if sys['name'] in scanned_systems and py + 1 < self.virtual_height:
+                icons = []
+                bodies = sys.get('celestial_bodies', [])
+                planets = [b for b in bodies if b['object_type'] == 'Planet']
+                
+                if planets:
+                    habitable = [p for p in planets if p.get('habitable')]
+                    if habitable:
+                        icons.append('P')
+                    else:
+                        icons.append('p')
+                
+                if has_stations:
+                    icons.append('S')
+                
+                asteroids = [b for b in bodies if b['object_type'] == 'Asteroid Belt']
+                if asteroids:
+                    mineral_rich = [a for a in asteroids if a.get('mineral_rich')]
+                    if mineral_rich:
+                        icons.append('M')
+                    else:
+                        icons.append('a')
+                
+                if icons and px < self.virtual_width:
+                    current_char, current_data, current_faction = virtual_buf[py + 1][px]
+                    if current_char in (" ", "░"):
+                        virtual_buf[py + 1][px] = (icons[0], None, current_faction)
+        
+        # Plot NPC ships
+        if nav and hasattr(nav, 'npc_ships'):
+            for npc in nav.npc_ships:
+                nx, ny, nz = npc.coordinates
+                npx, npy = project(nx, ny)
+                _, _, faction = virtual_buf[npy][npx]
+                virtual_buf[npy][npx] = ("&", npc, faction)
+        
+        # Plot player ship
+        sx, sy, sz = ship.coordinates
+        ship_vx, ship_vy = project(sx, sy)
+        _, _, faction = virtual_buf[ship_vy][ship_vx]
+        virtual_buf[ship_vy][ship_vx] = ("@", None, faction)
+        
+        # Center viewport on ship
+        self.center_viewport_on(ship_vx, ship_vy)
+        
+        # Build display text
+        lines = []
+        
+        # Header
+        lines.append("═" * self.viewport_width)
+        header = "GALAXY MAP"
+        if self.show_faction_zones:
+            header += " - FACTION ZONES"
+        if self.show_ether_energy:
+            header += " - ETHER ENERGY"
+        lines.append(header.center(self.viewport_width))
+        lines.append("═" * self.viewport_width)
+        
+        # Render viewport
+        for y in range(self.viewport_height):
+            virtual_y = self.viewport_y + y
+            line = ""
+            if 0 <= virtual_y < self.virtual_height:
+                for x in range(self.viewport_width):
+                    virtual_x = self.viewport_x + x
+                    if 0 <= virtual_x < self.virtual_width:
+                        char, sys_data, faction = virtual_buf[virtual_y][virtual_x]
+                        line += char
+                    else:
+                        line += " "
+            else:
+                line = " " * self.viewport_width
+            lines.append(line)
+        
+        # HUD
+        lines.append("─" * self.viewport_width)
+        
+        # Ship info
+        ship_info = f"Ship: {ship.name} ({ship.ship_class})  Pos: ({sx},{sy},{sz})"
+        lines.append(ship_info)
+        
+        # Fuel and stats
+        fuel_pct = ship.fuel / ship.max_fuel if ship.max_fuel > 0 else 0
+        fuel_bar = self.make_bar(int(fuel_pct * 20), 20, "█", "░")
+        scan_range = getattr(ship, 'scan_range', 5.0)
+        fuel_line = f"Fuel: {fuel_bar} {ship.fuel}/{ship.max_fuel}  Range: {ship.jump_range}  Scan: {scan_range:.1f}"
+        lines.append(fuel_line)
+        
+        # Systems visited
+        visited_count = sum(1 for s in galaxy.systems.values() if s.get("visited"))
+        stats_line = f"Systems: {len(galaxy.systems)} | Visited: {visited_count}"
+        
+        # Current faction zone
+        if self.show_faction_zones and hasattr(galaxy, 'get_faction_for_location'):
+            current_faction = galaxy.get_faction_for_location(sx, sy, sz)
+            if current_faction:
+                stats_line += f" | Zone: {current_faction}"
+        
+        # Current ether friction
+        if self.show_ether_energy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+            friction = galaxy.ether_energy.get_friction_at(sx, sy, sz)
+            friction_level = galaxy.ether_energy.get_friction_level(friction)
+            stats_line += f" | Ether: {friction_level} ({friction:.2f}x)"
+        
+        # Nearby NPCs
+        if nav and hasattr(nav, 'npc_ships'):
+            import math
+            nearby_npcs = []
+            for npc in nav.npc_ships:
+                nx, ny, nz = npc.coordinates
+                distance = math.sqrt((sx-nx)**2 + (sy-ny)**2 + (sz-nz)**2)
+                if distance <= 10:
+                    nearby_npcs.append((npc, distance))
+            if nearby_npcs:
+                stats_line += f" | NPCs nearby: {len(nearby_npcs)}"
+        
+        lines.append(stats_line)
+        lines.append("")
+        
+        # Legends
+        if self.show_faction_zones:
+            lines.append("Faction Mode: Colored backgrounds = faction zones  ░ = faction space")
+        
+        if self.show_ether_energy:
+            lines.append("Ether Energy: · Low Drag(green) | Enhancement(cyan) | Mild Drag(yellow) | High Drag(red)")
+        
+        lines.append("Legend: @ You  & NPC  * Visited  + Unvisited  ◈ Station(Vis)  ◆ Station")
+        lines.append("Scan: P Habitable  p Planet  S Station  M Minerals  a Asteroids")
+        lines.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions | e: Toggle Ether | n: News | H: History]")
+        
+        # Set text
+        self.map_display.setPlainText("\n".join(lines))
+    
+    def make_bar(self, filled, total, fill_char="█", empty_char="░"):
+        """Create an ASCII bar."""
+        return fill_char * filled + empty_char * (total - filled)
+    
+    def center_viewport_on(self, vx, vy):
+        """Center the viewport on given virtual coordinates."""
+        target_x = vx - self.viewport_width // 2
+        target_y = vy - self.viewport_height // 2
+        
+        self.viewport_x = max(0, min(self.virtual_width - self.viewport_width, target_x))
+        self.viewport_y = max(0, min(self.virtual_height - self.viewport_height, target_y))
+    
+    def keyPressEvent(self, event):
+        """Handle keyboard input."""
+        key = event.key()
+        text = event.text().lower()
+        
+        # Close
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Q):
+            self.accept()
+            return
+        
+        # Toggle faction zones
+        if text == 'f':
+            self.show_faction_zones = not self.show_faction_zones
+            status = "ON" if self.show_faction_zones else "OFF"
+            self.status_label.setText(f"Faction zones: {status}")
+            self.update_map()
+            return
+        
+        # Toggle ether energy
+        if text == 'e':
+            self.show_ether_energy = not self.show_ether_energy
+            status = "ON" if self.show_ether_energy else "OFF"
+            self.status_label.setText(f"Ether energy overlay: {status}")
+            self.update_map()
+            return
+        
+        # Show news
+        if text == 'n':
+            from news_system import display_news
+            # Open news dialog
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Galactic News")
+            
+            if hasattr(self.game, 'event_system'):
+                news_feed = self.game.event_system.get_news_feed(limit=10)
+                if news_feed:
+                    news_text = "\n\n".join([f"• {item['headline']}\n  {item['description']}" 
+                                             for item in news_feed])
+                else:
+                    news_text = "No news available at this time."
+            else:
+                news_text = "News system unavailable."
+            
+            msg.setText(news_text)
+            msg.exec()
+            return
+        
+        # Show history
+        if text == 'h':
+            dlg = GalacticHistoryDialog(self)
+            dlg.exec()
+            return
+        
+        # Movement
+        dx = dy = 0
+        if key == Qt.Key.Key_Left or text == 'h':
+            dx = -1
+        elif key == Qt.Key.Key_Right or text == 'l':
+            dx = 1
+        elif key == Qt.Key.Key_Up or text == 'k':
+            dy = -1
+        elif key == Qt.Key.Key_Down or text == 'j':
+            dy = 1
+        else:
+            super().keyPressEvent(event)
+            return
+        
+        # Process movement
+        self.move_ship(dx, dy)
+    
+    def move_ship(self, dx, dy):
+        """Move the ship and handle fuel consumption."""
+        import math
+        import random
+        
+        nav = getattr(self.game, 'navigation', None)
+        if not nav or not nav.galaxy or not nav.current_ship:
+            return
+        
+        galaxy = nav.galaxy
+        ship = nav.current_ship
+        
+        # Movement step
+        step_x = max(1, round(galaxy.size_x / self.virtual_width))
+        step_y = max(1, round(galaxy.size_y / self.virtual_height))
+        
+        # Calculate new position
+        old_x, old_y, old_z = ship.coordinates
+        new_x = max(0, min(galaxy.size_x, old_x + dx * step_x))
+        new_y = max(0, min(galaxy.size_y, old_y + dy * step_y))
+        
+        # Calculate distance
+        distance = math.sqrt((new_x - old_x)**2 + (new_y - old_y)**2)
+        
+        # Handle fuel consumption
+        if distance > 0:
+            try:
+                from navigation import calculate_fuel_consumption
+                target_coords = (new_x, new_y, old_z)
+                fuel_needed = calculate_fuel_consumption(ship, distance, target_coords, self.game)
+                
+                if ship.fuel > 0:
+                    if fuel_needed > ship.fuel:
+                        ship.fuel = 0
+                    else:
+                        ship.fuel -= fuel_needed
+                    
+                    if ship.fuel <= 10 and ship.fuel > 0:
+                        self.status_label.setText(f"⚠️ Low fuel warning: {ship.fuel}/{ship.max_fuel}")
+                    elif ship.fuel <= 0:
+                        self.status_label.setText("⚠️ Fuel depleted! Movement slowly recharges fuel.")
+                        self.fuel_recharge_counter = 0
+                        self.fuel_recharge_target = 3
+                else:
+                    # Recharge when out of fuel
+                    self.fuel_recharge_counter += 1
+                    
+                    if self.fuel_recharge_counter >= self.fuel_recharge_target:
+                        recharge_amount = random.randint(1, 2)
+                        ship.fuel = min(ship.fuel + recharge_amount, ship.max_fuel)
+                        self.fuel_recharge_counter = 0
+                        self.fuel_recharge_target = 4 if self.fuel_recharge_target == 3 else 3
+                        
+                        if ship.fuel < ship.max_fuel:
+                            self.status_label.setText(f"⚡ Emergency recharge: {ship.fuel}/{ship.max_fuel}")
+                        else:
+                            self.status_label.setText("⚡ Fuel fully recharged!")
+            except ImportError:
+                pass
+        
+        # Move ship
+        ship.coordinates = (new_x, new_y, old_z)
+        
+        # Update map
+        self.update_map()
+        
+        # Track moves and update events
+        self.move_count += 1
+        if self.move_count % 3 == 0 and hasattr(self.game, 'event_system'):
+            self.game.event_system.update_events()
+        
+        # Move NPCs
+        if hasattr(nav, 'update_npc_ships'):
+            nav.update_npc_ships()
+        
+        # Check for NPC encounters
+        if hasattr(nav, 'get_npc_at_location'):
+            npc = nav.get_npc_at_location((new_x, new_y, old_z))
+            if npc:
+                msg = QMessageBox(self)
+                msg.setWindowTitle("NPC Encounter")
+                msg.setText(f"Encountered {npc.name}!")
+                msg.exec()
+                return
+        
+        # Check for system entry
+        def project(px, py):
+            sx = int((px / galaxy.size_x) * (self.virtual_width - 1))
+            sy = int((py / galaxy.size_y) * (self.virtual_height - 1))
+            return max(0, min(self.virtual_width - 1, sx)), max(0, min(self.virtual_height - 1, sy))
+        
+        ship_cell = project(new_x, new_y)
+        overlapping = []
+        for sys in galaxy.systems.values():
+            cx, cy, cz = sys["coordinates"]
+            if project(cx, cy) == ship_cell:
+                overlapping.append(sys)
+        
+        if overlapping:
+            # Find nearest system
+            def dist(a, b):
+                ax, ay, az = a
+                bx, by, bz = b
+                return math.sqrt((ax-bx)**2 + (ay-by)**2 + (az-bz)**2)
+            
+            entered_system = min(overlapping, key=lambda s: dist((new_x, new_y, old_z), s["coordinates"]))
+            ship.coordinates = entered_system["coordinates"]
+            entered_system["visited"] = True
+            
+            self.update_map()
+            
+            # Show system info
+            bodies = entered_system.get('celestial_bodies', [])
+            planets = [b for b in bodies if b['object_type'] == 'Planet']
+            stations = entered_system.get('stations', [])
+            
+            info_parts = [f"Arrived at {entered_system['name']}"]
+            
+            if planets:
+                habitable = [p for p in planets if p.get('habitable')]
+                if habitable:
+                    info_parts.append(f"{len(habitable)} habitable planet(s)")
+            
+            if stations:
+                info_parts.append(f"{len(stations)} station(s)")
+            
+            msg = QMessageBox(self)
+            msg.setWindowTitle("System Entry")
+            msg.setText("\n".join(info_parts))
+            msg.exec()
+
+
+class MapHighlighter(QSyntaxHighlighter):
+    """Syntax highlighter for the map screen."""
+    
+    def __init__(self, parent_document):
+        super().__init__(parent_document)
+        
+        # Define formats
+        self.cyan_fmt = QTextCharFormat()
+        self.cyan_fmt.setForeground(QColor("#00FFFF"))
+        
+        self.yellow_fmt = QTextCharFormat()
+        self.yellow_fmt.setForeground(QColor("#FFFF55"))
+        
+        self.green_fmt = QTextCharFormat()
+        self.green_fmt.setForeground(QColor("#00FF00"))
+        
+        self.magenta_fmt = QTextCharFormat()
+        self.magenta_fmt.setForeground(QColor("#FF00FF"))
+        
+        self.red_fmt = QTextCharFormat()
+        self.red_fmt.setForeground(QColor("#FF0000"))
+        
+        self.gray_fmt = QTextCharFormat()
+        self.gray_fmt.setForeground(QColor("#808080"))
+        
+        # Patterns
+        self.border_re = QRegularExpression(r"^[═─]+$")
+        self.header_re = QRegularExpression(r"GALAXY MAP")
+        self.player_re = QRegularExpression(r"@")
+        self.npc_re = QRegularExpression(r"&")
+        self.visited_re = QRegularExpression(r"\*")
+        self.unvisited_re = QRegularExpression(r"\+")
+        self.station_re = QRegularExpression(r"[◈◆]")
+        self.legend_re = QRegularExpression(r"^\[.*\]$")
+    
+    def highlightBlock(self, text: str) -> None:
+        # Borders
+        if self.border_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.cyan_fmt)
+            return
+        
+        # Headers
+        if self.header_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.yellow_fmt)
+            return
+        
+        # Legend
+        if self.legend_re.match(text).hasMatch():
+            self.setFormat(0, len(text), self.gray_fmt)
+            return
+        
+        # Map symbols - use QRegularExpressionMatchIterator correctly
+        it = self.player_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.cyan_fmt)
+
+        it = self.npc_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.magenta_fmt)
+
+        it = self.visited_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.green_fmt)
+
+        it = self.unvisited_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.yellow_fmt)
+
+        it = self.station_re.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            self.setFormat(m.capturedStart(), m.capturedLength(), self.cyan_fmt)
 
 
 # ---------------------------------------------------------------------------
