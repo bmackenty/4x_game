@@ -392,82 +392,33 @@ class GalacticHistoryDialog(QDialog):
             return
 
         lines: List[str] = []
+        
+        # Add introduction
+        lines.append("")
+        lines.append("═" * 120)
+        lines.append("")
+        lines.append("                    THE CHRONICLES OF THE GALACTIC AGE")
+        lines.append("                      A History of Civilizations Lost and Found")
+        lines.append("")
+        lines.append("═" * 120)
+        lines.append("")
+        lines.append("")
 
-        for epoch in history_data:
-            # Header for epoch.
-            lines.append("═" * 120)
-            lines.append(f" {epoch.get('name', 'Unnamed Epoch')}")
-            start = epoch.get("start_year", 0)
-            end = epoch.get("end_year", 0)
-            duration = end - start
-            lines.append(f" Years {start:,} – {end:,} (Duration: {duration:,} years)")
-            lines.append("─" * 120)
-
-            themes = epoch.get("themes", [])
-            if themes:
-                lines.append(f" Themes: {', '.join(themes)}")
-            lines.append("")
-
-            # Cataclysms.
-            cataclysms = epoch.get("cataclysms", [])
-            if cataclysms:
-                lines.append(" ⚠ Major Cataclysms:")
-                for c in cataclysms:
-                    lines.append(f"   • {c}")
+        # Use narrative formatting
+        try:
+            from galactic_history import format_epoch_narrative
+            for epoch in history_data:
+                epoch_lines = format_epoch_narrative(epoch)
+                lines.extend(epoch_lines)
+        except ImportError:
+            # Fallback to old format if import fails
+            for epoch in history_data:
+                lines.append("═" * 120)
+                lines.append(f" {epoch.get('name', 'Unnamed Epoch')}")
+                start = epoch.get("start_year", 0)
+                end = epoch.get("end_year", 0)
+                lines.append(f" Years {start:,} – {end:,}")
                 lines.append("")
-
-            # Faction formations.
-            formations = epoch.get("faction_formations", [])
-            if formations:
-                lines.append(" Faction Formations:")
-                for f in formations:
-                    year = f.get("year", 0)
-                    event = f.get("event", "")
-                    lines.append(f"   • Year {year:,}: {event}")
-                lines.append("")
-
-            # Mysteries.
-            mysteries = epoch.get("mysteries", [])
-            if mysteries:
-                lines.append(" ✦ Mysteries of This Age:")
-                for m in mysteries:
-                    lines.append(f"   • {m}")
-                lines.append("")
-
-            # Civilizations.
-            civs = epoch.get("civilizations", [])
-            lines.append(" Civilizations of This Epoch:")
-            lines.append("")
-
-            for civ in civs:
-                lines.append(f" ┌─ {civ.get('name', 'Unknown Civilization')}")
-                lines.append(f" │ Species: {civ.get('species', 'Unknown')}")
-                traits = civ.get("traits", [])
-                if traits:
-                    lines.append(f" │ Traits: {', '.join(traits)}")
-                founded = civ.get("founded", 0)
-                collapsed = civ.get("collapsed", founded)
-                duration_civ = collapsed - founded
-                lines.append(
-                    f" │ Founded: Year {founded:,} | Collapsed: Year {collapsed:,}"
-                )
-                lines.append(f" │ Duration: {duration_civ:,} years")
-                lines.append(" │")
-                lines.append(" │ Remnants:")
-                lines.append(f" │ {civ.get('remnants', 'No data')}")
-                lines.append(" │")
-
-                events = civ.get("notable_events", [])
-                if events:
-                    lines.append(" │ Notable Events:")
-                    for e in events:
-                        lines.append(f" │  • {e}")
-
-                lines.append(" └" + "─" * 118)
-                lines.append("")
-
-            lines.append("")
-            lines.append("")
 
         self.text_area.setPlainText("\n".join(lines))
 

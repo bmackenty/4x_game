@@ -406,6 +406,121 @@ def generate_epoch_history(seed: Optional[int] = None):
     """Return epoch dicts for legacy callers (e.g., nethack_interface.py)."""
     return GalacticHistory(seed=seed).get_epochs()
 
+
+def format_epoch_narrative(epoch: Dict[str, Any]) -> List[str]:
+    """Convert epoch data into natural language narrative prose."""
+    lines = []
+    
+    # Epoch header with dramatic opening
+    name = epoch.get('name', 'Unnamed Epoch')
+    start = epoch.get('start_year', 0)
+    end = epoch.get('end_year', 0)
+    duration = end - start
+    
+    lines.append("═" * 120)
+    lines.append("")
+    lines.append(f"  {name.upper()}")
+    lines.append(f"  {start:,} – {end:,}")
+    lines.append("")
+    lines.append("─" * 120)
+    lines.append("")
+    
+    # Opening narrative paragraph
+    themes = epoch.get('themes', [])
+    if themes:
+        theme_text = ", ".join(themes[:-1])
+        if len(themes) > 1:
+            theme_text += f" and {themes[-1]}"
+        else:
+            theme_text = themes[0]
+        
+        lines.append(f"This era, spanning {duration:,} years, was defined by {theme_text}. ")
+        lines.append(f"Across the galaxy, civilizations rose and fell, leaving behind echoes of their ")
+        lines.append(f"ambitions and the silent ruins of what they had built.")
+        lines.append("")
+    
+    # Cataclysms as dramatic narrative
+    cataclysms = epoch.get('cataclysms', [])
+    if cataclysms:
+        lines.append("THE GREAT CATASTROPHES")
+        lines.append("")
+        lines.append(f"The epoch was marked by devastating events that reshaped the fabric of space itself. ")
+        for i, cat in enumerate(cataclysms, 1):
+            article = "A" if cat[0].lower() in 'aeiou' else "A"
+            lines.append(f"{article} {cat} rippled through multiple systems, leaving scars visible even ")
+            lines.append(f"generations later. ")
+        lines.append("")
+    
+    # Faction formations as political narrative
+    formations = epoch.get('faction_formations', [])
+    if formations:
+        lines.append("THE RISE OF NEW POWERS")
+        lines.append("")
+        lines.append(f"In the shifting political landscape, new alliances emerged to fill the vacuum left ")
+        lines.append(f"by fallen empires. ")
+        for f in formations:
+            year = f.get('year', 0)
+            event = f.get('event', '')
+            lines.append(f"In {year:,}, {event}, establishing a framework that would ")
+            lines.append(f"influence galactic affairs for centuries to come. ")
+        lines.append("")
+    
+    # Mysteries as evocative prose
+    mysteries = epoch.get('mysteries', [])
+    if mysteries:
+        lines.append("UNEXPLAINED PHENOMENA")
+        lines.append("")
+        lines.append(f"Not all events of this age can be explained by conventional understanding. ")
+        for mys in mysteries:
+            lines.append(f"{mys} These anomalies remain subjects of intense study and speculation, ")
+            lines.append(f"defying the best efforts of scholars to categorize or predict them.")
+            lines.append("")
+    
+    # Civilizations as biographical narratives
+    civs = epoch.get('civilizations', [])
+    if civs:
+        lines.append("THE CIVILIZATIONS")
+        lines.append("")
+        lines.append(f"During this period, {len(civs)} distinct civilizations left their mark on history:")
+        lines.append("")
+        
+        for civ in civs:
+            name = civ.get('name', 'Unknown')
+            species = civ.get('species', 'Unknown')
+            traits = civ.get('traits', [])
+            founded = civ.get('founded', 0)
+            collapsed = civ.get('collapsed', founded)
+            duration_civ = collapsed - founded
+            remnants = civ.get('remnants', 'No remnants remain')
+            
+            # Opening for this civilization
+            trait_desc = ", ".join(traits) if traits else "mysterious origins"
+            lines.append(f"⟡ THE {name.upper()}")
+            lines.append("")
+            lines.append(f"The {name}, a civilization of {species} known for their {trait_desc}, emerged ")
+            lines.append(f"in the year {founded:,}. For {duration_civ:,} years they flourished, carving out ")
+            lines.append(f"their unique place in the galactic tapestry before their final collapse in {collapsed:,}.")
+            lines.append("")
+            
+            # Notable events as story beats
+            events = civ.get('notable_events', [])
+            if events:
+                lines.append(f"Their history was punctuated by defining moments:")
+                for ev in events:
+                    ev_year = ev.get('year', founded)
+                    ev_desc = ev.get('description', 'an unknown event occurred')
+                    lines.append(f"  • In {ev_year:,}, they {ev_desc}.")
+                lines.append("")
+            
+            # Remnants as archaeological discovery
+            lines.append(f"Today, their legacy persists in the form of scattered remnants: {remnants} ")
+            lines.append(f"These artifacts stand as silent testimony to a people who once dreamed among the stars.")
+            lines.append("")
+            lines.append("")
+    
+    lines.append("")
+    return lines
+
 # =========================
 # Demo CLI (pretty printer)
 # =========================
