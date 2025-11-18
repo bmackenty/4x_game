@@ -1610,6 +1610,9 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_character_sheet = QAction("Character Sheet", self)
         self.action_character_sheet.triggered.connect(self.on_character_sheet)
         
+        self.action_ship_status = QAction("Ship Status", self)
+        self.action_ship_status.triggered.connect(self.on_ship_status)
+        
         self.action_overview = QAction("Overview", self)
         self.action_overview.triggered.connect(self.on_overview)
 
@@ -1631,6 +1634,8 @@ class RoguelikeMainWindow(QMainWindow):
         menu_view.addAction(self.action_overview)
         menu_view.addAction(self.action_view_history)
         menu_view.addAction(self.action_character_sheet)
+        menu_view.addAction(self.action_ship_status)
+        menu_view.addAction(self.action_ship_status)
 
         menu_help = self.menuBar().addMenu("&Help")
         menu_help.addAction(self.action_about)
@@ -1653,6 +1658,7 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_overview.setShortcut("O")
         self.action_view_history.setShortcut("H")
         self.action_character_sheet.setShortcut("C")
+        self.action_ship_status.setShortcut("V")
         self.action_quit.setShortcut("Q")
 
     # ------------------------------------------------------------------
@@ -2204,6 +2210,179 @@ class RoguelikeMainWindow(QMainWindow):
         
         self.main_view.setPlainText("\n".join(lines))
         self.status_bar.showMessage("Character Sheet | Press O to return")
+
+    def on_ship_status(self) -> None:
+        """
+        Handler for "Ship Status" action.
+        
+        Shows detailed ship information including components, cargo, fuel, crew, etc.
+        """
+        if not self.game:
+            QMessageBox.warning(
+                self,
+                "No Active Game",
+                "There is no active game. Start or load a game first.",
+            )
+            return
+        
+        self.render_ship_status()
+        self.message_log.add_message("Ship status displayed. Press Overview (O) to return.", "[VIEW]")
+
+    def render_ship_status(self) -> None:
+        """Render a detailed ship status screen similar to character sheet style."""
+        if not self.game:
+            self.main_view.setPlainText("No active game.")
+            return
+        
+        # Get navigation system and current ship
+        nav = getattr(self.game, 'navigation', None)
+        ship = nav.current_ship if nav else None
+        
+        if not ship:
+            self.main_view.setPlainText("No active ship.")
+            return
+        
+        # Calculate width - use most of the available viewport width
+        fm = self.main_view.fontMetrics()
+        char_width = fm.horizontalAdvance('M')
+        viewport_width = self.main_view.viewport().width()
+        usable_width = viewport_width - 40
+        width = max(120, usable_width // char_width)
+        
+        inner_width = width - 4
+        left_width = (inner_width - 3) // 2
+        right_width = inner_width - left_width - 3
+        
+        def fmt_line(text: str = "") -> str:
+            trimmed = text[:inner_width]
+            return f"║ {trimmed.ljust(inner_width)} ║"
+        
+        def fmt_center(text: str) -> str:
+            trimmed = text[:inner_width]
+            return f"║{trimmed.center(inner_width + 2)}║"
+        
+        def fmt_two_col(left: str, right: str) -> str:
+            left_trimmed = left[:left_width]
+            right_trimmed = right[:right_width]
+            content = f"{left_trimmed.ljust(left_width)} │ {right_trimmed.ljust(right_width)}"
+            return f"║ {content} ║"
+        
+        # Build the sheet
+        lines = []
+        lines.append("╔" + "═" * (inner_width + 2) + "╗")
+        lines.append(fmt_center("SHIP STATUS"))
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("VESSEL IDENTIFICATION"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        # Ship identity
+        ship_name = ship.name
+        ship_class = ship.ship_class
+        sx, sy, sz = ship.coordinates
+        
+        identity_data = [
+            (f"Name: {ship_name}", f"Class: {ship_class}"),
+            (f"Location: ({sx}, {sy}, {sz})", f"Scan Range: {ship.scan_range}"),
+        ]
+        
+        for left, right in identity_data:
+            lines.append(fmt_two_col(left, right))
+        
+        # Resources
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("RESOURCES"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        # Fuel status
+        fuel_pct = (ship.fuel / ship.max_fuel * 100) if ship.max_fuel > 0 else 0
+        fuel_bar_width = 30
+        fuel_filled = int(fuel_bar_width * fuel_pct / 100)
+        fuel_bar = "█" * fuel_filled + "░" * (fuel_bar_width - fuel_filled)
+        
+        lines.append(fmt_two_col(
+            f"Fuel: {ship.fuel}/{ship.max_fuel} ({fuel_pct:.1f}%)",
+            f"Range: {ship.jump_range} units"
+        ))
+        lines.append(fmt_line(f"  [{fuel_bar}]"))
+        lines.append(fmt_line())
+        
+        # Cargo status
+        cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+        cargo_pct = (cargo_used / ship.max_cargo * 100) if ship.max_cargo > 0 else 0
+        cargo_bar_width = 30
+        cargo_filled = int(cargo_bar_width * cargo_pct / 100)
+        cargo_bar = "█" * cargo_filled + "░" * (cargo_bar_width - cargo_filled)
+        
+        lines.append(fmt_two_col(
+            f"Cargo: {cargo_used}/{ship.max_cargo} units ({cargo_pct:.1f}%)",
+            f"Items: {len(ship.cargo)} types"
+        ))
+        lines.append(fmt_line(f"  [{cargo_bar}]"))
+        
+        # Cargo manifest
+        if ship.cargo:
+            lines.append(fmt_line())
+            lines.append(fmt_line("Cargo Manifest:"))
+            for item, qty in list(ship.cargo.items())[:10]:
+                lines.append(fmt_line(f"  • {item}: {qty}"))
+            if len(ship.cargo) > 10:
+                lines.append(fmt_line(f"  ... and {len(ship.cargo) - 10} more items"))
+        
+        # Components
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("SHIP COMPONENTS"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        components = getattr(ship, 'components', {})
+        if components:
+            component_order = ['hull', 'engine', 'weapons', 'shields', 'sensors', 'support']
+            for comp_type in component_order:
+                comp_value = components.get(comp_type)
+                if comp_value:
+                    if isinstance(comp_value, list):
+                        lines.append(fmt_line(f"{comp_type.capitalize()}:"))
+                        for item in comp_value:
+                            lines.append(fmt_line(f"  • {item}"))
+                    else:
+                        lines.append(fmt_line(f"{comp_type.capitalize()}: {comp_value}"))
+        else:
+            lines.append(fmt_line("No component data available"))
+        
+        # Crew
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("CREW COMPLEMENT"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        crew = getattr(ship, 'crew', [])
+        max_crew = getattr(ship, 'max_crew', 10)
+        
+        lines.append(fmt_two_col(
+            f"Crew: {len(crew)}/{max_crew}",
+            f"Morale: Good"  # Placeholder
+        ))
+        
+        if crew:
+            lines.append(fmt_line())
+            lines.append(fmt_line("Crew Roster:"))
+            for member in crew[:15]:
+                name = member.name if hasattr(member, 'name') else str(member)
+                role = member.role if hasattr(member, 'role') else "Crew"
+                lines.append(fmt_line(f"  • {name} - {role}"))
+            if len(crew) > 15:
+                lines.append(fmt_line(f"  ... and {len(crew) - 15} more crew members"))
+        else:
+            lines.append(fmt_line("  No crew assigned"))
+        
+        lines.append("")
+        lines.append("╚" + "═" * (inner_width + 2) + "╝")
+        lines.append("")
+        lines.append("[Press O to return to overview]".center(width))
+        
+        self.main_view.setPlainText("\n".join(lines))
+        self.status_bar.showMessage("Ship Status | Press O to return")
 
     def on_about(self) -> None:
         """
