@@ -507,6 +507,10 @@ class LoadGameDialog(QDialog):
             item = QListWidgetItem(description)
             self.list_widget.addItem(item)
 
+        # Auto-select the first save so it is highlighted by default.
+        if self.list_widget.count() > 0:
+            self.list_widget.setCurrentRow(0)
+
     def _on_accept(self) -> None:
         """
         Called when the user presses OK. Sets `selected_save` based on the
@@ -1644,16 +1648,12 @@ class RoguelikeMainWindow(QMainWindow):
         menu_help.addAction(self.action_about)
 
     def _setup_shortcuts(self) -> None:
-        """
-        Define keyboard shortcuts that mimic a roguelike-style workflow.
+        """Define keyboard shortcuts.
 
-        Examples:
-        ---------
-        - N: New Game
-        - L: Load Game
-        - S: Save Game
-        - H: View Galactic History
-        - Q: Quit
+        We keep the single-key roguelike shortcuts, but only
+        honor the in-game ones (S, O, H, C, V, M) when a game
+        is actually active. On the very first screen, only
+        N, L, and Q will do anything.
         """
         self.action_new_game.setShortcut("N")
         self.action_load_game.setShortcut("L")
@@ -1664,6 +1664,36 @@ class RoguelikeMainWindow(QMainWindow):
         self.action_ship_status.setShortcut("V")
         self.action_map.setShortcut("M")
         self.action_quit.setShortcut("Q")
+
+    def keyPressEvent(self, event) -> None:  # type: ignore[override]
+        """Global key handling to gate shortcuts by state.
+
+        On the initial main menu (no active game), only N, L
+        and Q should respond. Once a game exists, all the
+        usual shortcut keys are allowed to trigger.
+        """
+        key = event.key()
+        text = event.text().upper()
+
+        # If no game is active yet, restrict to N/L/Q.
+        if self.game is None:
+            if text == "N":
+                self.on_new_game()
+                return
+            if text == "L":
+                self.on_load_game()
+                return
+            if text == "Q" or key == Qt.Key.Key_Escape:
+                self.close()
+                return
+
+            # Ignore all other keys on the splash screen.
+            event.ignore()
+            return
+
+        # Once a game is active, fall back to default handling
+        # so QAction shortcuts and child widgets work normally.
+        super().keyPressEvent(event)
 
     # ------------------------------------------------------------------
     # Rendering helpers
@@ -1697,15 +1727,10 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("")
         lines.append("   [N] New Game")
         lines.append("   [L] Load Game")
-        lines.append("   [S] Save Game (if a game is active)")
-        lines.append("   [C] Character Sheet (if a game is active)")
-        lines.append("   [V] Vessel Status (if a game is active)")
-        lines.append("   [M] Galaxy Map (if a game is active)")
-        lines.append("   [H] View Galactic History")
         lines.append("   [Q] Quit")
         lines.append("")
         lines.append("─" * width)
-        lines.append("Use menu entries or shortcuts: N, L, S, C, V, H, Q.".center(width))
+        lines.append("Use menu entries or shortcuts: N, L, Q.".center(width))
         lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
