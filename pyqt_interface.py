@@ -1829,25 +1829,68 @@ class RoguelikeMainWindow(QMainWindow):
             # User cancelled
             return
         
-        # Create game with character data
+        # Create a new Game instance and initialize it with character data.
         self.game = Game()
-        
-        # Apply character choices to the game
-        # (The Game class uses character_species, character_background, character_faction)
-        self.game.character_species = dlg.character_data['species']
-        self.game.character_background = dlg.character_data['background']
-        self.game.character_faction = dlg.character_data['faction']
-        self.game.character_class = dlg.character_data['class']
-        self.game.player_name = dlg.character_data['name']
-        # Persist allocated stats if available
-        if dlg.character_data.get('stats'):
-            self.game.character_stats = dlg.character_data['stats']
-        
+
+        char_payload = {
+            "name": dlg.character_data["name"],
+            "character_class": dlg.character_data["class"],
+            "background": dlg.character_data["background"],
+            "species": dlg.character_data["species"],
+            "faction": dlg.character_data["faction"],
+            "stats": dlg.character_data.get("stats") or {},
+        }
+
+        # Let the core game wire up character state (credits, bonuses, etc.).
+        try:
+            if hasattr(self.game, "initialize_new_game"):
+                self.game.initialize_new_game(char_payload)
+            else:
+                # Fallback for older Game versions.
+                self.game.player_name = char_payload["name"]
+                self.game.character_class = char_payload["character_class"]
+                self.game.character_background = char_payload["background"]
+                self.game.character_species = char_payload["species"]
+                self.game.character_faction = char_payload["faction"]
+                if char_payload["stats"]:
+                    self.game.character_stats = char_payload["stats"]
+        except Exception as e:
+            print(f"Error initializing new game from PyQt UI: {e}")
+
+        # Ensure the player starts with at least a simple ship.
+        try:
+            # Use a basic template name recognised by the engine; this
+            # mirrors how NPCs use "Basic Transport" as a generic hull.
+            basic_ship_name = "Basic Transport"
+
+            # Make sure owned_ships exists and contains the starter ship.
+            if not hasattr(self.game, "owned_ships"):
+                self.game.owned_ships = []  # type: ignore[attr-defined]
+            if basic_ship_name not in self.game.owned_ships:
+                self.game.owned_ships.append(basic_ship_name)
+
+            # Also wire it into the navigation system as the active ship.
+            if hasattr(self.game, "navigation") and self.game.navigation:
+                from navigation import Ship
+
+                # If NavigationSystem already has a ship, keep it; otherwise
+                # assign our starter.
+                if not self.game.navigation.current_ship:
+                    self.game.navigation.current_ship = Ship(basic_ship_name, basic_ship_name)
+        except Exception as e:
+            print(f"Error assigning starter ship: {e}")
+
+        # Log character creation and starter ship assignment.
         self.message_log.add_message(
             f"New game started: {dlg.character_data['name']}, "
-            f"{dlg.character_data['class']} ({dlg.character_data['species']})",
-            "[GAME]"
+            f"{dlg.character_data['class']} ({dlg.character_data['species']}).",
+            "[GAME]",
         )
+        self.message_log.add_message(
+            "You have been assigned a basic starter ship to begin your journey.",
+            "[SHIP]",
+        )
+
         self.render_game_overview()
 
     def on_load_game(self) -> None:
@@ -2381,6 +2424,68 @@ class RoguelikeMainWindow(QMainWindow):
                         lines.append(fmt_line(f"{comp_type.capitalize()}: {comp_value}"))
         else:
             lines.append(fmt_line("No component data available"))
+
+        # Core ship attributes (high-level stats from attribute_profile)
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("SHIP ATTRIBUTES"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+
+        attr_profile = getattr(ship, 'attribute_profile', None)
+        if attr_profile:
+            try:
+                from ship_attributes import get_attribute_metadata
+            except Exception:
+                get_attribute_metadata = None  # type: ignore
+
+            # Focus on a concise subset of the most important fields.
+            key_attrs = [
+                'hull_integrity',
+                'armor_strength',
+                'shield_capacity',
+                'shield_regeneration',
+                'weapon_power',
+                'weapon_range',
+                'engine_output',
+                'engine_efficiency',
+                'maneuverability',
+                'detection_range',
+                'scan_resolution',
+                'crew_efficiency',
+            ]
+
+            display_rows = []
+            for attr_id in key_attrs:
+                if attr_id not in attr_profile:
+                    continue
+                value = attr_profile.get(attr_id, 0.0)
+                if get_attribute_metadata:
+                    try:
+                        meta = get_attribute_metadata(attr_id)
+                        name = meta.get('name', attr_id)
+                    except Exception:
+                        name = attr_id
+                else:
+                    name = attr_id
+                display_rows.append((name, f"{value:.1f}/100"))
+
+            if display_rows:
+                # Render attributes two per line where possible.
+                for i in range(0, len(display_rows), 2):
+                    left_name, left_val = display_rows[i]
+                    left_text = f"{left_name}: {left_val}"[:left_width]
+
+                    if i + 1 < len(display_rows):
+                        right_name, right_val = display_rows[i + 1]
+                        right_text = f"{right_name}: {right_val}"[:right_width]
+                    else:
+                        right_text = ""
+
+                    lines.append(fmt_two_col(left_text, right_text))
+            else:
+                lines.append(fmt_line("No key attribute values available"))
+        else:
+            lines.append(fmt_line("No attribute profile attached to this vessel"))
         
         # Crew
         lines.append(fmt_line())
