@@ -78,6 +78,121 @@ class Game:
         # Player log system
         self.player_log = []  # List of log entries
         self.max_log_entries = 100  # Keep last 100 entries
+
+    # ------------------------------------------------------------------
+    # Turn system
+    # ------------------------------------------------------------------
+
+    def advance_turn(self, context: dict | None = None) -> list[dict]:
+        """Advance the game by a single turn and return a log of events.
+
+        This method centralizes per-turn logic so that UIs (CLI, Textual,
+        PyQt) only need to call it and then render the resulting messages.
+
+        Parameters
+        ----------
+        context : dict | None
+            Optional metadata about what triggered the turn, e.g.
+            {"source": "navigation", "action": "move", "distance": 3.5}.
+
+        Returns
+        -------
+        list[dict]
+            A list of structured log entries. Each entry has at least:
+            {"channel": str, "message": str} and may carry extra keys.
+        """
+
+        turn_log: list[dict] = []
+
+        # Basic turn counter; older code may still use `turn`.
+        if hasattr(self, "current_turn"):
+            self.current_turn += 1
+            turn_number = self.current_turn
+        else:
+            self.turn = getattr(self, "turn", 0) + 1  # type: ignore[attr-defined]
+            turn_number = self.turn
+
+        turn_log.append({
+            "channel": "TURN",
+            "message": f"Turn {turn_number} begins.",
+        })
+
+        # Economic update (price drift, events, etc.).
+        try:
+            if hasattr(self, "economy") and isinstance(self.economy, EconomicSystem):
+                if hasattr(self.economy, "tick_global_state"):
+                    changes = self.economy.tick_global_state()
+                    if changes:
+                        for change in changes:
+                            turn_log.append({
+                                "channel": "ECON",
+                                "message": change,
+                            })
+        except Exception as exc:  # pragma: no cover - defensive
+            turn_log.append({
+                "channel": "ERROR",
+                "message": f"Economic update failed: {exc}",
+            })
+
+        # Events & news.
+        try:
+            if hasattr(self, "event_system"):
+                # Existing event_system already drives the NewsSystem.
+                self.event_system.update_events()
+                if hasattr(self, "news_system"):
+                    # Reuse existing news feed API to derive headlines.
+                    recent = self.news_system.get_all_news(limit=5)
+                    for news in recent:
+                        headline = news.get("headline")
+                        if not headline:
+                            continue
+                        turn_log.append({
+                            "channel": "NEWS",
+                            "message": headline,
+                        })
+        except Exception as exc:  # pragma: no cover - defensive
+            turn_log.append({
+                "channel": "ERROR",
+                "message": f"Event update failed: {exc}",
+            })
+
+        # NPC ship movement handled through navigation system.
+        try:
+            if hasattr(self, "navigation") and hasattr(self.navigation, "update_npc_ships"):
+                self.navigation.update_npc_ships()
+                turn_log.append({
+                    "channel": "NAV",
+                    "message": "NPC ships have updated their positions.",
+                })
+        except Exception as exc:  # pragma: no cover - defensive
+            turn_log.append({
+                "channel": "ERROR",
+                "message": f"Navigation update failed: {exc}",
+            })
+
+        # Research progression (if active).
+        try:
+            if getattr(self, "active_research", None) is not None:
+                # Simple linear progress; detailed pacing can be refined later.
+                self.research_progress = getattr(self, "research_progress", 0) + 1
+                turn_log.append({
+                    "channel": "R&D",
+                    "message": f"Research on '{self.active_research}' progresses to {self.research_progress}.",
+                })
+        except Exception:
+            # Non-fatal; don’t spam log with errors here.
+            pass
+
+        # Record a compact summary into the Game's player_log for CLI.
+        try:
+            summary = "; ".join(entry["message"] for entry in turn_log)
+            self.player_log.append(summary)
+            if len(self.player_log) > self.max_log_entries:
+                self.player_log = self.player_log[-self.max_log_entries :]
+        except Exception:
+            pass
+
+        return turn_log
     
     def initialize_new_game(self, character_data):
         """Initialize a new game with character data"""

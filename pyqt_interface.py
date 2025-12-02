@@ -1765,7 +1765,8 @@ class RoguelikeMainWindow(QMainWindow):
         player_species = getattr(self.game, "species", "Unknown Species")
         character_class = getattr(self.game, "character_class", "Unknown Class")
         credits = getattr(self.game, "credits", 0)
-        turn = getattr(self.game, "turn", 0)
+        # Prefer the engine's turn counter when available.
+        turn = getattr(self.game, "current_turn", getattr(self.game, "turn", 0))
 
         # Calculate width based on viewport and font metrics
         fm = self.main_view.fontMetrics()
@@ -1794,8 +1795,27 @@ class RoguelikeMainWindow(QMainWindow):
         lines.append("")
         lines.append("Use the Game menu or keyboard shortcuts to continue.".center(width))
         lines.append(" [N] New Game | [L] Load Game | [S] Save Game ".center(width))
-        lines.append(" [C] Character Sheet | [V] Vessel Status | [H] History | [O] Overview ".center(width))
+        lines.append(" [C] Character Sheet | [V] Vessel Status | [H] History | [M] Galaxy Map ".center(width))
         lines.append("")
+
+        # Optional last-turn summary (pull from Game.player_log if available).
+        last_summaries = []
+        try:
+            history = getattr(self.game, "player_log", []) or []
+            if history:
+                last_summaries = history[-3:]
+        except Exception:
+            last_summaries = []
+
+        if last_summaries:
+            lines.append("─" * width)
+            lines.append(" Last Turn Summary ".center(width))
+            lines.append("─" * width)
+            for entry in last_summaries:
+                # Truncate to fit the width neatly.
+                snippet = str(entry)[: width - 4]
+                lines.append(f"  • {snippet}")
+            lines.append("")
 
         self.main_view.setPlainText("\n".join(lines))
         self.status_bar.showMessage("Game overview")
@@ -2071,7 +2091,7 @@ class RoguelikeMainWindow(QMainWindow):
         faction_name = getattr(self.game, 'character_faction', '—')
         
         credits = getattr(self.game, 'credits', 0)
-        turn = getattr(self.game, 'turn', 0)
+        turn = getattr(self.game, 'current_turn', getattr(self.game, 'turn', 0))
         level = getattr(self.game, 'level', 1)
         
         # Get stats from game object (Game stores stats in character_stats)
@@ -3059,7 +3079,12 @@ class MapScreen(QDialog):
         self.move_ship(dx, dy)
     
     def move_ship(self, dx, dy):
-        """Move the ship and handle fuel consumption."""
+        """Move the ship and handle fuel consumption.
+
+        All turn-based side effects (events, NPC movement, economic drift,
+        research progress, etc.) are delegated to the engine via
+        Game.advance_turn; the UI only displays the resulting log.
+        """
         import math
         import random
         
@@ -3118,21 +3143,34 @@ class MapScreen(QDialog):
             except ImportError:
                 pass
         
-        # Move ship
+        # Move ship in the galaxy.
         ship.coordinates = (new_x, new_y, old_z)
-        
-        # Update map
+
+        # Each movement counts as a turn; ask the engine to advance and
+        # then echo the resulting turn log into the message log.
+        try:
+            if hasattr(self.game, "advance_turn"):
+                turn_log = self.game.advance_turn({
+                    "source": "map_move",
+                    "dx": dx,
+                    "dy": dy,
+                    "distance": distance,
+                })
+
+                # Bridge back to the main window's message log if possible.
+                main_window = self.parent() if isinstance(self.parent(), QMainWindow) else None
+                if main_window is not None and hasattr(main_window, "message_log"):
+                    for entry in turn_log or []:
+                        channel = entry.get("channel", "TURN")
+                        message = entry.get("message", "")
+                        if message:
+                            main_window.message_log.add_message(message, f"[{channel}]")
+        except Exception as exc:
+            # Non-fatal: log locally in the map dialog.
+            self.status_label.setText(f"Turn processing error: {exc}")
+
+        # Update map after state changes.
         self.update_map()
-        
-        # Track moves and update events
-        self.move_count += 1
-        if self.move_count % 3 == 0 and hasattr(self.game, 'event_system'):
-            self.game.event_system.update_events()
-        
-        # Move NPCs
-        if hasattr(nav, 'update_npc_ships'):
-            nav.update_npc_ships()
-        
         # Check for NPC encounters
         if hasattr(nav, 'get_npc_at_location'):
             npc = nav.get_npc_at_location((new_x, new_y, old_z))
