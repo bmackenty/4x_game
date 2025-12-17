@@ -33,28 +33,53 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import sys
+import signal
 import textwrap
 
-from PyQt6.QtCore import Qt, QSize, QRegularExpression
-from PyQt6.QtGui import QFont, QAction, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette
-from PyQt6.QtWidgets import (
-    QApplication,
-    QDialog,
-    QDialogButtonBox,
-    QDockWidget,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QMainWindow,
-    QMessageBox,
-    QPlainTextEdit,
-    QPushButton,
-    QStatusBar,
-    QVBoxLayout,
-    QWidget,
-)
+try:
+    from PyQt6.QtCore import Qt, QSize, QRegularExpression
+    from PyQt6.QtGui import (
+        QFont,
+        QAction,
+        QSyntaxHighlighter,
+        QTextCharFormat,
+        QColor,
+        QPalette,
+        QIntValidator,
+    )
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QDialog,
+        QDialogButtonBox,
+        QDockWidget,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListWidget,
+        QListWidgetItem,
+        QMainWindow,
+        QMessageBox,
+        QPlainTextEdit,
+        QPushButton,
+        QStatusBar,
+        QVBoxLayout,
+        QWidget,
+    )
+except ModuleNotFoundError as e:
+    # This almost always means you're running outside the project's venv.
+    # Provide a clear, actionable message instead of a long traceback.
+    if e.name in ("PyQt6", "PyQt6.QtCore", "PyQt6.QtGui", "PyQt6.QtWidgets"):
+        print("ERROR: PyQt6 is not installed for this Python interpreter.")
+        print("")
+        print("Fix options:")
+        print("  1) Activate the venv and run with its python:")
+        print("     source venv/bin/activate")
+        print("     python pyqt_interface.py")
+        print("")
+        print("  2) Or install UI deps into the active interpreter:")
+        print("     pip install -r requirements_ui.txt")
+        raise SystemExit(1)
+    raise
 
 # ---------------------------------------------------------------------------
 # Import game modules
@@ -3303,6 +3328,178 @@ class MapHighlighter(QSyntaxHighlighter):
 # ---------------------------------------------------------------------------
 
 
+class TradeDialog(QDialog):
+    """Simple buy/sell trading dialog for a specific system market."""
+
+    def __init__(self, game, system: dict, parent=None):
+        super().__init__(parent)
+        self.game = game
+        self.system = system
+        self.system_name = system.get("name", "Unknown")
+        self.setWindowTitle(f"Trade: {self.system_name}")
+
+        self._selected_commodity: Optional[str] = None
+
+        self._init_ui()
+        self._ensure_market()
+        self._refresh()
+
+    def _init_ui(self) -> None:
+        layout = QVBoxLayout()
+
+        self.header = QLabel("")
+        self.header.setStyleSheet("color: #FFFFFF; font-family: Menlo; padding: 4px;")
+        layout.addWidget(self.header)
+
+        self.list_widget = QListWidget()
+        self.list_widget.itemSelectionChanged.connect(self._on_selection_changed)
+        self.list_widget.setStyleSheet("background-color: #000000; color: #FFFFFF; font-family: Menlo;")
+        layout.addWidget(self.list_widget)
+
+        # Quantity + buttons
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Qty:"))
+        self.qty_input = QLineEdit("1")
+        self.qty_input.setValidator(QIntValidator(0, 999999, self))
+        self.qty_input.setMaximumWidth(120)
+        row.addWidget(self.qty_input)
+
+        self.buy_btn = QPushButton("Buy")
+        self.buy_btn.clicked.connect(self._buy)
+        row.addWidget(self.buy_btn)
+
+        self.sell_btn = QPushButton("Sell")
+        self.sell_btn.clicked.connect(self._sell)
+        row.addWidget(self.sell_btn)
+
+        row.addStretch(1)
+
+        self.close_btn = QPushButton("Close")
+        self.close_btn.clicked.connect(self.accept)
+        row.addWidget(self.close_btn)
+
+        layout.addLayout(row)
+
+        self.message = QLabel("")
+        self.message.setStyleSheet("color: #808080; font-family: Menlo; padding: 4px;")
+        layout.addWidget(self.message)
+
+        self.setLayout(layout)
+        self.resize(900, 650)
+
+    def _ensure_market(self) -> None:
+        if not hasattr(self.game, "economy") or self.game.economy is None:
+            return
+        econ = self.game.economy
+        if self.system_name not in econ.markets:
+            econ.create_market(self.system)
+
+    def _refresh(self) -> None:
+        credits = int(getattr(self.game, "credits", 0) or 0)
+        cargo_status = {}
+        try:
+            cargo_status = self.game.get_cargo_status()  # type: ignore[attr-defined]
+        except Exception:
+            cargo_status = {'used': 0, 'max': 0, 'available': 0, 'percentage': 0}
+
+        used = cargo_status.get('used', 0)
+        mx = cargo_status.get('max', 0)
+        avail = cargo_status.get('available', 0)
+        self.header.setText(f"Credits: {credits:,}    Cargo: {used}/{mx} (free {avail})")
+
+        self.list_widget.clear()
+
+        if not hasattr(self.game, "economy") or self.game.economy is None:
+            self.message.setText("Trading unavailable: economic system not initialized.")
+            return
+
+        econ = self.game.economy
+        # Keep market fresh-ish when opening
+        try:
+            econ.update_market(self.system_name)
+        except Exception:
+            pass
+
+        info = econ.get_market_info(self.system_name)
+        if not info:
+            self.message.setText("No market data available.")
+            return
+
+        market = info.get("market") or {}
+        supply = market.get("supply", {})
+        demand = market.get("demand", {})
+        prices = market.get("prices", {})
+
+        inv = getattr(self.game, "inventory", {}) or {}
+
+        # Sort by price ascending for easy browsing.
+        commodities = sorted(prices.keys(), key=lambda c: prices.get(c, 0))
+        for commodity in commodities:
+            p = int(prices.get(commodity, 0) or 0)
+            s = int(supply.get(commodity, 0) or 0)
+            d = int(demand.get(commodity, 0) or 0)
+            owned = int(inv.get(commodity, 0) or 0)
+            text = f"{commodity[:40]:<40}  Price {p:>7,}  Sup {s:>5}  Dem {d:>5}  You {owned:>5}"
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, commodity)
+            self.list_widget.addItem(item)
+
+        # Preserve selection if possible
+        if self._selected_commodity:
+            for i in range(self.list_widget.count()):
+                it = self.list_widget.item(i)
+                if it.data(Qt.ItemDataRole.UserRole) == self._selected_commodity:
+                    self.list_widget.setCurrentRow(i)
+                    break
+
+    def _on_selection_changed(self) -> None:
+        items = self.list_widget.selectedItems()
+        if not items:
+            self._selected_commodity = None
+            return
+        self._selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+
+    def _get_qty(self) -> int:
+        try:
+            return int(self.qty_input.text() or "0")
+        except Exception:
+            return 0
+
+    def _buy(self) -> None:
+        if not self._selected_commodity:
+            self.message.setText("Select a commodity first.")
+            return
+        qty = self._get_qty()
+        if qty <= 0:
+            self.message.setText("Quantity must be greater than zero.")
+            return
+
+        if not hasattr(self.game, "perform_trade_buy"):
+            self.message.setText("Trading unavailable: Game.perform_trade_buy missing.")
+            return
+
+        ok, msg = self.game.perform_trade_buy(self.system_name, self._selected_commodity, qty)
+        self.message.setText(msg)
+        self._refresh()
+
+    def _sell(self) -> None:
+        if not self._selected_commodity:
+            self.message.setText("Select a commodity first.")
+            return
+        qty = self._get_qty()
+        if qty <= 0:
+            self.message.setText("Quantity must be greater than zero.")
+            return
+
+        if not hasattr(self.game, "perform_trade_sell"):
+            self.message.setText("Trading unavailable: Game.perform_trade_sell missing.")
+            return
+
+        ok, msg = self.game.perform_trade_sell(self.system_name, self._selected_commodity, qty)
+        self.message.setText(msg)
+        self._refresh()
+
+
 class SystemDialog(QDialog):
     """Interaction screen when entering a star system: refuel / trade / colony / etc.
 
@@ -3641,9 +3838,17 @@ class SystemDialog(QDialog):
     def dispatch_action(self, num: int) -> None:
         for n, name, handler, desc in self.available_actions:
             if n == num:
-                handler()
-                # Re-render after any action
-                self.render_system()
+                try:
+                    result = handler()
+                except Exception as e:
+                    self.status_label.setText(f"Action failed: {e}")
+                    result = True
+
+                # Most actions should re-render to reflect updated stats.
+                # Some actions may already update the display, and can return False.
+                should_rerender = True if result is None else bool(result)
+                if should_rerender:
+                    self.render_system()
                 return
 
     # ----------------------------- actions -----------------------------
@@ -3683,82 +3888,11 @@ class SystemDialog(QDialog):
             )
 
     def do_trade(self) -> None:
-        """Show a textual market summary using the EconomicSystem.
-
-        This mirrors the intent of the Textual `TradingScreen` by
-        surfacing best buys/sells, but keeps interaction read-only for
-        now. Actual buy/sell actions can still be done via the CLI.
-        """
-        system_name = self.system.get("name", "Unknown")
-
-        if not hasattr(self.game, "economy") or self.game.economy is None:
-            self.status_label.setText("Trading unavailable: economic system not initialized.")
-            return
-
-        econ = self.game.economy
-        if system_name not in econ.markets:
-            try:
-                econ.create_market(self.system)
-            except Exception:
-                self.status_label.setText("Failed to initialize market for this system.")
-                return
-
-        try:
-            market_info = econ.get_market_info(system_name)
-        except Exception:
-            self.status_label.setText("Error retrieving market data.")
-            return
-
-        if not market_info:
-            self.status_label.setText("No market data available for this system.")
-            return
-
-        best_buys = market_info.get("best_buys", []) or []
-        best_sells = market_info.get("best_sells", []) or []
-
-        lines: List[str] = []
-        lines.append("╔" + "═" * 78 + "╗")
-        lines.append(f"║ MARKET SUMMARY FOR {system_name[:60]:<60} ║")
-        lines.append("╠" + "═" * 78 + "╣")
-        lines.append(f"║ Credits: {self.game.credits:>12,}                                           ║")
-        lines.append("╟" + "─" * 78 + "╢")
-
-        lines.append("║ Best Buys (cheap here)                    Qty     Price ║")
-        if best_buys:
-            for name, price, supply in best_buys[:5]:
-                lines.append(
-                    f"║   {name[:40]:<40} {supply:>5}  {price:>8,} cr ║"
-                )
-        else:
-            lines.append("║   No especially cheap commodities detected.           ║")
-
-        lines.append("╟" + "─" * 78 + "╢")
-        lines.append("║ Best Sells (lucrative here)                Demand  Price ║")
-        if best_sells:
-            for name, price, demand in best_sells[:5]:
-                lines.append(
-                    f"║   {name[:40]:<40} {demand:>5}  {price:>8,} cr ║"
-                )
-        else:
-            lines.append("║   No especially profitable sales detected.           ║")
-
-        lines.append("╚" + "═" * 78 + "╝")
-        lines.append("")
-        lines.append("You can trade via the CLI 'Trade Goods' menu for now.")
-
-        # Append summary to the existing system description, above actions
-        full_text = self.display.toPlainText()
-        parts = full_text.split("AVAILABLE ACTIONS:")
-        if len(parts) >= 2:
-            head = parts[0].rstrip()
-            tail = "AVAILABLE ACTIONS:" + parts[1]
-            combined = head + "\n\n" + "\n".join(lines) + "\n\n" + tail
-            self.display.setPlainText(combined)
-        else:
-            # Fallback: just append at the end
-            self.display.appendPlainText("\n" + "\n".join(lines))
-
-        self.status_label.setText("Market data shown. Trading UI can be expanded later.")
+        """Open an interactive buy/sell trading dialog for this system."""
+        dlg = TradeDialog(self.game, self.system, self)
+        dlg.exec()
+        self.status_label.setText("Trade complete.")
+        return True
 
     def do_shipyard(self, station: dict) -> None:
         """Summarize shipyard capabilities and tie into upgrade system.
@@ -3914,7 +4048,22 @@ def main() -> None:
 
     The window will open with the ASCII-style main menu.
     """
+    # On macOS, Ctrl-C can otherwise raise KeyboardInterrupt inside Qt event
+    # handlers and lead to an abort. Handle SIGINT by quitting the app.
+    signal.signal(signal.SIGINT, lambda *_: QApplication.quit())
+
     app = QApplication(sys.argv)
+
+    # Ensure the Qt event loop wakes up periodically so SIGINT is processed.
+    try:
+        from PyQt6.QtCore import QTimer
+
+        _sigint_timer = QTimer()
+        _sigint_timer.timeout.connect(lambda: None)
+        _sigint_timer.start(100)
+    except Exception:
+        _sigint_timer = None  # type: ignore[assignment]
+
     window = RoguelikeMainWindow()
     window.show()
     sys.exit(app.exec())
