@@ -62,6 +62,7 @@ try:
         QPlainTextEdit,
         QPushButton,
         QStatusBar,
+        QTabWidget,
         QVBoxLayout,
         QWidget,
     )
@@ -3552,6 +3553,8 @@ class TradeDialog(QDialog):
         self.setWindowTitle(f"Trade: {self.system_name}")
 
         self._selected_commodity: Optional[str] = None
+        self._market_selected_commodity: Optional[str] = None
+        self._cargo_selected_commodity: Optional[str] = None
 
         self._init_ui()
         self._ensure_market()
@@ -3564,10 +3567,27 @@ class TradeDialog(QDialog):
         self.header.setStyleSheet("color: #FFFFFF; font-family: Menlo; padding: 4px;")
         layout.addWidget(self.header)
 
-        self.list_widget = QListWidget()
-        self.list_widget.itemSelectionChanged.connect(self._on_selection_changed)
-        self.list_widget.setStyleSheet("background-color: #000000; color: #FFFFFF; font-family: Menlo;")
-        layout.addWidget(self.list_widget)
+        # Separate views:
+        # - Market: all commodities traded here (for buying)
+        # - Your Cargo: only commodities currently in the player's ship (for selling)
+        self.tabs = QTabWidget()
+
+        self.market_list_widget = QListWidget()
+        self.market_list_widget.itemSelectionChanged.connect(self._on_market_selection_changed)
+        self.market_list_widget.setStyleSheet(
+            "background-color: #000000; color: #FFFFFF; font-family: Menlo;"
+        )
+        self.tabs.addTab(self.market_list_widget, "Market")
+
+        self.cargo_list_widget = QListWidget()
+        self.cargo_list_widget.itemSelectionChanged.connect(self._on_cargo_selection_changed)
+        self.cargo_list_widget.setStyleSheet(
+            "background-color: #000000; color: #FFFFFF; font-family: Menlo;"
+        )
+        self.tabs.addTab(self.cargo_list_widget, "Your Cargo")
+
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        layout.addWidget(self.tabs)
 
         # Quantity + buttons
         row = QHBoxLayout()
@@ -3600,6 +3620,25 @@ class TradeDialog(QDialog):
         self.setLayout(layout)
         self.resize(900, 650)
 
+        # Default mode: Market (buying)
+        self._on_tab_changed(self.tabs.currentIndex())
+
+    def _get_owned_inventory(self) -> dict:
+        """Return the player's owned commodities.
+
+        Prefer current ship cargo (what's physically on the ship). Fall back to
+        game.inventory if ship/cargo isn't available.
+        """
+        try:
+            ship = getattr(getattr(self.game, "navigation", None), "current_ship", None)
+            cargo = getattr(ship, "cargo", None)
+            if isinstance(cargo, dict):
+                return cargo
+        except Exception:
+            pass
+        inv = getattr(self.game, "inventory", {}) or {}
+        return inv if isinstance(inv, dict) else {}
+
     def _ensure_market(self) -> None:
         if not hasattr(self.game, "economy") or self.game.economy is None:
             return
@@ -3620,7 +3659,8 @@ class TradeDialog(QDialog):
         avail = cargo_status.get('available', 0)
         self.header.setText(f"Credits: {credits:,}    Cargo: {used}/{mx} (free {avail})")
 
-        self.list_widget.clear()
+        self.market_list_widget.clear()
+        self.cargo_list_widget.clear()
 
         if not hasattr(self.game, "economy") or self.game.economy is None:
             self.message.setText("Trading unavailable: economic system not initialized.")
@@ -3643,34 +3683,86 @@ class TradeDialog(QDialog):
         demand = market.get("demand", {})
         prices = market.get("prices", {})
 
-        inv = getattr(self.game, "inventory", {}) or {}
+        owned_map = self._get_owned_inventory()
 
-        # Sort by price ascending for easy browsing.
+        # Market tab: show all traded commodities (sorted by price ascending).
         commodities = sorted(prices.keys(), key=lambda c: prices.get(c, 0))
         for commodity in commodities:
             p = int(prices.get(commodity, 0) or 0)
             s = int(supply.get(commodity, 0) or 0)
             d = int(demand.get(commodity, 0) or 0)
-            owned = int(inv.get(commodity, 0) or 0)
+            owned = int(owned_map.get(commodity, 0) or 0)
             text = f"{commodity[:40]:<40}  Price {p:>7,}  Sup {s:>5}  Dem {d:>5}  You {owned:>5}"
             item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, commodity)
-            self.list_widget.addItem(item)
+            self.market_list_widget.addItem(item)
 
-        # Preserve selection if possible
-        if self._selected_commodity:
-            for i in range(self.list_widget.count()):
-                it = self.list_widget.item(i)
-                if it.data(Qt.ItemDataRole.UserRole) == self._selected_commodity:
-                    self.list_widget.setCurrentRow(i)
+        # Cargo tab: show only commodities currently in the ship (qty > 0).
+        cargo_commodities = [c for c, q in owned_map.items() if int(q or 0) > 0]
+        # Sort by price desc (helpful for selling); break ties by name.
+        cargo_commodities.sort(key=lambda c: (int(prices.get(c, 0) or 0), str(c)), reverse=True)
+        for commodity in cargo_commodities:
+            owned = int(owned_map.get(commodity, 0) or 0)
+            p = int(prices.get(commodity, 0) or 0)
+            d = int(demand.get(commodity, 0) or 0)
+            text = f"{commodity[:40]:<40}  Price {p:>7,}  Dem {d:>5}  You {owned:>5}"
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, commodity)
+            self.cargo_list_widget.addItem(item)
+
+        # Preserve per-tab selections if possible
+        if self._market_selected_commodity:
+            for i in range(self.market_list_widget.count()):
+                it = self.market_list_widget.item(i)
+                if it.data(Qt.ItemDataRole.UserRole) == self._market_selected_commodity:
+                    self.market_list_widget.setCurrentRow(i)
                     break
 
-    def _on_selection_changed(self) -> None:
-        items = self.list_widget.selectedItems()
+        if self._cargo_selected_commodity:
+            for i in range(self.cargo_list_widget.count()):
+                it = self.cargo_list_widget.item(i)
+                if it.data(Qt.ItemDataRole.UserRole) == self._cargo_selected_commodity:
+                    self.cargo_list_widget.setCurrentRow(i)
+                    break
+
+        # Sync unified selected commodity with current tab
+        self._on_tab_changed(self.tabs.currentIndex())
+
+    def _on_market_selection_changed(self) -> None:
+        items = self.market_list_widget.selectedItems()
         if not items:
-            self._selected_commodity = None
+            self._market_selected_commodity = None
+            if self.tabs.currentIndex() == 0:
+                self._selected_commodity = None
             return
-        self._selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        self._market_selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        if self.tabs.currentIndex() == 0:
+            self._selected_commodity = self._market_selected_commodity
+
+    def _on_cargo_selection_changed(self) -> None:
+        items = self.cargo_list_widget.selectedItems()
+        if not items:
+            self._cargo_selected_commodity = None
+            if self.tabs.currentIndex() == 1:
+                self._selected_commodity = None
+            return
+        self._cargo_selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        if self.tabs.currentIndex() == 1:
+            self._selected_commodity = self._cargo_selected_commodity
+
+    def _on_tab_changed(self, index: int) -> None:
+        """Switch selected commodity + enabled actions based on tab."""
+        # 0 = Market (buy), 1 = Your Cargo (sell)
+        if index == 0:
+            self._selected_commodity = self._market_selected_commodity
+            self.buy_btn.setEnabled(True)
+            self.sell_btn.setEnabled(False)
+            self.message.setText("Buy from the market. Switch to 'Your Cargo' to sell.")
+        else:
+            self._selected_commodity = self._cargo_selected_commodity
+            self.buy_btn.setEnabled(False)
+            self.sell_btn.setEnabled(True)
+            self.message.setText("Sell only from your ship cargo.")
 
     def _get_qty(self) -> int:
         try:
