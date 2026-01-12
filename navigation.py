@@ -74,24 +74,44 @@ def calculate_fuel_consumption(ship, distance, target_coords=None, game=None):
     
     # Ether energy coefficient (friction)
     # Acts as a coefficient/drag factor based on etheric conditions at location
+    # Higher drag zones require more fuel to traverse
     ether_coefficient = 1.0  # Default neutral
-    if target_coords:
+    if target_coords and hasattr(ship, 'coordinates'):
         # Try to get ether energy from galaxy
-        if hasattr(ship, 'coordinates'):
+        try:
             # Get galaxy from ship's context if available
-            try:
-                # Check if ship has a reference to galaxy or game
-                galaxy = None
-                if game and hasattr(game, 'navigation') and hasattr(game.navigation, 'galaxy'):
-                    galaxy = game.navigation.galaxy
+            galaxy = None
+            if game and hasattr(game, 'navigation') and hasattr(game.navigation, 'galaxy'):
+                galaxy = game.navigation.galaxy
+            
+            if galaxy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+                # Calculate average friction along the path for more accurate fuel calculation
+                start_coords = ship.coordinates
+                end_coords = target_coords
                 
-                if galaxy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
-                    # Use average friction along the path (simplified: use target location)
-                    ether_coefficient = galaxy.ether_energy.get_friction_at(
-                        target_coords[0], target_coords[1], target_coords[2]
+                # Sample points along the path (start, middle, end)
+                samples = [
+                    start_coords,
+                    (
+                        (start_coords[0] + end_coords[0]) // 2,
+                        (start_coords[1] + end_coords[1]) // 2,
+                        (start_coords[2] + end_coords[2]) // 2,
+                    ),
+                    end_coords
+                ]
+                
+                # Get friction at each sample point and average
+                frictions = []
+                for sample_coords in samples:
+                    friction = galaxy.ether_energy.get_friction_at(
+                        sample_coords[0], sample_coords[1], sample_coords[2]
                     )
-            except Exception:
-                pass  # Fallback to neutral if any error
+                    frictions.append(friction)
+                
+                if frictions:
+                    ether_coefficient = sum(frictions) / len(frictions)
+        except Exception:
+            pass  # Fallback to neutral if any error
     
     fuel_needed *= ether_coefficient
     

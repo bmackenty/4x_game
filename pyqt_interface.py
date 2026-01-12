@@ -2713,8 +2713,9 @@ class MapScreen(QDialog):
         """Initialize the UI components."""
         layout = QVBoxLayout()
         
-        # Map display
-        self.map_display = QPlainTextEdit()
+        # Map display - use QTextEdit to support HTML formatting for colors
+        from PyQt6.QtWidgets import QTextEdit
+        self.map_display = QTextEdit()
         self.map_display.setReadOnly(True)
         self.map_display.setFont(QFont("Menlo", 10))
         
@@ -2726,6 +2727,7 @@ class MapScreen(QDialog):
         
         # Install syntax highlighter for colors
         self.highlighter = MapHighlighter(self.map_display.document())
+        self.highlighter.map_screen = self  # Give highlighter access to map screen for ether energy data
         
         layout.addWidget(self.map_display)
         
@@ -2810,39 +2812,8 @@ class MapScreen(QDialog):
                     if faction:
                         virtual_buf[py][px] = ("░", None, faction)
         
-        # Draw ether energy overlay if enabled
-        if self.show_ether_energy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
-            for py in range(self.virtual_height):
-                for px in range(self.virtual_width):
-                    gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
-                    gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
-                    gz = int(galaxy.size_z / 2)
-                    
-                    friction = galaxy.ether_energy.get_friction_at(gx, gy, gz)
-                    
-                    # Determine symbol based on friction
-                    if friction < 0.85:
-                        dot_char = "·"
-                        dot_color = "bright_green" if friction < 0.7 else "green"
-                    elif friction < 0.95:
-                        dot_char = "·"
-                        dot_color = "cyan"
-                    elif friction < 1.05:
-                        dot_char = "·"
-                        dot_color = "dim_white"
-                    elif friction < 1.3:
-                        dot_char = "·"
-                        dot_color = "yellow"
-                    elif friction < 1.6:
-                        dot_char = "·"
-                        dot_color = "bright_yellow"
-                    else:
-                        dot_char = "·"
-                        dot_color = "red" if friction < 2.0 else "bright_red"
-                    
-                    current_char, current_data, current_faction = virtual_buf[py][px]
-                    if current_char in (" ", ".", "░"):
-                        virtual_buf[py][px] = (dot_char, {"ether_friction": friction, "ether_color": dot_color}, None)
+        # Store ether energy data for all cells (will be applied after systems are drawn)
+        ether_energy_data = {}
         
         # Get scanned systems
         scanned_systems = set()
@@ -2867,7 +2838,19 @@ class MapScreen(QDialog):
                 ch = "*" if sys.get("visited") else "+"
             
             faction = sys.get('controlling_faction')
-            virtual_buf[py][px] = (ch, sys, faction)
+            
+            # Preserve ether energy data if it exists
+            current_char, current_data, current_faction = virtual_buf[py][px]
+            if isinstance(current_data, dict) and "ether_color" in current_data:
+                # Merge system data with ether energy data
+                sys_data = sys.copy() if isinstance(sys, dict) else {}
+                sys_data.update({
+                    "ether_friction": current_data["ether_friction"],
+                    "ether_color": current_data["ether_color"]
+                })
+                virtual_buf[py][px] = (ch, sys_data, faction)
+            else:
+                virtual_buf[py][px] = (ch, sys, faction)
             
             # Add scan icons below systems
             if sys['name'] in scanned_systems and py + 1 < self.virtual_height:
@@ -2903,45 +2886,192 @@ class MapScreen(QDialog):
             for npc in nav.npc_ships:
                 nx, ny, nz = npc.coordinates
                 npx, npy = project(nx, ny)
-                _, _, faction = virtual_buf[npy][npx]
-                virtual_buf[npy][npx] = ("&", npc, faction)
+                current_char, current_data, faction = virtual_buf[npy][npx]
+                
+                # Preserve ether energy data if it exists
+                if isinstance(current_data, dict) and "ether_color" in current_data:
+                    # Store NPC with ether energy data
+                    npc_data = {"npc": npc, "ether_friction": current_data["ether_friction"], "ether_color": current_data["ether_color"]}
+                    virtual_buf[npy][npx] = ("&", npc_data, faction)
+                else:
+                    virtual_buf[npy][npx] = ("&", npc, faction)
         
         # Plot player ship
         sx, sy, sz = ship.coordinates
         ship_vx, ship_vy = project(sx, sy)
-        _, _, faction = virtual_buf[ship_vy][ship_vx]
-        virtual_buf[ship_vy][ship_vx] = ("@", None, faction)
+        current_char, current_data, faction = virtual_buf[ship_vy][ship_vx]
         
-        # Center viewport on ship
-        self.center_viewport_on(ship_vx, ship_vy)
+        # Preserve ether energy data if it exists
+        if isinstance(current_data, dict) and "ether_color" in current_data:
+            ship_data = {"ether_friction": current_data["ether_friction"], "ether_color": current_data["ether_color"]}
+            virtual_buf[ship_vy][ship_vx] = ("@", ship_data, faction)
+        else:
+            virtual_buf[ship_vy][ship_vx] = ("@", None, faction)
         
-        # Determine viewport size from current widget size and font metrics
+        # Draw ether energy overlay LAST (after all other elements) if enabled
+        if self.show_ether_energy and hasattr(galaxy, 'ether_energy') and galaxy.ether_energy:
+            # Import color function from space.py (game logic separated from UI)
+            try:
+                from space import get_color_for_friction
+            except ImportError:
+                # Fallback color function if space.py not available
+                def get_color_for_friction(friction: float) -> str:
+                    if friction < 0.7:
+                        return "bright_green"
+                    elif friction < 0.85:
+                        return "green"
+                    elif friction < 0.95:
+                        return "cyan"
+                    elif friction < 1.05:
+                        return "dim_white"
+                    elif friction < 1.3:
+                        return "yellow"
+                    elif friction < 1.6:
+                        return "bright_yellow"
+                    elif friction < 2.0:
+                        return "red"
+                    else:
+                        return "bright_red"
+            
+            # Apply ether energy overlay to ALL cells
+            # Track friction values for debugging
+            friction_values = []
+            non_neutral_count = 0
+            zone_count = len(galaxy.ether_energy.zones) if hasattr(galaxy.ether_energy, 'zones') else 0
+            
+            for py in range(self.virtual_height):
+                for px in range(self.virtual_width):
+                    # Map virtual buffer coordinates (px, py) back to galaxy coordinates
+                    # This is the inverse of the project() function
+                    if self.virtual_width > 1 and self.virtual_height > 1:
+                        gx = int((px / (self.virtual_width - 1)) * galaxy.size_x)
+                        gy = int((py / (self.virtual_height - 1)) * galaxy.size_y)
+                    else:
+                        gx = int((px / max(1, self.virtual_width)) * galaxy.size_x)
+                        gy = int((py / max(1, self.virtual_height)) * galaxy.size_y)
+                    
+                    # Clamp to galaxy bounds
+                    gx = max(0, min(galaxy.size_x - 1, gx))
+                    gy = max(0, min(galaxy.size_y - 1, gy))
+                    # Use ship's z-coordinate (or middle z if ship not available)
+                    # Most zones are at z=25-30, so use a representative z-level
+                    if hasattr(ship, 'coordinates') and len(ship.coordinates) >= 3:
+                        gz = ship.coordinates[2]
+                    else:
+                        # Default to z=25 where most zones are located
+                        gz = 25
+                    gz = max(0, min(galaxy.size_z - 1, gz))
+                    
+                    # Get friction from game logic (ether_energy system)
+                    friction = galaxy.ether_energy.get_friction_at(gx, gy, gz)
+                    
+                    # Track friction values for debugging (sample first 100)
+                    if len(friction_values) < 100:
+                        friction_values.append(friction)
+                    if abs(friction - 1.0) > 0.01:
+                        non_neutral_count += 1
+                    
+                    # Get color from game logic (space.py)
+                    dot_color = get_color_for_friction(friction)
+                    dot_char = "·"
+                    
+                    # Get current cell data
+                    current_char, current_data, current_faction = virtual_buf[py][px]
+                    
+                    # When ether energy overlay is enabled, only modify empty cells
+                    # For empty cells, show ether energy dot with color
+                    # For occupied cells (planets, ships, etc.), leave them unchanged
+                    if current_char in (" ", ".", "░"):
+                        # Empty cell - show colored dot
+                        virtual_buf[py][px] = (dot_char, {"ether_friction": friction, "ether_color": dot_color}, current_faction)
+                    # Don't modify occupied cells - leave planets, ships, etc. as-is
+            
+            # Debug output (print first time or when no zones detected)
+            if friction_values:
+                avg_friction = sum(friction_values) / len(friction_values)
+                min_friction = min(friction_values)
+                max_friction = max(friction_values)
+                total_cells = self.virtual_width * self.virtual_height
+                # Only print debug info if we see a problem (no zones or all neutral)
+                if zone_count == 0 or (non_neutral_count == 0 and zone_count > 0):
+                    print(f"DEBUG Ether Energy: {zone_count} zones loaded, "
+                          f"friction range=[{min_friction:.2f}, {max_friction:.2f}], avg={avg_friction:.2f}, "
+                          f"non-neutral={non_neutral_count}/{total_cells} cells")
+                    print(f"  Galaxy size: {galaxy.size_x}x{galaxy.size_y}x{galaxy.size_z}, "
+                          f"Virtual buffer: {self.virtual_width}x{self.virtual_height}")
+                    if zone_count > 0 and hasattr(galaxy.ether_energy, 'zones'):
+                        for i, zone in enumerate(galaxy.ether_energy.zones[:3]):
+                            print(f"  Zone {i+1}: center={zone.center}, radius={zone.radius}, friction={zone.friction}")
+        
+        # Determine viewport size from current widget size and font metrics FIRST
+        # This needs to happen before centering so we know the viewport size
         font_metrics = self.map_display.fontMetrics()
         char_width = max(1, font_metrics.horizontalAdvance("M"))
         char_height = max(1, font_metrics.height())
 
-        # Leave a small margin so we don't butt up against the edges
-        view_width_chars = max(40, (self.map_display.viewport().width() - 20) // char_width)
-        view_height_chars = max(20, (self.map_display.viewport().height() - 40) // char_height)
+        # Calculate viewport size from widget dimensions
+        # Use the full available space, accounting for margins
+        widget_width = self.map_display.viewport().width()
+        widget_height = self.map_display.viewport().height()
+        
+        # When ether energy is enabled, use MORE of the available space
+        if self.show_ether_energy:
+            # Use almost all available space for map display (leave room for HUD at bottom)
+            view_width_chars = max(80, (widget_width - 10) // char_width)
+            view_height_chars = max(30, (widget_height - 100) // char_height)  # More space for HUD
+        else:
+            # Normal margins
+            view_width_chars = max(40, (widget_width - 20) // char_width)
+            view_height_chars = max(20, (widget_height - 40) // char_height)
 
-        # Clamp viewport to virtual map bounds
+        # Clamp viewport to virtual map bounds, but use full available space
         self.viewport_width = min(self.virtual_width, view_width_chars)
         self.viewport_height = min(self.virtual_height, view_height_chars)
 
-        # Build display text
+        # Ensure viewport is at least a reasonable size
+        self.viewport_width = max(self.viewport_width, 80)
+        self.viewport_height = max(self.viewport_height, 30)
+        
+        # Center viewport on ship (after we know the viewport size)
+        self.center_viewport_on(ship_vx, ship_vy)
+
+        # Color mapping for ether energy
+        def get_html_color(color_name: str) -> str:
+            """Convert color name to HTML color code"""
+            color_map = {
+                "bright_green": "#00FF00",
+                "green": "#00AA00",
+                "cyan": "#00FFFF",
+                "dim_white": "#888888",
+                "yellow": "#FFFF00",
+                "bright_yellow": "#FFAA00",
+                "red": "#FF0000",
+                "bright_red": "#FF4444",
+            }
+            result = color_map.get(color_name, "#FFFFFF")
+            # Debug: print if we get an unexpected color name
+            if color_name not in color_map:
+                print(f"DEBUG: Unknown color name: {color_name}")
+            return result
+        
+        # Build display text - always use plain text, highlighter handles colors
         lines = []
         
         # Header
-        lines.append("═" * self.viewport_width)
+        header_line = "═" * self.viewport_width
+        lines.append(header_line)
+        
         header = "GALAXY MAP"
         if self.show_faction_zones:
             header += " - FACTION ZONES"
         if self.show_ether_energy:
             header += " - ETHER ENERGY"
-        lines.append(header.center(self.viewport_width))
-        lines.append("═" * self.viewport_width)
+        header_centered = header.center(self.viewport_width)
+        lines.append(header_centered)
         
-        # Render viewport
+        lines.append(header_line)
+        
+        # Render viewport - plain text, highlighter will color it
         for y in range(self.viewport_height):
             virtual_y = self.viewport_y + y
             line = ""
@@ -2955,6 +3085,7 @@ class MapScreen(QDialog):
                         line += " "
             else:
                 line = " " * self.viewport_width
+            
             lines.append(line)
         
         # HUD
@@ -3013,7 +3144,28 @@ class MapScreen(QDialog):
         lines.append("Scan: P Habitable  p Planet  S Station  M Minerals  a Asteroids")
         lines.append("[q/ESC: Back | Arrow/hjkl: Move | f: Toggle Factions | e: Toggle Ether | n: News | H: History]")
         
-        # Set text
+        # Store ether energy data for highlighter to use
+        # Build mapping of (line_number, column) -> color_name
+        # ONLY store data for cells that have the dot character (·)
+        self._ether_energy_map = {}
+        if self.show_ether_energy:
+            line_num = 3  # Start after header (3 lines: border, title, border)
+            dot_count = 0
+            for y in range(self.viewport_height):
+                virtual_y = self.viewport_y + y
+                if 0 <= virtual_y < self.virtual_height:
+                    for x in range(self.viewport_width):
+                        virtual_x = self.viewport_x + x
+                        if 0 <= virtual_x < self.virtual_width:
+                            char, sys_data, faction = virtual_buf[virtual_y][virtual_x]
+                            # Only store ether energy data for cells with the dot character
+                            if char == "·" and sys_data and isinstance(sys_data, dict) and "ether_color" in sys_data:
+                                color_name = sys_data["ether_color"]
+                                self._ether_energy_map[(line_num, x)] = color_name
+                    line_num += 1
+        
+        # Always use plain text - let highlighter handle all colors
+        # setPlainText automatically triggers the highlighter, so no need to call rehighlight()
         self.map_display.setPlainText("\n".join(lines))
     
     def make_bar(self, filled, total, fill_char="█", empty_char="░"):
@@ -3250,6 +3402,7 @@ class MapHighlighter(QSyntaxHighlighter):
     
     def __init__(self, parent_document):
         super().__init__(parent_document)
+        self.map_screen = None  # Will be set by MapScreen
         
         # Define formats
         self.cyan_fmt = QTextCharFormat()
@@ -3261,11 +3414,20 @@ class MapHighlighter(QSyntaxHighlighter):
         self.green_fmt = QTextCharFormat()
         self.green_fmt.setForeground(QColor("#00FF00"))
         
+        self.bright_green_fmt = QTextCharFormat()
+        self.bright_green_fmt.setForeground(QColor("#00FF00"))
+        
         self.magenta_fmt = QTextCharFormat()
         self.magenta_fmt.setForeground(QColor("#FF00FF"))
         
         self.red_fmt = QTextCharFormat()
         self.red_fmt.setForeground(QColor("#FF0000"))
+        
+        self.bright_red_fmt = QTextCharFormat()
+        self.bright_red_fmt.setForeground(QColor("#FF4444"))
+        
+        self.bright_yellow_fmt = QTextCharFormat()
+        self.bright_yellow_fmt.setForeground(QColor("#FFAA00"))
         
         self.gray_fmt = QTextCharFormat()
         self.gray_fmt.setForeground(QColor("#808080"))
@@ -3279,6 +3441,7 @@ class MapHighlighter(QSyntaxHighlighter):
         self.unvisited_re = QRegularExpression(r"\+")
         self.station_re = QRegularExpression(r"[◈◆]")
         self.legend_re = QRegularExpression(r"^\[.*\]$")
+        self.ether_dot_re = QRegularExpression(r"·")  # Ether energy dot (middle dot, U+00B7)
     
     def highlightBlock(self, text: str) -> None:
         # Borders
@@ -3296,7 +3459,57 @@ class MapHighlighter(QSyntaxHighlighter):
             self.setFormat(0, len(text), self.gray_fmt)
             return
         
-        # Map symbols - use QRegularExpressionMatchIterator correctly
+        # Handle ether energy dots FIRST (before other symbols)
+        # Only color the dot character (·) when ether energy overlay is enabled
+        # IMPORTANT: Only process dots, never override other symbols
+        if (self.map_screen and 
+            hasattr(self.map_screen, 'show_ether_energy') and 
+            self.map_screen.show_ether_energy and
+            hasattr(self.map_screen, '_ether_energy_map') and 
+            self.map_screen._ether_energy_map):
+            # Get current block number (line number)
+            block = self.currentBlock()
+            block_number = block.blockNumber()
+            
+            # Use regex to find all dot characters, then color them
+            # CRITICAL: Only process the actual dot character (·), not other symbols
+            it = self.ether_dot_re.globalMatch(text)
+            while it.hasNext():
+                m = it.next()
+                col = m.capturedStart()
+                # Double-check this is actually a dot character
+                if col < len(text) and text[col] == "·":
+                    key = (block_number, col)
+                    
+                    if key in self.map_screen._ether_energy_map:
+                        color_name = self.map_screen._ether_energy_map[key]
+                        
+                        # Map color name to format
+                        fmt = None
+                        if color_name == "bright_green":
+                            fmt = self.bright_green_fmt
+                        elif color_name == "green":
+                            fmt = self.green_fmt
+                        elif color_name == "cyan":
+                            fmt = self.cyan_fmt
+                        elif color_name == "dim_white":
+                            fmt = self.gray_fmt
+                        elif color_name == "yellow":
+                            fmt = self.yellow_fmt
+                        elif color_name == "bright_yellow":
+                            fmt = self.bright_yellow_fmt
+                        elif color_name == "red":
+                            fmt = self.red_fmt
+                        elif color_name == "bright_red":
+                            fmt = self.bright_red_fmt
+                        else:
+                            fmt = self.gray_fmt  # Default
+                        
+                        # Apply color ONLY to this specific dot character
+                        if fmt:
+                            self.setFormat(col, 1, fmt)
+        
+        # Map symbols - apply AFTER ether energy so they override dots if needed
         it = self.player_re.globalMatch(text)
         while it.hasNext():
             m = it.next()

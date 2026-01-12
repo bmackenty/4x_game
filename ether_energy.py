@@ -95,41 +95,55 @@ class EtherEnergySystem:
         self._generate_zones()
     
     def _generate_zones(self):
-        """Generate ether energy zones throughout the galaxy"""
-        # Zone types with their friction characteristics
-        zone_types = [
-            # Low friction zones (enhance fuel efficiency)
-            ("Void Current", 0.4, 0.5),  # Strong enhancement
-            ("Ether Stream", 0.55, 0.65),  # Moderate enhancement
-            ("Cosmic Breeze", 0.7, 0.8),  # Mild enhancement
+        """Load static ether energy zones from space.py"""
+        try:
+            from space import ETHER_ENERGY_ZONES
             
-            # High friction zones (reduce fuel efficiency)
-            ("Flux Storm", 1.1, 1.25),  # Moderate penalty
-            ("Etheric Turbulence", 1.25, 1.4),  # Strong penalty
-            ("Void Rift", 1.4, 1.6),  # Very strong penalty
+            # Load static zones from space.py
+            for center, radius, friction, name in ETHER_ENERGY_ZONES:
+                # Validate zone is within galaxy bounds
+                x, y, z = center
+                if (0 <= x < self.galaxy_size_x and 
+                    0 <= y < self.galaxy_size_y and 
+                    0 <= z < self.galaxy_size_z):
+                    zone = EtherEnergyZone(center, radius, friction, name)
+                    self.zones.append(zone)
+        except ImportError:
+            # Fallback to random generation if space.py doesn't exist
+            # Zone types with their friction characteristics
+            zone_types = [
+                # Low friction zones (enhance fuel efficiency)
+                ("Void Current", 0.4, 0.5),  # Strong enhancement
+                ("Ether Stream", 0.55, 0.65),  # Moderate enhancement
+                ("Cosmic Breeze", 0.7, 0.8),  # Mild enhancement
+                
+                # High friction zones (reduce fuel efficiency)
+                ("Flux Storm", 1.1, 1.25),  # Moderate penalty
+                ("Etheric Turbulence", 1.25, 1.4),  # Strong penalty
+                ("Void Rift", 1.4, 1.6),  # Very strong penalty
+                
+                # Neutral zones (slight variation)
+                ("Stable Ether", 0.85, 0.95),  # Nearly neutral
+            ]
             
-            # Neutral zones (slight variation)
-            ("Stable Ether", 0.85, 0.95),  # Nearly neutral
-        ]
-        
-        # Generate 15-25 zones
-        num_zones = random.randint(15, 25)
-        
-        for i in range(num_zones):
-            # Random position in galaxy
-            x = random.randint(50, self.galaxy_size_x - 50)
-            y = random.randint(50, self.galaxy_size_y - 50)
-            z = random.randint(10, self.galaxy_size_z - 10)
+            # Generate 15-25 zones
+            num_zones = random.randint(15, 25)
             
-            # Random zone type
-            name, min_friction, max_friction = random.choice(zone_types)
-            friction = random.uniform(min_friction, max_friction)
-            
-            # Random radius (20-80 units)
-            radius = random.uniform(20, 80)
-            
-            zone = EtherEnergyZone((x, y, z), radius, friction, name)
-            self.zones.append(zone)
+            for i in range(num_zones):
+                # Random position in galaxy
+                x = random.randint(50, self.galaxy_size_x - 50)
+                y = random.randint(50, self.galaxy_size_y - 50)
+                z = random.randint(10, self.galaxy_size_z - 10)
+                
+                # Random zone type
+                name, min_friction, max_friction = random.choice(zone_types)
+                friction = random.uniform(min_friction, max_friction)
+                
+                # Random radius (20-80 units)
+                radius = random.uniform(20, 80)
+                
+                zone = EtherEnergyZone((x, y, z), radius, friction, name)
+                self.zones.append(zone)
     
     def get_friction_at(self, x: int, y: int, z: int) -> float:
         """
