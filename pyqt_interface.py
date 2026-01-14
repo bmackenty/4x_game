@@ -3563,8 +3563,49 @@ class TradeDialog(QDialog):
     def _init_ui(self) -> None:
         layout = QVBoxLayout()
 
+        # Set dialog background to black
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #000000;
+            }
+            QLabel {
+                background-color: #000000;
+                color: #FFFFFF;
+                font-family: Menlo;
+            }
+            QLineEdit {
+                background-color: #1a1a1a;
+                color: #FFFFFF;
+                border: 1px solid #333333;
+                padding: 4px;
+            }
+            QPushButton {
+                background-color: #1a1a1a;
+                color: #FFFFFF;
+                border: 1px solid #333333;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #2a2a2a;
+            }
+            QTabWidget::pane {
+                background-color: #000000;
+                border: 1px solid #333333;
+            }
+            QTabBar::tab {
+                background-color: #1a1a1a;
+                color: #FFFFFF;
+                padding: 8px 16px;
+                border: 1px solid #333333;
+            }
+            QTabBar::tab:selected {
+                background-color: #000000;
+                border-bottom: 1px solid #000000;
+            }
+        """)
+
         self.header = QLabel("")
-        self.header.setStyleSheet("color: #FFFFFF; font-family: Menlo; padding: 4px;")
+        self.header.setStyleSheet("color: #FFFFFF; font-family: Menlo; padding: 4px; background-color: #000000;")
         layout.addWidget(self.header)
 
         # Separate views:
@@ -3591,7 +3632,9 @@ class TradeDialog(QDialog):
 
         # Quantity + buttons
         row = QHBoxLayout()
-        row.addWidget(QLabel("Qty:"))
+        qty_label = QLabel("Qty:")
+        qty_label.setStyleSheet("background-color: #000000; color: #FFFFFF; font-family: Menlo;")
+        row.addWidget(qty_label)
         self.qty_input = QLineEdit("1")
         self.qty_input.setValidator(QIntValidator(0, 999999, self))
         self.qty_input.setMaximumWidth(120)
@@ -3614,7 +3657,7 @@ class TradeDialog(QDialog):
         layout.addLayout(row)
 
         self.message = QLabel("")
-        self.message.setStyleSheet("color: #808080; font-family: Menlo; padding: 4px;")
+        self.message.setStyleSheet("color: #808080; font-family: Menlo; padding: 4px; background-color: #000000;")
         layout.addWidget(self.message)
 
         self.setLayout(layout)
@@ -3686,6 +3729,15 @@ class TradeDialog(QDialog):
         owned_map = self._get_owned_inventory()
 
         # Market tab: show all traded commodities (sorted by price ascending).
+        # Add header row
+        header_text = f"{'Commodity':<40}  {'Price':>7}  {'Sup':>5}  {'Dem':>5}  {'You':>5}"
+        header_item = QListWidgetItem(header_text)
+        header_item.setFlags(Qt.ItemFlag.NoItemFlags)  # Make it non-selectable
+        header_item.setBackground(QColor("#000000"))
+        header_item.setForeground(QColor("#FFFFFF"))
+        header_item.setFont(QFont("Menlo", -1, QFont.Weight.Bold))
+        self.market_list_widget.addItem(header_item)
+        
         commodities = sorted(prices.keys(), key=lambda c: prices.get(c, 0))
         for commodity in commodities:
             p = int(prices.get(commodity, 0) or 0)
@@ -3698,6 +3750,15 @@ class TradeDialog(QDialog):
             self.market_list_widget.addItem(item)
 
         # Cargo tab: show only commodities currently in the ship (qty > 0).
+        # Add header row
+        cargo_header_text = f"{'Commodity':<40}  {'Price':>7}  {'Dem':>5}  {'You':>5}"
+        cargo_header_item = QListWidgetItem(cargo_header_text)
+        cargo_header_item.setFlags(Qt.ItemFlag.NoItemFlags)  # Make it non-selectable
+        cargo_header_item.setBackground(QColor("#000000"))
+        cargo_header_item.setForeground(QColor("#FFFFFF"))
+        cargo_header_item.setFont(QFont("Menlo", -1, QFont.Weight.Bold))
+        self.cargo_list_widget.addItem(cargo_header_item)
+        
         cargo_commodities = [c for c, q in owned_map.items() if int(q or 0) > 0]
         # Sort by price desc (helpful for selling); break ties by name.
         cargo_commodities.sort(key=lambda c: (int(prices.get(c, 0) or 0), str(c)), reverse=True)
@@ -3735,7 +3796,11 @@ class TradeDialog(QDialog):
             if self.tabs.currentIndex() == 0:
                 self._selected_commodity = None
             return
-        self._market_selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        # Skip header items (they don't have UserRole data)
+        commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        if commodity is None:
+            return
+        self._market_selected_commodity = commodity
         if self.tabs.currentIndex() == 0:
             self._selected_commodity = self._market_selected_commodity
 
@@ -3746,7 +3811,11 @@ class TradeDialog(QDialog):
             if self.tabs.currentIndex() == 1:
                 self._selected_commodity = None
             return
-        self._cargo_selected_commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        # Skip header items (they don't have UserRole data)
+        commodity = items[0].data(Qt.ItemDataRole.UserRole)
+        if commodity is None:
+            return
+        self._cargo_selected_commodity = commodity
         if self.tabs.currentIndex() == 1:
             self._selected_commodity = self._cargo_selected_commodity
 
@@ -3755,13 +3824,13 @@ class TradeDialog(QDialog):
         # 0 = Market (buy), 1 = Your Cargo (sell)
         if index == 0:
             self._selected_commodity = self._market_selected_commodity
-            self.buy_btn.setEnabled(True)
-            self.sell_btn.setEnabled(False)
+            self.buy_btn.setVisible(True)
+            self.sell_btn.setVisible(False)
             self.message.setText("Buy from the market. Switch to 'Your Cargo' to sell.")
         else:
             self._selected_commodity = self._cargo_selected_commodity
-            self.buy_btn.setEnabled(False)
-            self.sell_btn.setEnabled(True)
+            self.buy_btn.setVisible(False)
+            self.sell_btn.setVisible(True)
             self.message.setText("Sell only from your ship cargo.")
 
     def _get_qty(self) -> int:
