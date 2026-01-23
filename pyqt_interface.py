@@ -1556,6 +1556,12 @@ class RoguelikeMainWindow(QMainWindow):
 
         # Reference to active game. None before starting or loading.
         self.game: Optional[Game] = None
+        
+        # Flag to track if we should return to map screen when leaving vessel status
+        self.return_to_map = False
+        
+        # Reference to current map screen (if open)
+        self.current_map_screen = None
 
         # ------------------------------------------------------------------
         # Central text area (ASCII main view)
@@ -2458,20 +2464,43 @@ class RoguelikeMainWindow(QMainWindow):
         
         components = getattr(ship, 'components', {})
         if components:
+            try:
+                from ship_builder import ship_components, COMPONENT_CATEGORY_ALIASES
+            except ImportError:
+                ship_components = {}
+                COMPONENT_CATEGORY_ALIASES = {}
+            
             component_order = ['hull', 'engine', 'weapons', 'shields', 'sensors', 'support']
             for comp_type in component_order:
                 comp_value = components.get(comp_type)
                 if comp_value:
+                    # Get category name for lookup
+                    category = None
+                    for cat, alias in COMPONENT_CATEGORY_ALIASES.items():
+                        if alias == comp_type:
+                            category = cat
+                            break
+                    if not category:
+                        category = comp_type
+                    
                     if isinstance(comp_value, list):
                         lines.append(fmt_line(f"{comp_type.capitalize()}:"))
                         for item in comp_value:
-                            lines.append(fmt_line(f"  • {item}"))
+                            comp_data = ship_components.get(category, {}).get(item, {})
+                            cost = comp_data.get("cost", 0)
+                            failure = comp_data.get("failure_chance", 0.0)
+                            cost_str = f" ({cost:,} cr)" if cost else ""
+                            failure_str = f" [{failure*100:.1f}% fail]" if failure > 0 else ""
+                            lines.append(fmt_line(f"  • {item}{cost_str}{failure_str}"))
                     else:
-                        lines.append(fmt_line(f"{comp_type.capitalize()}: {comp_value}"))
+                        comp_data = ship_components.get(category, {}).get(comp_value, {})
+                        cost = comp_data.get("cost", 0)
+                        failure = comp_data.get("failure_chance", 0.0)
+                        cost_str = f" ({cost:,} cr)" if cost else ""
+                        failure_str = f" [{failure*100:.1f}% fail]" if failure > 0 else ""
+                        lines.append(fmt_line(f"{comp_type.capitalize()}: {comp_value}{cost_str}{failure_str}"))
         else:
             lines.append(fmt_line("No component data available"))
-
-        # Core ship attributes (high-level stats from attribute_profile)
         lines.append(fmt_line())
         lines.append("╠" + "═" * (inner_width + 2) + "╣")
         lines.append(fmt_center("SHIP ATTRIBUTES"))
@@ -2590,12 +2619,28 @@ class RoguelikeMainWindow(QMainWindow):
             )
             return
         
+        # Check if map screen already exists and is visible (shouldn't happen with modal dialogs, but check anyway)
+        if self.current_map_screen is not None:
+            try:
+                if self.current_map_screen.isVisible():
+                    self.current_map_screen.raise_()
+                    self.current_map_screen.activateWindow()
+                    return
+            except Exception:
+                # Map screen was destroyed, clear reference
+                self.current_map_screen = None
+        
+        # Clear return_to_map flag when opening map normally (not from vessel status)
+        self.return_to_map = False
+        
         # Open map screen
         map_screen = MapScreen(self.game, self)
+        self.current_map_screen = map_screen
         map_screen.exec()
+        self.current_map_screen = None
         
-        # Refresh overview after closing map
-        if self.game:
+        # Refresh overview after closing map (unless we're showing ship status)
+        if self.game and not getattr(map_screen, 'closing_for_ship_status', False):
             self.render_game_overview()
             self.message_log.add_message("Returned from galaxy map.", "[VIEW]")
 
@@ -2701,6 +2746,9 @@ class MapScreen(QDialog):
         # Move counter for events
         self.move_count = 0
         
+        # Flag to track if closing to show ship status
+        self.closing_for_ship_status = False
+        
         # Setup UI
         self.init_ui()
         
@@ -2735,7 +2783,7 @@ class MapScreen(QDialog):
         # Status bar with instructions
         self.status_label = QLabel(
             "[HJKL/Arrows: Move] [F: Faction Zones] [E: Ether Energy] "
-            "[N: News] [H: History] [Q/ESC: Close]"
+            "[N: News] [H: History] [V: Vessel Status] [Q/ESC: Close]"
         )
         self.status_label.setStyleSheet("color: #808080; padding: 5px;")
         layout.addWidget(self.status_label)
@@ -2758,6 +2806,114 @@ class MapScreen(QDialog):
                     self.game.navigation.current_ship = Ship(first_ship, first_ship)
         except Exception as e:
             print(f"Error ensuring ship: {e}")
+    
+    def _get_ship_status_text(self, game, ship):
+        """Helper method to generate ship status text for display in a dialog."""
+        # Reuse the rendering logic from RoguelikeMainWindow.render_ship_status
+        # but return text instead of setting it on main_view
+        width = 120  # Fixed width for dialog
+        inner_width = width - 4
+        left_width = (inner_width - 3) // 2
+        right_width = inner_width - left_width - 3
+        
+        def fmt_line(text: str = "") -> str:
+            trimmed = text[:inner_width]
+            return f"║ {trimmed.ljust(inner_width)} ║"
+        
+        def fmt_center(text: str) -> str:
+            trimmed = text[:inner_width]
+            return f"║{trimmed.center(inner_width + 2)}║"
+        
+        def fmt_two_col(left: str, right: str) -> str:
+            left_trimmed = left[:left_width]
+            right_trimmed = right[:right_width]
+            content = f"{left_trimmed.ljust(left_width)} │ {right_trimmed.ljust(right_width)}"
+            return f"║ {content} ║"
+        
+        lines = []
+        lines.append("╔" + "═" * (inner_width + 2) + "╗")
+        lines.append(fmt_center("SHIP STATUS"))
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("VESSEL IDENTIFICATION"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        ship_name = ship.name
+        ship_class = ship.ship_class
+        sx, sy, sz = ship.coordinates
+        
+        identity_data = [
+            (f"Name: {ship_name}", f"Class: {ship_class}"),
+            (f"Location: ({sx}, {sy}, {sz})", f"Scan Range: {ship.scan_range}"),
+        ]
+        
+        for left, right in identity_data:
+            lines.append(fmt_two_col(left, right))
+        
+        # Resources
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("RESOURCES"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        fuel_pct = (ship.fuel / ship.max_fuel * 100) if ship.max_fuel > 0 else 0
+        fuel_bar_width = 30
+        fuel_filled = int(fuel_bar_width * fuel_pct / 100)
+        fuel_bar = "█" * fuel_filled + "░" * (fuel_bar_width - fuel_filled)
+        
+        lines.append(fmt_two_col(
+            f"Fuel: {ship.fuel}/{ship.max_fuel} ({fuel_pct:.1f}%)",
+            f"Range: {ship.jump_range} units"
+        ))
+        lines.append(fmt_line(f"  [{fuel_bar}]"))
+        lines.append(fmt_line())
+        
+        cargo_used = sum(ship.cargo.values()) if ship.cargo else 0
+        cargo_pct = (cargo_used / ship.max_cargo * 100) if ship.max_cargo > 0 else 0
+        cargo_bar_width = 30
+        cargo_filled = int(cargo_bar_width * cargo_pct / 100)
+        cargo_bar = "█" * cargo_filled + "░" * (cargo_bar_width - cargo_filled)
+        
+        lines.append(fmt_two_col(
+            f"Cargo: {cargo_used}/{ship.max_cargo} units ({cargo_pct:.1f}%)",
+            f"Items: {len(ship.cargo)} types"
+        ))
+        lines.append(fmt_line(f"  [{cargo_bar}]"))
+        
+        if ship.cargo:
+            lines.append(fmt_line())
+            lines.append(fmt_line("Cargo Manifest:"))
+            for item, qty in list(ship.cargo.items())[:10]:
+                lines.append(fmt_line(f"  • {item}: {qty}"))
+            if len(ship.cargo) > 10:
+                lines.append(fmt_line(f"  ... and {len(ship.cargo) - 10} more items"))
+        
+        # Components
+        lines.append(fmt_line())
+        lines.append("╠" + "═" * (inner_width + 2) + "╣")
+        lines.append(fmt_center("SHIP COMPONENTS"))
+        lines.append("╟" + "─" * (inner_width + 2) + "╢")
+        
+        components = getattr(ship, 'components', {})
+        if components:
+            component_order = ['hull', 'engine', 'weapons', 'shields', 'sensors', 'support']
+            for comp_type in component_order:
+                comp_value = components.get(comp_type)
+                if comp_value:
+                    if isinstance(comp_value, list):
+                        lines.append(fmt_line(f"{comp_type.capitalize()}:"))
+                        for item in comp_value:
+                            lines.append(fmt_line(f"  • {item}"))
+                    else:
+                        lines.append(fmt_line(f"{comp_type.capitalize()}: {comp_value}"))
+        else:
+            lines.append(fmt_line("No component data available"))
+        
+        lines.append("")
+        lines.append("╚" + "═" * (inner_width + 2) + "╝")
+        lines.append("")
+        lines.append("[Press O or Close to return to map]".center(width))
+        
+        return "\n".join(lines)
     
     def update_map(self):
         """Render the galaxy map."""
@@ -3212,9 +3368,68 @@ class MapScreen(QDialog):
             self.update_map()
             return
         
+        # Show vessel status using the same screen as the home/overview V shortcut
+        if text == 'v':
+            parent = self.parent()
+            if not parent or not hasattr(parent, 'game'):
+                return
+            
+            # Show vessel status in a dialog instead of closing the map
+            # This way both dialogs can coexist and returning doesn't feel like a new window
+            nav = getattr(parent.game, 'navigation', None)
+            ship = nav.current_ship if nav else None
+            
+            if not ship:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Vessel Status",
+                    "No active ship is currently selected.",
+                )
+                return
+            
+            # Create a simple dialog to show vessel status
+            from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+            vessel_dlg = QDialog(self)
+            vessel_dlg.setWindowTitle("Vessel Status")
+            vessel_dlg.resize(800, 600)
+            
+            layout = QVBoxLayout()
+            text_edit = QTextEdit()
+            text_edit.setReadOnly(True)
+            text_edit.setFont(QFont("Menlo", 10))
+            
+            # Render ship status into the text edit
+            # Reuse the render logic from render_ship_status but adapt for dialog
+            nav = getattr(parent.game, 'navigation', None)
+            ship = nav.current_ship if nav else None
+            if ship:
+                # Use the parent's render_ship_status logic but get the text
+                # We'll create a temporary method to get the text
+                status_text = self._get_ship_status_text(parent.game, ship)
+                text_edit.setPlainText(status_text)
+            
+            layout.addWidget(text_edit)
+            
+            close_btn = QPushButton("Close (O)")
+            close_btn.clicked.connect(vessel_dlg.accept)
+            layout.addWidget(close_btn)
+            
+            vessel_dlg.setLayout(layout)
+            
+            # Handle O key to close
+            def key_handler(event):
+                if event.text().upper() == 'O' or event.key() == Qt.Key.Key_Escape:
+                    vessel_dlg.accept()
+                else:
+                    QDialog.keyPressEvent(vessel_dlg, event)
+            vessel_dlg.keyPressEvent = key_handler
+            
+            vessel_dlg.exec()
+            return
+        
         # Show news
         if text == 'n':
-            from news_system import display_news
             # Open news dialog
             msg = QMessageBox(self)
             msg.setWindowTitle("Galactic News")
@@ -3946,7 +4161,7 @@ class SystemDialog(QDialog):
                     (
                         num,
                         f"Shipyard ({name})",
-                        lambda s=station: self.do_shipyard(s),
+                        lambda s=station: self.do_shipyard_station(s),
                         "Build or upgrade ships",
                     )
                 )
@@ -3982,6 +4197,24 @@ class SystemDialog(QDialog):
 
         # Bodies-based actions
         bodies = self.system.get("celestial_bodies", [])
+        
+        # Planet shipyards
+        planets_with_shipyards = [
+            b for b in bodies 
+            if b.get("object_type") == "Planet" and b.get("shipyard")
+        ]
+        for planet in planets_with_shipyards:
+            planet_name = planet.get("name", "Planet")
+            self.available_actions.append(
+                (
+                    num,
+                    f"Shipyard ({planet_name})",
+                    lambda p=planet: self.do_shipyard_planet(p),
+                    f"Access shipyard on {planet_name}",
+                )
+            )
+            num += 1
+        
         habitable_planets = [
             b
             for b in bodies
@@ -4269,44 +4502,41 @@ class SystemDialog(QDialog):
         return True
 
     def do_shipyard(self, station: dict) -> None:
-        """Summarize shipyard capabilities and tie into upgrade system.
-
-        This is a light-weight analogue to the Textual `ShipyardScreen`.
-        """
-        station_name = station.get("name", "Unknown Station")
-
-        if not hasattr(self.game, "upgrade_system") or self.game.upgrade_system is None:
-            self.status_label.setText("Shipyard unavailable: upgrade system not initialized.")
-            return
-
+        """Open shipyard dialog for a station."""
+        self.do_shipyard_station(station)
+    
+    def do_shipyard_station(self, station: dict) -> None:
+        """Open shipyard dialog for a station."""
         nav = getattr(self.game, "navigation", None)
         ship = nav.current_ship if nav else None
         if ship is None:
             self.status_label.setText("No active ship to refit at the shipyard.")
             return
-
-        lines: List[str] = []
-        lines.append("╔" + "═" * 78 + "╗")
-        lines.append(f"║ SHIPYARD: {station_name[:65]:<65} ║")
-        lines.append("╠" + "═" * 78 + "╣")
-        lines.append(f"║ Current Ship: {ship.name[:60]:<60} ║")
-        lines.append(f"║ Class: {getattr(ship, 'ship_class', 'Unknown')[:60]:<60} ║")
-        lines.append("╟" + "─" * 78 + "╢")
-        lines.append("║ Detailed hull/upgrade UI is available in the CLI.   ║")
-        lines.append("║ Use 'Ship Builder' and 'Ship Upgrades' menus there. ║")
-        lines.append("╚" + "═" * 78 + "╝")
-
-        full_text = self.display.toPlainText()
-        parts = full_text.split("AVAILABLE ACTIONS:")
-        if len(parts) >= 2:
-            head = parts[0].rstrip()
-            tail = "AVAILABLE ACTIONS:" + parts[1]
-            combined = head + "\n\n" + "\n".join(lines) + "\n\n" + tail
-            self.display.setPlainText(combined)
-        else:
-            self.display.appendPlainText("\n" + "\n".join(lines))
-
-        self.status_label.setText(f"Shipyard at {station_name}: summary shown.")
+        
+        # Create a planet-like dict for the station
+        planet_dict = {
+            "name": station.get("name", "Station"),
+            "object_type": "Planet",
+            "shipyard": True
+        }
+        
+        dlg = ShipyardDialog(self.game, planet_dict, self)
+        dlg.exec()
+        self.status_label.setText("Shipyard visit complete.")
+        return True
+    
+    def do_shipyard_planet(self, planet: dict) -> None:
+        """Open shipyard dialog for a planet."""
+        nav = getattr(self.game, "navigation", None)
+        ship = nav.current_ship if nav else None
+        if ship is None:
+            self.status_label.setText("No active ship to refit at the shipyard.")
+            return
+        
+        dlg = ShipyardDialog(self.game, planet, self)
+        dlg.exec()
+        self.status_label.setText("Shipyard visit complete.")
+        return True
 
     def do_station_market(self, station: dict) -> None:
         # Placeholder hook for enhanced station markets
@@ -4398,6 +4628,264 @@ class SystemDialog(QDialog):
         self.status_label.setText(
             f"Ship repaired to full integrity for {repair_cost} credits."
         )
+
+# ---------------------------------------------------------------------------
+# Shipyard Dialog
+# ---------------------------------------------------------------------------
+
+
+class ShipyardDialog(QDialog):
+    """Dialog for managing ship components at a shipyard."""
+    
+    def __init__(self, game, planet, parent=None):
+        super().__init__(parent)
+        self.game = game
+        self.planet = planet
+        self.setWindowTitle(f"Shipyard - {planet.get('name', 'Unknown Planet')}")
+        
+        nav = getattr(game, 'navigation', None)
+        self.ship = nav.current_ship if nav else None
+        
+        self.player_faction = getattr(game, 'character_faction', None)
+        self.current_category = 'hulls'
+        
+        self.init_ui()
+        self.update_display()
+    
+    def init_ui(self):
+        layout = QVBoxLayout()
+        
+        # Category selection buttons
+        category_layout = QHBoxLayout()
+        categories = ['hulls', 'engines', 'weapons', 'shields', 'sensors', 'support']
+        self.category_buttons = {}
+        for cat in categories:
+            btn = QPushButton(cat.capitalize())
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked, c=cat: self.select_category(c))
+            self.category_buttons[cat] = btn
+            category_layout.addWidget(btn)
+        self.category_buttons['hulls'].setChecked(True)
+        layout.addLayout(category_layout)
+        
+        # Main display area
+        self.display = QPlainTextEdit()
+        self.display.setReadOnly(True)
+        self.display.setFont(QFont("Menlo", 10))
+        palette = self.display.palette()
+        palette.setColor(QPalette.ColorRole.Base, QColor("#000000"))
+        palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
+        self.display.setPalette(palette)
+        layout.addWidget(self.display)
+        
+        # Status and instructions
+        self.status_label = QLabel("[I: Install] [R: Remove] [C: Change Category] [Q/ESC: Close]")
+        self.status_label.setStyleSheet("color: #808080; padding: 5px;")
+        layout.addWidget(self.status_label)
+        
+        self.setLayout(layout)
+        self.resize(1000, 700)
+        self.display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    
+    def select_category(self, category):
+        self.current_category = category
+        for btn in self.category_buttons.values():
+            btn.setChecked(False)
+        self.category_buttons[category].setChecked(True)
+        self.update_display()
+    
+    def update_display(self):
+        if not self.ship:
+            self.display.setPlainText("No active ship.")
+            return
+        
+        lines = []
+        width = 100
+        
+        # Header
+        lines.append("═" * width)
+        lines.append(f" SHIPYARD - {self.planet.get('name', 'Unknown')} ".center(width))
+        lines.append("═" * width)
+        lines.append("")
+        
+        # Current ship info
+        lines.append(f"Current Ship: {self.ship.name}")
+        lines.append(f"Class: {getattr(self.ship, 'ship_class', 'Unknown')}")
+        lines.append(f"Credits: {getattr(self.game, 'credits', 0):,}")
+        lines.append("")
+        lines.append("─" * width)
+        lines.append("")
+        
+        # Current components
+        lines.append("CURRENT CONFIGURATION:")
+        lines.append("─" * width)
+        components = getattr(self.ship, 'components', {})
+        if components:
+            try:
+                from ship_builder import COMPONENT_CATEGORY_ALIASES
+            except ImportError:
+                COMPONENT_CATEGORY_ALIASES = {}
+            
+            component_order = ['hull', 'engine', 'weapons', 'shields', 'sensors', 'support']
+            for comp_type in component_order:
+                comp_value = components.get(comp_type)
+                if comp_value:
+                    if isinstance(comp_value, list):
+                        lines.append(f"{comp_type.capitalize()}: {', '.join(comp_value)}")
+                    else:
+                        lines.append(f"{comp_type.capitalize()}: {comp_value}")
+                else:
+                    lines.append(f"{comp_type.capitalize()}: None")
+        else:
+            lines.append("No components installed")
+        
+        lines.append("")
+        lines.append("─" * width)
+        lines.append("")
+        
+        # Available components for current category
+        lines.append(f"AVAILABLE {self.current_category.upper()}:")
+        lines.append("─" * width)
+        
+        try:
+            from ship_builder import get_available_components
+            available = get_available_components(self.current_category, self.ship, self.player_faction)
+            
+            if not available:
+                lines.append("No components available in this category.")
+            else:
+                # Get current component for this category
+                try:
+                    from ship_builder import COMPONENT_CATEGORY_ALIASES
+                    category_key = COMPONENT_CATEGORY_ALIASES.get(self.current_category, self.current_category)
+                    current_comp = components.get(category_key)
+                except ImportError:
+                    category_key = self.current_category
+                    current_comp = components.get(category_key)
+                
+                num = 1
+                for comp_name, comp_data in available.items():
+                    cost = comp_data.get("cost", 0)
+                    failure = comp_data.get("failure_chance", 0.0)
+                    faction_lock = comp_data.get("faction_lock")
+                    
+                    # Check if installed
+                    is_installed = False
+                    if isinstance(current_comp, list):
+                        is_installed = comp_name in current_comp
+                    elif current_comp == comp_name:
+                        is_installed = True
+                    
+                    status = "[INSTALLED]" if is_installed else ""
+                    faction_str = f" [{faction_lock}]" if faction_lock else ""
+                    lines.append(f"[{num}] {comp_name}{faction_str} - {cost:,} cr [{(failure*100):.1f}% fail] {status}")
+                    num += 1
+        except ImportError as e:
+            lines.append(f"Error loading components: {e}")
+        
+        lines.append("")
+        lines.append("─" * width)
+        lines.append("")
+        lines.append("Press number keys to select component, then I to install or R to remove")
+        
+        self.display.setPlainText("\n".join(lines))
+    
+    def keyPressEvent(self, event):
+        key = event.key()
+        text = event.text().lower()
+        
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Q):
+            self.accept()
+            return
+        
+        # Category switching
+        if text == 'c':
+            # Cycle through categories
+            categories = ['hulls', 'engines', 'weapons', 'shields', 'sensors', 'support']
+            idx = categories.index(self.current_category)
+            next_idx = (idx + 1) % len(categories)
+            self.select_category(categories[next_idx])
+            return
+        
+        # Install/Remove
+        if text == 'i' or text == 'r':
+            # Get selected component number from status (simplified - in real UI would track selection)
+            self.status_label.setText("Select component number first, then press I or R")
+            return
+        
+        # Number keys for component selection
+        if text.isdigit():
+            num = int(text)
+            self.install_or_remove_component(num, False)  # Default to install
+            return
+        
+        super().keyPressEvent(event)
+    
+    def install_or_remove_component(self, component_num: int, remove: bool = False):
+        try:
+            from ship_builder import get_available_components, install_component, remove_component
+        except ImportError:
+            self.status_label.setText("Shipyard system unavailable.")
+            return
+        
+        available = get_available_components(self.current_category, self.ship, self.player_faction)
+        if not available:
+            self.status_label.setText("No components available.")
+            return
+        
+        comp_list = list(available.items())
+        if component_num < 1 or component_num > len(comp_list):
+            self.status_label.setText(f"Invalid component number. Select 1-{len(comp_list)}")
+            return
+        
+        comp_name = comp_list[component_num - 1][0]
+        
+        # Check if already installed
+        try:
+            from ship_builder import COMPONENT_CATEGORY_ALIASES
+            category_key = COMPONENT_CATEGORY_ALIASES.get(self.current_category, self.current_category)
+        except ImportError:
+            category_key = self.current_category
+        
+        components = getattr(self.ship, 'components', {})
+        current_comp = components.get(category_key)
+        
+        is_installed = False
+        if isinstance(current_comp, list):
+            is_installed = comp_name in current_comp
+        elif current_comp == comp_name:
+            is_installed = True
+        
+        if remove:
+            if not is_installed:
+                self.status_label.setText(f"{comp_name} is not installed.")
+                return
+            success, message = remove_component(self.ship, self.current_category, comp_name)
+        else:
+            if is_installed:
+                self.status_label.setText(f"{comp_name} is already installed.")
+                return
+            
+            # Check if we can install
+            comp_data = available[comp_name]
+            cost = comp_data.get("cost", 0)
+            credits = getattr(self.game, 'credits', 0)
+            
+            if credits < cost:
+                self.status_label.setText(f"Insufficient credits. Need {cost:,} cr, have {credits:,} cr.")
+                return
+            
+            success, message = install_component(self.ship, self.current_category, comp_name, self.player_faction)
+            if success:
+                # Deduct cost
+                self.game.credits -= cost
+                message += f" Cost: {cost:,} cr. Remaining: {self.game.credits:,} cr."
+        
+        self.status_label.setText(message)
+        if success:
+            self.update_display()
+
 
 # ---------------------------------------------------------------------------
 # Application entry point

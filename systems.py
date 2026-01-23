@@ -697,7 +697,8 @@ class SystemRegistry:
                     "population": planet_def.get('population', 0),
                     "resources": planet_info['resources'],
                     "notes": planet_def.get('notes', ''),
-                    "controlling_faction": data.get('controlling_faction')
+                    "controlling_faction": data.get('controlling_faction'),
+                    "shipyard": True  # Every planet has a shipyard
                 }
                 
                 # Add moons if specified

@@ -1344,6 +1344,243 @@ def calculate_ship_stats(components: Mapping[str, object]) -> Dict[str, object]:
     }
 
 
+# -----------------------------------------------------------------------------
+# Shipyard functions for installing/removing components
+# -----------------------------------------------------------------------------
+
+
+def get_available_components(category: str, ship=None, player_faction: Optional[str] = None) -> Dict[str, Mapping[str, object]]:
+    """
+    Get available components for a category, optionally filtered by faction locks.
+    
+    Parameters
+    ----------
+    category : str
+        Component category (hulls, engines, weapons, shields, sensors, support)
+    ship : optional
+        Current ship (not used yet, reserved for future compatibility checks)
+    player_faction : optional str
+        Player's faction for filtering faction-locked components
+    
+    Returns
+    -------
+    Dict[str, Mapping[str, object]]
+        Dictionary of component_name -> component_data
+    """
+    catalog = ship_components.get(category, {})
+    if not catalog:
+        return {}
+    
+    # Filter by faction locks if player_faction is provided
+    if player_faction:
+        available = {}
+        for name, data in catalog.items():
+            faction_lock = data.get("faction_lock")
+            if faction_lock is None:
+                # No faction lock, always available
+                available[name] = data
+            elif isinstance(faction_lock, str) and faction_lock == player_faction:
+                # Single faction match
+                available[name] = data
+            elif isinstance(faction_lock, list) and player_faction in faction_lock:
+                # Multiple faction match
+                available[name] = data
+        return available
+    
+    return catalog
+
+
+def can_install_component(ship, category: str, component_name: str, player_faction: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+    """
+    Check if a component can be installed on a ship.
+    
+    Returns
+    -------
+    Tuple[bool, Optional[str]]
+        (can_install, error_message)
+    """
+    catalog = ship_components.get(category, {})
+    if component_name not in catalog:
+        return False, f"Component '{component_name}' not found in category '{category}'"
+    
+    component_data = catalog[component_name]
+    faction_lock = component_data.get("faction_lock")
+    
+    # Check faction lock
+    if faction_lock and player_faction:
+        if isinstance(faction_lock, str):
+            if faction_lock != player_faction:
+                return False, f"Component requires faction: {faction_lock}"
+        elif isinstance(faction_lock, list):
+            if player_faction not in faction_lock:
+                return False, f"Component requires one of factions: {', '.join(faction_lock)}"
+    
+    return True, None
+
+
+def install_component(ship, category: str, component_name: str, player_faction: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Install a component on a ship.
+    
+    Parameters
+    ----------
+    ship
+        Ship object with components dict
+    category : str
+        Component category
+    component_name : str
+        Name of component to install
+    player_faction : optional str
+        Player's faction for validation
+    
+    Returns
+    -------
+    Tuple[bool, str]
+        (success, message)
+    """
+    can_install, error = can_install_component(ship, category, component_name, player_faction)
+    if not can_install:
+        return False, error or "Cannot install component"
+    
+    # Ensure ship has components dict
+    if not hasattr(ship, 'components'):
+        ship.components = {}
+    
+    # Map category to component key
+    category_key = COMPONENT_CATEGORY_ALIASES.get(category, category)
+    
+    # Handle list-based components (weapons, shields, sensors, support)
+    if category_key in ['weapons', 'shields', 'sensors', 'support']:
+        if category_key not in ship.components:
+            ship.components[category_key] = []
+        if component_name not in ship.components[category_key]:
+            ship.components[category_key].append(component_name)
+    else:
+        # Single component (hull, engine)
+        ship.components[category_key] = component_name
+    
+    # Recalculate ship stats
+    if hasattr(ship, 'calculate_stats_from_components'):
+        ship.calculate_stats_from_components()
+    
+    return True, f"Installed {component_name}"
+
+
+def remove_component(ship, category: str, component_name: str) -> Tuple[bool, str]:
+    """
+    Remove a component from a ship.
+    
+    Parameters
+    ----------
+    ship
+        Ship object with components dict
+    category : str
+        Component category
+    component_name : str
+        Name of component to remove
+    
+    Returns
+    -------
+    Tuple[bool, str]
+        (success, message)
+    """
+    if not hasattr(ship, 'components'):
+        return False, "Ship has no components"
+    
+    category_key = COMPONENT_CATEGORY_ALIASES.get(category, category)
+    
+    # Handle list-based components
+    if category_key in ['weapons', 'shields', 'sensors', 'support']:
+        if category_key in ship.components and isinstance(ship.components[category_key], list):
+            if component_name in ship.components[category_key]:
+                ship.components[category_key].remove(component_name)
+                # Recalculate stats
+                if hasattr(ship, 'calculate_stats_from_components'):
+                    ship.calculate_stats_from_components()
+                return True, f"Removed {component_name}"
+            else:
+                return False, f"Component {component_name} not installed"
+        else:
+            return False, f"No {category_key} components installed"
+    else:
+        # Single component
+        if category_key in ship.components and ship.components[category_key] == component_name:
+            ship.components[category_key] = None
+            # Recalculate stats
+            if hasattr(ship, 'calculate_stats_from_components'):
+                ship.calculate_stats_from_components()
+            return True, f"Removed {component_name}"
+        else:
+            return False, f"Component {component_name} not installed"
+
+
+def calculate_upgrade_cost(ship, new_components: Mapping[str, object], player_faction: Optional[str] = None) -> Tuple[float, Dict[str, float]]:
+    """
+    Calculate the cost to upgrade a ship with new components.
+    
+    Parameters
+    ----------
+    ship
+        Current ship
+    new_components : Mapping[str, object]
+        New component configuration (same format as ship.components)
+    player_faction : optional str
+        Player's faction for validation
+    
+    Returns
+    -------
+    Tuple[float, Dict[str, float]]
+        (total_cost, breakdown_by_category)
+    """
+    if not hasattr(ship, 'components'):
+        current_components = {}
+    else:
+        current_components = ship.components.copy()
+    
+    total_cost = 0.0
+    breakdown = {}
+    
+    # Calculate cost for each category
+    for category in ['hulls', 'engines', 'weapons', 'shields', 'sensors', 'support']:
+        category_key = COMPONENT_CATEGORY_ALIASES.get(category, category)
+        new_value = new_components.get(category_key)
+        current_value = current_components.get(category_key)
+        
+        # Skip if unchanged
+        if new_value == current_value:
+            continue
+        
+        category_cost = 0.0
+        
+        # Handle list-based components
+        if category_key in ['weapons', 'shields', 'sensors', 'support']:
+            new_list = new_value if isinstance(new_value, list) else []
+            current_list = current_value if isinstance(current_value, list) else []
+            
+            # Cost to add new components
+            for comp_name in new_list:
+                if comp_name not in current_list:
+                    catalog = ship_components.get(category, {})
+                    comp_data = catalog.get(comp_name)
+                    if comp_data:
+                        comp_cost = float(comp_data.get("cost", 0.0) or 0.0)
+                        category_cost += comp_cost
+        else:
+            # Single component
+            if new_value and new_value != current_value:
+                catalog = ship_components.get(category, {})
+                comp_data = catalog.get(new_value)
+                if comp_data:
+                    comp_cost = float(comp_data.get("cost", 0.0) or 0.0)
+                    category_cost += comp_cost
+        
+        if category_cost > 0:
+            breakdown[category] = category_cost
+            total_cost += category_cost
+    
+    return total_cost, breakdown
+
+
 __all__ = [
     "ship_components",
     "ship_templates",
@@ -1357,4 +1594,9 @@ __all__ = [
     "aggregate_component_metadata",
     "calculate_power_usage",
     "calculate_ship_stats",
+    "get_available_components",
+    "can_install_component",
+    "install_component",
+    "remove_component",
+    "calculate_upgrade_cost",
 ]

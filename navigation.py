@@ -516,7 +516,8 @@ class Galaxy:
                 "name": f"Planet {i+1}",
                 "subtype": planet_type,
                 "has_atmosphere": random.choice([True, False]),
-                "habitable": planet_type in ["Garden World", "Terrestrial Planet", "Ocean World", "Jungle World"]
+                "habitable": planet_type in ["Garden World", "Terrestrial Planet", "Ocean World", "Jungle World"],
+                "shipyard": True  # Every planet has a shipyard
             }
             bodies.append(planet)
             
