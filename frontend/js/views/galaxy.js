@@ -15,7 +15,8 @@
 
 import { state }              from "../state.js";
 import { getGalaxyMap, getSystem, jumpToCoords,
-         getMarket, buyGoods, sellGoods }        from "../api.js";
+         getMarket, buyGoods, sellGoods,
+         getSystemPresence }                     from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
 import { attachHexInput }     from "../hex/hex-input.js";
@@ -252,8 +253,8 @@ async function showSystemPanel(system) {
   // Reset market data — will be fetched below
   _marketData = null;
 
-  // Render the panel immediately with what we have (no market section yet)
-  content.innerHTML = buildSystemPanelHtml(system, null);
+  // Render the panel immediately with what we have (no presence/market yet)
+  content.innerHTML = buildSystemPanelHtml(system, null, null);
 
   // Wire jump button
   const jumpBtn = content.querySelector(".btn-jump");
@@ -270,14 +271,31 @@ async function showSystemPanel(system) {
     });
   });
 
-  // Fetch market data in the background and inject the trade section when ready
-  try {
-    _marketData = await getMarket(system.name);
+  // Fetch presence and market data concurrently
+  const [presenceResult, marketResult] = await Promise.allSettled([
+    getSystemPresence(system.name),
+    getMarket(system.name),
+  ]);
+
+  // Inject NPC presence section
+  const presence = presenceResult.status === "fulfilled" ? presenceResult.value : null;
+  if (presence) {
+    _renderPresenceSection(content, presence);
+    // Wire TRADE button if market exists
+    if (presence.has_market) {
+      content.querySelector(".btn-open-trade")
+        ?.addEventListener("click", () => _openTradeView(system.name));
+    }
+  } else {
+    content.querySelector(".presence-placeholder")?.remove();
+  }
+
+  // Inject market section
+  if (marketResult.status === "fulfilled") {
+    _marketData = marketResult.value;
     _renderMarketSection(system.name, _marketData);
-  } catch (_err) {
-    // No market at this system — hide the placeholder
-    const placeholder = content.querySelector(".market-placeholder");
-    if (placeholder) placeholder.remove();
+  } else {
+    content.querySelector(".market-placeholder")?.remove();
   }
 }
 
@@ -374,6 +392,9 @@ function buildSystemPanelHtml(system, shipCoords) {
       </div>
       ${planetRows}
 
+      <!-- NPC Presence — injected asynchronously after getSystemPresence() resolves -->
+      <div class="presence-placeholder" style="margin-top:var(--sp-4)"></div>
+
       <!-- Market — injected asynchronously after getMarket() resolves -->
       <div class="market-placeholder" style="margin-top:var(--sp-4)">
         <div class="section-header" style="margin-bottom:var(--sp-2)">Market</div>
@@ -381,6 +402,114 @@ function buildSystemPanelHtml(system, shipCoords) {
       </div>
     </div>
   `;
+}
+
+
+// ---------------------------------------------------------------------------
+// NPC Presence section
+// ---------------------------------------------------------------------------
+
+/**
+ * Populate the .presence-placeholder div with stations, NPC ships, and
+ * a TRADE button (if a market is available at this system).
+ *
+ * @param {HTMLElement} content   - #panel-right-content element
+ * @param {object}      presence  - response from GET /api/system/{name}/presence
+ */
+function _renderPresenceSection(content, presence) {
+  const placeholder = content.querySelector(".presence-placeholder");
+  if (!placeholder) return;
+
+  const { stations = [], npc_ships = [], npc_colonies = [], has_market = false } = presence;
+
+  // Nothing interesting to show
+  if (!stations.length && !npc_ships.length && !npc_colonies.length && !has_market) {
+    placeholder.remove();
+    return;
+  }
+
+  let html = "";
+
+  // Stations
+  if (stations.length) {
+    const rows = stations.map(s => `
+      <div style="padding:var(--sp-2) var(--sp-3);border:1px solid var(--border-dim);
+                  border-radius:2px;margin-bottom:var(--sp-1);background:var(--bg-tertiary)">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--accent-cyan);font-size:var(--font-size-xs);
+                       font-family:var(--font-mono)">${esc(s.name)}</span>
+          <span style="font-size:var(--font-size-xs);color:var(--text-dim)">${esc(s.station_type || s.type || "Station")}</span>
+        </div>
+        ${s.services && s.services.length
+          ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px">${s.services.slice(0,4).join(" · ")}</div>`
+          : ""}
+      </div>
+    `).join("");
+    html += `
+      <div class="section-header" style="margin-bottom:var(--sp-2)">
+        Stations (${stations.length})
+      </div>
+      ${rows}
+    `;
+  }
+
+  // NPC colonies (faction-settled planets not owned by player)
+  if (npc_colonies.length) {
+    const rows = npc_colonies.map(c => `
+      <div style="padding:var(--sp-1) var(--sp-3);border-bottom:1px solid var(--border-dim);
+                  font-size:var(--font-size-xs)">
+        <span style="color:var(--text-primary)">${esc(c.name)}</span>
+        <span style="color:var(--text-dim);margin-left:var(--sp-2)">— ${esc(c.controlling_faction || "Unknown")}</span>
+        ${c.population ? `<span style="color:var(--text-dim);float:right">Pop: ${c.population.toLocaleString()}</span>` : ""}
+      </div>
+    `).join("");
+    html += `
+      <div class="section-header" style="margin-top:var(--sp-3);margin-bottom:var(--sp-2)">
+        NPC Colonies (${npc_colonies.length})
+      </div>
+      <div style="border:1px solid var(--border-dim);border-radius:2px;background:var(--bg-tertiary)">${rows}</div>
+    `;
+  }
+
+  // NPC ships
+  if (npc_ships.length) {
+    const rows = npc_ships.map(s => `
+      <div style="padding:var(--sp-1) var(--sp-3);border-bottom:1px solid var(--border-dim);
+                  font-size:var(--font-size-xs)">
+        <span style="color:var(--text-primary)">${esc(s.ship_name || s.name)}</span>
+        <span style="color:var(--text-dim);margin-left:var(--sp-2)">— ${esc(s.ship_class || s.type || "Unknown class")}</span>
+      </div>
+    `).join("");
+    html += `
+      <div class="section-header" style="margin-top:var(--sp-3);margin-bottom:var(--sp-2)">
+        NPC Ships (${npc_ships.length})
+      </div>
+      <div style="border:1px solid var(--border-dim);border-radius:2px;background:var(--bg-tertiary)">${rows}</div>
+    `;
+  }
+
+  // Trade button
+  if (has_market) {
+    html += `
+      <button class="btn btn--secondary btn-open-trade"
+              style="width:100%;margin-top:var(--sp-3)">
+        ⬡ OPEN MARKET
+      </button>
+    `;
+  }
+
+  placeholder.innerHTML = html;
+  placeholder.classList.remove("presence-placeholder"); // prevent double-inject
+}
+
+
+/**
+ * Switch to the trade view for the given system.
+ * Uses a lazy import of main.js to avoid circular dependency.
+ */
+async function _openTradeView(systemName) {
+  const { switchView } = await import("../main.js");
+  switchView("trade", { systemName });
 }
 
 

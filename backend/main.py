@@ -209,6 +209,21 @@ async def new_game(request: NewGameRequest):
         first_ship = game.owned_ships[0]
         game.navigation.current_ship = _NavShip(first_ship, first_ship)
 
+    # Initialise NPC infrastructure — bots and stations are generated fresh each game.
+    try:
+        from ai_bots import BotManager
+        game.bot_manager = BotManager(game)
+    except Exception as _e:
+        print(f"[4X] Warning: bot_manager init failed: {_e}")
+        game.bot_manager = None
+
+    try:
+        from station_manager import SpaceStationManager
+        game.station_manager = SpaceStationManager(game.navigation.galaxy)
+    except Exception as _e:
+        print(f"[4X] Warning: station_manager init failed: {_e}")
+        game.station_manager = None
+
     return {
         "success": True,
         "message": f"Welcome, {game.player_name}. The galaxy awaits.",
@@ -504,6 +519,84 @@ async def get_system(system_name: str):
         "visited":             True,
         "planets":             planets,
         "market":              market_info,
+    }
+
+
+@app.get("/api/system/{system_name}/presence")
+async def get_system_presence(system_name: str):
+    """
+    Return the NPC presence at a star system: stations, docked NPC ships,
+    and settled (NPC-colonised) planets.  Used by the galaxy panel to display
+    stations and NPCs the player can see on arrival.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    galaxy = game.navigation.galaxy
+
+    # Find the system by name
+    system_data = next(
+        (s for s in galaxy.systems.values() if s.get("name") == system_name),
+        None,
+    )
+    if not system_data:
+        raise HTTPException(status_code=404, detail=f"System '{system_name}' not found.")
+
+    coords = system_data.get("coordinates")
+    faction = system_data.get("controlling_faction") or ""
+
+    # NPC-colonised planets (any planet with a population)
+    npc_colonies = []
+    for planet in system_data.get("planets", []):
+        pop = planet.get("population", 0)
+        if pop and pop > 0:
+            npc_colonies.append({
+                "name":       planet.get("name", "Unknown"),
+                "type":       planet.get("type") or planet.get("subtype", "Planet"),
+                "population": pop,
+                "faction":    faction,
+            })
+
+    # Stations at this system
+    stations = []
+    station_mgr = getattr(game, "station_manager", None)
+    if station_mgr:
+        for station in station_mgr.stations.values():
+            if station.get("system_name") == system_name:
+                stations.append({
+                    "name":        station["name"],
+                    "type":        station["type"],
+                    "services":    station.get("services", []),
+                    "description": station.get("description", ""),
+                })
+
+    # NPC ships docked at this system
+    npc_ships = []
+    bot_mgr = getattr(game, "bot_manager", None)
+    if bot_mgr and coords:
+        for bot in bot_mgr.bots:
+            bot_ship = getattr(bot, "ship", None)
+            if bot_ship and getattr(bot_ship, "coordinates", None) == tuple(coords):
+                npc_ships.append({
+                    "name":      bot.name,
+                    "ship_type": bot.bot_type,
+                    "vessel":    getattr(bot_ship, "name", "Unknown Vessel"),
+                })
+
+    # Whether a tradeable market exists here
+    has_market = False
+    if hasattr(game, "economy") and game.economy:
+        try:
+            has_market = bool(game.economy.get_market_info(system_name))
+        except Exception:
+            pass
+
+    return {
+        "system_name":   system_name,
+        "npc_colonies":  npc_colonies,
+        "stations":      stations,
+        "npc_ships":     npc_ships,
+        "has_market":    has_market,
     }
 
 
@@ -1185,7 +1278,7 @@ async def trade_buy(request: TradeRequest):
     )
     if not success:
         # Refund the action point since the trade failed
-        game.actions_remaining = min(game.actions_remaining + 1, game.max_actions)
+        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(status_code=400, detail=message)
 
     # Return fresh market + player data so the frontend can update immediately
@@ -1221,7 +1314,7 @@ async def trade_sell(request: TradeRequest):
         request.system_name, request.commodity, request.quantity
     )
     if not success:
-        game.actions_remaining = min(game.actions_remaining + 1, game.max_actions)
+        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(status_code=400, detail=message)
 
     info = game.economy.get_market_info(request.system_name)

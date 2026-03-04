@@ -20,6 +20,7 @@ import { colonyView }    from "./views/colony.js";
 import { researchView }  from "./views/research.js";
 import { diplomacyView } from "./views/diplomacy.js";
 import { shipView }      from "./views/ship.js";
+import { tradeView }     from "./views/trade.js";
 
 // ---------------------------------------------------------------------------
 // View registry — maps view name → { mount(), unmount() }
@@ -31,6 +32,7 @@ const VIEWS = {
   ship:      shipView,
   research:  researchView,
   diplomacy: diplomacyView,
+  trade:     tradeView,
 };
 
 /** DOM container for each view */
@@ -41,6 +43,7 @@ const viewEls = {
   ship:      document.getElementById("view-ship"),
   research:  document.getElementById("view-research"),
   diplomacy: document.getElementById("view-diplomacy"),
+  trade:     document.getElementById("view-trade"),
 };
 
 // ---------------------------------------------------------------------------

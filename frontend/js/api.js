@@ -136,6 +136,14 @@ export function getSystem(systemName) {
 }
 
 /**
+ * Fetch NPC presence at a system: stations, docked NPC ships, settled planets.
+ * @param {string} systemName
+ */
+export function getSystemPresence(systemName) {
+  return get(`/api/system/${encodeURIComponent(systemName)}/presence`);
+}
+
+/**
  * Jump the player's ship to a set of galaxy coordinates.
  * @param {number} x
  * @param {number} y
