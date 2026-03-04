@@ -19,6 +19,7 @@ import { galaxyView }    from "./views/galaxy.js";
 import { colonyView }    from "./views/colony.js";
 import { researchView }  from "./views/research.js";
 import { diplomacyView } from "./views/diplomacy.js";
+import { shipView }      from "./views/ship.js";
 
 // ---------------------------------------------------------------------------
 // View registry — maps view name → { mount(), unmount() }
@@ -27,6 +28,7 @@ const VIEWS = {
   setup:     setupView,
   galaxy:    galaxyView,
   colony:    colonyView,
+  ship:      shipView,
   research:  researchView,
   diplomacy: diplomacyView,
 };
@@ -36,6 +38,7 @@ const viewEls = {
   setup:     document.getElementById("view-setup"),
   galaxy:    document.getElementById("view-galaxy"),
   colony:    document.getElementById("view-colony"),
+  ship:      document.getElementById("view-ship"),
   research:  document.getElementById("view-research"),
   diplomacy: document.getElementById("view-diplomacy"),
 };
@@ -253,6 +256,9 @@ function setupKeyboardShortcuts() {
         break;
       case "d":                     // D → diplomacy
         if (state.currentView !== "diplomacy") switchView("diplomacy");
+        break;
+      case "s":                     // S → ship stats
+        if (state.currentView !== "ship") switchView("ship");
         break;
       case "c":                     // C → colony (only if a planet is selected)
         if (state.selectedPlanet) switchView("colony");

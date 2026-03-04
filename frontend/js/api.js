@@ -38,7 +38,10 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    const detail = body?.detail || `HTTP ${response.status}`;
+    let detail = body?.detail || `HTTP ${response.status}`;
+    if (Array.isArray(detail)) {
+      detail = detail.map(e => e.msg || JSON.stringify(e)).join("; ");
+    }
     throw new Error(detail);
   }
 
@@ -147,6 +150,32 @@ export function jumpToCoords(x, y, z) {
  */
 export function getShipStatus() {
   return get("/api/ship/status");
+}
+
+/**
+ * Fetch the full attribute profile grouped by category, plus installed components.
+ */
+export function getShipAttributes() {
+  return get("/api/ship/attributes");
+}
+
+/**
+ * Fetch installed components and all available components per slot.
+ */
+export function getShipComponents() {
+  return get("/api/ship/components");
+}
+
+/**
+ * Install a component on the player's ship.
+ * @param {string} category      - Slot category key (e.g. "hulls", "engines")
+ * @param {string} componentName - Exact component name from the registry
+ */
+export function installShipComponent(category, componentName) {
+  return post("/api/ship/components/install", {
+    category,
+    component_name: componentName,
+  });
 }
 
 

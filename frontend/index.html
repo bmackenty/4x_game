@@ -48,6 +48,7 @@
       <!-- Nav buttons to main views -->
       <nav class="hud__nav" aria-label="View navigation">
         <button class="hud__nav-btn" data-view="galaxy"    title="Galaxy Map (G)">MAP</button>
+        <button class="hud__nav-btn" data-view="ship"      title="Ship Stats (S)">SHIP</button>
         <button class="hud__nav-btn" data-view="research"  title="Research Tree (R)">R&amp;D</button>
         <button class="hud__nav-btn" data-view="diplomacy" title="Faction Diplomacy (D)">DIP</button>
       </nav>
@@ -98,6 +99,14 @@
       -->
       <div id="view-colony" class="view" role="main" aria-label="Colony surface">
         <canvas id="colony-canvas" class="hex-canvas" aria-label="Planet surface canvas"></canvas>
+      </div>
+
+      <!--
+        SHIP STATS VIEW
+        Shows attribute profile by category and component loadout/upgrades.
+      -->
+      <div id="view-ship" class="view" role="main" aria-label="Ship statistics">
+        <div id="ship-container" class="ship-container"></div>
       </div>
 
       <!--

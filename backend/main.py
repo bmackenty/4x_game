@@ -509,9 +509,9 @@ async def get_system(system_name: str):
 
 class JumpRequest(BaseModel):
     """Request body for jumping the player's ship."""
-    target_x: int
-    target_y: int
-    target_z: int
+    target_x: float
+    target_y: float
+    target_z: float
 
 
 @app.post("/api/ship/jump")
@@ -570,6 +570,150 @@ async def get_ship_status():
         "cargo_used":  sum(ship.cargo.values()) if ship.cargo else 0,
         "max_cargo":   ship.max_cargo,
         "cargo":       dict(ship.cargo) if ship.cargo else {},
+    }
+
+
+@app.get("/api/ship/attributes")
+async def get_ship_attributes():
+    """
+    Return the ship's full attribute profile (0–100 per attribute) grouped by
+    category, plus derived legacy stats and the current component loadout.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    from ship_builder import compute_ship_profile
+    from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
+    from crew import calculate_crew_bonuses
+
+    # Compute base profile from installed components
+    profile = compute_ship_profile(getattr(ship, "components", {}) or {})
+
+    # Layer crew bonuses on top
+    if getattr(ship, "crew", None):
+        try:
+            for stat, bonus in calculate_crew_bonuses(ship.crew).items():
+                if stat in profile:
+                    profile[stat] = min(100.0, profile[stat] + bonus)
+        except Exception:
+            pass
+
+    # Group by category for the frontend
+    categories = []
+    for cat in SHIP_ATTRIBUTE_CATEGORIES:
+        attrs = []
+        for attr_id in cat["attributes"]:
+            meta = SHIP_ATTRIBUTE_DEFINITIONS.get(attr_id, {})
+            attrs.append({
+                "id":          attr_id,
+                "name":        meta.get("name", attr_id),
+                "description": meta.get("description", ""),
+                "value":       round(profile.get(attr_id, 30.0), 1),
+            })
+        categories.append({"id": cat["id"], "name": cat["name"], "attributes": attrs})
+
+    return {
+        "ship_name":   ship.name,
+        "ship_class":  ship.ship_class,
+        "fuel":        ship.fuel,
+        "max_fuel":    ship.max_fuel,
+        "jump_range":  ship.jump_range,
+        "max_cargo":   ship.max_cargo,
+        "components":  getattr(ship, "components", {}),
+        "categories":  categories,
+    }
+
+
+@app.get("/api/ship/components")
+async def get_ship_components():
+    """
+    Return the ship's current component loadout plus every component available
+    for each slot (filtered by player faction where relevant).
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    from ship_builder import get_available_components, ship_components, COMPONENT_CATEGORY_LABELS
+
+    player_faction = getattr(game, "player_faction", None)
+    if not player_faction and hasattr(game, "character") and game.character:
+        player_faction = game.character.get("faction")
+
+    slots = {}
+    for slot_key in ("hulls", "engines", "weapons", "shields", "sensors", "support",
+                     "computing", "communications", "crew_modules"):
+        available = get_available_components(slot_key, ship, player_faction)
+        slots[slot_key] = {
+            "label": COMPONENT_CATEGORY_LABELS.get(slot_key, slot_key.title()),
+            "available": [
+                {
+                    "name":         name,
+                    "cost":         int(data.get("cost", 0)),
+                    "faction_lock": data.get("faction_lock"),
+                    "failure_chance": round(float(data.get("failure_chance", 0)) * 100, 1),
+                    "lore":         data.get("lore", ""),
+                }
+                for name, data in available.items()
+            ],
+        }
+
+    return {
+        "installed":  getattr(ship, "components", {}),
+        "slots":      slots,
+    }
+
+
+class InstallComponentRequest(BaseModel):
+    """Request body for installing a component on the player's ship."""
+    category: str
+    component_name: str
+
+
+@app.post("/api/ship/components/install")
+async def install_ship_component(request: InstallComponentRequest):
+    """
+    Replace or add a component on the player's ship.  Recalculates all derived
+    stats after installation.  Does not cost an action point (must be done at a
+    shipyard in the future).
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    from ship_builder import install_component
+
+    player_faction = None
+    if hasattr(game, "character") and game.character:
+        player_faction = game.character.get("faction")
+
+    success, message = install_component(
+        ship, request.category, request.component_name, player_faction
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    # Recompute all derived stats
+    ship.calculate_stats_from_components()
+
+    return {
+        "success":    True,
+        "message":    message,
+        "components": getattr(ship, "components", {}),
+        "fuel":       ship.fuel,
+        "max_fuel":   ship.max_fuel,
+        "jump_range": ship.jump_range,
+        "max_cargo":  ship.max_cargo,
     }
 
 

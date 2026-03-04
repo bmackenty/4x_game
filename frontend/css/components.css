@@ -1318,3 +1318,167 @@
   text-align: center;
 }
 .market-qty-input:focus { outline: none; border-color: var(--accent-teal); }
+
+
+/* ===========================================================================
+   SHIP VIEW  (views/ship.js)
+   =========================================================================== */
+
+.ship-container {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  font-family: var(--font-mono);
+}
+
+.ship-view { max-width: 900px; margin: 0 auto; }
+
+/* Header */
+.ship-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.ship-view__name  { font-size: var(--font-size-lg); color: var(--text-bright); margin: 0; }
+.ship-view__class { font-size: var(--font-size-sm); color: var(--accent-teal); letter-spacing: 0.08em; }
+.ship-view__identity { display: flex; flex-direction: column; gap: 2px; }
+
+/* Quick-stat row */
+.ship-view__quick-stats { display: flex; gap: var(--sp-6); align-items: center; }
+.ship-stat { display: flex; align-items: center; gap: var(--sp-2); }
+.ship-stat__label { font-size: var(--font-size-xs); color: var(--text-dim); letter-spacing: 0.1em; min-width: 36px; }
+.ship-stat__bar-wrap { width: 80px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+.ship-stat__bar  { height: 100%; background: var(--accent-teal); border-radius: 3px; transition: width 0.3s; }
+.ship-stat__value { font-size: var(--font-size-sm); color: var(--text-primary); }
+.ship-stat__value--solo { color: var(--accent-cyan); }
+
+/* Tab switcher */
+.ship-view__tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.ship-tab-btn {
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.ship-tab-btn:hover         { color: var(--text-primary); border-color: var(--accent-teal); }
+.ship-tab-btn--active       { color: var(--accent-teal); border-color: var(--accent-teal); background: rgba(0,212,170,0.07); }
+
+/* Category filter bar */
+.ship-cat-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-4);
+}
+.ship-cat-btn {
+  padding: 3px var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.ship-cat-btn:hover    { color: var(--text-primary); border-color: var(--text-dim); }
+.ship-cat-btn--active  { color: var(--accent-teal); border-color: var(--accent-teal); }
+
+/* Category sections */
+.ship-cat-section { margin-bottom: var(--sp-5); }
+.ship-cat-section__title {
+  font-size: var(--font-size-sm);
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 var(--sp-2);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+/* Attribute rows */
+.ship-attr-list { display: flex; flex-direction: column; gap: 4px; }
+.attr-row {
+  display: grid;
+  grid-template-columns: 220px 1fr 38px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 2px 0;
+  cursor: default;
+}
+.attr-row__name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attr-row__bar-wrap { height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+.attr-row__bar      { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.attr-bar--high     { background: var(--accent-green); }
+.attr-bar--mid      { background: var(--accent-teal); }
+.attr-bar--low      { background: var(--accent-orange); }
+.attr-row__value    { font-size: var(--font-size-sm); color: var(--text-dim); text-align: right; }
+
+/* Components tab */
+.ship-components { display: flex; flex-direction: column; gap: var(--sp-6); }
+.ship-comp-section__title {
+  font-size: var(--font-size-sm);
+  color: var(--accent-teal);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 var(--sp-3);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-dim);
+}
+.ship-slot-section { margin-bottom: var(--sp-4); }
+.ship-slot-section__label {
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 var(--sp-2);
+}
+.comp-list { display: flex; flex-direction: column; gap: 3px; }
+.comp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  gap: var(--sp-3);
+}
+.comp-row--installed { border-color: var(--accent-teal); background: rgba(0,212,170,0.05); }
+.comp-row--active    { border-color: var(--accent-cyan); }
+.comp-row__slot { font-size: var(--font-size-xs); color: var(--text-dim); letter-spacing: 0.1em; min-width: 52px; }
+.comp-row__name { font-size: var(--font-size-sm); color: var(--text-bright); flex: 1; }
+.comp-row__info { display: flex; align-items: center; gap: var(--sp-3); flex: 1; flex-wrap: wrap; }
+.comp-row__cost { font-size: var(--font-size-xs); color: var(--accent-gold); }
+.comp-row__risk { font-size: var(--font-size-xs); color: var(--text-dim); }
+.comp-lock      { font-size: var(--font-size-xs); color: var(--accent-purple); }
+
+/* Small install button */
+.btn--sm {
+  padding: 2px var(--sp-3);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+}
+
+/* Loading / error states */
+.ship__loading { color: var(--text-dim); padding: var(--sp-6); text-align: center; }
+.ship__error   { color: var(--accent-red); padding: var(--sp-6); }
+.ship__empty   { color: var(--text-dim); font-size: var(--font-size-sm); }

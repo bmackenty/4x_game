@@ -532,7 +532,8 @@ async function handleJump(system) {
   if (btn) { btn.disabled = true; btn.textContent = "JUMPING..."; }
 
   try {
-    const result = await jumpToCoords(system.x, system.y, system.z);
+    const [sx, sy, sz] = system.coordinates ?? [system.x, system.y, system.z];
+    const result = await jumpToCoords(sx, sy, sz);
 
     if (result.success) {
       notify("NAV", `Arrived at ${system.name}.  Fuel: ${result.fuel_remaining}`);
