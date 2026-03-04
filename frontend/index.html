@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4X — Chronicles of the Ether</title>
+
+  <!-- Stylesheet load order matters: main (tokens) → layout → components -->
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+
+  <!--
+    TOP HUD BAR
+    Always visible during gameplay; hidden during character creation.
+    Contains: credits, turn counter, action pips, active-research bar, end-turn button.
+  -->
+  <header id="hud" class="hud hud--hidden" aria-label="Game heads-up display">
+
+    <!-- Left cluster: player identity -->
+    <div class="hud__left">
+      <span class="hud__name" id="hud-player-name">—</span>
+      <span class="hud__divider">|</span>
+      <span class="hud__class" id="hud-class">—</span>
+    </div>
+
+    <!-- Centre cluster: credits + turn -->
+    <div class="hud__centre">
+      <span class="hud__credits" id="hud-credits" title="Credits">⬡ —</span>
+      <span class="hud__divider">|</span>
+      <span class="hud__turn" id="hud-turn" title="Current turn">Turn —</span>
+      <!-- Action pips: filled = available, empty = spent -->
+      <span class="hud__actions" id="hud-actions" title="Actions remaining"></span>
+    </div>
+
+    <!-- Right cluster: research progress + navigation buttons + end-turn -->
+    <div class="hud__right">
+      <!-- Active research condensed indicator -->
+      <div class="hud__research" id="hud-research" title="Active research">
+        <span class="hud__research-label" id="hud-research-name">No research</span>
+        <div class="hud__research-bar">
+          <div class="hud__research-fill" id="hud-research-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Nav buttons to main views -->
+      <nav class="hud__nav" aria-label="View navigation">
+        <button class="hud__nav-btn" data-view="galaxy"    title="Galaxy Map (G)">MAP</button>
+        <button class="hud__nav-btn" data-view="research"  title="Research Tree (R)">R&amp;D</button>
+        <button class="hud__nav-btn" data-view="diplomacy" title="Faction Diplomacy (D)">DIP</button>
+      </nav>
+
+      <button class="btn btn--primary btn--end-turn" id="btn-end-turn">
+        END TURN
+      </button>
+    </div>
+
+  </header>
+
+
+  <!--
+    MAIN APP SHELL
+    Three-column layout: left sidebar | main canvas | right info panel.
+    Both side panels are hidden by default and populated dynamically.
+  -->
+  <div id="app-shell" class="app-shell">
+
+    <!-- LEFT SIDEBAR — contextual actions list, faction status, ship info, etc. -->
+    <aside id="panel-left" class="panel panel--left panel--hidden" aria-label="Left panel">
+      <div class="panel__content" id="panel-left-content"></div>
+    </aside>
+
+
+    <!-- MAIN VIEW AREA — one view visible at a time -->
+    <main id="main-view" class="main-view">
+
+      <!--
+        CHARACTER CREATION / SETUP VIEW
+        Shown on first load; replaced by galaxy once a game begins.
+      -->
+      <div id="view-setup" class="view view--active" role="main" aria-label="Character creation"></div>
+
+      <!--
+        GALAXY MAP VIEW
+        An HTML5 Canvas element that renders the hex-grid star map.
+        hex-render.js draws directly into this canvas.
+      -->
+      <div id="view-galaxy" class="view" role="main" aria-label="Galaxy map">
+        <canvas id="galaxy-canvas" class="hex-canvas" aria-label="Galaxy map canvas"></canvas>
+      </div>
+
+      <!--
+        COLONY / PLANET SURFACE VIEW
+        A second canvas for the planet hex grid; toggled when the player
+        selects a colonised planet from the system detail panel.
+      -->
+      <div id="view-colony" class="view" role="main" aria-label="Colony surface">
+        <canvas id="colony-canvas" class="hex-canvas" aria-label="Planet surface canvas"></canvas>
+      </div>
+
+      <!--
+        RESEARCH TREE VIEW
+        SVG-based tech tree; no canvas needed — SVG handles dependency lines.
+      -->
+      <div id="view-research" class="view" role="main" aria-label="Research tree">
+        <div id="research-container" class="research-container"></div>
+      </div>
+
+      <!--
+        FACTION DIPLOMACY VIEW
+        A scrollable list of faction cards with reputation bars.
+      -->
+      <div id="view-diplomacy" class="view" role="main" aria-label="Faction diplomacy">
+        <div id="diplomacy-container" class="diplomacy-container"></div>
+      </div>
+
+    </main>
+
+
+    <!-- RIGHT PANEL — system detail, colony info, improvement picker, etc. -->
+    <aside id="panel-right" class="panel panel--right panel--hidden" aria-label="Right panel">
+      <button class="panel__close-btn" id="panel-right-close" title="Close panel">✕</button>
+      <div class="panel__content" id="panel-right-content"></div>
+    </aside>
+
+  </div><!-- /#app-shell -->
+
+
+  <!--
+    MODAL OVERLAY
+    Reusable dialog for confirmations, improvement pickers, lore details, etc.
+    modal.js populates #modal-title and #modal-body, then makes this visible.
+  -->
+  <div id="modal-overlay" class="modal-overlay modal-overlay--hidden" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modal-title">—</h2>
+        <button class="modal__close" id="modal-close" title="Close">✕</button>
+      </header>
+      <div class="modal__body" id="modal-body"></div>
+      <footer class="modal__footer" id="modal-footer"></footer>
+    </div>
+  </div>
+
+
+  <!--
+    TOAST NOTIFICATION CONTAINER
+    notifications.js appends .toast elements here; they auto-dismiss.
+    Stacks in the bottom-right corner.
+  -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+
+  <!--
+    JavaScript entry point — loaded as an ES6 module so all imports work
+    without a bundler.  main.js bootstraps views and starts the polling loop.
+  -->
+  <script type="module" src="/js/main.js"></script>
+
+</body>
+</html>
