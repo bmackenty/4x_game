@@ -236,6 +236,23 @@ def _compute_indices() -> dict:
                 "Financial Liquidity": financial_liquidity,
             },
         },
+        "inputs": {
+            "Ships owned":              ships,
+            "KIN stat":                 kin,
+            "INT stat":                 int_,
+            "AEF stat":                 aef,
+            "SYN stat":                 syn,
+            "COH stat":                 coh,
+            "Research completed":       n_completed,
+            "Colony minerals/turn":     minerals,
+            "Colony food/turn":         food,
+            "Colony ether/turn":        ether,
+            "Colony research/turn":     research_pts,
+            "Colony credits/turn":      credits_prod,
+            "Colony defense/turn":      defense_pts,
+            "Systems visited":          visited,
+            "Credits": credits,
+        },
     }
 
 
@@ -1238,6 +1255,62 @@ async def get_all_colonies():
         raise HTTPException(status_code=400, detail="No game in progress.")
     return {"colonies": colony_manager.list_colonies()}
 
+
+
+
+@app.get("/api/colony/overview")
+async def get_colony_overview():
+    """
+    Return rich per-colony data plus empire-wide totals for the colony
+    management screen.  Includes improvement breakdown and income split.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    from backend.colony import POPULATION_INCOME_PER_10K
+
+    colonies_out = []
+    for planet_name, colony in colony_manager.colonies.items():
+        prod = colony_manager.calculate_colony_production(planet_name)
+
+        # Count each improvement type across all tiles
+        improvements: dict[str, int] = {}
+        for tile in colony.tiles.values():
+            if tile.improvement:
+                improvements[tile.improvement] = improvements.get(tile.improvement, 0) + 1
+
+        pop_income     = int(colony.population / 10_000 * POPULATION_INCOME_PER_10K)
+        bldg_income    = int(prod.get("credits", 0))
+        total_income   = pop_income + bldg_income
+
+        colonies_out.append({
+            "planet_name":      planet_name,
+            "system_name":      colony.system_name,
+            "planet_type":      colony.planet_type,
+            "population":       colony.population,
+            "founded_turn":     colony.founded_turn,
+            "tile_count":       len(colony.tiles),
+            "improvement_count": sum(1 for t in colony.tiles.values() if t.improvement),
+            "improvements":     improvements,
+            "production":       prod,
+            "income":           total_income,
+            "pop_income":       pop_income,
+            "bldg_income":      bldg_income,
+        })
+
+    all_prod    = colony_manager.calculate_all_production()
+    total_pop   = sum(c["population"]   for c in colonies_out)
+    total_income = sum(c["income"]       for c in colonies_out)
+
+    return {
+        "colonies": colonies_out,
+        "totals": {
+            "colony_count": len(colonies_out),
+            "population":   total_pop,
+            "income":       total_income,
+            "production":   all_prod,
+        },
+    }
 
 @app.get("/api/colony/improvements")
 async def get_improvements_catalogue():

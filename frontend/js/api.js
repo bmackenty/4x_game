@@ -42,7 +42,9 @@ async function request(path, options = {}) {
     if (Array.isArray(detail)) {
       detail = detail.map(e => e.msg || JSON.stringify(e)).join("; ");
     }
-    throw new Error(detail);
+    const apiErr = new Error(detail);
+    apiErr.status = response.status;
+    throw apiErr;
   }
 
   return body;
@@ -196,6 +198,13 @@ export function installShipComponent(category, componentName) {
  */
 export function getAllColonies() {
   return get("/api/colony/all");
+}
+
+/**
+ * Full empire-wide colony overview (enriched data + totals).
+ */
+export function getColonyOverview() {
+  return get("/api/colony/overview");
 }
 
 /**

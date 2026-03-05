@@ -11,12 +11,14 @@
  */
 
 import { state }        from "./state.js";
+import { renderIndices } from "./ui/hud.js";
 import { getGameState, getGameOptions, endTurn } from "./api.js";
 import { setupView }    from "./views/setup.js";
 import { notify }       from "./ui/notifications.js";
 
 import { galaxyView }    from "./views/galaxy.js";
 import { colonyView }    from "./views/colony.js";
+import { coloniesView }   from "./views/colonies.js";
 import { researchView }  from "./views/research.js";
 import { diplomacyView } from "./views/diplomacy.js";
 import { shipView }      from "./views/ship.js";
@@ -29,6 +31,7 @@ const VIEWS = {
   setup:     setupView,
   galaxy:    galaxyView,
   colony:    colonyView,
+  colonies:  coloniesView,
   ship:      shipView,
   research:  researchView,
   diplomacy: diplomacyView,
@@ -40,6 +43,7 @@ const viewEls = {
   setup:     document.getElementById("view-setup"),
   galaxy:    document.getElementById("view-galaxy"),
   colony:    document.getElementById("view-colony"),
+  colonies:  document.getElementById("view-colonies"),
   ship:      document.getElementById("view-ship"),
   research:  document.getElementById("view-research"),
   diplomacy: document.getElementById("view-diplomacy"),
@@ -52,7 +56,7 @@ const viewEls = {
 
 /**
  * Show a view and hide all others.
- * @param {string} viewName - Key in VIEWS: "setup" | "galaxy" | "colony" | "research" | "diplomacy"
+ * @param {string} viewName - Key in VIEWS: "setup" | "galaxy" | "colony" | "colonies" | "research" | "diplomacy"
  * @param {object} [context] - Optional data passed to the view's mount() function
  */
 export async function switchView(viewName, context = {}) {
@@ -177,19 +181,10 @@ function updateHud(gs) {
     if (researchFill) researchFill.style.width = "0%";
   }
 
-  // Composite power indices (SPI / REI / KII / ECI)
+  // Composite power indices (SPI / REI / KII / ECI) — delegated to hud.js
+  // which also wires the click-to-detail-modal handlers
   if (gs.indices) {
-    ["spi", "rei", "kii", "eci"].forEach(key => {
-      setText(`hud-${key}-val`, gs.indices[key] ?? 0);
-
-      // Tooltip shows per-component breakdown
-      const details = (gs.indices.details ?? {})[key] ?? {};
-      const tip = Object.entries(details)
-        .map(([label, v]) => `${label}: ${v}`)
-        .join("\n");
-      const el = document.getElementById(`hud-${key}`);
-      if (el) el.title = tip;
-    });
+    renderIndices(gs.indices);
   }
 }
 
@@ -376,7 +371,10 @@ function setupKeyboardShortcuts() {
         if (state.currentView !== "ship") switchView("ship");
         break;
       case "c":                     // C → colony (only if a planet is selected)
-        if (state.selectedPlanet) switchView("colony");
+        if (state.selectedPlanet) switchView("colony", state.selectedPlanet);
+        break;
+      case "l":                     // L → colonies management
+        switchView("colonies");
         break;
     }
   });

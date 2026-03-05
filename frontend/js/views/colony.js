@@ -606,7 +606,7 @@ async function _doFoundColony() {
  * Render a prompt to found a new colony when no colony exists on the planet.
  */
 function _renderFoundPrompt() {
-    const { planetName, planetType } = _context;
+    const { planetName = "Unknown", planetType } = _context;
 
     // Show the prompt inside the left panel, hide/dim the canvas
     const leftPanel = document.getElementById("colony-left-panel");

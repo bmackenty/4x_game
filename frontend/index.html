@@ -73,6 +73,7 @@
         <button class="hud__nav-btn" data-view="ship"      title="Ship Stats (S)">SHIP</button>
         <button class="hud__nav-btn" data-view="research"  title="Research Tree (R)">R&amp;D</button>
         <button class="hud__nav-btn" data-view="diplomacy" title="Faction Diplomacy (D)">DIP</button>
+        <button class="hud__nav-btn" data-view="colonies"  title="Colony Management (L)">COL</button>
       </nav>
 
       <button class="btn btn--primary btn--end-turn" id="btn-end-turn">
@@ -154,6 +155,12 @@
       <div id="view-trade" class="view" role="main" aria-label="Commodity market">
         <div id="trade-container" class="trade-container"></div>
       </div>
+
+      <!--
+        COLONY MANAGEMENT VIEW
+        Empire-wide overview of all colonies: stats, improvements, income.
+      -->
+      <div id="view-colonies" class="view" role="main" aria-label="Colony management"></div>
 
     </main>
 
