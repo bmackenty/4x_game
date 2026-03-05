@@ -25,6 +25,8 @@ import { notify } from "../ui/notifications.js";
 
 let _systemName = "";
 let _market     = null;   // Last fetched market response
+let _sortKey    = "name"; // Active sort column: "name" | "price" | "supply" | "demand"
+let _sortDir    = "asc";  // "asc" | "desc"
 
 
 // ---------------------------------------------------------------------------
@@ -55,6 +57,8 @@ async function mount(context = {}) {
 function unmount() {
   _market     = null;
   _systemName = "";
+  _sortKey    = "name";
+  _sortDir    = "asc";
 }
 
 
@@ -68,6 +72,21 @@ function render(container) {
   wireEvents(container);
 }
 
+/** Return a sort indicator glyph for the given column header. */
+function _sortGlyph(key) {
+  if (_sortKey !== key) return '<span class="tc-sort-indicator">⇅</span>';
+  return `<span class="tc-sort-indicator tc-sort-indicator--active">${_sortDir === "asc" ? "▲" : "▼"}</span>`;
+}
+
+/** Return commodities sorted by the current _sortKey / _sortDir. */
+function _sorted(commodities) {
+  const dir = _sortDir === "asc" ? 1 : -1;
+  return [...commodities].sort((a, b) => {
+    if (_sortKey === "name") return dir * a.name.localeCompare(b.name);
+    return dir * ((a[_sortKey] ?? 0) - (b[_sortKey] ?? 0));
+  });
+}
+
 function buildHtml() {
   const { system_name, commodities = [], best_buys = [], best_sells = [],
           player_credits = 0, cargo_used = 0 } = _market;
@@ -76,7 +95,7 @@ function buildHtml() {
   const max_cargo  = ship?.max_cargo ?? "?";
   const creditsFmt = player_credits.toLocaleString();
 
-  const rows = commodities.map(c => buildRow(c)).join("");
+  const rows = _sorted(commodities).map(c => buildRow(c)).join("");
 
   const buyDeals = best_buys.slice(0, 6).map(b =>
     `<div class="deal-row">
@@ -119,10 +138,10 @@ function buildHtml() {
         <!-- Commodity table -->
         <div class="trade-table-wrap">
           <div class="trade-table-header">
-            <span class="tc-name">Commodity</span>
-            <span class="tc-price">Price</span>
-            <span class="tc-supply">Supply</span>
-            <span class="tc-demand">Demand</span>
+            <button class="tc-name  tc-sort-btn ${_sortKey==='name'   ? 'tc-sort-btn--active':''}" data-sort="name">Commodity ${_sortGlyph('name')}</button>
+            <button class="tc-price tc-sort-btn ${_sortKey==='price'  ? 'tc-sort-btn--active':''}" data-sort="price">Price ${_sortGlyph('price')}</button>
+            <button class="tc-supply tc-sort-btn ${_sortKey==='supply' ? 'tc-sort-btn--active':''}" data-sort="supply">Supply ${_sortGlyph('supply')}</button>
+            <button class="tc-demand tc-sort-btn ${_sortKey==='demand' ? 'tc-sort-btn--active':''}" data-sort="demand">Demand ${_sortGlyph('demand')}</button>
             <span class="tc-held">In Cargo</span>
             <span class="tc-actions"></span>
           </div>
@@ -193,6 +212,22 @@ function wireEvents(container) {
     ?.addEventListener("click", () => {
       document.querySelector('.hud__nav-btn[data-view="galaxy"]')?.click();
     });
+
+  // Sortable column headers
+  container.querySelectorAll(".tc-sort-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.sort;
+      if (_sortKey === key) {
+        // Same column — flip direction
+        _sortDir = _sortDir === "asc" ? "desc" : "asc";
+      } else {
+        // New column — default to ascending
+        _sortKey = key;
+        _sortDir = "asc";
+      }
+      render(container);
+    });
+  });
 
   // Trade buttons
   container.querySelectorAll(".btn-trade-action").forEach(btn => {

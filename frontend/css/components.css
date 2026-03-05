@@ -1680,6 +1680,29 @@
 .tc-held    { text-align: right; font-size: var(--font-size-xs); color: var(--text-dim); }
 .tc-actions { display: flex; align-items: center; gap: var(--sp-1); justify-content: flex-end; }
 
+/* Sortable column header buttons */
+.tc-sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;           /* match .trade-table-header font-size / letter-spacing */
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: inherit;     /* preserve left/right alignment of each column */
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: color 0.15s;
+}
+.tc-sort-btn:hover           { color: var(--text-primary); }
+.tc-sort-btn--active         { color: var(--accent-teal); }
+
+/* The ⇅ / ▲ / ▼ glyph next to the label */
+.tc-sort-indicator           { font-size: 9px; opacity: 0.4; }
+.tc-sort-indicator--active   { opacity: 1; }
+
 /* Quantity input in trade rows */
 .trade-qty {
   width: 50px;
