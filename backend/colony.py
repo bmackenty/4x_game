@@ -238,7 +238,22 @@ class HexTile:
     terrain: str                        # One of TERRAIN_MODIFIERS keys
     improvement: Optional[str] = None  # One of IMPROVEMENTS keys, or None
     improvement_turn_built: int = 0     # Turn number when improvement was placed
+    improvement_level: int = 0          # 0 = base, 1 = upgraded, 2 = max tier
     is_claimed: bool = True             # False for tiles outside colonised radius
+
+
+# Upgrade cost is this fraction of the base build cost, per level.
+# Level 0→1 costs 60% of base; level 1→2 costs 90% of base.
+_UPGRADE_COST_FRACTIONS = [0.60, 0.90]
+
+# Production multiplier by level: level 0 = 1.0×, level 1 = 1.5×, level 2 = 2.2×
+_UPGRADE_PRODUCTION_MULTIPLIERS = [1.0, 1.5, 2.2]
+
+# Maximum upgrade level (0-indexed, so max = 2 means three tiers total)
+MAX_IMPROVEMENT_LEVEL = 2
+
+# Credits generated per 10,000 colonists each turn — the population tax base.
+POPULATION_INCOME_PER_10K = 75
 
 
 @dataclass
@@ -372,6 +387,49 @@ class ColonyManager:
         summary = ", ".join(f"+{v} {k}" for k, v in prod.items() if v > 0)
         return True, f"Built {improvement_type} on {tile.terrain} tile. Production: {summary}."
 
+    def upgrade_improvement(self, planet_name: str, q: int, r: int) -> tuple[bool, str]:
+        """
+        Upgrade the improvement on a tile to the next production tier.
+
+        Each upgrade costs a fraction of the original build cost and increases
+        production by the tier multiplier (_UPGRADE_PRODUCTION_MULTIPLIERS).
+        Maximum of MAX_IMPROVEMENT_LEVEL upgrades.
+        """
+        if planet_name not in self.colonies:
+            return False, f"No colony on {planet_name}."
+
+        colony = self.colonies[planet_name]
+        tile = colony.tiles.get((q, r))
+        if tile is None:
+            return False, f"Tile ({q}, {r}) does not exist on {planet_name}."
+        if not tile.improvement:
+            return False, "No improvement on that tile to upgrade."
+        if tile.improvement_level >= MAX_IMPROVEMENT_LEVEL:
+            return False, f"{tile.improvement} is already at maximum tier (Tier {MAX_IMPROVEMENT_LEVEL + 1})."
+
+        cost = self.get_upgrade_cost(tile.improvement, tile.improvement_level)
+        if cost == 0:
+            return False, "Cannot determine upgrade cost."
+        if self.game.credits < cost:
+            return False, f"Insufficient credits. Need {cost:,}, have {self.game.credits:,}."
+
+        # Consume an action point
+        ok, msg = self.game.consume_action("colony_build")
+        if not ok:
+            return False, msg
+
+        # Apply the upgrade
+        self.game.credits -= cost
+        tile.improvement_level += 1
+
+        new_level_name = f"Tier {tile.improvement_level + 1}"
+        prod = self.calculate_tile_production(tile)
+        summary = ", ".join(f"+{v} {k}" for k, v in prod.items() if v > 0)
+        return True, (
+            f"{tile.improvement} upgraded to {new_level_name}. "
+            f"New production: {summary}."
+        )
+
     def demolish_improvement(self, planet_name: str, q: int, r: int
                              ) -> tuple[bool, str, int]:
         """
@@ -407,6 +465,7 @@ class ColonyManager:
           * improvement's base_production
           * improvement's terrain_bonus for this specific terrain
           * TERRAIN_MODIFIERS for this terrain (applied to each resource)
+          * upgrade multiplier based on tile.improvement_level
         """
         if not tile.improvement:
             return {}
@@ -415,6 +474,10 @@ class ColonyManager:
         base = dict(improvement["base_production"])
         terrain_mod = TERRAIN_MODIFIERS.get(tile.terrain, {})
         improvement_terrain_bonus = improvement["terrain_bonus"].get(tile.terrain, 1.0)
+
+        # Production scales with upgrade level
+        level = max(0, min(tile.improvement_level, MAX_IMPROVEMENT_LEVEL))
+        upgrade_multiplier = _UPGRADE_PRODUCTION_MULTIPLIERS[level]
 
         production = {}
         for resource, amount in base.items():
@@ -425,9 +488,23 @@ class ColonyManager:
             # Apply global terrain modifier for this resource
             terrain_factor = terrain_mod.get(resource, 1.0)
             adjusted *= terrain_factor
+            # Apply upgrade tier multiplier
+            adjusted *= upgrade_multiplier
             production[resource] = round(adjusted, 2)
 
         return production
+
+    @staticmethod
+    def get_upgrade_cost(improvement_type: str, current_level: int) -> int:
+        """
+        Return the credit cost to upgrade an improvement from current_level to
+        current_level + 1.  Returns 0 if already at max or type is unknown.
+        """
+        if current_level >= MAX_IMPROVEMENT_LEVEL:
+            return 0
+        base_cost = IMPROVEMENTS.get(improvement_type, {}).get("cost", 0)
+        fraction = _UPGRADE_COST_FRACTIONS[current_level]
+        return int(base_cost * fraction)
 
     def calculate_colony_production(self, planet_name: str) -> dict[str, float]:
         """Sum production across all improved tiles for one colony."""
@@ -455,21 +532,44 @@ class ColonyManager:
     # Turn advancement hook
     # -----------------------------------------------------------------------
 
-    def advance_turn(self, turn_events: list) -> None:
+    def advance_turn(self, turn_events: list) -> dict:
         """
         Called by the /api/game/turn/end endpoint after game.end_turn().
-        Adds colony production to the player's resources and appends events
-        to the turn_events list for the notification toast queue.
+
+        Adds colony production + population tax income to the player's
+        resources and appends events to the turn_events list.
+
+        Returns a financial_summary dict used by the GNN end-of-turn report:
+          {
+            "colony_credits":   int,   # credits from buildings
+            "population_income": int,  # credits from population tax
+            "research_pts":     int,
+            "colonies":         [ { "name": str, "income": int, "pop": int } ],
+          }
         """
         production = self.calculate_all_production()
-        if not production:
-            return
 
-        # Apply each resource type to the game
+        # ── Per-colony income details (for the GNN report) ──────────────────
+        colony_details = []
+        total_pop_income = 0
+
+        for planet_name, colony in self.colonies.items():
+            # Population tax: POPULATION_INCOME_PER_10K per 10,000 colonists
+            pop_income = int(colony.population / 10_000 * POPULATION_INCOME_PER_10K)
+            total_pop_income += pop_income
+            self.game.credits += pop_income
+
+            col_prod = self.calculate_colony_production(planet_name)
+            colony_credits = int(col_prod.get("credits", 0))
+            colony_details.append({
+                "name":   planet_name,
+                "income": pop_income + colony_credits,
+                "pop":    colony.population,
+            })
+
+        # ── Building production ──────────────────────────────────────────────
         credits_earned = int(production.get("credits", 0))
         research_pts   = int(production.get("research", 0))
-        food_pts       = int(production.get("food", 0))
-        ether_pts      = int(production.get("ether", 0))
 
         if credits_earned:
             self.game.credits += credits_earned
@@ -477,17 +577,27 @@ class ColonyManager:
         if research_pts and self.game.active_research:
             self.game.research_progress += research_pts
 
-        # Build a brief summary for the event log
+        # ── Event log toast ──────────────────────────────────────────────────
+        total_colony_credits = credits_earned + total_pop_income
         summary_parts = []
+        if total_colony_credits:
+            summary_parts.append(f"+{total_colony_credits:,} credits")
         for resource, amount in production.items():
-            if amount > 0:
+            if resource != "credits" and amount > 0:
                 summary_parts.append(f"+{amount} {resource}")
 
         if summary_parts:
             turn_events.append({
                 "channel": "ECON",
-                "message": f"Colony production: {', '.join(summary_parts)}",
+                "message": f"Colony income: {', '.join(summary_parts)}",
             })
+
+        return {
+            "colony_credits":    credits_earned,
+            "population_income": total_pop_income,
+            "research_pts":      research_pts,
+            "colonies":          colony_details,
+        }
 
     # -----------------------------------------------------------------------
     # Serialisation (for save_game integration)
@@ -505,6 +615,7 @@ class ColonyManager:
                     "terrain": tile.terrain,
                     "improvement": tile.improvement,
                     "improvement_turn_built": tile.improvement_turn_built,
+                    "improvement_level": tile.improvement_level,
                     "is_claimed": tile.is_claimed,
                 }
             result[planet_name] = {
@@ -530,6 +641,7 @@ class ColonyManager:
                     terrain=td["terrain"],
                     improvement=td.get("improvement"),
                     improvement_turn_built=td.get("improvement_turn_built", 0),
+                    improvement_level=td.get("improvement_level", 0),
                     is_claimed=td.get("is_claimed", True),
                 )
             self.colonies[planet_name] = ColonyGrid(
@@ -558,13 +670,20 @@ class ColonyManager:
         tiles_list = []
         for (q, r), tile in colony.tiles.items():
             tile_prod = self.calculate_tile_production(tile)
+            upgrade_cost = (
+                self.get_upgrade_cost(tile.improvement, tile.improvement_level)
+                if tile.improvement else 0
+            )
             tiles_list.append({
-                "q":            q,
-                "r":            r,
-                "terrain":      tile.terrain,
-                "improvement":  tile.improvement,
-                "production":   tile_prod,
-                "is_claimed":   tile.is_claimed,
+                "q":                q,
+                "r":                r,
+                "terrain":          tile.terrain,
+                "improvement":      tile.improvement,
+                "improvement_level": tile.improvement_level,
+                "can_upgrade":      bool(tile.improvement and upgrade_cost > 0),
+                "upgrade_cost":     upgrade_cost,
+                "production":       tile_prod,
+                "is_claimed":       tile.is_claimed,
             })
 
         return {

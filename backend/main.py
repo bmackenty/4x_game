@@ -50,6 +50,7 @@ from research import all_research                              # full research t
 from energies import all_energies                              # 50 energy types
 from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex
 from backend.colony import ColonyManager                       # colony system
+from backend.gnn import generate_gnn_summary                   # end-of-turn broadcast
 
 # ---------------------------------------------------------------------------
 # Singleton instances — one pair per server process, replaced on new game
@@ -118,6 +119,126 @@ class LoadRequest(BaseModel):
 
 
 # ===========================================================================
+# Helper — four composite power indices derived from live game state
+# ===========================================================================
+
+def _compute_indices() -> dict:
+    """
+    Compute the four strategic composite indices from live game data.
+
+    Each index is the integer sum of its named sub-components so the
+    frontend can display both the total and a per-component tooltip.
+
+    SPI  Strategic Power Index
+         Fleet_Strength + Defense_Grid + Strategic_Weapons + Intelligence_Capability
+    REI  Resource Extraction Index
+         Raw_Material_Access + Energy_Production + Logistics_Capacity
+    KII  Knowledge & Innovation Index
+         Research_Output + Education_Level + AI_Capability + Innovation_Rate
+    ECI  Economic Capability Index
+         Industrial_Output + Trade_Volume + Energy_Output + Financial_Liquidity
+    """
+    if not game or not game.character_created:
+        return {}
+
+    stats     = game.character_stats or {}
+    completed = game.completed_research or []
+    ships     = len(game.owned_ships or [])
+    credits   = max(0, game.credits)
+
+    # Character stat shortcuts (base 30; range 30-100)
+    kin = stats.get("KIN", 30)
+    int_ = stats.get("INT", 30)
+    aef  = stats.get("AEF", 30)
+    syn  = stats.get("SYN", 30)
+    coh  = stats.get("COH", 30)
+    n_completed = len(completed)
+
+    # Colony production totals (zero when no colonies exist)
+    prod = {}
+    if colony_manager and colony_manager.colonies:
+        prod = colony_manager.calculate_all_production()
+
+    minerals     = int(prod.get("minerals",  0))
+    food         = int(prod.get("food",      0))
+    ether        = int(prod.get("ether",     0))
+    research_pts = int(prod.get("research",  0))
+    credits_prod = int(prod.get("credits",   0))
+    defense_pts  = int(prod.get("defense",   0))
+
+    # Systems the player has visited — used as a proxy for scouting / logistics
+    try:
+        visited = sum(
+            1 for s in game.navigation.galaxy.systems.values()
+            if s.get("visited")
+        )
+    except Exception:
+        visited = 0
+
+    # ── SPI ──────────────────────────────────────────────────────────────────
+    fleet_strength          = ships * 20 + kin // 4
+    defense_grid            = defense_pts * 20 + kin // 5
+    strategic_weapons       = kin // 3 + n_completed * 2
+    intelligence_capability = int_ // 4 + coh // 6
+
+    spi = fleet_strength + defense_grid + strategic_weapons + intelligence_capability
+
+    # ── REI ──────────────────────────────────────────────────────────────────
+    raw_material_access = minerals * 8 + visited * 2
+    energy_production   = ether * 10 + aef // 5
+    logistics_capacity  = ships * 12 + visited * 3
+
+    rei = raw_material_access + energy_production + logistics_capacity
+
+    # ── KII ──────────────────────────────────────────────────────────────────
+    research_output = research_pts * 8 + int_ // 4
+    education_level = n_completed * 6 + int_ // 3
+    ai_capability   = syn // 3 + aef // 6
+    innovation_rate = syn // 5 + coh // 8
+
+    kii = research_output + education_level + ai_capability + innovation_rate
+
+    # ── ECI ──────────────────────────────────────────────────────────────────
+    industrial_output   = minerals * 4 + food * 3
+    trade_volume        = credits_prod * 10 + credits // 5000
+    energy_output       = ether * 6 + aef // 5
+    financial_liquidity = min(500, credits // 2000)
+
+    eci = industrial_output + trade_volume + energy_output + financial_liquidity
+
+    return {
+        "spi": spi,
+        "rei": rei,
+        "kii": kii,
+        "eci": eci,
+        "details": {
+            "spi": {
+                "Fleet Strength":          fleet_strength,
+                "Defense Grid":            defense_grid,
+                "Strategic Weapons":       strategic_weapons,
+                "Intelligence Capability": intelligence_capability,
+            },
+            "rei": {
+                "Raw Material Access": raw_material_access,
+                "Energy Production":   energy_production,
+                "Logistics Capacity":  logistics_capacity,
+            },
+            "kii": {
+                "Research Output": research_output,
+                "Education Level": education_level,
+                "AI Capability":   ai_capability,
+                "Innovation Rate": innovation_rate,
+            },
+            "eci": {
+                "Industrial Output":   industrial_output,
+                "Trade Volume":        trade_volume,
+                "Energy Output":       energy_output,
+                "Financial Liquidity": financial_liquidity,
+            },
+        },
+    }
+
+
 # Helper — snapshot of current game state (reused in multiple endpoints)
 # ===========================================================================
 
@@ -160,7 +281,8 @@ def _build_state_snapshot() -> dict:
                 else None
             ),
         },
-        "ship": ship_info,
+        "ship":    ship_info,
+        "indices": _compute_indices(),
     }
 
 
@@ -311,9 +433,14 @@ async def end_turn():
     # "pass the turn" action and advance_turn runs the subsystem tick.
     events = game.advance_turn()
 
-    # Apply colony production to the player's resources for this turn.
-    # colony_manager.advance_turn() appends ECON-channel events to the same list.
-    colony_manager.advance_turn(events)
+    # Snapshot credits BEFORE colony income so the ledger can show the delta.
+    credits_before = game.credits
+
+    # Apply colony production + population tax to the player's resources.
+    # Returns a financial_summary dict used by the GNN broadcast.
+    financial_summary = colony_manager.advance_turn(events)
+
+    credits_after = game.credits
 
     # Tick all NPC bots so they move toward their goals each turn.
     bot_mgr = getattr(game, "bot_manager", None)
@@ -323,13 +450,20 @@ async def end_turn():
         except Exception as _e:
             print(f"[4X] Warning: bot update failed: {_e}")
 
+    # Generate the Galactic News Network end-of-turn summary.
+    gnn = generate_gnn_summary(
+        game, colony_manager, events,
+        financial_summary, credits_before, credits_after,
+    )
+
     return {
-        "success": success,
-        "message": end_message,
-        "new_turn": game.current_turn,
-        "events": events,          # list of {"channel": str, "message": str}
-        "game_ended": game.game_ended,
-        "state": _build_state_snapshot(),
+        "success":     success,
+        "message":     end_message,
+        "new_turn":    game.current_turn,
+        "events":      events,          # list of {"channel": str, "message": str}
+        "game_ended":  game.game_ended,
+        "gnn_summary": gnn,             # Galactic News Network broadcast
+        "state":       _build_state_snapshot(),
     }
 
 
@@ -1207,6 +1341,38 @@ async def demolish_improvement(planet_name: str, request: DemolishRequest):
         "success": True,
         "message": message,
         "refund": refund,
+        "colony": colony_manager.get_colony_dict(planet_name),
+        "credits_remaining": game.credits,
+    }
+
+
+class UpgradeRequest(BaseModel):
+    """Request body for upgrading an improvement on a colony tile."""
+    q: int
+    r: int
+
+
+@app.post("/api/colony/{planet_name}/upgrade")
+async def upgrade_improvement(planet_name: str, request: UpgradeRequest):
+    """
+    Upgrade the improvement on a tile to the next production tier.
+
+    Each tier costs a fraction of the original build cost and multiplies
+    output: Tier 2 = 1.5×, Tier 3 = 2.2× base production.
+    Max upgrade level is 2 (Tier 3).
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    success, message = colony_manager.upgrade_improvement(
+        planet_name, request.q, request.r
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    return {
+        "success": True,
+        "message": message,
         "colony": colony_manager.get_colony_dict(planet_name),
         "credits_remaining": game.credits,
     }

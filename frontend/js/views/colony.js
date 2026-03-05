@@ -21,6 +21,7 @@ import {
     foundColony,
     buildImprovement,
     demolishImprovement,
+    upgradeImprovement,
     getImprovementsCatalogue,
 } from "../api.js";
 import { renderColonyMap, PLANET_HEX_SIZE } from "../hex/hex-render.js";
@@ -307,15 +308,29 @@ function _renderTilePanel(tile) {
     let actionHtml = "";
 
     if (tile.improvement) {
-        // Tile is developed — offer demolish
+        // Tile is developed — show tier, offer upgrade (if available) and demolish
+        const tierLabel  = `Tier ${(tile.improvement_level ?? 0) + 1}`;
+        const canUpgrade = tile.can_upgrade;
+        const upgCost    = tile.upgrade_cost ?? 0;
+        const upgBtn = canUpgrade
+            ? `<button id="btn-upgrade-tile" class="btn btn--primary btn--sm">
+                   Upgrade → Tier ${(tile.improvement_level ?? 0) + 2}
+                   <span class="btn-cost">${upgCost.toLocaleString()} cr</span>
+               </button>`
+            : `<span class="tile-max-tier">Max Tier Reached</span>`;
+
         actionHtml = `
             <div class="tile-current-improvement">
                 <span class="tile-improvement-name">${tile.improvement}</span>
+                <span class="tile-tier-badge">${tierLabel}</span>
                 <span class="tile-prod-summary">${prod}</span>
             </div>
-            <button id="btn-demolish-tile" class="btn btn--danger btn--sm">
-                Demolish (50% refund)
-            </button>
+            <div class="tile-action-row">
+                ${upgBtn}
+                <button id="btn-demolish-tile" class="btn btn--danger btn--sm">
+                    Demolish (50% refund)
+                </button>
+            </div>
         `;
     } else {
         // Tile is empty — offer build menu
@@ -335,6 +350,9 @@ function _renderTilePanel(tile) {
     // Wire up buttons
     document.getElementById("btn-build-tile")
         ?.addEventListener("click", () => _showBuildMenu(tile));
+
+    document.getElementById("btn-upgrade-tile")
+        ?.addEventListener("click", () => _doUpgrade(tile));
 
     document.getElementById("btn-demolish-tile")
         ?.addEventListener("click", () => _doDemolish(tile));
@@ -473,6 +491,41 @@ async function _doBuild(tile, improvementType) {
         }
     } catch (err) {
         notify("ERROR", err.message || "Build failed.");
+    }
+}
+
+/**
+ * POST /api/colony/{planet}/upgrade to upgrade the improvement on a tile.
+ *
+ * @param {object} tile - The tile whose improvement will be upgraded.
+ */
+async function _doUpgrade(tile) {
+    const newTier = (tile.improvement_level ?? 0) + 2;
+    const cost    = tile.upgrade_cost ?? 0;
+    const ok = await confirm(
+        "Upgrade Improvement",
+        `Upgrade ${tile.improvement} to Tier ${newTier} for ${cost.toLocaleString()} credits? ` +
+        `Production will increase to ${newTier === 2 ? "1.5×" : "2.2×"} base output.`
+    );
+    if (!ok) return;
+
+    const { planetName } = _context;
+    try {
+        const result = await upgradeImprovement(planetName, tile.q, tile.r);
+        notify("ECON", result.message);
+
+        // Refresh colony data and re-render
+        _colony = result.colony;
+        _requestRedraw();
+        _renderInfoPanel();
+
+        const freshTile = _colony.tiles.find(t => t.q === tile.q && t.r === tile.r);
+        if (freshTile) {
+            _selectedTile = freshTile;
+            _renderTilePanel(freshTile);
+        }
+    } catch (err) {
+        notify("ERROR", err.message || "Upgrade failed.");
     }
 }
 

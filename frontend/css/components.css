@@ -1767,3 +1767,225 @@
 .deal-empty    { color: var(--text-dim); font-size: var(--font-size-xs); margin: 0; }
 .trade-loading { color: var(--text-dim); padding: var(--sp-6); text-align: center; }
 .trade-error   { color: var(--accent-red); padding: var(--sp-6); }
+
+
+/* ===========================================================================
+   COLONY UPGRADES — tier badge + action row
+   =========================================================================== */
+
+/* Compact row of buttons below the improvement name */
+.tile-action-row {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--sp-2);
+}
+
+/* Small badge showing the current upgrade tier */
+.tile-tier-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--accent-teal);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  border-radius: 2px;
+}
+
+/* Muted label when max tier is reached */
+.tile-max-tier {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Cost annotation inside the upgrade button */
+.btn-cost {
+  opacity: 0.75;
+  font-size: 10px;
+  margin-left: 4px;
+  font-family: var(--font-mono);
+}
+
+
+/* ===========================================================================
+   MODAL — wide modifier for GNN broadcast
+   =========================================================================== */
+
+/* The modal box itself lives in layout.css as .modal — extend it here. */
+.modal--wide {
+  max-width: 860px !important;
+  width: 90vw;
+}
+
+
+/* ===========================================================================
+   GALACTIC NEWS NETWORK MODAL
+   =========================================================================== */
+
+/* Outer wrapper for GNN content inside the modal body */
+.gnn-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Broadcast header ── */
+.gnn-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 2px solid var(--accent-teal);
+}
+.gnn-logo {
+  font-size: 2rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-teal);
+  letter-spacing: 0.2em;
+}
+.gnn-tagline {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  flex: 1;
+}
+.gnn-turn {
+  font-size: var(--font-size-xs);
+  color: var(--accent-gold);
+  font-family: var(--font-mono);
+}
+
+/* ── Breaking headline ── */
+.gnn-headline {
+  background: rgba(0, 212, 170, 0.06);
+  border-left: 3px solid var(--accent-teal);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+.gnn-breaking {
+  color: var(--accent-red, #ff6b6b);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.1em;
+  margin-right: var(--sp-2);
+}
+
+/* ── Weather ticker ── */
+.gnn-weather {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  padding: var(--sp-1) 0;
+}
+.gnn-weather-label {
+  color: var(--accent-gold);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-right: var(--sp-1);
+}
+
+/* ── Sections ── */
+.gnn-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.gnn-section-title {
+  font-size: var(--font-size-xs);
+  color: var(--accent-gold);
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--border-dim);
+  padding-bottom: var(--sp-1);
+  margin: 0;
+}
+
+/* ── Ledger table ── */
+.gnn-ledger {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-dim);
+  padding: var(--sp-3);
+  border-radius: 2px;
+}
+.gnn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.gnn-table td {
+  padding: 3px var(--sp-2);
+  color: var(--text-primary);
+}
+.gnn-ledger-val {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.gnn-green  { color: var(--accent-teal); }
+.gnn-gold   { color: var(--accent-gold); }
+.gnn-ledger-total td {
+  border-top: 1px solid var(--border-dim);
+  font-weight: 600;
+  padding-top: var(--sp-2);
+}
+
+/* Colony breakdown (inside <details>) */
+.gnn-colony-detail {
+  margin-top: var(--sp-2);
+  font-size: var(--font-size-xs);
+}
+.gnn-colony-detail summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  list-style: none;
+  padding: 2px 0;
+}
+.gnn-colony-detail summary:hover { color: var(--text-primary); }
+.gnn-colony-name { color: var(--accent-teal); }
+.gnn-colony-pop  { color: var(--text-dim); font-size: 11px; padding: 0 var(--sp-2); }
+
+.gnn-research-line {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.gnn-research-line strong { color: var(--accent-teal); }
+
+/* ── News feed ── */
+.gnn-news-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+}
+.gnn-news-item {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: var(--sp-2);
+  border-left: 2px solid var(--border-dim);
+}
+.gnn-news-item:hover { border-left-color: var(--accent-teal); background: rgba(0,212,170,0.03); }
+
+/* ── Closing sign-off ── */
+.gnn-closing {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  text-align: right;
+  border-top: 1px solid var(--border-dim);
+  padding-top: var(--sp-3);
+}

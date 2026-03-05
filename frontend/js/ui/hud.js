@@ -37,6 +37,39 @@ export function refreshHud() {
     setText("hud-research-name", "No research");
     setStyle("hud-research-fill", "width", "0%");
   }
+
+  // Update the four composite power indices
+  if (gs.indices) {
+    renderIndices(gs.indices);
+  }
+}
+
+
+/**
+ * Render SPI / REI / KII / ECI values and build tooltip strings from the
+ * per-component detail breakdown returned by the backend.
+ *
+ * @param {object} indices - The gs.indices object from the state snapshot.
+ */
+function renderIndices(indices) {
+  const keys = ["spi", "rei", "kii", "eci"];
+
+  keys.forEach(key => {
+    const val     = indices[key] ?? 0;
+    const details = (indices.details ?? {})[key] ?? {};
+
+    // Update the numeric value
+    setText(`hud-${key}-val`, val);
+
+    // Build tooltip: "Component: value\n..."
+    const tip = Object.entries(details)
+      .map(([label, v]) => `${label}: ${v}`)
+      .join("\n");
+
+    // Set the title attribute on the index wrapper span
+    const el = document.getElementById(`hud-${key}`);
+    if (el) el.title = tip;
+  });
 }
 
 

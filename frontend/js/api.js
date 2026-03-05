@@ -246,6 +246,16 @@ export function demolishImprovement(planetName, q, r) {
 }
 
 /**
+ * Upgrade the improvement on a colony tile to the next production tier.
+ * @param {string} planetName
+ * @param {number} q
+ * @param {number} r
+ */
+export function upgradeImprovement(planetName, q, r) {
+  return post(`/api/colony/${encodeURIComponent(planetName)}/upgrade`, { q, r });
+}
+
+/**
  * Fetch the improvement catalogue with unlock status for the player's
  * current research.  Used to populate the build menu in the colony view.
  */

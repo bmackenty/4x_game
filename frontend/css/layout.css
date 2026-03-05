@@ -102,6 +102,71 @@
 .action-pip--full  { background: var(--accent-teal); box-shadow: 0 0 4px var(--accent-teal); }
 .action-pip--empty { background: transparent; }
 
+
+/* ── Composite power indices ──────────────────────────────────────────────── */
+
+/* Row of four index chips in the centre cluster */
+.hud__indices {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Individual index chip: label + value */
+.hud__index {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 1px var(--sp-2);
+  border-radius: 2px;
+  border: 1px solid transparent;
+  cursor: default;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  user-select: none;
+}
+.hud__index:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hud__index-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-family: var(--font-mono);
+  opacity: 0.65;
+  line-height: 1;
+}
+
+.hud__index-val {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  line-height: 1;
+  min-width: 24px;
+  text-align: right;
+}
+
+/* Per-index colour theming */
+.hud__index--spi { border-color: rgba(204, 51, 51, 0.25); }
+.hud__index--spi .hud__index-label { color: var(--accent-red); }
+.hud__index--spi .hud__index-val   { color: var(--accent-red); }
+.hud__index--spi:hover { border-color: rgba(204, 51, 51, 0.55); }
+
+.hud__index--rei { border-color: rgba(0, 212, 170, 0.2); }
+.hud__index--rei .hud__index-label { color: var(--accent-teal); }
+.hud__index--rei .hud__index-val   { color: var(--accent-teal); }
+.hud__index--rei:hover { border-color: rgba(0, 212, 170, 0.5); }
+
+.hud__index--kii { border-color: rgba(170, 102, 204, 0.25); }
+.hud__index--kii .hud__index-label { color: var(--accent-purple); }
+.hud__index--kii .hud__index-val   { color: var(--accent-purple); }
+.hud__index--kii:hover { border-color: rgba(170, 102, 204, 0.55); }
+
+.hud__index--eci { border-color: rgba(212, 168, 0, 0.25); }
+.hud__index--eci .hud__index-label { color: var(--accent-gold); }
+.hud__index--eci .hud__index-val   { color: var(--accent-gold); }
+.hud__index--eci:hover { border-color: rgba(212, 168, 0, 0.55); }
+
+
 /* Right: research bar, nav buttons, end-turn */
 .hud__right {
   display: flex;

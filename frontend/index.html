@@ -26,9 +26,31 @@
       <span class="hud__class" id="hud-class">—</span>
     </div>
 
-    <!-- Centre cluster: credits + turn -->
+    <!-- Centre cluster: credits + indices + turn -->
     <div class="hud__centre">
       <span class="hud__credits" id="hud-credits" title="Credits">⬡ —</span>
+      <span class="hud__divider">|</span>
+
+      <!-- Four composite power indices — populated by hud.js -->
+      <div class="hud__indices" id="hud-indices">
+        <span class="hud__index hud__index--spi" id="hud-spi" title="">
+          <span class="hud__index-label">SPI</span>
+          <span class="hud__index-val" id="hud-spi-val">—</span>
+        </span>
+        <span class="hud__index hud__index--rei" id="hud-rei" title="">
+          <span class="hud__index-label">REI</span>
+          <span class="hud__index-val" id="hud-rei-val">—</span>
+        </span>
+        <span class="hud__index hud__index--kii" id="hud-kii" title="">
+          <span class="hud__index-label">KII</span>
+          <span class="hud__index-val" id="hud-kii-val">—</span>
+        </span>
+        <span class="hud__index hud__index--eci" id="hud-eci" title="">
+          <span class="hud__index-label">ECI</span>
+          <span class="hud__index-val" id="hud-eci-val">—</span>
+        </span>
+      </div>
+
       <span class="hud__divider">|</span>
       <span class="hud__turn" id="hud-turn" title="Current turn">Turn —</span>
       <!-- Action pips: filled = available, empty = spent -->

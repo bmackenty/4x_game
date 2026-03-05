@@ -39,17 +39,24 @@ let _cleanupFns = [];
  * @param {string}   bodyHtml — HTML string rendered inside the modal body.
  * @param {Array}    buttons  — [{label, className, onClick}] for the footer.
  *                              className is added to the button element.
+ * @param {object}   opts     — Optional: { wide: bool } widens the modal box.
  */
-export function showModal(title, bodyHtml, buttons = []) {
-    const overlay = document.getElementById("modal-overlay");
-    const titleEl = document.getElementById("modal-title");
-    const bodyEl  = document.getElementById("modal-body");
-    const footer  = document.getElementById("modal-footer");
+export function showModal(title, bodyHtml, buttons = [], opts = {}) {
+    const overlay  = document.getElementById("modal-overlay");
+    const box      = document.getElementById("modal");
+    const titleEl  = document.getElementById("modal-title");
+    const bodyEl   = document.getElementById("modal-body");
+    const footer   = document.getElementById("modal-footer");
     const closeBtn = document.getElementById("modal-close");
 
     if (!overlay) {
         console.error("[modal] #modal-overlay not found in DOM.");
         return;
+    }
+
+    // Apply/remove the wide modifier class on the modal box
+    if (box) {
+        box.classList.toggle("modal--wide", !!opts.wide);
     }
 
     // Populate content
@@ -103,6 +110,10 @@ export function showModal(title, bodyHtml, buttons = []) {
 export function closeModal() {
     const overlay = document.getElementById("modal-overlay");
     if (overlay) overlay.classList.add("modal-overlay--hidden");
+
+    // Strip the wide modifier so normal modals aren't affected afterwards
+    const box = document.getElementById("modal");
+    if (box) box.classList.remove("modal--wide");
 
     for (const fn of _cleanupFns) fn();
     _cleanupFns = [];

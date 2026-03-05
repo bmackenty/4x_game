@@ -209,13 +209,6 @@ async function handleEndTurn() {
   try {
     const result = await endTurn();
 
-    // Fire a notification toast for each turn event
-    if (result.events && Array.isArray(result.events)) {
-      result.events.forEach(evt => {
-        notify(evt.channel, evt.message);
-      });
-    }
-
     // Refresh HUD immediately without waiting for next poll
     if (result.state) {
       state.gameState = result.state;
@@ -225,6 +218,11 @@ async function handleEndTurn() {
     if (result.game_ended) {
       notify("TURN", "The game has ended. Final score coming in Phase 6.");
     }
+
+    // Show the Galactic News Network end-of-turn broadcast modal
+    if (result.gnn_summary) {
+      _showGnnModal(result.gnn_summary);
+    }
   } catch (err) {
     notify("ERROR", err.message);
   } finally {
@@ -233,6 +231,105 @@ async function handleEndTurn() {
       btn.textContent = "END TURN";
     }
   }
+}
+
+
+/**
+ * Build and display the Galactic News Network modal for the end-of-turn
+ * summary.  Shows a comedic news broadcast plus the income/expense ledger.
+ *
+ * @param {object} gnn - The gnn_summary object from the end-turn API response.
+ */
+function _showGnnModal(gnn) {
+  // ── Income / expense ledger ─────────────────────────────────────────────
+  const ledger = gnn.ledger ?? {};
+
+  const incomeRows = (ledger.income_lines ?? []).map(l =>
+    `<tr><td>${l.label}</td><td class="gnn-ledger-val gnn-green">+${l.value.toLocaleString()} cr</td></tr>`
+  ).join("");
+
+  const colonyRows = (ledger.colony_lines ?? []).map(c =>
+    `<tr>
+       <td class="gnn-colony-name">${c.name}</td>
+       <td class="gnn-colony-pop">${c.pop.toLocaleString()} pop</td>
+       <td class="gnn-ledger-val gnn-green">+${c.income.toLocaleString()} cr</td>
+     </tr>`
+  ).join("");
+
+  const researchLine = ledger.research_pts
+    ? `<p class="gnn-research-line">Research output: <strong>+${ledger.research_pts} pts</strong> applied to active project.</p>`
+    : "";
+
+  const ledgerHtml = (incomeRows || colonyRows) ? `
+    <section class="gnn-section gnn-ledger">
+      <h3 class="gnn-section-title">FINANCIAL REPORT — TURN ${gnn.turn}</h3>
+      <table class="gnn-table">
+        <tbody>
+          ${incomeRows}
+        </tbody>
+        <tfoot>
+          <tr class="gnn-ledger-total">
+            <td>Total colony income</td>
+            <td class="gnn-ledger-val gnn-green">+${(ledger.total_income ?? 0).toLocaleString()} cr</td>
+          </tr>
+          <tr class="gnn-ledger-total">
+            <td>Treasury balance</td>
+            <td class="gnn-ledger-val gnn-gold">${(ledger.credits_after ?? 0).toLocaleString()} cr</td>
+          </tr>
+        </tfoot>
+      </table>
+      ${colonyRows ? `
+        <details class="gnn-colony-detail">
+          <summary>Colony breakdown</summary>
+          <table class="gnn-table"><tbody>${colonyRows}</tbody></table>
+        </details>` : ""}
+      ${researchLine}
+    </section>
+  ` : "";
+
+  // ── News items ────────────────────────────────────────────────────────────
+  const newsHtml = (gnn.news_items ?? []).map(item =>
+    `<p class="gnn-news-item">&#x25B6; ${item}</p>`
+  ).join("");
+
+  // ── Full modal body ───────────────────────────────────────────────────────
+  const body = `
+    <div class="gnn-modal">
+      <div class="gnn-header">
+        <span class="gnn-logo">GNN</span>
+        <span class="gnn-tagline">GALACTIC NEWS NETWORK</span>
+        <span class="gnn-turn">TURN ${gnn.turn} EDITION</span>
+      </div>
+
+      <div class="gnn-headline">
+        <span class="gnn-breaking">BREAKING:</span>
+        ${gnn.headline}
+      </div>
+
+      <div class="gnn-weather">
+        <span class="gnn-weather-label">SPACE WEATHER:</span> ${gnn.weather}
+      </div>
+
+      ${ledgerHtml}
+
+      <section class="gnn-section">
+        <h3 class="gnn-section-title">TODAY'S STORIES</h3>
+        <div class="gnn-news-feed">${newsHtml}</div>
+      </section>
+
+      <p class="gnn-closing">${gnn.closing}</p>
+    </div>
+  `;
+
+  // Use the already-imported modal module via a dynamic import
+  import("./ui/modal.js").then(({ showModal, closeModal }) => {
+    showModal(
+      `GNN — Turn ${gnn.turn} Broadcast`,
+      body,
+      [{ label: "DISMISS BROADCAST", className: "btn--secondary", onClick: () => closeModal() }],
+      { wide: true },
+    );
+  });
 }
 
 
