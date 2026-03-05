@@ -359,24 +359,23 @@ class BotManager:
         self.create_initial_bots()
     
     def create_initial_bots(self):
-        """Create 4-5 initial AI bots"""
+        """Create 4-5 initial AI bots spread randomly across the galaxy."""
         bot_configs = [
             {"name": "Captain Vex", "type": "Trader"},
-            {"name": "Dr. Cosmos", "type": "Researcher"}, 
+            {"name": "Dr. Cosmos", "type": "Researcher"},
             {"name": "Explorer Zara", "type": "Explorer"},
             {"name": "Industrialist Kane", "type": "Industrialist"},
             {"name": "Ambassador Nova", "type": "Diplomat"}
         ]
-        
-        # Get random starting systems for each bot
+
+        # Spread bots across random systems so they don't all cluster at the start.
         galaxy = self.game.navigation.galaxy
         systems = list(galaxy.systems.values())
-        
-        for i, config in enumerate(bot_configs):
-            if i < len(systems):
-                starting_system = systems[i]
-                bot = AIBot(config["name"], config["type"], starting_system, self.game)
-                self.bots.append(bot)
+        starting_systems = random.sample(systems, min(len(bot_configs), len(systems)))
+
+        for config, starting_system in zip(bot_configs, starting_systems):
+            bot = AIBot(config["name"], config["type"], starting_system, self.game)
+            self.bots.append(bot)
     
     def update_all_bots(self):
         """Update all bots - call this periodically"""

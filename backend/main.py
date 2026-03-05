@@ -165,6 +165,25 @@ def _build_state_snapshot() -> dict:
 
 
 # ===========================================================================
+# Helper — bot manager initialisation
+# Called from both /api/game/new and /api/game/load.  BotManager state is not
+# serialised in save files, so it must be rebuilt on every session start.
+# ===========================================================================
+
+def _init_bot_manager(g) -> None:
+    """
+    (Re-)create the BotManager on *g*, placing each NPC bot at a random
+    starting system spread across the galaxy.
+    """
+    try:
+        from ai_bots import BotManager
+        g.bot_manager = BotManager(g)
+    except Exception as _e:
+        print(f"[4X] Warning: bot_manager init failed: {_e}")
+        g.bot_manager = None
+
+
+# ===========================================================================
 # Helper — station manager + economy market registration
 # Called from both /api/game/new and /api/game/load so stations always have
 # tradeable markets regardless of how the session was started.
@@ -253,13 +272,7 @@ async def new_game(request: NewGameRequest):
         game.navigation.current_ship = _NavShip(first_ship, first_ship)
 
     # Initialise NPC infrastructure — bots and stations are generated fresh each game.
-    try:
-        from ai_bots import BotManager
-        game.bot_manager = BotManager(game)
-    except Exception as _e:
-        print(f"[4X] Warning: bot_manager init failed: {_e}")
-        game.bot_manager = None
-
+    _init_bot_manager(game)
     _init_station_manager(game)
 
     return {
@@ -301,6 +314,14 @@ async def end_turn():
     # Apply colony production to the player's resources for this turn.
     # colony_manager.advance_turn() appends ECON-channel events to the same list.
     colony_manager.advance_turn(events)
+
+    # Tick all NPC bots so they move toward their goals each turn.
+    bot_mgr = getattr(game, "bot_manager", None)
+    if bot_mgr:
+        try:
+            bot_mgr.update_all_bots()
+        except Exception as _e:
+            print(f"[4X] Warning: bot update failed: {_e}")
 
     return {
         "success": success,
@@ -355,8 +376,9 @@ async def load_game(request: LoadRequest):
     # Restore colony manager state from the loaded save (or empty if none saved yet).
     colony_manager.deserialize(getattr(game, "colony_state", {}))
 
-    # Recreate station manager + station markets — these are not serialised in the
-    # save file, so they must be rebuilt every time a game is loaded.
+    # Recreate NPC infrastructure — bots and station managers are not serialised
+    # in save files, so they must be rebuilt every time a game is loaded.
+    _init_bot_manager(game)
     _init_station_manager(game)
 
     return {
