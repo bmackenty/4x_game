@@ -176,6 +176,21 @@ function updateHud(gs) {
     const researchFill = document.getElementById("hud-research-fill");
     if (researchFill) researchFill.style.width = "0%";
   }
+
+  // Composite power indices (SPI / REI / KII / ECI)
+  if (gs.indices) {
+    ["spi", "rei", "kii", "eci"].forEach(key => {
+      setText(`hud-${key}-val`, gs.indices[key] ?? 0);
+
+      // Tooltip shows per-component breakdown
+      const details = (gs.indices.details ?? {})[key] ?? {};
+      const tip = Object.entries(details)
+        .map(([label, v]) => `${label}: ${v}`)
+        .join("\n");
+      const el = document.getElementById(`hud-${key}`);
+      if (el) el.title = tip;
+    });
+  }
 }
 
 function setText(id, text) {
