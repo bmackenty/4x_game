@@ -10,7 +10,7 @@
  * Coordinate convention: flat-top hexagons, axial (q, r).
  */
 
-import { axialToPixel } from "./hex-math.js";
+import { axialToPixel, HEX_DIRECTIONS } from "./hex-math.js";
 
 
 // ---------------------------------------------------------------------------
@@ -120,6 +120,108 @@ export function drawHex(ctx, cx, cy, size, fillColor, strokeColor, strokeWidth =
 
 
 // ---------------------------------------------------------------------------
+// Territory rendering helpers (player colony influence zones)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a Set of "q,r" string keys for every hex that falls inside the
+ * player's territory: each colonised system plus its 6 immediate neighbours.
+ * @param {Array} systems - systems array from /api/galaxy/map
+ * @returns {Set<string>}
+ */
+function _buildTerritorySet(systems) {
+  const set = new Set();
+  for (const sys of systems) {
+    if (!sys.has_player_colony) continue;
+    const cq = sys.hex_q, cr = sys.hex_r;
+    // Centre hex
+    set.add(`${cq},${cr}`);
+    // Rings 1 and 2 — standard hex-ring walk (Red Blob Games algorithm):
+    // start `radius` steps in direction 4, then walk all 6 sides.
+    for (const radius of [1, 2]) {
+      let hq = cq + HEX_DIRECTIONS[4].q * radius;
+      let hr = cr + HEX_DIRECTIONS[4].r * radius;
+      for (let side = 0; side < 6; side++) {
+        for (let step = 0; step < radius; step++) {
+          set.add(`${hq},${hr}`);
+          hq += HEX_DIRECTIONS[side].q;
+          hr += HEX_DIRECTIONS[side].r;
+        }
+      }
+    }
+  }
+  return set;
+}
+
+/**
+ * Draw a very subtle teal wash over all territory hexes.
+ * Must be called BEFORE the system hex tiles are drawn so the tiles
+ * render on top and the wash shows only in the negative space.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array}  systems
+ * @param {number} size  - GALAXY_HEX_SIZE
+ */
+function _drawTerritoryFills(ctx, systems, size) {
+  const territory = _buildTerritorySet(systems);
+  if (!territory.size) return;
+
+  ctx.fillStyle = "rgba(0,212,170,0.07)";
+  for (const key of territory) {
+    const [q, r] = key.split(",").map(Number);
+    const { x: cx, y: cy } = axialToPixel(q, r, size);
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 180) * (60 * i);
+      const px = cx + size * Math.cos(angle);
+      const py = cy + size * Math.sin(angle);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * Draw teal border lines on every edge of a territory hex that faces a
+ * non-territory hex.  Call AFTER system tiles so borders sit in the gaps.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array}  systems
+ * @param {number} size
+ */
+function _drawTerritoryBorders(ctx, systems, size) {
+  const territory = _buildTerritorySet(systems);
+  if (!territory.size) return;
+
+  ctx.strokeStyle = "rgba(0,212,170,0.80)";
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = "round";
+
+  for (const key of territory) {
+    const [q, r] = key.split(",").map(Number);
+    const { x: cx, y: cy } = axialToPixel(q, r, size);
+
+    for (let e = 0; e < 6; e++) {
+      // For flat-top hexes rendered in Y-down screen space, edge e (between
+      // corners e and e+1) faces the neighbour in direction (6-e)%6, NOT e.
+      const dir = HEX_DIRECTIONS[(6 - e) % 6];
+      // Skip interior edges (neighbour is also inside territory)
+      if (territory.has(`${q + dir.q},${r + dir.r}`)) continue;
+
+      // Draw the shared edge between corner e and corner (e+1)%6.
+      // Use (size - 0.5) so the line sits in the pixel gap between tiles.
+      const a1 = (Math.PI / 180) * (60 * e);
+      const a2 = (Math.PI / 180) * (60 * (e + 1));
+      const r1 = size - 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
+      ctx.lineTo(cx + r1 * Math.cos(a2), cy + r1 * Math.sin(a2));
+      ctx.stroke();
+    }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Galaxy map rendering
 // ---------------------------------------------------------------------------
 
@@ -151,6 +253,9 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
 
   const size = GALAXY_HEX_SIZE;
 
+  // Territory fills drawn first so hex tiles render on top of the wash
+  _drawTerritoryFills(ctx, systems, size);
+
   for (const sys of systems) {
     const { x: px, y: py } = axialToPixel(sys.hex_q, sys.hex_r, size);
 
@@ -165,12 +270,16 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     // Fog-of-war: unvisited systems are dark with no label
     const visited = sys.visited;
 
-    // Border colour: selected = bright teal, faction-owned = faction dim, default = dark
+    // Border colour: selected = bright teal, colonised = solid teal,
+    //                faction-owned = faction dim, default = dark
     let borderColor = "#1a2a4a";
     let borderWidth = 0.5;
     if (sys.name === selectedSystemName) {
       borderColor = "#00d4aa";
       borderWidth = 1.5;
+    } else if (sys.has_player_colony) {
+      borderColor = "rgba(0,212,170,0.85)";
+      borderWidth = 1.2;
     } else if (sys.controlling_faction) {
       borderColor = factionColor || "#1a3a2a";
     }
@@ -224,7 +333,23 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.textBaseline = "top";
       ctx.fillText(sys.name, px, py + size * 0.55);
     }
+
+    // Colony indicator — small ⌂ icon in the upper-right corner of the hex
+    if (sys.has_player_colony) {
+      const iconSize = Math.max(7, size * 0.42);
+      ctx.fillStyle   = "#00d4aa";
+      ctx.font        = `${iconSize}px "Courier New", monospace`;
+      ctx.textAlign   = "center";
+      ctx.textBaseline = "middle";
+      // Position at ~60% of radius toward the upper-right corner (angle 30°)
+      const iconAngle = (Math.PI / 180) * 30;
+      ctx.fillText("⌂", px + size * 0.60 * Math.cos(iconAngle),
+                       py + size * 0.60 * Math.sin(iconAngle));
+    }
   }
+
+  // Territory borders — drawn after all hex tiles so lines sit in the gaps
+  _drawTerritoryBorders(ctx, systems, size);
 
   // -----------------------------------------------------------------------
   // Deep-space station markers — drawn after systems, before ship

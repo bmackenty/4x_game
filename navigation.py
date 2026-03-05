@@ -356,8 +356,8 @@ class Galaxy:
         
         # Calculate how many systems we already have
         existing_count = len(self.systems)
-        # Only generate 5 additional systems to supplement the predefined ones
-        num_to_generate = 5
+        # Generate 100 additional procedural systems scattered across the galaxy
+        num_to_generate = 100
         
         print(f"Generating {num_to_generate} additional procedural systems...")
         
@@ -368,7 +368,7 @@ class Galaxy:
             "Bellatrix Mining", "Mintaka Research", "Alnilam Depot", "Alnitak Refinery",
             "Proxima Relay", "Wolf 359", "Barnard's Star", "Lalande 21185",
             "Ross 154", "Epsilon Eridani", "61 Cygni", "Groombridge 1618",
-            "DX Cancri", "Gliese 667C", 
+            "DX Cancri", "Gliese 667C",
             "HD 40307g", "Gliese 581g", "Kepler-452b",
             "LHS 1140b", "Ross 128b", "TOI-715b",
             "Zeta Reticuli", "Beta Pictoris", "Fomalhaut", "Epsilon Indi",
@@ -377,7 +377,21 @@ class Galaxy:
             "Gliese 876", "Gliese 436", "Gliese 832", "Gliese 163",
             "Kapteyn's Star", "Luyten's Star", "YZ Ceti", "Lacaille 9352",
             "GJ 1061", "GJ 15 A", "GJ 273", "GJ 433", "GJ 674", "GJ 832",
-            "HD 85512", "HD 40307", "HD 69830", "HD 10180"
+            "HD 85512", "HD 40307", "HD 69830", "HD 10180",
+            # Extended pool for 100-system generation
+            "Acrux Station", "Hadar Crossing", "Mimosa Waypoint", "Avior Reach",
+            "Kappa Velorum", "Lambda Centauri", "Eta Carinae Outpost", "Theta Ophiuchi",
+            "Omicron Eridani", "Nu Lupi", "Xi Scorpii", "Psi Hydrae",
+            "Rho Cassiopeiae", "Iota Orionis", "Chi Cygni", "Phi Serpentis",
+            "Upsilon Librae", "Tau Herculis", "Sigma Aquilae", "Pi Sagittarii",
+            "Omega Centauri Post", "Alpha Lupi", "Beta Corvi", "Gamma Lyrae",
+            "Delta Volantis", "Epsilon Microscopii", "Zeta Sculptoris", "Eta Fornacis",
+            "Theta Columbae", "Iota Pictoris", "Kappa Reticuli", "Lambda Horologii",
+            "Mu Caeli", "Nu Eridani", "Xi Tauri", "Omicron Persei",
+            "Rho Aurigae", "Sigma Geminorum", "Tau Cancri", "Upsilon Leonis",
+            "Phi Virginis", "Chi Bootis", "Psi Coronae", "Omega Draconis",
+            "Alsafi Station", "Ran Outpost", "Sarin Depot", "Ogma Base",
+            "Cervantes Hub", "Copernicus Reach",
         ]
         
         # Remove names already used by predefined systems
@@ -495,7 +509,9 @@ class Galaxy:
                 self.faction_zones[controlling_faction]['systems'].append((x, y, z))
             
             self.systems[(x, y, z)] = system
-    
+
+        print(f"[Galaxy] Total systems after generation: {len(self.systems)} ({existing_count} predefined + {num_to_generate} procedural)")
+
     def generate_celestial_bodies(self, system_type):
         """Generate planets, moons, asteroid belts, and other celestial bodies"""
         bodies = []

@@ -512,6 +512,14 @@ async def get_galaxy_map():
     # Project 3D→2D and resolve hex collisions
     projected = resolve_hex_collisions(raw_systems)
 
+    # Mark systems that have at least one player colony so the renderer can
+    # draw territory overlays without a separate API call.
+    colonized_systems = {
+        c["system_name"] for c in colony_manager.list_colonies()
+    }
+    for sys in projected:
+        sys["has_player_colony"] = sys["name"] in colonized_systems
+
     # Include deep-space stations (system_name == None) for map rendering
     deep_space_stations = []
     station_mgr = getattr(game, "station_manager", None)
