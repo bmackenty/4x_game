@@ -165,6 +165,49 @@ def _build_state_snapshot() -> dict:
 
 
 # ===========================================================================
+# Helper — station manager + economy market registration
+# Called from both /api/game/new and /api/game/load so stations always have
+# tradeable markets regardless of how the session was started.
+# ===========================================================================
+
+def _init_station_manager(g) -> None:
+    """
+    (Re-)create the SpaceStationManager on *g* and register every station as a
+    market in the economy engine.
+
+    economy.generate_market_profile() requires the 'resources' key to be one of
+    five richness levels ('Poor' … 'Abundant').  Previously the station *type*
+    string (e.g. "Trading Post") was passed instead, causing a KeyError that
+    silently swallowed every station market on startup.
+    """
+    import random as _rnd
+    _RICHNESS = ["Poor", "Moderate", "Moderate", "Rich", "Abundant"]
+
+    try:
+        from station_manager import SpaceStationManager
+        g.station_manager = SpaceStationManager(g.navigation.galaxy)
+    except Exception as _e:
+        print(f"[4X] Warning: station_manager init failed: {_e}")
+        g.station_manager = None
+        return
+
+    if not (hasattr(g, "economy") and g.economy):
+        return
+
+    for _st in g.station_manager.stations.values():
+        try:
+            _econ_type = g.station_manager.get_economy_type(_st["type"])
+            g.economy.create_market({
+                "name":       _st["name"],
+                "type":       _econ_type,
+                "population": _rnd.randint(500, 5000),
+                "resources":  _rnd.choice(_RICHNESS),   # must be a richness level
+            })
+        except Exception as _me:
+            print(f"[4X] Warning: station market init failed for {_st['name']}: {_me}")
+
+
+# ===========================================================================
 # Game lifecycle endpoints
 # ===========================================================================
 
@@ -217,28 +260,7 @@ async def new_game(request: NewGameRequest):
         print(f"[4X] Warning: bot_manager init failed: {_e}")
         game.bot_manager = None
 
-    try:
-        from station_manager import SpaceStationManager
-        game.station_manager = SpaceStationManager(game.navigation.galaxy)
-    except Exception as _e:
-        print(f"[4X] Warning: station_manager init failed: {_e}")
-        game.station_manager = None
-
-    # Register a market for every station in the economy so the existing
-    # /api/market/{name} and /api/trade/* endpoints work for station trading.
-    if game.station_manager and hasattr(game, "economy") and game.economy:
-        import random as _random
-        for _station in game.station_manager.stations.values():
-            try:
-                _econ_type = game.station_manager.get_economy_type(_station["type"])
-                game.economy.create_market({
-                    "name":       _station["name"],
-                    "type":       _econ_type,
-                    "population": _random.randint(500, 5000),
-                    "resources":  _station["type"],
-                })
-            except Exception as _me:
-                print(f"[4X] Warning: station market init failed for {_station['name']}: {_me}")
+    _init_station_manager(game)
 
     return {
         "success": True,
@@ -332,6 +354,10 @@ async def load_game(request: LoadRequest):
 
     # Restore colony manager state from the loaded save (or empty if none saved yet).
     colony_manager.deserialize(getattr(game, "colony_state", {}))
+
+    # Recreate station manager + station markets — these are not serialised in the
+    # save file, so they must be rebuilt every time a game is loaded.
+    _init_station_manager(game)
 
     return {
         "success": True,

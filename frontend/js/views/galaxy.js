@@ -339,14 +339,16 @@ async function showStationPanel(station) {
   content.innerHTML = _buildStationPanelHtml(station, null, null);
   _wireStationButtons(content, station, null, null);
 
-  // Fetch station detail + upgrades concurrently
-  const [detailRes, upgradesRes] = await Promise.allSettled([
-    getStation(station.name),
-    getStationUpgrades(station.name),
-  ]);
+  // Fetch station detail first so we know which optional endpoints to call
+  let detail = null;
+  try { detail = await getStation(station.name); } catch (_) { /* detail stays null */ }
 
-  const detail   = detailRes.status   === "fulfilled" ? detailRes.value   : null;
-  const upgrades = upgradesRes.status === "fulfilled" ? upgradesRes.value : null;
+  // Only fetch upgrades if the station actually offers "Ship Upgrades" — avoids a
+  // spurious 400 from the backend for stations that have no upgrade service.
+  let upgrades = null;
+  if (detail?.has_upgrades) {
+    try { upgrades = await getStationUpgrades(station.name); } catch (_) { /* stays null */ }
+  }
 
   // Re-render with full data
   content.innerHTML = _buildStationPanelHtml(station, detail, upgrades);
