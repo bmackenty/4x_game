@@ -224,6 +224,22 @@ async def new_game(request: NewGameRequest):
         print(f"[4X] Warning: station_manager init failed: {_e}")
         game.station_manager = None
 
+    # Register a market for every station in the economy so the existing
+    # /api/market/{name} and /api/trade/* endpoints work for station trading.
+    if game.station_manager and hasattr(game, "economy") and game.economy:
+        import random as _random
+        for _station in game.station_manager.stations.values():
+            try:
+                _econ_type = game.station_manager.get_economy_type(_station["type"])
+                game.economy.create_market({
+                    "name":       _station["name"],
+                    "type":       _econ_type,
+                    "population": _random.randint(500, 5000),
+                    "resources":  _station["type"],
+                })
+            except Exception as _me:
+                print(f"[4X] Warning: station market init failed for {_station['name']}: {_me}")
+
     return {
         "success": True,
         "message": f"Welcome, {game.player_name}. The galaxy awaits.",
@@ -448,7 +464,22 @@ async def get_galaxy_map():
     # Project 3D→2D and resolve hex collisions
     projected = resolve_hex_collisions(raw_systems)
 
-    return {"systems": projected}
+    # Include deep-space stations (system_name == None) for map rendering
+    deep_space_stations = []
+    station_mgr = getattr(game, "station_manager", None)
+    if station_mgr:
+        for st in station_mgr.get_deep_space_stations():
+            deep_space_stations.append({
+                "name":        st["name"],
+                "type":        st["type"],
+                "hex_q":       st["hex_q"],
+                "hex_r":       st["hex_r"],
+                "coordinates": list(st["coordinates"]),
+                "services":    st.get("services", []),
+                "description": st.get("description", ""),
+            })
+
+    return {"systems": projected, "stations": deep_space_stations}
 
 
 @app.get("/api/system/{system_name}")
@@ -597,6 +628,161 @@ async def get_system_presence(system_name: str):
         "stations":      stations,
         "npc_ships":     npc_ships,
         "has_market":    has_market,
+    }
+
+
+# ===========================================================================
+# Space Station endpoints
+# ===========================================================================
+
+@app.get("/api/station/{station_name}")
+async def get_station(station_name: str):
+    """
+    Return full details for a named space station: type, location, services,
+    owner status, and whether a market is available here.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    station_mgr = getattr(game, "station_manager", None)
+    if not station_mgr:
+        raise HTTPException(status_code=503, detail="Station manager unavailable.")
+
+    station = station_mgr.get_station_by_name(station_name)
+    if not station:
+        raise HTTPException(status_code=404, detail=f"Station '{station_name}' not found.")
+
+    has_market = any(s in station.get("services", [])
+                     for s in ("Market", "Ore Processing", "Luxury Goods"))
+    has_upgrades = "Ship Upgrades" in station.get("services", [])
+
+    return {
+        "name":        station["name"],
+        "type":        station["type"],
+        "description": station.get("description", ""),
+        "services":    station.get("services", []),
+        "coordinates": list(station["coordinates"]),
+        "system_name": station.get("system_name"),      # None = deep space
+        "owner":       station.get("owner"),
+        "upgrade_level": station.get("upgrade_level", 1),
+        "has_market":  has_market,
+        "has_upgrades": has_upgrades,
+    }
+
+
+@app.get("/api/station/{station_name}/upgrades")
+async def get_station_upgrades(station_name: str):
+    """
+    Return available ship upgrades at this station.
+    Only stations with 'Ship Upgrades' in their services offer this.
+    Excludes upgrades the player's ship already has installed.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    station_mgr = getattr(game, "station_manager", None)
+    if not station_mgr:
+        raise HTTPException(status_code=503, detail="Station manager unavailable.")
+
+    station = station_mgr.get_station_by_name(station_name)
+    if not station:
+        raise HTTPException(status_code=404, detail=f"Station '{station_name}' not found.")
+
+    if "Ship Upgrades" not in station.get("services", []):
+        raise HTTPException(status_code=400, detail="This station does not offer ship upgrades.")
+
+    from station_manager import ShipUpgradeSystem
+    upgrade_sys = ShipUpgradeSystem()
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    available = upgrade_sys.get_available_upgrades(ship)
+
+    # Flatten for the frontend: list of {category, name, cost, description, effects}
+    items = []
+    for category, upgrades in available.items():
+        for name, data in upgrades.items():
+            effects = {k: v for k, v in data.items() if k not in ("cost", "description")}
+            items.append({
+                "category":    category,
+                "name":        name,
+                "cost":        data.get("cost", 0),
+                "description": data.get("description", ""),
+                "effects":     effects,
+            })
+
+    return {
+        "station_name":    station_name,
+        "player_credits":  game.credits,
+        "upgrades":        items,
+        "installed":       list(getattr(game.navigation.current_ship, "upgrades", {}).keys()),
+    }
+
+
+class StationUpgradeRequest(BaseModel):
+    category:     str
+    upgrade_name: str
+
+
+@app.post("/api/station/{station_name}/upgrade")
+async def buy_station_upgrade(station_name: str, request: StationUpgradeRequest):
+    """
+    Purchase and install a ship upgrade from this station.
+    Deducts credits and applies stat effects to the player's ship immediately.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    station_mgr = getattr(game, "station_manager", None)
+    if not station_mgr:
+        raise HTTPException(status_code=503, detail="Station manager unavailable.")
+
+    station = station_mgr.get_station_by_name(station_name)
+    if not station:
+        raise HTTPException(status_code=404, detail=f"Station '{station_name}' not found.")
+
+    if "Ship Upgrades" not in station.get("services", []):
+        raise HTTPException(status_code=400, detail="This station does not offer ship upgrades.")
+
+    from station_manager import ShipUpgradeSystem
+    upgrade_sys = ShipUpgradeSystem()
+
+    # Validate category + upgrade name
+    cat_upgrades = upgrade_sys.upgrade_categories.get(request.category)
+    if not cat_upgrades:
+        raise HTTPException(status_code=404, detail=f"Unknown upgrade category '{request.category}'.")
+    upgrade_data = cat_upgrades.get(request.upgrade_name)
+    if not upgrade_data:
+        raise HTTPException(status_code=404, detail=f"Unknown upgrade '{request.upgrade_name}'.")
+
+    # Credits check
+    cost = upgrade_data.get("cost", 0)
+    if game.credits < cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient credits. Need {cost:,}, have {game.credits:,}."
+        )
+
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    ok, message = upgrade_sys.install_upgrade(ship, request.upgrade_name, upgrade_data)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+
+    game.credits -= cost
+
+    return {
+        "success":           True,
+        "message":           message,
+        "credits_remaining": game.credits,
+        "fuel":              ship.fuel,
+        "max_fuel":          ship.max_fuel,
+        "jump_range":        ship.jump_range,
+        "max_cargo":         ship.max_cargo,
+        "installed_upgrades": list(getattr(ship, "upgrades", {}).keys()),
     }
 
 
@@ -784,11 +970,25 @@ async def install_ship_component(request: InstallComponentRequest):
     if not ship:
         raise HTTPException(status_code=400, detail="No active ship.")
 
-    from ship_builder import install_component
+    from ship_builder import install_component, ship_components, COMPONENT_CATEGORY_ALIASES
 
     player_faction = None
     if hasattr(game, "character") and game.character:
         player_faction = game.character.get("faction")
+
+    # Resolve category alias and look up component cost before installing
+    resolved_cat = COMPONENT_CATEGORY_ALIASES.get(request.category, request.category)
+    comp_data = (
+        ship_components.get(request.category, {}).get(request.component_name)
+        or ship_components.get(resolved_cat, {}).get(request.component_name)
+    )
+    cost = int((comp_data or {}).get("cost", 0))
+
+    if cost > 0 and game.credits < cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient credits. Need {cost:,} cr, have {game.credits:,} cr."
+        )
 
     success, message = install_component(
         ship, request.category, request.component_name, player_faction
@@ -796,17 +996,22 @@ async def install_ship_component(request: InstallComponentRequest):
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
+    # Deduct credits on success
+    if cost > 0:
+        game.credits -= cost
+
     # Recompute all derived stats
     ship.calculate_stats_from_components()
 
     return {
-        "success":    True,
-        "message":    message,
-        "components": getattr(ship, "components", {}),
-        "fuel":       ship.fuel,
-        "max_fuel":   ship.max_fuel,
-        "jump_range": ship.jump_range,
-        "max_cargo":  ship.max_cargo,
+        "success":           True,
+        "message":           message,
+        "credits_remaining": game.credits,
+        "components":        getattr(ship, "components", {}),
+        "fuel":              ship.fuel,
+        "max_fuel":          ship.max_fuel,
+        "jump_range":        ship.jump_range,
+        "max_cargo":         ship.max_cargo,
     }
 
 

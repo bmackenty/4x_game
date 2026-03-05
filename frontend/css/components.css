@@ -1483,6 +1483,69 @@
 .ship__error   { color: var(--accent-red); padding: var(--sp-6); }
 .ship__empty   { color: var(--text-dim); font-size: var(--font-size-sm); }
 
+/* ASCII ship schematic */
+.ship-schematic {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--accent-teal);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  padding: var(--sp-3) var(--sp-4);
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+  user-select: none;
+}
+
+
+/* ===========================================================================
+   STATION PANEL (right sidebar)
+   =========================================================================== */
+
+.station-service-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: rgba(212,168,0,0.08);
+  border: 1px solid rgba(212,168,0,0.25);
+  color: var(--accent-gold);
+}
+
+.station-upgrades-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.station-upgrade-row {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  background: var(--bg-secondary);
+}
+
+.station-upgrade-row__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+
+.station-upgrade-row__name {
+  font-size: var(--font-size-sm);
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+}
+
+.station-upgrade-row__cost          { font-size: var(--font-size-xs); color: var(--accent-gold); font-family: var(--font-mono); }
+.station-upgrade-row__cost--broke   { color: var(--accent-red); }
+.station-upgrade-row__cat           { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.station-upgrade-row__desc          { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: var(--sp-2); }
+
 
 /* ===========================================================================
    TRADE VIEW

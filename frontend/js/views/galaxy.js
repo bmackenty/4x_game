@@ -16,7 +16,8 @@
 import { state }              from "../state.js";
 import { getGalaxyMap, getSystem, jumpToCoords,
          getMarket, buyGoods, sellGoods,
-         getSystemPresence }                     from "../api.js";
+         getSystemPresence,
+         getStation, getStationUpgrades, buyStationUpgrade } from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
 import { attachHexInput }     from "../hex/hex-input.js";
@@ -82,9 +83,10 @@ let inputControls  = null;   // return value of attachHexInput()
 let rafHandle      = null;   // requestAnimationFrame handle
 let isDirty        = true;   // if true, redraw on next frame
 let systemsData    = [];     // cached from /api/galaxy/map
+let stationsData   = [];     // deep-space stations from /api/galaxy/map
 
 // View transform
-let viewState = { panX: 0, panY: 0, zoom: 1.0, selectedSystemName: null };
+let viewState = { panX: 0, panY: 0, zoom: 1.0, selectedSystemName: null, selectedStationName: null };
 
 /** Cached market data for the currently selected system. */
 let _marketData = null;
@@ -105,12 +107,14 @@ export const galaxyView = {
       try {
         const result = await getGalaxyMap();
         state.galaxyMap = result.systems || [];
+        state.stationsData = result.stations || [];
       } catch (err) {
         notify("ERROR", `Could not load galaxy map: ${err.message}`);
         return;
       }
     }
-    systemsData = state.galaxyMap;
+    systemsData  = state.galaxyMap;
+    stationsData = state.stationsData || [];
 
     // If a system was pre-selected (e.g. returning from colony view), re-apply it
     if (state.selectedSystem) {
@@ -183,7 +187,7 @@ function startRenderLoop(canvas) {
       renderGalaxyMap(
         canvas,
         systemsData,
-        { ...viewState, shipHex },
+        { ...viewState, shipHex, stations: stationsData },
         FACTION_COLORS
       );
     }
@@ -198,12 +202,24 @@ function startRenderLoop(canvas) {
 // ---------------------------------------------------------------------------
 
 async function handleHexClick({ q, r }) {
+  // Check for a deep-space station first (they're their own hex objects)
+  const station = stationsData.find(s => s.hex_q === q && s.hex_r === r);
+  if (station) {
+    viewState.selectedStationName = station.name;
+    viewState.selectedSystemName  = null;
+    state.selectedSystem = null;
+    isDirty = true;
+    showStationPanel(station);
+    return;
+  }
+
   // Find the system at this hex coordinate
   const sys = systemsData.find(s => s.hex_q === q && s.hex_r === r);
 
   if (!sys) {
     // Clicked empty space — deselect
-    viewState.selectedSystemName = null;
+    viewState.selectedSystemName  = null;
+    viewState.selectedStationName = null;
     state.selectedSystem = null;
     hideRightPanel();
     isDirty = true;
@@ -211,7 +227,8 @@ async function handleHexClick({ q, r }) {
   }
 
   // Select the system
-  viewState.selectedSystemName = sys.name;
+  viewState.selectedSystemName  = sys.name;
+  viewState.selectedStationName = null;
   state.selectedSystem = sys;
   isDirty = true;
 
@@ -304,6 +321,185 @@ function hideRightPanel() {
   if (panel) panel.classList.add("panel--hidden");
   state.rightPanelOpen = false;
 }
+
+
+// ---------------------------------------------------------------------------
+// Station detail panel
+// ---------------------------------------------------------------------------
+
+async function showStationPanel(station) {
+  const panel   = document.getElementById("panel-right");
+  const content = document.getElementById("panel-right-content");
+  if (!panel || !content) return;
+
+  panel.classList.remove("panel--hidden");
+  state.rightPanelOpen = true;
+
+  // Show loading shell immediately
+  content.innerHTML = _buildStationPanelHtml(station, null, null);
+  _wireStationButtons(content, station, null, null);
+
+  // Fetch station detail + upgrades concurrently
+  const [detailRes, upgradesRes] = await Promise.allSettled([
+    getStation(station.name),
+    getStationUpgrades(station.name),
+  ]);
+
+  const detail   = detailRes.status   === "fulfilled" ? detailRes.value   : null;
+  const upgrades = upgradesRes.status === "fulfilled" ? upgradesRes.value : null;
+
+  // Re-render with full data
+  content.innerHTML = _buildStationPanelHtml(station, detail, upgrades);
+  _wireStationButtons(content, station, detail, upgrades);
+}
+
+function _buildStationPanelHtml(station, detail, upgrades) {
+  const services = (detail?.services || station.services || []);
+  const hasMarket   = detail ? detail.has_market   : services.some(s => ["Market","Ore Processing","Luxury Goods"].includes(s));
+  const hasUpgrades = detail ? detail.has_upgrades : services.includes("Ship Upgrades");
+
+  const serviceChips = services.map(s =>
+    `<span class="station-service-chip">${esc(s)}</span>`
+  ).join("");
+
+  const locationLine = station.system_name
+    ? `In system: <strong>${esc(station.system_name)}</strong>`
+    : `Deep space (no host system)`;
+
+  // Upgrade list section
+  let upgradeSection = "";
+  if (hasUpgrades) {
+    if (!upgrades) {
+      upgradeSection = `
+        <div class="section-header" style="margin-top:var(--sp-4);margin-bottom:var(--sp-2)">Ship Upgrades</div>
+        <p style="color:var(--text-dim);font-size:var(--font-size-xs)">Loading upgrades…</p>
+      `;
+    } else if (!upgrades.upgrades?.length) {
+      upgradeSection = `
+        <div class="section-header" style="margin-top:var(--sp-4);margin-bottom:var(--sp-2)">Ship Upgrades</div>
+        <p style="color:var(--text-dim);font-size:var(--font-size-xs)">All available upgrades already installed.</p>
+      `;
+    } else {
+      const credits = upgrades.player_credits ?? 0;
+      const rows = upgrades.upgrades.map(u => {
+        const canAfford = credits >= u.cost;
+        return `
+          <div class="station-upgrade-row" data-category="${esc(u.category)}" data-name="${esc(u.name)}">
+            <div class="station-upgrade-row__header">
+              <span class="station-upgrade-row__name">${esc(u.name)}</span>
+              <span class="station-upgrade-row__cost ${canAfford ? "" : "station-upgrade-row__cost--broke"}">${u.cost.toLocaleString()} cr</span>
+            </div>
+            <div class="station-upgrade-row__cat">${esc(u.category)}</div>
+            <div class="station-upgrade-row__desc">${esc(u.description)}</div>
+            <button class="btn btn--sm btn--primary btn-buy-upgrade"
+                    data-station="${esc(station.name)}"
+                    data-category="${esc(u.category)}"
+                    data-name="${esc(u.name)}"
+                    ${canAfford ? "" : "disabled"}>
+              ${canAfford ? "INSTALL" : "TOO EXPENSIVE"}
+            </button>
+          </div>
+        `;
+      }).join("");
+
+      upgradeSection = `
+        <div class="section-header" style="margin-top:var(--sp-4);margin-bottom:var(--sp-2)">
+          Ship Upgrades
+          <span class="muted" style="font-size:10px;margin-left:var(--sp-2)">
+            Credits: <strong style="color:var(--accent-gold)">${credits.toLocaleString()}</strong>
+          </span>
+        </div>
+        <div class="station-upgrades-list">${rows}</div>
+      `;
+    }
+  }
+
+  return `
+    <div style="padding:var(--sp-3)">
+      <!-- Header -->
+      <div style="border-bottom:1px solid var(--border-accent);padding-bottom:var(--sp-3);margin-bottom:var(--sp-3)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-1)">
+          <span style="color:var(--accent-gold);font-size:1.1em">⊕</span>
+          <h3 style="color:var(--accent-gold);letter-spacing:0.12em;font-size:var(--font-size-md);margin:0">
+            ${esc(station.name)}
+          </h3>
+        </div>
+        <div style="font-size:var(--font-size-xs);color:var(--text-dim)">${esc(station.type)}</div>
+      </div>
+
+      <!-- Stats -->
+      <div style="margin-bottom:var(--sp-3)">
+        <div class="stat-row">
+          <span class="stat-row__label">Location</span>
+          <span class="stat-row__value" style="font-size:11px">${locationLine}</span>
+        </div>
+        ${detail?.upgrade_level ? `
+        <div class="stat-row">
+          <span class="stat-row__label">Station Level</span>
+          <span class="stat-row__value">${detail.upgrade_level} / 5</span>
+        </div>` : ""}
+      </div>
+
+      <!-- Description -->
+      ${station.description ? `
+      <div style="font-size:var(--font-size-xs);color:var(--text-dim);line-height:1.5;
+                  margin-bottom:var(--sp-3);padding:var(--sp-2);background:var(--bg-secondary);
+                  border-left:2px solid var(--accent-gold)">${esc(station.description)}</div>` : ""}
+
+      <!-- Services -->
+      <div class="section-header" style="margin-bottom:var(--sp-2)">Services</div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-bottom:var(--sp-4)">${serviceChips}</div>
+
+      <!-- Trade button -->
+      ${hasMarket ? `
+      <button class="btn btn--primary btn-station-trade" style="width:100%;margin-bottom:var(--sp-3)">
+        ⬡ OPEN MARKET
+      </button>` : ""}
+
+      <!-- Upgrade section -->
+      ${upgradeSection}
+    </div>
+  `;
+}
+
+function _wireStationButtons(content, station, detail, upgrades) {
+  // Trade button
+  content.querySelector(".btn-station-trade")
+    ?.addEventListener("click", () => _openTradeView(station.name));
+
+  // Upgrade buy buttons
+  content.querySelectorAll(".btn-buy-upgrade").forEach(btn => {
+    btn.addEventListener("click", () =>
+      _handleBuyUpgrade(btn, station.name, btn.dataset.category, btn.dataset.name, content, station)
+    );
+  });
+}
+
+async function _handleBuyUpgrade(btn, stationName, category, upgradeName, content, station) {
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "INSTALLING…";
+
+  try {
+    const result = await buyStationUpgrade(stationName, category, upgradeName);
+    notify("SHIP", result.message);
+
+    // Refresh the full panel to update credit display and remove installed upgrade
+    const [detailRes, upgradesRes] = await Promise.allSettled([
+      getStation(stationName),
+      getStationUpgrades(stationName),
+    ]);
+    const newDetail   = detailRes.status   === "fulfilled" ? detailRes.value   : null;
+    const newUpgrades = upgradesRes.status === "fulfilled" ? upgradesRes.value : null;
+    content.innerHTML = _buildStationPanelHtml(station, newDetail, newUpgrades);
+    _wireStationButtons(content, station, newDetail, newUpgrades);
+  } catch (err) {
+    notify("ERROR", err.message || "Upgrade failed.");
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
 
 /** Build the HTML for the system detail panel */
 function buildSystemPanelHtml(system, shipCoords) {

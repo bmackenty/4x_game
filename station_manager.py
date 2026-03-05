@@ -4,6 +4,10 @@ Ship Upgrade and Space Station Management System
 
 import random
 
+# Must match GALAXY_SCALE in backend/hex_utils.py and frontend/js/views/galaxy.js
+GALAXY_SCALE = 12.5
+
+
 class ShipUpgradeSystem:
     def __init__(self):
         self.upgrade_categories = {
@@ -119,189 +123,292 @@ class ShipUpgradeSystem:
                 }
             }
         }
-    
+
     def get_available_upgrades(self, ship):
-        """Get upgrades available for a specific ship"""
+        """Get upgrades available for a specific ship (excludes already installed)."""
+        installed = getattr(ship, 'upgrades', {}) or {}
         available = {}
-        
-        # Check which upgrades the ship doesn't already have
         for category, upgrades in self.upgrade_categories.items():
-            available[category] = {}
-            for name, upgrade in upgrades.items():
-                if not hasattr(ship, 'upgrades') or name not in ship.upgrades:
-                    available[category][name] = upgrade
-        
+            avail_in_cat = {name: data for name, data in upgrades.items()
+                            if name not in installed}
+            if avail_in_cat:
+                available[category] = avail_in_cat
         return available
-    
+
     def install_upgrade(self, ship, upgrade_name, upgrade_data):
-        """Install an upgrade on a ship"""
-        if not hasattr(ship, 'upgrades'):
+        """Install an upgrade on a ship and apply its stat effects."""
+        if not hasattr(ship, 'upgrades') or ship.upgrades is None:
             ship.upgrades = {}
-        
+
         if upgrade_name in ship.upgrades:
             return False, "Upgrade already installed"
-        
+
         # Apply upgrade effects
         if 'max_fuel' in upgrade_data:
             ship.max_fuel = int(ship.max_fuel * upgrade_data['max_fuel'])
             ship.fuel = min(ship.fuel, ship.max_fuel)
-        
+
         if 'max_cargo' in upgrade_data:
             ship.max_cargo = int(ship.max_cargo * upgrade_data['max_cargo'])
-        
+
         if 'jump_range' in upgrade_data:
             ship.jump_range = int(ship.jump_range * upgrade_data['jump_range'])
-        
+
+        if 'scan_range' in upgrade_data:
+            current = getattr(ship, 'scan_range', 1.0) or 1.0
+            ship.scan_range = current * upgrade_data['scan_range']
+
         # Store upgrade for future reference
         ship.upgrades[upgrade_name] = upgrade_data
-        
+
         return True, f"Successfully installed {upgrade_name}"
+
 
 class SpaceStationManager:
     def __init__(self, galaxy):
         self.galaxy = galaxy
-        self.stations = {}
         self.station_types = {
             "Trading Post": {
                 "cost": 500000,
                 "services": ["Market", "Refuel", "Repairs"],
                 "description": "Commercial hub with expanded trading facilities",
-                "income_base": 5000
+                "income_base": 5000,
+                "economy_type": "Trading Hub",
             },
             "Mining Station": {
                 "cost": 750000,
-                "services": ["Ore Processing", "Refuel", "Mining Equipment"],
+                "services": ["Market", "Ore Processing", "Refuel", "Mining Equipment"],
                 "description": "Asteroid mining and ore processing facility",
-                "income_base": 8000
+                "income_base": 8000,
+                "economy_type": "Mining",
             },
             "Research Lab": {
                 "cost": 1000000,
-                "services": ["Technology Research", "Ship Upgrades", "Data Analysis"],
+                "services": ["Market", "Technology Research", "Ship Upgrades", "Data Analysis"],
                 "description": "Advanced research and development facility",
-                "income_base": 12000
+                "income_base": 12000,
+                "economy_type": "Research",
             },
             "Military Base": {
                 "cost": 1200000,
-                "services": ["Ship Upgrades", "Weapons", "Defense Systems"],
+                "services": ["Ship Upgrades", "Weapons", "Defense Systems", "Refuel"],
                 "description": "Fortified military installation with defensive capabilities",
-                "income_base": 15000
+                "income_base": 15000,
+                "economy_type": "Industrial",
             },
             "Shipyard": {
                 "cost": 2000000,
-                "services": ["Ship Construction", "Major Repairs", "Ship Upgrades"],
+                "services": ["Market", "Ship Construction", "Major Repairs", "Ship Upgrades"],
                 "description": "Full ship construction and modification facility",
-                "income_base": 25000
+                "income_base": 25000,
+                "economy_type": "Industrial",
             },
             "Luxury Resort": {
                 "cost": 800000,
-                "services": ["Entertainment", "Luxury Goods", "Passenger Transport"],
+                "services": ["Market", "Entertainment", "Luxury Goods", "Passenger Transport"],
                 "description": "High-end recreational facility for wealthy travelers",
-                "income_base": 10000
-            }
+                "income_base": 10000,
+                "economy_type": "Trading Hub",
+            },
         }
-        
+
+        # Stations keyed by name (unique string) for easy lookup
+        self.stations = {}
+
         self.place_stations_in_galaxy()
-    
+        self._place_deep_space_stations()
+
+    # -----------------------------------------------------------------------
+    # Placement
+    # -----------------------------------------------------------------------
+
     def place_stations_in_galaxy(self):
-        """Place existing stations throughout the galaxy"""
-        # Place 15-20 stations in various systems
+        """Place 15-20 NPC stations in random star systems."""
         systems = list(self.galaxy.systems.values())
         num_stations = random.randint(15, 20)
-        
+
+        if len(systems) < num_stations:
+            num_stations = len(systems)
+
         selected_systems = random.sample(systems, num_stations)
-        
+
         station_names = [
             "Nexus Prime", "Starforge Alpha", "Deep Space Nine", "Babylon Station",
             "Aurora Terminal", "Vega Outpost", "Centauri Hub", "Phoenix Base",
             "Titan Complex", "Nova Station", "Eclipse Platform", "Meridian Post",
             "Frontier Depot", "Stellar Gateway", "Crimson Outpost", "Azure Station",
-            "Quantum Labs", "Helix Research", "Omega Base", "Apex Terminal"
+            "Quantum Labs", "Helix Research", "Omega Base", "Apex Terminal",
         ]
-        
+
+        used_names = set()
         for i, system in enumerate(selected_systems):
-            if i < len(station_names):
-                station_name = station_names[i]
-            else:
-                station_name = f"Station {i+1}"
-            
+            name = station_names[i] if i < len(station_names) else f"Station {i + 1}"
+            # Ensure uniqueness (shouldn't happen, but guard it)
+            while name in used_names:
+                name = name + " II"
+            used_names.add(name)
+
             station_type = random.choice(list(self.station_types.keys()))
-            coords = system['coordinates']
-            
-            station = {
-                'name': station_name,
-                'type': station_type,
-                'coordinates': coords,
-                'system_name': system['name'],
-                'owner': None,  # Can be purchased by player
-                'services': self.station_types[station_type]['services'],
-                'description': self.station_types[station_type]['description'],
-                'income': self.station_types[station_type]['income_base'],
-                'upgrade_level': 1,
-                'last_income_collected': 0
+            coords = system["coordinates"]
+
+            self.stations[name] = {
+                "name":         name,
+                "type":         station_type,
+                "coordinates":  coords,
+                "hex_q":        self._coords_to_hex_q(coords),
+                "hex_r":        self._coords_to_hex_r(coords),
+                "system_name":  system["name"],   # in-system station
+                "owner":        None,
+                "services":     list(self.station_types[station_type]["services"]),
+                "description":  self.station_types[station_type]["description"],
+                "income":       self.station_types[station_type]["income_base"],
+                "upgrade_level": 1,
+                "last_income_collected": 0,
             }
-            
-            self.stations[coords] = station
-    
+
+    def _place_deep_space_stations(self):
+        """Place 5-7 stations in the void between star systems."""
+        systems = list(self.galaxy.systems.values())
+        if len(systems) < 2:
+            return
+
+        deep_space_names = [
+            "Void Citadel", "The Wandering Ark", "Liminal Platform",
+            "Null Point Station", "The Drifting Spire", "Interstellar Waypoint",
+            "The Abyssal Forge",
+        ]
+        count = random.randint(5, min(7, len(deep_space_names)))
+        pairs = random.sample(
+            [(systems[i], systems[j])
+             for i in range(len(systems)) for j in range(i + 1, len(systems))],
+            count
+        )
+
+        used_names = set(self.stations.keys())
+        for pair_idx, (sys_a, sys_b) in enumerate(pairs):
+            name = deep_space_names[pair_idx]
+            if name in used_names:
+                name = name + " II"
+            used_names.add(name)
+
+            ca = sys_a["coordinates"]
+            cb = sys_b["coordinates"]
+            # Midpoint of the two system positions
+            coords = (
+                (ca[0] + cb[0]) / 2.0,
+                (ca[1] + cb[1]) / 2.0,
+                (ca[2] + cb[2]) / 2.0,
+            )
+
+            station_type = random.choice(list(self.station_types.keys()))
+
+            self.stations[name] = {
+                "name":         name,
+                "type":         station_type,
+                "coordinates":  coords,
+                "hex_q":        self._coords_to_hex_q(coords),
+                "hex_r":        self._coords_to_hex_r(coords),
+                "system_name":  None,             # deep-space: not in any system
+                "owner":        None,
+                "services":     list(self.station_types[station_type]["services"]),
+                "description":  self.station_types[station_type]["description"],
+                "income":       self.station_types[station_type]["income_base"],
+                "upgrade_level": 1,
+                "last_income_collected": 0,
+            }
+
+    # -----------------------------------------------------------------------
+    # Coordinate helpers (mirrors backend/hex_utils.py)
+    # -----------------------------------------------------------------------
+
+    def _coords_to_hex_q(self, coords):
+        return round(coords[0] / GALAXY_SCALE)
+
+    def _coords_to_hex_r(self, coords):
+        return round(coords[1] / GALAXY_SCALE)
+
+    # -----------------------------------------------------------------------
+    # Lookups
+    # -----------------------------------------------------------------------
+
+    def get_station_by_name(self, name: str):
+        """Return the station dict for the given name, or None."""
+        return self.stations.get(name)
+
     def get_station_at_location(self, coordinates):
-        """Get station at specific coordinates"""
-        return self.stations.get(coordinates)
-    
-    def purchase_station(self, coordinates, player_credits):
-        """Purchase a station"""
-        station = self.stations.get(coordinates)
+        """Return the first station whose coordinates match (within rounding)."""
+        target_q = round(coordinates[0] / GALAXY_SCALE)
+        target_r = round(coordinates[1] / GALAXY_SCALE)
+        for station in self.stations.values():
+            if station["hex_q"] == target_q and station["hex_r"] == target_r:
+                return station
+        return None
+
+    def get_stations_in_system(self, system_name: str):
+        """Return all stations in a given star system."""
+        return [s for s in self.stations.values() if s.get("system_name") == system_name]
+
+    def get_deep_space_stations(self):
+        """Return stations not associated with any star system."""
+        return [s for s in self.stations.values() if s.get("system_name") is None]
+
+    def get_player_stations(self):
+        """Return all player-owned stations."""
+        return [s for s in self.stations.values() if s.get("owner") == "Player"]
+
+    # -----------------------------------------------------------------------
+    # Economy type for market registration
+    # -----------------------------------------------------------------------
+
+    def get_economy_type(self, station_type: str) -> str:
+        return self.station_types.get(station_type, {}).get("economy_type", "Trading Hub")
+
+    # -----------------------------------------------------------------------
+    # Ownership / upgrades
+    # -----------------------------------------------------------------------
+
+    def purchase_station(self, station_name: str, player_credits: int):
+        """Purchase a station by name."""
+        station = self.stations.get(station_name)
         if not station:
-            return False, "No station at this location", 0
-        
-        if station['owner'] is not None:
+            return False, "No station with that name", 0
+
+        if station["owner"] is not None:
             return False, "Station already owned", 0
-        
-        station_type = station['type']
-        cost = self.station_types[station_type]['cost']
-        
+
+        cost = self.station_types[station["type"]]["cost"]
         if player_credits < cost:
             return False, f"Insufficient credits. Need {cost:,}, have {player_credits:,}", 0
-        
-        station['owner'] = "Player"
+
+        station["owner"] = "Player"
         return True, f"Successfully purchased {station['name']}", cost
-    
-    def get_player_stations(self):
-        """Get all player-owned stations"""
-        return [station for station in self.stations.values() if station['owner'] == "Player"]
-    
+
     def collect_station_income(self, station):
-        """Collect income from a station"""
-        income = station['income'] * station['upgrade_level']
-        station['last_income_collected'] += 1
+        income = station["income"] * station["upgrade_level"]
+        station["last_income_collected"] += 1
         return income
-    
-    def upgrade_station(self, coordinates, player_credits):
-        """Upgrade a station to increase income"""
-        station = self.stations.get(coordinates)
-        if not station or station['owner'] != "Player":
+
+    def upgrade_station(self, station_name: str, player_credits: int):
+        station = self.stations.get(station_name)
+        if not station or station.get("owner") != "Player":
             return False, "You don't own this station", 0
-        
-        current_level = station['upgrade_level']
-        if current_level >= 5:
+
+        level = station["upgrade_level"]
+        if level >= 5:
             return False, "Station already at maximum upgrade level", 0
-        
-        upgrade_cost = station['income'] * current_level * 10  # 10x income per level
-        
+
+        upgrade_cost = station["income"] * level * 10
         if player_credits < upgrade_cost:
-            return False, f"Insufficient credits. Need {upgrade_cost:,}, have {player_credits:,}", 0
-        
-        station['upgrade_level'] += 1
-        station['income'] = int(station['income'] * 1.2)  # 20% income increase per level
-        
+            return False, f"Insufficient credits. Need {upgrade_cost:,}", 0
+
+        station["upgrade_level"] += 1
+        station["income"] = int(station["income"] * 1.2)
         return True, f"Upgraded {station['name']} to level {station['upgrade_level']}", upgrade_cost
-    
+
     def get_all_stations_info(self):
-        """Get information about all stations in galaxy"""
-        stations_by_system = {}
-        
+        """Group all stations by system (None key = deep space)."""
+        by_system = {}
         for station in self.stations.values():
-            system_name = station['system_name']
-            if system_name not in stations_by_system:
-                stations_by_system[system_name] = []
-            stations_by_system[system_name].append(station)
-        
-        return stations_by_system
+            key = station.get("system_name")  # None for deep-space
+            by_system.setdefault(key, []).append(station)
+        return by_system

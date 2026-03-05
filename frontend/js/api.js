@@ -356,6 +356,34 @@ export function sellGoods(systemName, commodity, quantity) {
 
 
 // ===========================================================================
+// Space Stations
+// ===========================================================================
+
+/** Fetch full details for a named station. */
+export function getStation(name) {
+  return get(`/api/station/${encodeURIComponent(name)}`);
+}
+
+/** Fetch available ship upgrades at a station. */
+export function getStationUpgrades(name) {
+  return get(`/api/station/${encodeURIComponent(name)}/upgrades`);
+}
+
+/**
+ * Purchase and install a ship upgrade at a station.
+ * @param {string} stationName
+ * @param {string} category     - Upgrade category (e.g. "Engine Upgrades")
+ * @param {string} upgradeName  - Upgrade name (e.g. "Quantum Booster")
+ */
+export function buyStationUpgrade(stationName, category, upgradeName) {
+  return post(`/api/station/${encodeURIComponent(stationName)}/upgrade`, {
+    category,
+    upgrade_name: upgradeName,
+  });
+}
+
+
+// ===========================================================================
 // Lore  (Phase 4)
 // ===========================================================================
 

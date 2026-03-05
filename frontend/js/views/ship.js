@@ -181,6 +181,10 @@ function buildComponentsTab() {
   return `
     <div class="ship-components">
       <section class="ship-comp-section">
+        <h3 class="ship-comp-section__title">SHIP SCHEMATIC</h3>
+        <pre class="ship-schematic">${buildShipSchematic(installed)}</pre>
+      </section>
+      <section class="ship-comp-section">
         <h3 class="ship-comp-section__title">INSTALLED COMPONENTS</h3>
         ${installedHtml}
       </section>
@@ -190,6 +194,101 @@ function buildComponentsTab() {
       </section>
     </div>
   `;
+}
+
+
+// ── ASCII schematic ─────────────────────────────────────────────────────────
+
+/**
+ * Build a top-down ASCII art schematic of the ship showing its component slots.
+ *
+ * Layout (all lines in a <pre> monospace block):
+ *
+ *              ╔══════════════════╗   ← ENGINE box (centre-aligned)
+ *              ║    ◄ ENGINE ►    ║
+ *              ║  [engine name]   ║
+ *              ╠══════════════════╣
+ *  ╔════════════╬══════════════════╬════════════╗   ← HULL + wings
+ *  ║  WEAPONS   ║    H U L L       ║  SHIELDS   ║
+ *  ║ [wpn name] ║  [hull name]     ║ [shd name] ║
+ *  ╠════════════╬══════════════════╬════════════╣
+ *  ║  SENSORS   ║                  ║  SUPPORT   ║
+ *  ║ [sen name] ║                  ║ [sup name] ║
+ *  ╚════════════╬══════════════════╬════════════╝
+ *              ║  ▼  THRUST  ▼    ║
+ *              ╚══════════════════╝
+ */
+function buildShipSchematic(installed) {
+  const L = 12;  // wing inner width
+  const C = 18;  // centre body inner width
+
+  /** Pad/truncate string to exactly `w` chars. */
+  const fit = (s, w) => {
+    const str = String(s || '').substring(0, w);
+    return str + ' '.repeat(w - str.length);
+  };
+
+  /** Centre string in `w` chars. */
+  const cen = (s, w) => {
+    const str = String(s || '').substring(0, w);
+    const p = w - str.length;
+    return ' '.repeat(Math.floor(p / 2)) + str + ' '.repeat(Math.ceil(p / 2));
+  };
+
+  // p13: 13 spaces aligns the engine/thrust box with the centre ╬ junction
+  const p13 = ' '.repeat(L + 1);
+
+  // Pull first item from list-based slots
+  const first = (arr) => Array.isArray(arr) ? (arr[0] || null) : null;
+
+  const engineName = installed.engine || null;
+  const hullName   = installed.hull   || null;
+  const wpnName    = first(installed.weapons);
+  const shdName    = first(installed.shields);
+  const senName    = first(installed.sensors);
+  const supName    = first(installed.support);
+
+  // Extra weapons/shields beyond [0]
+  const wpnExtra = (installed.weapons || []).length > 1
+    ? ` +${(installed.weapons || []).length - 1}` : '';
+  const shdExtra = (installed.shields || []).length > 1
+    ? ` +${(installed.shields || []).length - 1}` : '';
+  const senExtra = (installed.sensors || []).length > 1
+    ? ` +${(installed.sensors || []).length - 1}` : '';
+  const supExtra = (installed.support || []).length > 1
+    ? ` +${(installed.support || []).length - 1}` : '';
+
+  const engine = cen(engineName ? engineName.substring(0, C) : '─ none ─', C);
+  const hull   = cen(hullName   ? hullName.substring(0, C)   : '─ none ─', C);
+
+  // Wing cells: " Name +N  " (leading space + name + extra + trailing)
+  const wingVal = (name, extra, w) => {
+    const label = name ? ((name + extra).substring(0, w - 1)) : '─ none ─';
+    return fit(' ' + label, w);
+  };
+
+  const wpn = wingVal(wpnName, wpnExtra, L);
+  const shd = wingVal(shdName, shdExtra, L);
+  const sen = wingVal(senName, senExtra, L);
+  const sup = wingVal(supName, supExtra, L);
+
+  // Escape the schematic for innerHTML (using esc would double-escape ─)
+  // These chars are all safe ASCII / box-drawing — no HTML escaping needed.
+  return [
+    p13 + '╔' + '═'.repeat(C) + '╗',
+    p13 + '║' + cen('◄  E N G I N E  ►', C) + '║',
+    p13 + '║' + engine + '║',
+    p13 + '╠' + '═'.repeat(C) + '╣',
+    '╔' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╗',
+    '║' + cen('W E A P O N S', L) + '║' + cen('H U L L', C) + '║' + cen('S H I E L D S', L) + '║',
+    '║' + wpn + '║' + hull + '║' + shd + '║',
+    '╠' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╣',
+    '║' + cen('S E N S O R S', L) + '║' + ' '.repeat(C) + '║' + cen('S U P P O R T', L) + '║',
+    '║' + sen + '║' + ' '.repeat(C) + '║' + sup + '║',
+    '╚' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╝',
+    p13 + '║' + cen('▼  T H R U S T  ▼', C) + '║',
+    p13 + '╚' + '═'.repeat(C) + '╝',
+  ].join('\n');
 }
 
 function buildInstalledSection(installed) {

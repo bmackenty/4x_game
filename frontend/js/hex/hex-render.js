@@ -128,12 +128,13 @@ export function drawHex(ctx, cx, cy, size, fillColor, strokeColor, strokeWidth =
  *
  * @param {HTMLCanvasElement} canvas
  * @param {Array}  systems          - Array from /api/galaxy/map
- * @param {object} viewState        - { panX, panY, zoom, selectedSystemName }
+ * @param {object} viewState        - { panX, panY, zoom, selectedSystemName, shipHex,
+ *                                      stations, selectedStationName }
  * @param {Map}    factionColors    - faction name → CSS colour
  */
 export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   const ctx = canvas.getContext("2d");
-  const { panX, panY, zoom, selectedSystemName } = viewState;
+  const { panX, panY, zoom, selectedSystemName, stations = [], selectedStationName } = viewState;
 
   // Clear to deep space background
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -222,6 +223,47 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(sys.name, px, py + size * 0.55);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Deep-space station markers — drawn after systems, before ship
+  // -----------------------------------------------------------------------
+  for (const st of stations) {
+    const { x: stx, y: sty } = axialToPixel(st.hex_q, st.hex_r, size);
+    const isSelected = st.name === selectedStationName;
+
+    // Hex background — deep amber for stations
+    drawHex(ctx, stx, sty, size - 1, "#1a1200", isSelected ? "#d4a800" : "#5a4000",
+            isSelected ? 1.5 : 0.8);
+
+    // Selection glow
+    if (isSelected) {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 180) * (60 * i);
+        ctx.lineTo(stx + (size + 3) * Math.cos(angle), sty + (size + 3) * Math.sin(angle));
+      }
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(212,168,0,0.55)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Station glyph — ⊕ (looks like a station cross)
+    ctx.fillStyle = isSelected ? "#d4a800" : "#a07800";
+    ctx.font = `${Math.max(9, size * 0.6)}px "Courier New", monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⊕", stx, sty);
+
+    // Station name label when zoomed in enough
+    if (zoom >= 0.7) {
+      ctx.fillStyle = isSelected ? "#d4a800" : "rgba(200,168,80,0.7)";
+      ctx.font = `${Math.max(7, Math.floor(8 * zoom))}px "Courier New", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(st.name, stx, sty + size * 0.55);
     }
   }
 
