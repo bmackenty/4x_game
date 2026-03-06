@@ -293,6 +293,26 @@ def _player_is_in_system(system_name: str) -> bool:
     return False
 
 
+# Improvements that open a commodity market on a player colony.
+# A colony system without at least one of these shows no market and
+# blocks all trade transactions — the player must build infrastructure
+# before tapping into interstellar commerce.
+_TRADE_BUILDINGS = {"Trade Nexus", "Spaceport Hub"}
+
+
+def _colony_has_trade_building(system_name: str) -> bool:
+    """
+    Return True if at least one player colony in system_name has a
+    Trade Nexus or Spaceport Hub built on any tile.
+    """
+    for colony in colony_manager.colonies.values():
+        if colony.system_name == system_name:
+            for tile in colony.tiles.values():
+                if tile.improvement in _TRADE_BUILDINGS:
+                    return True
+    return False
+
+
 def _player_is_at_market(market_name: str) -> bool:
     """
     True if the player is at the location that hosts this market.
@@ -317,6 +337,13 @@ def _player_is_at_market(market_name: str) -> bool:
             break
 
     if current_system and current_system.get("name") == market_name:
+        # If the player has a colony here, they must have built a trade building
+        # before the market is accessible.  NPC-owned systems are always open.
+        colony_here = any(
+            c.system_name == market_name for c in colony_manager.colonies.values()
+        )
+        if colony_here and not _colony_has_trade_building(market_name):
+            return False
         return True
 
     # Check stations
@@ -852,13 +879,20 @@ async def get_system(system_name: str):
                 "has_shipyard":        body.get("shipyard", False),
             })
 
-    # Market info (if available)
+    # Market info — gated by trade infrastructure.
+    # Player colonies only get market access if a Trade Nexus or Spaceport Hub
+    # has been built; NPC systems always expose their market data.
     market_info = None
     try:
         if hasattr(game, "economy") and game.economy:
             mkt = game.economy.get_market_info(system_name)
             if mkt:
-                market_info = mkt
+                colony_here = any(
+                    c.system_name == system_name
+                    for c in colony_manager.colonies.values()
+                )
+                if not colony_here or _colony_has_trade_building(system_name):
+                    market_info = mkt
     except Exception:
         pass
 
@@ -943,11 +977,17 @@ async def get_system_presence(system_name: str):
                     "vessel":    getattr(bot_ship, "name", "Unknown Vessel"),
                 })
 
-    # Whether a tradeable market exists here
+    # Whether a tradeable market exists here — same trade-building gate as the
+    # system detail endpoint.  Player colonies need a Trade Nexus / Spaceport Hub.
     has_market = False
     if hasattr(game, "economy") and game.economy:
         try:
-            has_market = bool(game.economy.get_market_info(system_name))
+            if game.economy.get_market_info(system_name):
+                colony_here = any(
+                    c.system_name == system_name
+                    for c in colony_manager.colonies.values()
+                )
+                has_market = (not colony_here) or _colony_has_trade_building(system_name)
         except Exception:
             pass
 
@@ -1514,6 +1554,26 @@ async def build_improvement(planet_name: str, request: BuildImprovementRequest):
     )
     if not success:
         raise HTTPException(status_code=400, detail=message)
+
+    # If this is the first trade building on the colony, register the system
+    # as a market in the economy engine so buy/sell transactions work.
+    if request.improvement_type in _TRADE_BUILDINGS:
+        colony = colony_manager.colonies.get(planet_name)
+        if colony and hasattr(game, "economy") and game.economy:
+            sys_name = colony.system_name
+            if not game.economy.get_market_info(sys_name):
+                import random as _rnd
+                _RICHNESS = ["Poor", "Moderate", "Moderate", "Rich", "Abundant"]
+                try:
+                    game.economy.create_market({
+                        "name":       sys_name,
+                        "type":       "colony",
+                        "population": colony.population,
+                        "resources":  _rnd.choice(_RICHNESS),
+                    })
+                    message += f" Interstellar market opened at {sys_name}."
+                except Exception as _me:
+                    print(f"[4X] Warning: colony market init failed for {sys_name}: {_me}")
 
     return {
         "success": True,
