@@ -2310,3 +2310,81 @@
 /* Make HUD index spans feel interactive */
 .hud__index { transition: opacity 0.15s; }
 .hud__index:hover { opacity: 0.75; }
+
+
+/* ===========================================================================
+   NAV STATUS OVERLAY (galaxy view, bottom-left)
+   =========================================================================== */
+
+.nav-status {
+  position: absolute;
+  bottom: var(--sp-5);
+  left: var(--sp-5);
+  width: 190px;
+  background: rgba(5, 9, 16, 0.88);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: var(--sp-3) var(--sp-4);
+  display: none;          /* hidden until a game is active */
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;   /* clicks pass through to canvas */
+  backdrop-filter: blur(4px);
+}
+
+/* Shown when #view-galaxy is the active view */
+#view-galaxy.view--active .nav-status {
+  display: flex;
+}
+
+.nav-status__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.nav-status__label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.nav-status__value {
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 115px;
+}
+
+.nav-status__location .nav-status__value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Fuel bar */
+.nav-status__fuel-bar {
+  height: 3px;
+  background: var(--bg-primary);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: -2px;
+}
+
+.nav-status__fuel-fill {
+  height: 100%;
+  background: var(--accent-teal);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  width: 100%;
+}
+
+/* Colour shifts when fuel is low */
+.nav-status__fuel-fill--warn  { background: #d4a800; }
+.nav-status__fuel-fill--crit  { background: #e05050; }

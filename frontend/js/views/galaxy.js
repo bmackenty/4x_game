@@ -181,13 +181,17 @@ function startRenderLoop(canvas) {
 
       // Compute ship hex position fresh each frame so it updates after jumps.
       // state.gameState.ship.coordinates is [x, y, z] (Python tuple → JSON array).
-      const shipCoords = state.gameState?.ship?.coordinates;
-      const shipHex    = shipCoordsToHex(shipCoords);
+      const shipCoords  = state.gameState?.ship?.coordinates;
+      const shipHex     = shipCoordsToHex(shipCoords);
+      // Jump range ring: convert game units → hex pixel units
+      // GALAXY_SCALE = 12.5 game units per hex, GALAXY_HEX_SIZE = 22 px per hex
+      const jumpRange   = state.gameState?.ship?.jump_range ?? 0;
+      const jumpRangePx = jumpRange * (GALAXY_HEX_SIZE / GALAXY_SCALE);
 
       renderGalaxyMap(
         canvas,
         systemsData,
-        { ...viewState, shipHex, stations: stationsData },
+        { ...viewState, shipHex, jumpRangePx, stations: stationsData },
         FACTION_COLORS
       );
     }
@@ -509,6 +513,45 @@ function buildSystemPanelHtml(system, shipCoords) {
     : system.threat_level >= 4 ? "var(--accent-orange)"
     : "var(--accent-green)";
 
+  // Navigation info: distance from ship to this system
+  let navInfoHtml = "";
+  {
+    const shipInfo = state.gameState?.ship;
+    const sCoords  = shipInfo?.coordinates ?? shipCoords;
+    if (sCoords && system.coordinates) {
+      const [sx, sy, sz] = sCoords;
+      const [tx, ty, tz] = system.coordinates;
+      const dist      = Math.round(Math.sqrt((tx-sx)**2 + (ty-sy)**2 + (tz-sz)**2) * 10) / 10;
+      const atSystem  = dist < 1.0;
+      const jumpRange = shipInfo?.jump_range ?? 15;
+      const inRange   = dist <= jumpRange;
+      const distColor = atSystem ? "var(--accent-green)" : inRange ? "var(--accent-teal)" : "var(--accent-orange)";
+      const curLoc    = shipInfo?.current_system || "Deep Space";
+      navInfoHtml = `
+        <div style="margin-bottom:var(--sp-3);padding:var(--sp-2) var(--sp-3);background:var(--bg-secondary);
+                    border-left:2px solid ${distColor};font-size:var(--font-size-xs)">
+          <div style="color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;
+                      margin-bottom:var(--sp-1)">Navigation</div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--text-dim)">Your location</span>
+            <span style="color:var(--text-bright)">${esc(curLoc)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px">
+            <span style="color:var(--text-dim)">Distance</span>
+            <span style="color:${distColor}">${atSystem ? "◉ HERE" : dist + " ly"}</span>
+          </div>
+          ${!atSystem ? `
+          <div style="display:flex;justify-content:space-between;margin-top:2px">
+            <span style="color:var(--text-dim)">Jump range</span>
+            <span style="color:${inRange ? "var(--accent-teal)" : "var(--accent-orange)"}">
+              ${inRange ? "✓ In range" : "✗ Out of range"} (${jumpRange} ly max)
+            </span>
+          </div>` : ""}
+        </div>
+      `;
+    }
+  }
+
   const planets = system.planets || [];
   const planetRows = planets.map(p => `
     <div style="padding:var(--sp-2) var(--sp-3);border:1px solid var(--border-color);
@@ -578,6 +621,9 @@ function buildSystemPanelHtml(system, shipCoords) {
                   border-left:2px solid var(--border-accent)">
         ${esc(system.description)}
       </div>` : ""}
+
+      <!-- Navigation info (distance, range) -->
+      ${navInfoHtml}
 
       <!-- Jump button -->
       <button class="btn btn--primary btn-jump" style="width:100%;margin-bottom:var(--sp-4)">

@@ -256,6 +256,73 @@ def _compute_indices() -> dict:
     }
 
 
+# ===========================================================================
+# Helper — player proximity checks
+# ===========================================================================
+
+def _ship_coords():
+    """Return the current ship's (x, y, z) coordinates, or None."""
+    try:
+        return game.navigation.current_ship.coordinates
+    except Exception:
+        return None
+
+
+def _player_is_in_system(system_name: str) -> bool:
+    """True if the player's ship is currently docked at the named system."""
+    coords = _ship_coords()
+    if not coords:
+        return False
+    # Scan by name with a small tolerance to handle int/float coordinate differences
+    for sys_coords, system in game.navigation.galaxy.systems.items():
+        if system.get("name") == system_name:
+            return all(abs(a - b) < 1.0 for a, b in zip(coords, sys_coords))
+    return False
+
+
+def _player_is_at_market(market_name: str) -> bool:
+    """
+    True if the player is at the location that hosts this market.
+
+    Accepts both system names and station names as market_name:
+      - System market:         ship must be at that system's coordinates.
+      - In-system station:     ship must be in the station's parent system.
+      - Deep-space station:    ship must be within 8 units of the station's
+                               3-D coordinates (one hex-unit tolerance).
+    """
+    import math as _math
+    coords = _ship_coords()
+    if not coords:
+        return False
+
+    # Is the ship currently in a system, and does its name match?
+    # Scan by name with tolerance to handle int/float differences
+    current_system = None
+    for sys_coords, system in game.navigation.galaxy.systems.items():
+        if all(abs(a - b) < 1.0 for a, b in zip(coords, sys_coords)):
+            current_system = system
+            break
+
+    if current_system and current_system.get("name") == market_name:
+        return True
+
+    # Check stations
+    if game.station_manager:
+        st = game.station_manager.get_station_by_name(market_name)
+        if st:
+            parent_system = st.get("system_name")
+            if parent_system:
+                # In-system station: being in the parent system is sufficient
+                return current_system is not None and current_system.get("name") == parent_system
+            else:
+                # Deep-space station: proximity check
+                st_coords = st.get("coordinates")
+                if st_coords:
+                    dist = _math.sqrt(sum((a - b) ** 2 for a, b in zip(coords, st_coords)))
+                    return dist < 8.0
+
+    return False
+
 # Helper — snapshot of current game state (reused in multiple endpoints)
 # ===========================================================================
 
@@ -409,6 +476,18 @@ async def new_game(request: NewGameRequest):
         from navigation import Ship as _NavShip
         first_ship = game.owned_ships[0]
         game.navigation.current_ship = _NavShip(first_ship, first_ship)
+        # Place the ship at the starting system (Proxima b — closest predefined
+        # system to the default (50,50,25) origin).  Without this the player
+        # starts in deep space and every proximity check fails until they jump.
+        galaxy = game.navigation.galaxy
+        start_sys = next(
+            (data for coords, data in galaxy.systems.items()
+             if data.get("name") == "Proxima b"),
+            None,
+        )
+        if start_sys:
+            game.navigation.current_ship.coordinates = start_sys["coordinates"]
+            start_sys["visited"] = True
 
     # Initialise NPC infrastructure — bots and stations are generated fresh each game.
     _init_bot_manager(game)
@@ -430,6 +509,35 @@ async def get_game_state():
     up to date (credits, turn, active research bar, etc.).
     """
     return _build_state_snapshot()
+
+
+@app.get("/api/debug/nav")
+async def debug_nav():
+    """
+    Debug endpoint: returns raw ship coordinates and which system (if any)
+    the ship is currently at, along with all galaxy system coordinates.
+    Useful for diagnosing proximity-check failures.
+    """
+    if not game or not game.character_created:
+        return {"error": "No game in progress"}
+    coords = _ship_coords()
+    current = None
+    nearby = []
+    if coords:
+        for sys_coords, sys_data in game.navigation.galaxy.systems.items():
+            import math as _math
+            dist = _math.sqrt(sum((a - b) ** 2 for a, b in zip(coords, sys_coords)))
+            entry = {"name": sys_data.get("name"), "coords": list(sys_coords), "distance": round(dist, 2)}
+            if dist < 1.0:
+                current = entry
+            if dist < 20:
+                nearby.append(entry)
+    nearby.sort(key=lambda e: e["distance"])
+    return {
+        "ship_coords": list(coords) if coords else None,
+        "current_system": current,
+        "nearby_systems": nearby[:10],
+    }
 
 
 @app.post("/api/game/turn/end")
@@ -1353,6 +1461,12 @@ async def found_colony(planet_name: str, request: FoundColonyRequest):
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
+    if not _player_is_in_system(request.system_name):
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must be in the {request.system_name} system to found a colony there."
+        )
+
     success, message, _colony = colony_manager.found_colony(
         planet_name, request.system_name, request.planet_type
     )
@@ -1773,6 +1887,13 @@ async def trade_buy(request: TradeRequest):
     if not ok:
         raise HTTPException(status_code=400, detail=reason)
 
+    if not _player_is_at_market(request.system_name):
+        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must be at {request.system_name} to trade there."
+        )
+
     success, message = game.perform_trade_buy(
         request.system_name, request.commodity, request.quantity
     )
@@ -1809,6 +1930,13 @@ async def trade_sell(request: TradeRequest):
     ok, reason = game.consume_action("trade")
     if not ok:
         raise HTTPException(status_code=400, detail=reason)
+
+    if not _player_is_at_market(request.system_name):
+        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must be at {request.system_name} to trade there."
+        )
 
     success, message = game.perform_trade_sell(
         request.system_name, request.commodity, request.quantity

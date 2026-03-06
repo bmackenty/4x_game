@@ -317,17 +317,24 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       continue;
     }
 
-    // Star glyph
-    const glyph = SYSTEM_GLYPHS[sys.type] || SYSTEM_GLYPHS.default;
-    ctx.fillStyle = _systemGlyphColor(sys);
-    ctx.font = `${Math.max(10, size * 0.7)}px "Courier New", monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(glyph, px, py);
+    // Star glyph — hidden when the player's ship is at this hex (ship marker replaces it)
+    const shipIsHere = viewState.shipHex &&
+                       sys.hex_q === viewState.shipHex.q &&
+                       sys.hex_r === viewState.shipHex.r;
+    if (!shipIsHere) {
+      const glyph = SYSTEM_GLYPHS[sys.type] || SYSTEM_GLYPHS.default;
+      ctx.fillStyle = _systemGlyphColor(sys);
+      ctx.font = `${Math.max(10, size * 0.7)}px "Courier New", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(glyph, px, py);
+    }
 
-    // System name label (only when zoom is high enough to be readable)
+    // System name label (always shown; ship presence highlighted in teal)
     if (zoom >= 0.7) {
-      ctx.fillStyle = sys.name === selectedSystemName ? "#00d4aa" : "rgba(200, 216, 232, 0.7)";
+      ctx.fillStyle = shipIsHere ? "#00ffcc"
+                    : sys.name === selectedSystemName ? "#00d4aa"
+                    : "rgba(200, 216, 232, 0.7)";
       ctx.font = `${Math.max(7, Math.floor(8 * zoom))}px "Courier New", monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -399,6 +406,19 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   if (viewState.shipHex) {
     const { q: sq, r: sr } = viewState.shipHex;
     const { x: spx, y: spy } = axialToPixel(sq, sr, size);
+
+    // Jump range ring — faint dashed circle showing maximum jump distance
+    if (viewState.jumpRangePx && viewState.jumpRangePx > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(spx, spy, viewState.jumpRangePx, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(0, 212, 170, 0.25)";
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([4, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Bright teal filled circle as a backdrop
     ctx.beginPath();

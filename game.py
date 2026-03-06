@@ -491,14 +491,26 @@ class Game:
             return None
         
         ship = self.navigation.current_ship
+        # Resolve current system name by coordinate proximity
+        current_system_name = None
+        try:
+            coords = ship.coordinates
+            for sys_coords, sys_data in self.navigation.galaxy.systems.items():
+                if all(abs(a - b) < 1.0 for a, b in zip(coords, sys_coords)):
+                    current_system_name = sys_data.get("name")
+                    break
+        except Exception:
+            pass
         return {
             'name': ship.name,
             'class': getattr(ship, 'ship_class', 'Unknown'),
             'coordinates': ship.coordinates,
+            'current_system': current_system_name,
             'fuel': ship.fuel,
             'max_fuel': ship.max_fuel,
+            'jump_range': getattr(ship, 'jump_range', 15),
             'cargo_used': sum(ship.cargo.values()) if ship.cargo else 0,
-            'cargo_max': ship.max_cargo
+            'cargo_max': ship.max_cargo,
         }
     
     def create_custom_ship(self, ship_name, ship_role="Custom Ship"):

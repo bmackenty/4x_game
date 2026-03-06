@@ -186,6 +186,43 @@ function updateHud(gs) {
   if (gs.indices) {
     renderIndices(gs.indices);
   }
+
+  // Navigation status overlay (galaxy view bottom-left panel)
+  updateNavStatus(gs.ship);
+}
+
+/**
+ * Update the nav-status overlay with current ship data.
+ * @param {object|null} ship - gs.ship from the state snapshot
+ */
+function updateNavStatus(ship) {
+  if (!ship) return;
+
+  const location  = ship.current_system || "Deep Space";
+  const fuel      = ship.fuel      ?? 0;
+  const maxFuel   = ship.max_fuel  ?? 1;
+  const jumpRange = ship.jump_range ?? 15;
+  const cargoUsed = ship.cargo_used ?? 0;
+  const cargoMax  = ship.cargo_max  ?? 0;
+
+  setText("nav-location",   location);
+  setText("nav-fuel-text",  `${Math.round(fuel)} / ${Math.round(maxFuel)}`);
+  setText("nav-jump-range", `${jumpRange} ly`);
+  setText("nav-cargo",      `${cargoUsed} / ${cargoMax}`);
+
+  // Show raw 3D coordinates for navigation debugging
+  if (ship.coordinates) {
+    const [cx, cy, cz] = ship.coordinates;
+    setText("nav-coords", `(${Math.round(cx)}, ${Math.round(cy)}, ${Math.round(cz)})`);
+  }
+
+  const fillEl = document.getElementById("nav-fuel-fill");
+  if (fillEl) {
+    const pct = maxFuel > 0 ? Math.round((fuel / maxFuel) * 100) : 0;
+    fillEl.style.width = `${pct}%`;
+    fillEl.classList.toggle("nav-status__fuel-fill--warn", pct < 40 && pct >= 20);
+    fillEl.classList.toggle("nav-status__fuel-fill--crit", pct < 20);
+  }
 }
 
 function setText(id, text) {
