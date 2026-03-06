@@ -19,6 +19,7 @@ import { getGalaxyMap, getSystem, jumpToCoords,
          getSystemPresence,
          getStation, getStationUpgrades, buyStationUpgrade } from "../api.js";
 import { notify }             from "../ui/notifications.js";
+import { showModal, closeModal } from "../ui/modal.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
 import { attachHexInput }     from "../hex/hex-input.js";
 
@@ -298,21 +299,27 @@ async function showSystemPanel(system) {
     getMarket(system.name),
   ]);
 
+  // Check if the player is physically at this system
+  const atThisSystem = _playerIsAt(system.coordinates);
+
   // Inject NPC presence section
   const presence = presenceResult.status === "fulfilled" ? presenceResult.value : null;
   if (presence) {
     _renderPresenceSection(content, presence);
-    // Wire TRADE button if market exists
-    if (presence.has_market) {
+    // Wire TRADE button only if player is here and market exists
+    if (presence.has_market && atThisSystem) {
       content.querySelector(".btn-open-trade")
         ?.addEventListener("click", () => _openTradeView(system.name));
+    } else if (presence.has_market && !atThisSystem) {
+      // Remove the TRADE button — player is not here
+      content.querySelector(".btn-open-trade")?.remove();
     }
   } else {
     content.querySelector(".presence-placeholder")?.remove();
   }
 
-  // Inject market section
-  if (marketResult.status === "fulfilled") {
+  // Inject market section only when player is at this system
+  if (atThisSystem && marketResult.status === "fulfilled") {
     _marketData = marketResult.value;
     _renderMarketSection(system.name, _marketData);
   } else {
@@ -361,8 +368,11 @@ async function showStationPanel(station) {
 
 function _buildStationPanelHtml(station, detail, upgrades) {
   const services = (detail?.services || station.services || []);
-  const hasMarket   = detail ? detail.has_market   : services.some(s => ["Market","Ore Processing","Luxury Goods"].includes(s));
+  const stationHasMarket = detail ? detail.has_market : services.some(s => ["Market","Ore Processing","Luxury Goods"].includes(s));
   const hasUpgrades = detail ? detail.has_upgrades : services.includes("Ship Upgrades");
+  // Only show market button when player is physically at this station's system
+  const playerHere  = _playerIsInSystem(station.system_name);
+  const hasMarket   = stationHasMarket && playerHere;
 
   const serviceChips = services.map(s =>
     `<span class="station-service-chip">${esc(s)}</span>`
@@ -471,7 +481,15 @@ function _buildStationPanelHtml(station, detail, upgrades) {
 function _wireStationButtons(content, station, detail, upgrades) {
   // Trade button
   content.querySelector(".btn-station-trade")
-    ?.addEventListener("click", () => _openTradeView(station.name));
+    ?.addEventListener("click", async () => {
+      try {
+        const market = await getMarket(station.name);
+        _marketData = market;
+        _openMarketModal(station.name, market);
+      } catch (err) {
+        notify("ERROR", err.message || "Could not load market.");
+      }
+    });
 
   // Upgrade buy buttons
   content.querySelectorAll(".btn-buy-upgrade").forEach(btn => {
@@ -515,6 +533,7 @@ function buildSystemPanelHtml(system, shipCoords) {
 
   // Navigation info: distance from ship to this system
   let navInfoHtml = "";
+  let atSystem = false;
   {
     const shipInfo = state.gameState?.ship;
     const sCoords  = shipInfo?.coordinates ?? shipCoords;
@@ -522,7 +541,7 @@ function buildSystemPanelHtml(system, shipCoords) {
       const [sx, sy, sz] = sCoords;
       const [tx, ty, tz] = system.coordinates;
       const dist      = Math.round(Math.sqrt((tx-sx)**2 + (ty-sy)**2 + (tz-sz)**2) * 10) / 10;
-      const atSystem  = dist < 1.0;
+      atSystem        = dist < 1.0;
       const jumpRange = shipInfo?.jump_range ?? 15;
       const inRange   = dist <= jumpRange;
       const distColor = atSystem ? "var(--accent-green)" : inRange ? "var(--accent-teal)" : "var(--accent-orange)";
@@ -570,11 +589,17 @@ function buildSystemPanelHtml(system, shipCoords) {
              ${p.resources.slice(0, 3).join(", ")}</div>`
         : ""}
       ${p.habitable
-        ? `<button class="btn btn--sm btn--primary btn-found-colony"
-                   style="margin-top:var(--sp-2);width:100%"
-                   data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
-             ⊕ FOUND COLONY
-           </button>`
+        ? p.has_colony
+          ? `<button class="btn btn--sm btn--secondary btn-found-colony"
+                     style="margin-top:var(--sp-2);width:100%"
+                     data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
+               ◉ VISIT COLONY
+             </button>`
+          : `<button class="btn btn--sm btn--primary btn-found-colony"
+                     style="margin-top:var(--sp-2);width:100%"
+                     data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
+               ⊕ ESTABLISH COLONY
+             </button>`
         : ""}
     </div>
   `).join("") || `<p style="color:var(--text-dim);font-size:var(--font-size-xs)">
@@ -625,10 +650,11 @@ function buildSystemPanelHtml(system, shipCoords) {
       <!-- Navigation info (distance, range) -->
       ${navInfoHtml}
 
-      <!-- Jump button -->
+      <!-- Jump button — hidden when already at this system -->
+      ${!atSystem ? `
       <button class="btn btn--primary btn-jump" style="width:100%;margin-bottom:var(--sp-4)">
         ▶ JUMP TO SYSTEM
-      </button>
+      </button>` : ""}
 
       <!-- Planets -->
       <div class="section-header" style="margin-bottom:var(--sp-2)">
@@ -639,11 +665,8 @@ function buildSystemPanelHtml(system, shipCoords) {
       <!-- NPC Presence — injected asynchronously after getSystemPresence() resolves -->
       <div class="presence-placeholder" style="margin-top:var(--sp-4)"></div>
 
-      <!-- Market — injected asynchronously after getMarket() resolves -->
-      <div class="market-placeholder" style="margin-top:var(--sp-4)">
-        <div class="section-header" style="margin-bottom:var(--sp-2)">Market</div>
-        <p style="color:var(--text-dim);font-size:var(--font-size-xs)">Loading market data…</p>
-      </div>
+      <!-- Market button — injected asynchronously, only when player is here -->
+      <div class="market-placeholder" style="margin-top:var(--sp-4)"></div>
     </div>
   `;
 }
@@ -758,6 +781,31 @@ async function _openTradeView(systemName) {
 
 
 // ---------------------------------------------------------------------------
+// Proximity helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the player's ship is within 1.5 game-units of targetCoords.
+ * Used to gate market visibility — only show a market when the player is there.
+ * @param {number[]} targetCoords - [x, y, z]
+ */
+function _playerIsAt(targetCoords) {
+  const ship = state.gameState?.ship;
+  if (!ship?.coordinates || !targetCoords) return false;
+  const [sx, sy, sz] = ship.coordinates;
+  const [tx, ty, tz] = targetCoords;
+  return Math.sqrt((tx - sx) ** 2 + (ty - sy) ** 2 + (tz - sz) ** 2) < 1.5;
+}
+
+/**
+ * Returns true if the player is currently in the named system.
+ */
+function _playerIsInSystem(systemName) {
+  return state.gameState?.ship?.current_system === systemName;
+}
+
+
+// ---------------------------------------------------------------------------
 // Market / Trade UI
 // ---------------------------------------------------------------------------
 
@@ -773,82 +821,92 @@ function _renderMarketSection(systemName, market) {
                                ?.querySelector(".market-placeholder");
   if (!placeholder) return;
 
-  const commodities = market.commodities || [];
-  const credits     = market.player_credits ?? state.gameState?.player?.credits ?? 0;
-
-  if (!commodities.length) {
-    placeholder.innerHTML = `
-      <div class="section-header" style="margin-bottom:var(--sp-2)">Market</div>
-      <p style="color:var(--text-dim);font-size:var(--font-size-xs)">No commodities traded here.</p>
-    `;
+  if (!(market.commodities || []).length) {
+    placeholder.remove();
     return;
   }
 
-  // Build the commodity rows.
-  // The backend returns a single "price" per commodity.
-  // Sell price is conventionally 80% of buy price (handled server-side).
+  placeholder.innerHTML = `
+    <button class="btn btn--primary" style="width:100%" id="btn-open-market">
+      ⬡ OPEN MARKET
+    </button>
+  `;
+  placeholder.classList.remove("market-placeholder");
+  placeholder.querySelector("#btn-open-market")
+    ?.addEventListener("click", () => _openMarketModal(systemName, market));
+}
+
+
+/** Build and wire the commodity table HTML for use inside the market modal. */
+function _buildMarketBody(systemName, market) {
+  const commodities = market.commodities || [];
+  const credits     = market.player_credits ?? state.gameState?.player?.credits ?? 0;
+
   const rows = commodities.map(c => {
-    const price     = c.price ?? 0;
-    const sellEst   = Math.round(price * 0.8);
-    const canBuy    = price > 0 && c.supply > 0;
-    const canSell   = price > 0 && c.in_inventory > 0;
+    const price   = c.price ?? 0;
+    const sellEst = Math.round(price * 0.8);
+    const canBuy  = price > 0 && c.supply > 0;
+    const canSell = price > 0 && c.in_inventory > 0;
     return `
       <div class="market-row" data-commodity="${esc(c.name)}">
         <div class="market-row__name">${esc(c.name)}</div>
         <div class="market-row__prices">
-          <span style="color:var(--accent-teal)">${canBuy ? price + " ⊕" : "—"}</span>
-          <span style="color:var(--accent-gold)">${price > 0 ? sellEst + " ⊗" : "—"}</span>
+          <span style="color:var(--accent-teal)">${canBuy ? price + " ⊕ buy" : "—"}</span>
+          <span style="color:var(--accent-gold)">${price > 0 ? sellEst + " ⊗ sell" : "—"}</span>
         </div>
-        <div class="market-row__stock muted">${c.supply ?? "—"} in stock</div>
-        ${c.in_inventory > 0
-          ? `<div class="market-row__held muted">Holding: ${c.in_inventory}</div>`
-          : ""}
+        <div class="market-row__stock muted">
+          ${c.supply ?? "—"} in stock${c.in_inventory > 0 ? ` · holding ${c.in_inventory}` : ""}
+        </div>
         <div class="market-row__actions">
           ${canBuy ? `
             <input type="number" class="market-qty-input" value="1" min="1"
-                   data-commodity="${esc(c.name)}" data-action="buy"
-                   title="Quantity to buy" style="width:44px">
+                   data-commodity="${esc(c.name)}" data-action="buy" style="width:44px">
             <button class="btn btn--sm btn--primary btn-trade"
-                    data-system="${esc(systemName)}"
-                    data-commodity="${esc(c.name)}" data-action="buy">BUY</button>
+                    data-system="${esc(systemName)}" data-commodity="${esc(c.name)}" data-action="buy">BUY</button>
           ` : ""}
           ${canSell ? `
-            <input type="number" class="market-qty-input" value="1" min="1"
-                   max="${c.in_inventory}"
-                   data-commodity="${esc(c.name)}" data-action="sell"
-                   title="Quantity to sell" style="width:44px">
+            <input type="number" class="market-qty-input" value="1" min="1" max="${c.in_inventory}"
+                   data-commodity="${esc(c.name)}" data-action="sell" style="width:44px">
             <button class="btn btn--sm btn--secondary btn-trade"
-                    data-system="${esc(systemName)}"
-                    data-commodity="${esc(c.name)}" data-action="sell">SELL</button>
+                    data-system="${esc(systemName)}" data-commodity="${esc(c.name)}" data-action="sell">SELL</button>
           ` : ""}
         </div>
       </div>
     `;
   }).join("");
 
-  placeholder.innerHTML = `
-    <div class="section-header" style="margin-bottom:var(--sp-2)">
-      Market
-      <span class="muted" style="font-size:10px;margin-left:var(--sp-2)">
-        Credits: <strong style="color:var(--accent-gold)">${credits.toLocaleString()}</strong>
-      </span>
+  return `
+    <div style="margin-bottom:var(--sp-3);font-size:var(--font-size-xs);color:var(--text-dim)">
+      Credits: <strong style="color:var(--accent-gold)">${credits.toLocaleString()} ◈</strong>
     </div>
-    <div class="market-table">${rows}</div>
+    <div class="market-table" id="market-modal-table">${rows}</div>
   `;
-  placeholder.classList.remove("market-placeholder"); // prevent double-inject
+}
 
-  // Wire trade buttons — each button reads its sibling qty input
-  placeholder.querySelectorAll(".btn-trade").forEach(btn => {
+
+/** Open the market modal for a system. */
+function _openMarketModal(systemName, market) {
+  showModal(`Market — ${systemName}`, _buildMarketBody(systemName, market), [
+    { label: "Close", className: "btn--secondary", onClick: () => closeModal() },
+  ], { wide: true });
+
+  _wireMarketModal(systemName);
+}
+
+
+/** Wire buy/sell buttons inside the currently-open market modal. */
+function _wireMarketModal(systemName) {
+  const table = document.getElementById("market-modal-table");
+  table?.querySelectorAll(".btn-trade").forEach(btn => {
     btn.addEventListener("click", () => {
-      const action    = btn.dataset.action;
       const commodity = btn.dataset.commodity;
+      const action    = btn.dataset.action;
       const system    = btn.dataset.system;
-      // Find the qty input that matches this button's commodity+action
-      const qtyInput  = placeholder.querySelector(
+      const qtyInput  = table.querySelector(
         `.market-qty-input[data-commodity="${CSS.escape(commodity)}"][data-action="${action}"]`
       );
       const qty = parseInt(qtyInput?.value || "1", 10);
-      _doTrade(system, commodity, action, qty, btn);
+      _doTrade(system, commodity, action, qty, btn, systemName);
     });
   });
 }
@@ -884,9 +942,13 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
       state.gameState.player.credits = result.credits_remaining;
     }
 
-    // Re-fetch market and refresh the section so prices/stock are up-to-date
+    // Re-fetch market and refresh the modal body in-place
     _marketData = await getMarket(systemName);
-    _renderMarketSection(systemName, _marketData);
+    const modalBody = document.getElementById("modal-body");
+    if (modalBody) {
+      modalBody.innerHTML = _buildMarketBody(systemName, _marketData);
+      _wireMarketModal(systemName);
+    }
 
   } catch (err) {
     notify("ERROR", err.message || "Trade failed.");

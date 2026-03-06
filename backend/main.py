@@ -281,16 +281,18 @@ def _ship_coords():
         return None
 
 
+def _current_system_name() -> str | None:
+    """Return the name of the system the ship is currently in, or None."""
+    try:
+        info = game.get_active_ship_info()
+        return info.get("current_system") if info else None
+    except Exception:
+        return None
+
+
 def _player_is_in_system(system_name: str) -> bool:
-    """True if the player's ship is currently docked at the named system."""
-    coords = _ship_coords()
-    if not coords:
-        return False
-    # Scan by name with a small tolerance to handle int/float coordinate differences
-    for sys_coords, system in game.navigation.galaxy.systems.items():
-        if system.get("name") == system_name:
-            return all(abs(a - b) < 1.0 for a, b in zip(coords, sys_coords))
-    return False
+    """True if the player's ship is currently at the named system."""
+    return _current_system_name() == system_name
 
 
 # Improvements that open a commodity market on a player colony.
@@ -318,42 +320,40 @@ def _player_is_at_market(market_name: str) -> bool:
     True if the player is at the location that hosts this market.
 
     Accepts both system names and station names as market_name:
-      - System market:         ship must be at that system's coordinates.
+      - System market:         ship must be in that system (resolved by name).
       - In-system station:     ship must be in the station's parent system.
       - Deep-space station:    ship must be within 8 units of the station's
                                3-D coordinates (one hex-unit tolerance).
     """
     import math as _math
-    coords = _ship_coords()
-    if not coords:
-        return False
+    current_name = _current_system_name()
 
-    # Is the ship currently in a system, and does its name match?
-    # Scan by name with tolerance to handle int/float differences
-    current_system = None
-    for sys_coords, system in game.navigation.galaxy.systems.items():
-        if all(abs(a - b) < 1.0 for a, b in zip(coords, sys_coords)):
-            current_system = system
-            break
-
-    if current_system and current_system.get("name") == market_name:
-        # If the player has a colony here, they must have built a trade building
-        # before the market is accessible.  NPC-owned systems are always open.
-        colony_here = any(
-            c.system_name == market_name for c in colony_manager.colonies.values()
+    # System market
+    if current_name == market_name:
+        # If this system only has a player colony (no pre-existing NPC market),
+        # require a Trade Nexus or Spaceport Hub before trading.
+        # NPC/predefined system markets are always accessible.
+        npc_market_exists = (
+            hasattr(game, "economy") and game.economy
+            and market_name in game.economy.markets
         )
-        if colony_here and not _colony_has_trade_building(market_name):
-            return False
+        if not npc_market_exists:
+            # Pure player-colony system — must build trade infrastructure first
+            if not _colony_has_trade_building(market_name):
+                return False
         return True
 
     # Check stations
+    coords = _ship_coords()
+    if not coords:
+        return False
     if game.station_manager:
         st = game.station_manager.get_station_by_name(market_name)
         if st:
             parent_system = st.get("system_name")
             if parent_system:
                 # In-system station: being in the parent system is sufficient
-                return current_system is not None and current_system.get("name") == parent_system
+                return current_name == parent_system
             else:
                 # Deep-space station: proximity check
                 st_coords = st.get("coordinates")
@@ -868,8 +868,9 @@ async def get_system(system_name: str):
     planets = []
     for body in system_data.get("celestial_bodies", []):
         if body.get("object_type") == "Planet":
+            planet_name = body.get("name", "Unknown Planet")
             planets.append({
-                "name":                body.get("name", "Unknown Planet"),
+                "name":                planet_name,
                 "subtype":             body.get("subtype", "Unknown"),
                 "habitable":           body.get("habitable", False),
                 "has_atmosphere":      body.get("has_atmosphere", False),
@@ -877,6 +878,7 @@ async def get_system(system_name: str):
                 "resources":           body.get("resources", []),
                 "controlling_faction": body.get("controlling_faction"),
                 "has_shipyard":        body.get("shipyard", False),
+                "has_colony":          planet_name in colony_manager.colonies,
             })
 
     # Market info — gated by trade infrastructure.
