@@ -139,6 +139,7 @@ def save_game(game, save_name: Optional[str] = None) -> bool:
             
             # Game state
             'credits': getattr(game, 'credits', 10000),
+            'fleet_pool': getattr(game, 'fleet_pool', 0),
             'inventory': getattr(game, 'inventory', {}),
             'completed_research': getattr(game, 'completed_research', []),
             'active_research': getattr(game, 'active_research', None),
@@ -244,6 +245,7 @@ def load_game(game, save_path: str) -> bool:
         
         # Load game state
         game.credits = save_data.get('credits', 10000)
+        game.fleet_pool = save_data.get('fleet_pool', 0)
         game.inventory = save_data.get('inventory', {})
         game.completed_research = save_data.get('completed_research', [])
         game.active_research = save_data.get('active_research', None)

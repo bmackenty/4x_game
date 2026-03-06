@@ -165,6 +165,7 @@ def _compute_indices() -> dict:
     research_pts = int(prod.get("research",  0))
     credits_prod = int(prod.get("credits",   0))
     defense_pts  = int(prod.get("defense",   0))
+    refined_ore  = int(prod.get("refined_ore", 0))
 
     # Systems the player has visited — used as a proxy for scouting / logistics
     try:
@@ -175,16 +176,25 @@ def _compute_indices() -> dict:
     except Exception:
         visited = 0
 
+    # Fleet pool — the canonical, production-chain-backed military strength.
+    # Grows each turn via Shipyards (amplified by Ore Processors).
+    fleet_pool  = max(0, getattr(game, "fleet_pool", 0))
+
+    # Number of colonized systems — contributes to defense depth.
+    empire_size = len(colony_manager.colonies) if colony_manager else 0
+
     # ── SPI ──────────────────────────────────────────────────────────────────
-    fleet_strength          = ships * 20 + kin // 4
-    defense_grid            = defense_pts * 20 + kin // 5
+    fleet_strength          = fleet_pool                          # from production chain
+    defense_grid            = defense_pts * 20 + empire_size * 15 + kin // 5
     strategic_weapons       = kin // 3 + n_completed * 2
     intelligence_capability = int_ // 4 + coh // 6
 
     spi = fleet_strength + defense_grid + strategic_weapons + intelligence_capability
 
     # ── REI ──────────────────────────────────────────────────────────────────
-    raw_material_access = minerals * 8 + visited * 2
+    # refined_ore is included in raw material access — it represents processed
+    # industrial capacity sitting upstream of the military chain.
+    raw_material_access = minerals * 8 + refined_ore * 6 + visited * 2
     energy_production   = ether * 10 + aef // 5
     logistics_capacity  = ships * 12 + visited * 3
 
@@ -211,9 +221,10 @@ def _compute_indices() -> dict:
         "rei": rei,
         "kii": kii,
         "eci": eci,
+        "fleet_pool": fleet_pool,   # also exposed at top level for HUD/GNN use
         "details": {
             "spi": {
-                "Fleet Strength":          fleet_strength,
+                "Fleet Strength (pool)":   fleet_strength,
                 "Defense Grid":            defense_grid,
                 "Strategic Weapons":       strategic_weapons,
                 "Intelligence Capability": intelligence_capability,
@@ -250,8 +261,10 @@ def _compute_indices() -> dict:
             "Colony research/turn":     research_pts,
             "Colony credits/turn":      credits_prod,
             "Colony defense/turn":      defense_pts,
+            "Colony refined ore/turn":  refined_ore,
             "Systems visited":          visited,
-            "Credits": credits,
+            "Credits":                  credits,
+            "Fleet pool":               fleet_pool,
         },
     }
 
@@ -352,6 +365,7 @@ def _build_state_snapshot() -> dict:
             "species": game.character_species,
             "faction": game.character_faction,
             "credits": game.credits,
+            "fleet_pool": getattr(game, "fleet_pool", 0),
         },
         "turn": turn_info,
         "research": {

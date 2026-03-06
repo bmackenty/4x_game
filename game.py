@@ -55,6 +55,10 @@ class Game:
         self.custom_ships = []  # Player-built ships
         self.owned_stations = []
         self.owned_platforms = []
+        # Fleet pool — empire-wide military strength, accumulated from Shipyards
+        # each turn.  Ore Processors boost shipyard output (minerals → refined ore
+        # → fleet points chain).  Spent on operations in a future system.
+        self.fleet_pool = 0
         self.economy = EconomicSystem()
         self.navigation = NavigationSystem(self)
         self.upgrade_system = ShipUpgradeSystem()
