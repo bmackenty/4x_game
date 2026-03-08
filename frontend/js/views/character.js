@@ -58,6 +58,7 @@ function _buildSheet(s) {
         <div class="char-sheet__col char-sheet__col--right">
           ${_buildClassSection(s)}
           ${_buildBackgroundSection(s)}
+          ${_buildFactionSection(s)}
           ${_buildGearSection("EQUIPMENT",            s.equipment,            "No equipment installed.")}
           ${_buildGearSection("CYBERNETICS",          s.cybernetics,          "No cybernetic augmentations.")}
           ${_buildGearSection("ETHERIC ENHANCEMENTS", s.etheric_enhancements, "No etheric enhancements.")}
@@ -175,6 +176,23 @@ function _buildBackgroundSection(s) {
       <div class="char-section__title">BACKGROUND — ${esc(s.background)}</div>
       <p class="char-section__desc">${esc(s.background_description)}</p>
       ${traitChips ? `<div class="char-traits">${traitChips}</div>` : ""}
+    </section>
+  `;
+}
+
+
+function _buildFactionSection(s) {
+  if (!s.faction) return "";
+  const chips = [
+    s.faction_philosophy ? `<span class="char-trait char-trait--faction">⬡ ${esc(s.faction_philosophy)}</span>` : "",
+    s.faction_focus      ? `<span class="char-trait char-trait--faction">◈ ${esc(s.faction_focus)}</span>`      : "",
+  ].filter(Boolean).join("");
+
+  return `
+    <section class="char-section">
+      <div class="char-section__title">FACTION — ${esc(s.faction)}</div>
+      ${s.faction_description ? `<p class="char-section__desc">${esc(s.faction_description)}</p>` : ""}
+      ${chips ? `<div class="char-traits">${chips}</div>` : ""}
     </section>
   `;
 }

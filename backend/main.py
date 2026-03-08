@@ -2086,6 +2086,9 @@ async def get_character_sheet():
         "background_description": bg_data.get("description", ""),
         "species":          game.character_species,
         "faction":          game.character_faction,
+        "faction_description": factions.get(game.character_faction, {}).get("description", ""),
+        "faction_philosophy":  factions.get(game.character_faction, {}).get("philosophy", ""),
+        "faction_focus":       factions.get(game.character_faction, {}).get("primary_focus", ""),
         "xp":               getattr(game, "xp", 0),
         "level":            getattr(game, "level", 1),
         "stats": [

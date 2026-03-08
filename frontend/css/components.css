@@ -2390,6 +2390,22 @@
 .nav-status__fuel-fill--crit  { background: #e05050; }
 
 
+/* Inline faction link in system panel */
+.btn-faction-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--accent-cyan);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.btn-faction-link:hover { color: #fff; text-decoration: underline; }
+
+
 /* ===========================================================================
    CHARACTER SHEET VIEW
    =========================================================================== */
@@ -2691,6 +2707,13 @@
   border: 1px solid rgba(0,100,200,0.22);
   border-radius: 1px;
   padding: 2px var(--sp-2);
+}
+
+/* Faction chips use a teal-gold tint to distinguish from background traits */
+.char-trait--faction {
+  color: #ffd080;
+  background: rgba(180,120,0,0.12);
+  border-color: rgba(200,140,0,0.28);
 }
 
 /* ── Gear slots ───────────────────────────────────────────────────────────── */

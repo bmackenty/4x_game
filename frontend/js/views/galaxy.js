@@ -286,6 +286,13 @@ async function showSystemPanel(system) {
     jumpBtn.addEventListener("click", () => handleJump(system));
   }
 
+  // Faction name link → open diplomacy view focused on that faction
+  content.querySelector(".btn-faction-link")?.addEventListener("click", async (e) => {
+    const factionName = e.currentTarget.dataset.faction;
+    const { switchView } = await import("../main.js");
+    switchView("diplomacy", { factionName });
+  });
+
   // Colony "found" buttons on each habitable planet
   content.querySelectorAll(".btn-found-colony").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -637,7 +644,7 @@ function buildSystemPanelHtml(system, shipCoords) {
         ${system.controlling_faction ? `
         <div class="stat-row">
           <span class="stat-row__label">Faction</span>
-          <span class="stat-row__value" style="color:var(--accent-cyan)">${esc(system.controlling_faction)}</span>
+          <button class="btn-faction-link" data-faction="${esc(system.controlling_faction)}">${esc(system.controlling_faction)}</button>
         </div>` : ""}
       </div>
 

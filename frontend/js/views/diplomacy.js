@@ -53,7 +53,7 @@ const STATUS_META = {
 
 export const diplomacyView = {
 
-    async mount() {
+    async mount(context = {}) {
         const container = document.getElementById("view-diplomacy");
         if (!container) return;
 
@@ -61,6 +61,21 @@ export const diplomacyView = {
 
         await _loadFactions();
         _renderFactionList();
+
+        // If a faction name was passed (e.g. from a galaxy map link), auto-select it.
+        if (context.factionName) {
+            const row = container.querySelector(
+                `.diplo-faction-row[data-name="${CSS.escape(context.factionName)}"]`
+            );
+            if (row) {
+                row.scrollIntoView({ block: "nearest" });
+                await _loadFactionDetail(context.factionName);
+                container.querySelectorAll(".diplo-faction-row").forEach(r =>
+                    r.classList.toggle("diplo-faction-row--selected", r === row)
+                );
+                _renderDetailPanel();
+            }
+        }
     },
 
     unmount() {
