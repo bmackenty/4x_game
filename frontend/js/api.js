@@ -116,6 +116,14 @@ export function getGameOptions() {
   return get("/api/game/options");
 }
 
+/**
+ * Fetch the full character sheet: stats, derived metrics, class info,
+ * background traits, and equipment slots.
+ */
+export function getCharacterSheet() {
+  return get("/api/character/sheet");
+}
+
 
 // ===========================================================================
 // Galaxy / Navigation  (Phase 2)

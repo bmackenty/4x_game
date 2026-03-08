@@ -23,6 +23,7 @@ import { researchView }  from "./views/research.js";
 import { diplomacyView } from "./views/diplomacy.js";
 import { shipView }      from "./views/ship.js";
 import { tradeView }     from "./views/trade.js";
+import { characterView } from "./views/character.js";
 
 // ---------------------------------------------------------------------------
 // View registry — maps view name → { mount(), unmount() }
@@ -36,6 +37,7 @@ const VIEWS = {
   research:  researchView,
   diplomacy: diplomacyView,
   trade:     tradeView,
+  character: characterView,
 };
 
 /** DOM container for each view */
@@ -48,6 +50,7 @@ const viewEls = {
   research:  document.getElementById("view-research"),
   diplomacy: document.getElementById("view-diplomacy"),
   trade:     document.getElementById("view-trade"),
+  character: document.getElementById("view-character"),
 };
 
 // ---------------------------------------------------------------------------
@@ -412,6 +415,9 @@ function setupKeyboardShortcuts() {
         break;
       case "l":                     // L → colonies management
         switchView("colonies");
+        break;
+      case "p":                     // P → character sheet (profile)
+        if (state.currentView !== "character") switchView("character");
         break;
     }
   });

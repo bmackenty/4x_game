@@ -2047,6 +2047,75 @@ async def get_lore_energies():
     return {"energies": all_energies}
 
 
+@app.get("/api/character/sheet")
+async def get_character_sheet():
+    """
+    Full character sheet — base stats, derived metrics, class info,
+    background traits, and equipment slots (placeholders until the
+    inventory system is wired to the player).
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    from characters import (
+        character_classes, character_backgrounds,
+        STAT_NAMES, STAT_DESCRIPTIONS, DERIVED_METRIC_INFO,
+        calculate_derived_attributes,
+    )
+
+    raw_stats = game.character_stats or {}
+    derived   = calculate_derived_attributes(raw_stats) if raw_stats else {}
+
+    class_data = character_classes.get(game.character_class, {})
+    bg_data    = character_backgrounds.get(game.character_background, {})
+
+    # Format bonuses as human-readable strings (e.g. "trade_discount" → "Trade Discount: +10%")
+    formatted_bonuses = {}
+    for key, val in class_data.get("bonuses", {}).items():
+        label = key.replace("_", " ").title()
+        if isinstance(val, float) and val < 2:
+            formatted_bonuses[label] = f"+{int(val * 100)}%"
+        else:
+            formatted_bonuses[label] = str(val)
+
+    return {
+        "name":             game.player_name,
+        "character_class":  game.character_class,
+        "class_description": class_data.get("description", ""),
+        "background":       game.character_background,
+        "background_description": bg_data.get("description", ""),
+        "species":          game.character_species,
+        "faction":          game.character_faction,
+        "xp":               getattr(game, "xp", 0),
+        "level":            getattr(game, "level", 1),
+        "stats": [
+            {
+                "abbr":        abbr,
+                "name":        STAT_NAMES[abbr],
+                "description": STAT_DESCRIPTIONS[abbr],
+                "value":       raw_stats.get(abbr, 30),
+            }
+            for abbr in STAT_NAMES
+        ],
+        "derived": [
+            {
+                "name":        name,
+                "value":       derived.get(name, 0),
+                "formula":     DERIVED_METRIC_INFO[name]["formula"],
+                "description": DERIVED_METRIC_INFO[name]["description"],
+            }
+            for name in DERIVED_METRIC_INFO
+        ],
+        "skills":    class_data.get("skills", []),
+        "bonuses":   formatted_bonuses,
+        "traits":    bg_data.get("traits", []),
+        # Inventory slots — placeholders until the equipment system is active
+        "equipment":             [],
+        "cybernetics":           [],
+        "etheric_enhancements":  [],
+    }
+
+
 @app.get("/api/lore/factions")
 async def get_lore_factions():
     """

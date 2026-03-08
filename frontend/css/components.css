@@ -2388,3 +2388,330 @@
 /* Colour shifts when fuel is low */
 .nav-status__fuel-fill--warn  { background: #d4a800; }
 .nav-status__fuel-fill--crit  { background: #e05050; }
+
+
+/* ===========================================================================
+   CHARACTER SHEET VIEW
+   =========================================================================== */
+
+.character-container {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5);
+  box-sizing: border-box;
+}
+
+/* Loading / error states */
+.char__loading, .char__error {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: var(--sp-6);
+  text-align: center;
+}
+
+/* Outer card */
+.char-sheet {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.char-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  margin-bottom: var(--sp-4);
+}
+
+/* Avatar placeholder — will hold an image later */
+.char-sheet__avatar {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  background: var(--surface-1);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.char-sheet__avatar-glyph {
+  font-size: 2.8rem;
+  color: var(--accent-teal);
+  opacity: 0.5;
+}
+
+.char-sheet__identity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.char-sheet__name {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  color: var(--accent-teal);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.char-sheet__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.char-sheet__sep { color: var(--text-dim); }
+
+.char-sheet__tag {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
+  border-radius: 1px;
+  padding: 1px var(--sp-2);
+}
+.char-sheet__tag--dim    { color: var(--text-muted); }
+.char-sheet__tag--faction {
+  color: #a0ccff;
+  border-color: rgba(0,150,255,0.25);
+  background: rgba(0,100,200,0.12);
+}
+
+/* XP bar */
+.char-sheet__xp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+}
+.char-sheet__xp-label, .char-sheet__xp-val {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.char-sheet__xp-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.char-sheet__xp-fill {
+  height: 100%;
+  background: var(--accent-teal);
+  opacity: 0.6;
+  transition: width 0.4s ease;
+}
+
+/* ── Two-column body ─────────────────────────────────────────────────────── */
+.char-sheet__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+@media (max-width: 820px) {
+  .char-sheet__body { grid-template-columns: 1fr; }
+}
+
+.char-sheet__col { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+/* ── Shared section wrapper ──────────────────────────────────────────────── */
+.char-section {
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.char-section__title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.char-section__desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-3);
+}
+
+.char-section__empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Core stats ─────────────────────────────────────────────────────────── */
+.char-stats-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.char-stat {
+  display: grid;
+  grid-template-columns: 2.8rem 1fr auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: default;
+}
+
+.char-stat__abbr {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.05em;
+}
+
+.char-stat__name {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.char-stat__bar {
+  height: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
+  border-radius: 1px;
+  overflow: hidden;
+  width: 90px;
+}
+
+.char-stat__bar-fill {
+  height: 100%;
+  background: rgba(0, 212, 170, 0.55);
+  transition: width 0.3s ease;
+}
+.char-stat__bar-fill--mid  { background: rgba(0, 212, 170, 0.75); }
+.char-stat__bar-fill--high { background: var(--accent-teal); }
+
+.char-stat__val {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+/* ── Derived attributes ──────────────────────────────────────────────────── */
+.char-derived-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.char-derived {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0 var(--sp-3);
+  cursor: default;
+}
+
+.char-derived__name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.char-derived__val {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-teal);
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+}
+
+.char-derived__formula {
+  font-size: 10px;
+  color: var(--text-dim);
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* ── Skills row ──────────────────────────────────────────────────────────── */
+.char-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.char-skill {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  background: rgba(0,212,170,0.08);
+  border: 1px solid rgba(0,212,170,0.25);
+  border-radius: 1px;
+  padding: 2px var(--sp-2);
+}
+
+/* ── Bonus chips ─────────────────────────────────────────────────────────── */
+.char-chips { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.char-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px var(--sp-2);
+  background: var(--surface-1);
+  border-left: 2px solid rgba(0,212,170,0.35);
+}
+
+.char-chip__key { color: var(--text-muted); }
+.char-chip__val { color: var(--accent-teal); }
+
+/* ── Background traits ────────────────────────────────────────────────────── */
+.char-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.char-trait {
+  font-size: var(--font-size-xs);
+  color: #a0ccff;
+  background: rgba(0,100,200,0.10);
+  border: 1px solid rgba(0,100,200,0.22);
+  border-radius: 1px;
+  padding: 2px var(--sp-2);
+}
+
+/* ── Gear slots ───────────────────────────────────────────────────────────── */
+.char-gear-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.char-gear-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--surface-1);
+  border-left: 2px solid var(--border-dim);
+  font-size: var(--font-size-sm);
+}
+
+.char-gear-item__name { flex: 1; color: var(--text-primary); }
+.char-gear-item__slot { color: var(--text-dim); font-size: var(--font-size-xs); }
+
+.char-gear-item__rarity { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.06em; }
+.char-gear-item__rarity--common   { color: var(--text-muted); }
+.char-gear-item__rarity--uncommon { color: #66cc66; }
+.char-gear-item__rarity--rare     { color: #6699ff; }
+.char-gear-item__rarity--epic     { color: #cc66ff; }
+.char-gear-item__rarity--legendary { color: #ffaa00; }

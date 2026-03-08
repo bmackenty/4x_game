@@ -103,13 +103,15 @@ export const galaxyView = {
     const canvas = document.getElementById("galaxy-canvas");
     if (!canvas) return;
 
-    // Fetch galaxy map data (or use cache)
-    if (state.galaxyMap.length === 0) {
-      try {
-        const result = await getGalaxyMap();
-        state.galaxyMap = result.systems || [];
-        state.stationsData = result.stations || [];
-      } catch (err) {
+    // Always re-fetch the galaxy map so has_player_colony and visited flags
+    // are up to date without requiring a browser refresh.
+    try {
+      const result = await getGalaxyMap();
+      state.galaxyMap    = result.systems  || [];
+      state.stationsData = result.stations || [];
+    } catch (err) {
+      // Fall back to cached data if the fetch fails
+      if (state.galaxyMap.length === 0) {
         notify("ERROR", `Could not load galaxy map: ${err.message}`);
         return;
       }

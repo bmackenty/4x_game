@@ -74,6 +74,7 @@
         <button class="hud__nav-btn" data-view="research"  title="Research Tree (R)">R&amp;D</button>
         <button class="hud__nav-btn" data-view="diplomacy" title="Faction Diplomacy (D)">DIP</button>
         <button class="hud__nav-btn" data-view="colonies"  title="Colony Management (L)">COL</button>
+        <button class="hud__nav-btn" data-view="character" title="Character Sheet (P)">CHR</button>
       </nav>
 
       <button class="btn btn--primary btn--end-turn" id="btn-end-turn">
@@ -187,6 +188,14 @@
         Empire-wide overview of all colonies: stats, improvements, income.
       -->
       <div id="view-colonies" class="view" role="main" aria-label="Colony management"></div>
+
+      <!--
+        CHARACTER SHEET VIEW
+        Base stats, derived metrics, class/background info, and gear slots.
+      -->
+      <div id="view-character" class="view" role="main" aria-label="Character sheet">
+        <div id="character-container" class="character-container"></div>
+      </div>
 
     </main>
 

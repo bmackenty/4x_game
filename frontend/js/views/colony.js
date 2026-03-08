@@ -577,6 +577,10 @@ async function _doFoundColony() {
 
         _colony = result.colony;
 
+        // Invalidate the galaxy map cache so territory borders update when
+        // the player returns to the galaxy view.
+        state.galaxyMap = [];
+
         // Rebuild the whole view now that we have a colony
         const container = document.getElementById("view-colony");
         if (container) {
