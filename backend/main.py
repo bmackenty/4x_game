@@ -534,6 +534,13 @@ async def new_game(request: NewGameRequest):
     _init_bot_manager(game)
     _init_station_manager(game)
 
+    # If the player chose a faction, start them at Allied standing with that faction.
+    # All other factions are initialised to neutral by FactionSystem.initialize_factions().
+    # Future quest / trade / mission hooks should call faction_system.modify_reputation()
+    # to nudge this value rather than setting it directly.
+    if request.faction and request.faction in game.faction_system.player_relations:
+        game.faction_system.set_player_home_faction(request.faction, reputation=80)
+
     return {
         "success": True,
         "message": f"Welcome, {game.player_name}. The galaxy awaits.",

@@ -230,6 +230,23 @@ class FactionSystem:
             if random.random() < 0.1:  # 10% chance to change activity
                 self.faction_activities[faction_name] = self.get_random_activity(faction_name)
 
+    def set_player_home_faction(self, faction_name, reputation=80):
+        """
+        Mark a faction as the player's home faction by setting their starting
+        reputation to a strongly positive value (default 80 = Allied).
+
+        Called once during new-game setup after the character is created.
+        Future systems (quests, trades, missions) can call modify_reputation()
+        to nudge this value up or down from here.
+
+        Args:
+            faction_name: The faction the player belongs to.
+            reputation:   Starting reputation score (clamped to -100…100).
+        """
+        if faction_name not in self.player_relations:
+            return  # unknown faction — do nothing
+        self.player_relations[faction_name] = max(-100, min(100, reputation))
+
 # Faction definitions with rich lore and gameplay mechanics
 factions = {
     "The Veritas Covenant": {
