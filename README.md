@@ -1,8 +1,8 @@
-# 4X Galactic Empire — Web Edition
+# 4X — Chronicles of the Ether
 
 A single-player 4X strategy game inspired by Alpha Centauri.  Built on a
-deep Python game engine (~37 K lines) with a new browser-based frontend:
-hex-grid galaxy map, hex-grid colony surface, research tree, faction
+deep Python game engine (~37 K lines) with a browser-based frontend:
+hex-grid galaxy map, hex-grid colony surface, research tech tree, faction
 diplomacy, and commodity trading.
 
 ---
@@ -36,7 +36,7 @@ The game engine lives entirely in the project-root Python modules and is
 4x_game/
 ├── run.py                  # Single-command launcher (uvicorn + browser open)
 │
-├── backend/                # FastAPI application (new web UI layer)
+├── backend/                # FastAPI application (web UI layer)
 │   ├── __init__.py
 │   ├── main.py             # All /api/* endpoints, singleton Game + ColonyManager
 │   ├── colony.py           # Hex tile colony system (planet surface builder)
@@ -58,17 +58,17 @@ The game engine lives entirely in the project-root Python modules and is
 │       │   └── hex-input.js    # Pan, zoom, click on hex canvas
 │       ├── views/
 │       │   ├── setup.js        # Character creation (multi-step form)
-│       │   ├── galaxy.js       # Galaxy map: systems, jump, system detail panel
+│       │   ├── galaxy.js       # Galaxy map: systems, jump, system detail + market panel
 │       │   ├── colony.js       # Planet surface: hex tiles, build/demolish
-│       │   ├── research.js     # Tech tree (Phase 4 — coming soon)
-│       │   └── diplomacy.js    # Faction diplomacy (Phase 4 — coming soon)
+│       │   ├── research.js     # Tech tree browser and research queue
+│       │   └── diplomacy.js    # Faction reputation and diplomatic actions
 │       └── ui/
-│           ├── hud.js              # HUD bar updates (credits, turn, actions)
+│           ├── hud.js              # HUD bar updates (credits, turn, actions, research bar)
 │           ├── modal.js            # Reusable modal dialog + confirm helper
 │           └── notifications.js    # Toast notification queue
 │
 ├── lore/
-│   └── energies.json       # 50 energy types (Phase 4 — to be generated)
+│   └── energies.json       # 50 energy types with descriptions, stats, and category
 │
 └── [game engine — DO NOT MODIFY]
     game.py, navigation.py, research.py, factions.py, economy.py,
@@ -92,12 +92,12 @@ The loop closely follows Alpha Centauri:
    locked behind research.
 4. **Research** — Advance through the tech tree to unlock superior buildings,
    ship components, and faction bonuses.
-5. **Diplomacy** — Manage reputation with the galaxy's factions.  Trade
-   favours, complete missions, or risk conflict.
-6. **Trade** — Buy and sell commodities at system markets.  Prices shift with
+5. **Trade** — Buy and sell commodities at system markets.  Prices shift with
    supply, demand, and galactic events.
-7. **Win** — Achieve domination, transcendence (research chain), or survive
-   to the turn limit.
+6. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Players
+   start at Allied standing (reputation 80) with their chosen faction.  Gift
+   credits to improve standing with others; future quests and trade deals will
+   nudge relations further.
 
 ---
 
@@ -108,7 +108,7 @@ The loop closely follows Alpha Centauri:
 | Class | 11 classes (Explorer, Engineer, Diplomat, Trader, …) |
 | Background | 18+ narrative backgrounds, each with stat boosts and talents |
 | Species | 14 alien species with distinct biology and cognitive frameworks |
-| Faction | Align with one of the galaxy's major powers |
+| Faction | Align with one of the galaxy's 30+ major powers (starts Allied) |
 | Stats | 7 attributes (VIT, KIN, INT, AEF, COH, INF, SYN) — point-buy |
 
 ---
@@ -117,7 +117,7 @@ The loop closely follows Alpha Centauri:
 
 Each colonised planet has a **hex tile grid** (radius 4–6 depending on
 planet type) with terrain generated from a seeded RNG — the same planet
-always has the same layout.
+always has the same layout across saves.
 
 ### Terrain Types
 
@@ -158,6 +158,78 @@ Research-gating improvements is the core **research → build** loop.
 
 ---
 
+## Research System
+
+The full tech tree is browsable in the **Research** view (keyboard: `R`).
+Technologies are organised into prerequisite chains; each node shows:
+
+- Turn cost to complete
+- Prerequisites (greyed out if not yet researched)
+- Which colony improvements and ship components it unlocks
+- Linked energy-type lore tooltip
+
+The active research project is displayed in the HUD bar at all times.
+Only one technology can be researched at a time; cancellation is free.
+
+---
+
+## Faction Diplomacy
+
+The **Diplomacy** view (keyboard: `D`) lists all factions sorted by
+reputation (Allied → Enemy).
+
+### Reputation Tiers
+
+| Score | Status |
+|-------|--------|
+| ≥ 75 | Allied |
+| ≥ 50 | Friendly |
+| ≥ 25 | Cordial |
+| ≥ −25 | Neutral |
+| ≥ −50 | Unfriendly |
+| ≥ −75 | Hostile |
+| < −75 | Enemy |
+
+### Starting Relations
+
+Players begin at **Allied (80)** with their chosen faction.  All other
+factions start near neutral (−10 to +10).
+
+### Diplomatic Actions
+
+- **Gift** — spend 500 credits per reputation point to improve standing
+  (1–20 points per action).
+
+Future hooks (quests, trade deals, missions) are designed to call
+`faction_system.modify_reputation()` to nudge relations up or down.
+
+### Zone Benefits
+
+When operating in a faction's controlled systems, reputation determines
+available discounts and bonuses:
+
+| Threshold | Benefits |
+|-----------|----------|
+| Neutral | Faction-focus bonus (trade discounts, repair, research speed) |
+| Cordial (25) | Additional 5% trade discount, 10% refuel discount |
+| Friendly (50) | Major discounts on trade, repair, refuel, shipyard, research |
+| Allied (75) | Maximum benefits on all categories |
+
+---
+
+## Trade System
+
+Commodity markets appear in the **system detail panel** on the galaxy map.
+Each inhabited system has a local market seeded from the system's resource
+profile and the global economy.
+
+- **Buy** a commodity: costs 1 action point; price reflects current demand.
+- **Sell** a commodity: costs 1 action point; price reflects current supply.
+- Prices shift each turn based on supply, demand, and galactic events.
+- Faction territory modifies buy/sell prices according to reputation tier.
+
+---
+
 ## Energy Lore
 
 The game features 50 distinct energy types across 7 categories, each with
@@ -174,17 +246,18 @@ research tree:
 | Ship/Faction-Specific | Varies | Concordant Harmony, Veritas Pulse, Quantum Choir |
 | Chaotic | Red | Chaotic Potential (banned by Icaron Collective after three moons vanished) |
 
-Energy types appear as tooltips on research tree nodes and as ether zone
-overlays on the galaxy map (Phase 4+).
+Energy types appear as tooltips on research tree nodes and are stored in
+`lore/energies.json` for frontend consumption.
 
 ---
 
 ## API Reference
 
-All routes are prefixed `/api/`.  Static files are mounted last so API routes
-always win.
+All routes are prefixed `/api/`.  Static files are mounted last so API
+routes always win.
 
 ### Game Lifecycle
+
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/game/new` | Start a new game (character creation payload) |
@@ -196,6 +269,7 @@ always win.
 | GET | `/api/game/options` | Character creation choices (classes, species, …) |
 
 ### Galaxy & Navigation
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/galaxy/map` | All systems projected to 2D axial hex coords |
@@ -204,6 +278,7 @@ always win.
 | GET | `/api/ship/status` | Current ship stats (fuel, cargo, coords) |
 
 ### Colony
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/colony/all` | Summary list of all owned colonies |
@@ -213,22 +288,25 @@ always win.
 | POST | `/api/colony/{planet}/build` | Build improvement on a tile |
 | DELETE | `/api/colony/{planet}/build` | Demolish improvement (50% refund) |
 
-### Research (Phase 4)
+### Research
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/research/tree` | Full tech tree with completion status |
+| GET | `/api/research/tree` | Full tech tree with completion and unlock status |
 | POST | `/api/research/start` | Begin researching a technology |
 | POST | `/api/research/cancel` | Cancel active research |
 | GET | `/api/research/status` | Current research progress |
 
-### Factions & Diplomacy (Phase 4)
+### Factions & Diplomacy
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/factions` | All factions + player reputation |
-| GET | `/api/faction/{name}` | Faction detail + benefits |
-| POST | `/api/faction/{name}/action` | Gift / mission / provoke |
+| GET | `/api/factions` | All factions + player reputation, sorted Allied→Enemy |
+| GET | `/api/faction/{name}` | Faction detail + available benefits + territory count |
+| POST | `/api/faction/{name}/action` | Diplomatic action (gift, etc.) |
 
-### Trade (Phase 5)
+### Trade
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/market/{system}` | Commodity prices at a system |
@@ -236,10 +314,18 @@ always win.
 | POST | `/api/trade/sell` | Sell commodities (costs 1 action) |
 
 ### Lore
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/lore/energies` | All 50 energy types (static JSON) |
 | GET | `/api/lore/species` | Species database |
+| GET | `/api/lore/factions` | Faction origin stories and philosophies (static) |
+
+### Character
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/character` | Full character sheet (stats, class, faction, species, XP) |
 
 ---
 
@@ -250,8 +336,8 @@ always win.
 | `Space` | End turn |
 | `G` | Galaxy map |
 | `C` | Colony view (if planet selected) |
-| `R` | Research tree (Phase 4) |
-| `D` | Diplomacy (Phase 4) |
+| `R` | Research tree |
+| `D` | Diplomacy |
 
 ---
 
@@ -268,6 +354,8 @@ always win.
 - **Non-invasive save extension**: colony state is saved via
   `game.colony_state = colony_manager.serialize()` before `save_game.save_game()`.
   The save module is untouched.
+- **Everything commented**: every function in backend and frontend carries a
+  docstring or block comment explaining intent.
 
 ---
 
@@ -278,9 +366,9 @@ always win.
 | 1 — Foundation | FastAPI app, character creation, CSS framework | ✅ Complete |
 | 2 — Galaxy Map | Hex map, system panel, ship navigation | ✅ Complete |
 | 3 — Colony System | Planet surface, build/demolish, production | ✅ Complete |
-| 4 — Research & Diplomacy | Tech tree, faction UI, energy lore | 🔲 Pending |
-| 5 — Trade | Market UI, buy/sell flow | 🔲 Pending |
-| 6 — Polish | Ether overlays, animations, win conditions, save UI | 🔲 Pending |
+| 4 — Research & Diplomacy | Tech tree, faction UI, energy lore, HUD bar | ✅ Complete |
+| 5 — Trade | Market UI, buy/sell flow in system panel | ✅ Complete |
+| 6 — Polish | Ether overlays, animations, win conditions, quest hooks | 🔲 Pending |
 
 ---
 

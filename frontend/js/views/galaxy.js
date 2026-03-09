@@ -17,7 +17,8 @@ import { state }              from "../state.js";
 import { getGalaxyMap, getSystem, jumpToCoords,
          getMarket, buyGoods, sellGoods,
          getSystemPresence,
-         getStation, getStationUpgrades, buyStationUpgrade } from "../api.js";
+         getStation, getStationUpgrades, buyStationUpgrade,
+         getNpcShips } from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { showModal, closeModal } from "../ui/modal.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
@@ -85,6 +86,7 @@ let rafHandle      = null;   // requestAnimationFrame handle
 let isDirty        = true;   // if true, redraw on next frame
 let systemsData    = [];     // cached from /api/galaxy/map
 let stationsData   = [];     // deep-space stations from /api/galaxy/map
+let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-projected)
 
 // View transform
 let viewState = { panX: 0, panY: 0, zoom: 1.0, selectedSystemName: null, selectedStationName: null };
@@ -118,6 +120,20 @@ export const galaxyView = {
     }
     systemsData  = state.galaxyMap;
     stationsData = state.stationsData || [];
+
+    // Fetch NPC bot positions and project them to axial hex coordinates
+    // using the same GALAXY_SCALE constant as the player ship marker.
+    try {
+      const npcResult = await getNpcShips();
+      npcShipsData = (npcResult.ships || []).map(ship => ({
+        name:     ship.name,
+        bot_type: ship.bot_type,
+        hex_q:    Math.round(ship.coordinates[0] / GALAXY_SCALE),
+        hex_r:    Math.round(ship.coordinates[1] / GALAXY_SCALE),
+      }));
+    } catch (_) {
+      npcShipsData = [];  // NPC ships are cosmetic — silently fail
+    }
 
     // If a system was pre-selected (e.g. returning from colony view), re-apply it
     if (state.selectedSystem) {
@@ -194,7 +210,7 @@ function startRenderLoop(canvas) {
       renderGalaxyMap(
         canvas,
         systemsData,
-        { ...viewState, shipHex, jumpRangePx, stations: stationsData },
+        { ...viewState, shipHex, jumpRangePx, stations: stationsData, npcShips: npcShipsData },
         FACTION_COLORS
       );
     }

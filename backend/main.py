@@ -2039,6 +2039,48 @@ async def trade_sell(request: TradeRequest):
 
 
 # ===========================================================================
+# NPC ship positions endpoint
+# ===========================================================================
+
+@app.get("/api/npc_ships")
+async def get_npc_ships():
+    """
+    Return every NPC bot's current 3D coordinates so the galaxy map can
+    render their ship markers on the canvas.
+
+    Response shape:
+      { ships: [{ name, bot_type, coordinates: [x, y, z] }, ...] }
+
+    The frontend projects the 3D coordinates to 2D axial hex using the same
+    GALAXY_SCALE constant as the player ship marker.  This endpoint is polled
+    on each galaxy-map mount (not every frame) so bots appear in their
+    updated positions after each end-of-turn tick.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    bot_mgr = getattr(game, "bot_manager", None)
+    if not bot_mgr:
+        return {"ships": []}
+
+    ships = []
+    for bot in bot_mgr.bots:
+        bot_ship = getattr(bot, "ship", None)
+        if not bot_ship:
+            continue
+        coords = getattr(bot_ship, "coordinates", None)
+        if coords is None:
+            continue
+        ships.append({
+            "name":        bot.name,
+            "bot_type":    bot.bot_type,
+            "coordinates": list(coords),  # tuple → JSON array
+        })
+
+    return {"ships": ships}
+
+
+# ===========================================================================
 # Lore endpoints  (Phase 4)
 # ===========================================================================
 

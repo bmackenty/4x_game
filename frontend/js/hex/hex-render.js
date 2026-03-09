@@ -400,6 +400,59 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   }
 
   // -----------------------------------------------------------------------
+  // NPC ship markers — drawn after station markers, before the player ship
+  // so the player's marker always renders on top.
+  //
+  // Each NPC ship is a small amber/orange ▲ glyph with a name label.
+  // If multiple bots share the same hex, they are grouped and shown as
+  // "▲×N" with only the first bot's name to avoid label clutter.
+  // -----------------------------------------------------------------------
+  const npcShips = viewState.npcShips || [];
+  if (npcShips.length > 0) {
+    // Group bots by "q,r" key
+    const grouped = new Map();
+    for (const ship of npcShips) {
+      const key = `${ship.hex_q},${ship.hex_r}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(ship);
+    }
+
+    for (const [, group] of grouped) {
+      const { hex_q: nq, hex_r: nr } = group[0];
+      const { x: npx, y: npy } = axialToPixel(nq, nr, size);
+      const count = group.length;
+
+      // Small amber filled circle backdrop (half the size of player ship)
+      ctx.beginPath();
+      ctx.arc(npx, npy, size * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(210, 130, 0, 0.80)";
+      ctx.fill();
+      ctx.strokeStyle = "#ff9900";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Triangle glyph — same ▲ as player ship but dark for contrast
+      ctx.fillStyle = "#1a0800";
+      ctx.font = `bold ${Math.round(size * 0.30)}px "Courier New", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("▲", npx, npy);
+
+      // Name / count label beneath the marker (only when zoomed in)
+      if (zoom >= 0.7) {
+        const label = count > 1
+          ? `${group[0].name} +${count - 1}`
+          : group[0].name;
+        ctx.fillStyle = "rgba(255, 153, 0, 0.85)";
+        ctx.font = `${Math.max(6, Math.floor(7 * zoom))}px "Courier New", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(label, npx, npy + size * 0.32);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Player ship marker — drawn on top of all system hexes
   // -----------------------------------------------------------------------
   // viewState.shipHex = { q, r } from galaxy.js (computed from ship.coordinates)

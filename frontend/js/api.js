@@ -428,3 +428,11 @@ export function getLoreEnergies() {
 export function getLoreSpecies() {
   return get("/api/lore/species");
 }
+
+/**
+ * Fetch current NPC ship positions for the galaxy map canvas.
+ * Returns { ships: [{ name, bot_type, coordinates: [x,y,z] }, ...] }
+ */
+export function getNpcShips() {
+  return get("/api/npc_ships");
+}

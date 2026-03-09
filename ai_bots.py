@@ -359,13 +359,20 @@ class BotManager:
         self.create_initial_bots()
     
     def create_initial_bots(self):
-        """Create 4-5 initial AI bots spread randomly across the galaxy."""
+        """Create 8 initial AI bots spread randomly across the galaxy.
+
+        Each bot gets a unique name, type, and starting system.  Types
+        determine goal selection; personalities are randomised per-bot.
+        """
         bot_configs = [
-            {"name": "Captain Vex", "type": "Trader"},
-            {"name": "Dr. Cosmos", "type": "Researcher"},
-            {"name": "Explorer Zara", "type": "Explorer"},
-            {"name": "Industrialist Kane", "type": "Industrialist"},
-            {"name": "Ambassador Nova", "type": "Diplomat"}
+            {"name": "Captain Vex",       "type": "Trader"},
+            {"name": "Dr. Cosmos",        "type": "Researcher"},
+            {"name": "Explorer Zara",     "type": "Explorer"},
+            {"name": "Industrialist Kane","type": "Industrialist"},
+            {"name": "Ambassador Nova",   "type": "Diplomat"},
+            {"name": "Commander Raxis",   "type": "Industrialist"},
+            {"name": "Pilot Oryn",        "type": "Explorer"},
+            {"name": "Scholar Veth",      "type": "Researcher"},
         ]
 
         # Spread bots across random systems so they don't all cluster at the start.
