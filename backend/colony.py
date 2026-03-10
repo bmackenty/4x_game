@@ -499,6 +499,30 @@ MAX_IMPROVEMENT_LEVEL = 2
 # Credits generated per 10,000 colonists each turn — the population tax base.
 POPULATION_INCOME_PER_10K = 75
 
+# ---------------------------------------------------------------------------
+# Population growth constants
+# ---------------------------------------------------------------------------
+
+# Base growth rate applied to every colony every turn (1%).
+POP_BASE_GROWTH_RATE    = 0.01
+
+# Additional growth per unit of food produced per turn.
+# A Biofarm on plains yields ~4.8 food → roughly +1.9% extra growth.
+POP_FOOD_GROWTH_PER_UNIT = 0.004
+
+# Flat growth bonus per Population Hub present on the colony.
+# These buildings explicitly exist to grow the population cap.
+POP_HUB_GROWTH_BONUS    = 0.015
+
+# Flat growth bonus per Luxury Habitat Complex (attracts affluent settlers).
+POP_LUXURY_GROWTH_BONUS = 0.008
+
+# Flat growth bonus per Biofarm Complex (additional food → more settlers).
+POP_BIOFARM_GROWTH_BONUS = 0.005
+
+# Growth is clamped to this ceiling to prevent runaway compounding.
+POP_MAX_GROWTH_RATE     = 0.08  # 8 % per turn maximum
+
 # Fleet pool production chain constants.
 # Each unit of refined_ore per turn adds ORE_FLEET_BONUS_PER_UNIT to the
 # shipyard output multiplier (capped at ORE_FLEET_BONUS_CAP above 1.0).
@@ -806,17 +830,67 @@ class ColonyManager:
         total_pop_income = 0
 
         for planet_name, colony in self.colonies.items():
-            # Population tax: POPULATION_INCOME_PER_10K per 10,000 colonists
+            col_prod = self.calculate_colony_production(planet_name)
+
+            # ── Population growth ─────────────────────────────────────────────
+            # Growth rate = base rate
+            #             + food production bonus (each food unit = +0.4%)
+            #             + Population Hub count bonus (each hub = +1.5%)
+            #             + Luxury Habitat Complex bonus (each = +0.8%)
+            #             + Biofarm Complex bonus (each = +0.5%)
+            # Clamped to [0, POP_MAX_GROWTH_RATE].
+            food_pts = col_prod.get("food", 0)
+            food_bonus = food_pts * POP_FOOD_GROWTH_PER_UNIT
+
+            pop_hub_count = sum(
+                1 for t in colony.tiles.values()
+                if t.improvement == "Population Hub"
+            )
+            luxury_count = sum(
+                1 for t in colony.tiles.values()
+                if t.improvement == "Luxury Habitat Complex"
+            )
+            biofarm_count = sum(
+                1 for t in colony.tiles.values()
+                if t.improvement == "Biofarm Complex"
+            )
+
+            growth_rate = min(
+                POP_MAX_GROWTH_RATE,
+                POP_BASE_GROWTH_RATE
+                + food_bonus
+                + pop_hub_count  * POP_HUB_GROWTH_BONUS
+                + luxury_count   * POP_LUXURY_GROWTH_BONUS
+                + biofarm_count  * POP_BIOFARM_GROWTH_BONUS,
+            )
+            growth_rate = max(0.0, growth_rate)  # no decline from pop mechanics
+
+            pop_gain = int(colony.population * growth_rate)
+            colony.population += pop_gain
+
+            # Emit a notable event every time population crosses a 100k boundary.
+            pop_before = colony.population - pop_gain
+            if pop_gain > 0 and (colony.population // 100_000) > (pop_before // 100_000):
+                turn_events.append({
+                    "channel": "ECON",
+                    "message": (
+                        f"{planet_name} population reached "
+                        f"{colony.population:,} colonists!"
+                    ),
+                })
+
+            # ── Population tax ────────────────────────────────────────────────
+            # Collected after growth so the new residents contribute this turn.
             pop_income = int(colony.population / 10_000 * POPULATION_INCOME_PER_10K)
             total_pop_income += pop_income
             self.game.credits += pop_income
 
-            col_prod = self.calculate_colony_production(planet_name)
             colony_credits = int(col_prod.get("credits", 0))
             colony_details.append({
-                "name":   planet_name,
-                "income": pop_income + colony_credits,
-                "pop":    colony.population,
+                "name":       planet_name,
+                "income":     pop_income + colony_credits,
+                "pop":        colony.population,
+                "pop_growth": pop_gain,
             })
 
         # ── Building production ──────────────────────────────────────────────
@@ -973,6 +1047,25 @@ class ColonyManager:
                 "is_claimed":       tile.is_claimed,
             })
 
+        # Calculate projected growth rate for display purposes.
+        # Mirrors the formula in advance_turn so the UI can show "+X pop/turn".
+        col_prod = self.calculate_colony_production(planet_name)
+        food_pts     = col_prod.get("food", 0)
+        food_bonus   = food_pts * POP_FOOD_GROWTH_PER_UNIT
+        hub_count    = sum(1 for t in colony.tiles.values() if t.improvement == "Population Hub")
+        lux_count    = sum(1 for t in colony.tiles.values() if t.improvement == "Luxury Habitat Complex")
+        bio_count    = sum(1 for t in colony.tiles.values() if t.improvement == "Biofarm Complex")
+        growth_rate  = min(
+            POP_MAX_GROWTH_RATE,
+            POP_BASE_GROWTH_RATE
+            + food_bonus
+            + hub_count * POP_HUB_GROWTH_BONUS
+            + lux_count * POP_LUXURY_GROWTH_BONUS
+            + bio_count * POP_BIOFARM_GROWTH_BONUS,
+        )
+        growth_rate  = max(0.0, growth_rate)
+        pop_gain_est = int(colony.population * growth_rate)
+
         return {
             "planet_name":    colony.planet_name,
             "system_name":    colony.system_name,
@@ -980,7 +1073,9 @@ class ColonyManager:
             "grid_radius":    colony.grid_radius,
             "founded_turn":   colony.founded_turn,
             "population":     colony.population,
-            "total_production": self.calculate_colony_production(planet_name),
+            "pop_growth_rate":  round(growth_rate * 100, 2),  # percentage, e.g. 2.4
+            "pop_growth_est":   pop_gain_est,                  # colonists added next turn
+            "total_production": col_prod,
             "tiles":          tiles_list,
             "tile_count":     len(tiles_list),
             "improvement_count": sum(1 for t in colony.tiles.values() if t.improvement),

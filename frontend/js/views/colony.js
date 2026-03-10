@@ -273,7 +273,7 @@ function _renderInfoPanel() {
             <div class="colony-stat">System: <span>${_colony.system_name}</span></div>
             <div class="colony-stat">Type: <span>${_colony.planet_type}</span></div>
             <div class="colony-stat">Founded: <span>Turn ${_colony.founded_turn}</span></div>
-            <div class="colony-stat">Population: <span>${(_colony.population || 0).toLocaleString()}</span></div>
+            <div class="colony-stat">Population: <span>${(_colony.population || 0).toLocaleString()} <small style="color:#00d4aa">(+${(_colony.pop_growth_est || 0).toLocaleString()}/turn, ${(_colony.pop_growth_rate || 0).toFixed(1)}%)</small></span></div>
             <div class="colony-stat">Tiles: <span>${_colony.improvement_count} / ${_colony.tile_count} improved</span></div>
         </div>
 
