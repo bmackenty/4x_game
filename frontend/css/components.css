@@ -1253,60 +1253,224 @@
 
 
 /* ===========================================================================
-   Phase 5 — Trade market panel (inside galaxy system right panel)
+   Phase 5 — Trade market modal (information-dense redesign)
    =========================================================================== */
 
-/* Container for all commodity rows */
-.market-table {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
+/* ── Stats bar ────────────────────────────────────────────────────────────── */
 
-/* One commodity row */
-.market-row {
-  background: var(--bg-tertiary);
+/* Horizontal row of key/value stat chips at the top of the market modal */
+.mkt-stats-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 2px;
-  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-family: var(--font-mono);
+}
+
+/* One label/value pair inside the stats bar */
+.mkt-stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 72px;
 }
-
-/* Commodity name — monospaced, bright */
-.market-row__name {
-  font-family: var(--font-mono);
+.mkt-stat__label {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.mkt-stat__value {
   font-size: var(--font-size-xs);
   color: var(--text-bright);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
-/* Buy / sell price pair on one line */
-.market-row__prices {
+
+/* ── Market intelligence strip ────────────────────────────────────────────── */
+
+/* Compact row of "best buy" and "best sell" recommendations */
+.mkt-intel {
   display: flex;
-  gap: var(--sp-3);
-  font-size: var(--font-size-xs);
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  margin-bottom: var(--sp-3);
+  font-size: 10px;
   font-family: var(--font-mono);
 }
-
-/* Stock count + held amount */
-.market-row__stock,
-.market-row__held {
-  font-size: 10px;
-}
-
-/* Qty input + Buy/Sell buttons row */
-.market-row__actions {
+.mkt-intel__group {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
-  margin-top: var(--sp-1);
   flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.mkt-intel__label {
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  margin-right: var(--sp-1);
+  white-space: nowrap;
 }
 
-/* Small number input inside market rows */
+/* Individual commodity tip badges */
+.mkt-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.mkt-tip--buy  { background: color-mix(in srgb, var(--accent-teal) 12%, transparent);
+                 color: var(--accent-teal); }
+.mkt-tip--sell { background: color-mix(in srgb, var(--accent-gold) 12%, transparent);
+                 color: var(--accent-gold); }
+.mkt-tip__price { opacity: 0.75; font-size: 9px; }
+
+
+/* ── Filter tabs ──────────────────────────────────────────────────────────── */
+
+.mkt-filters {
+  display: flex;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-2);
+  font-family: var(--font-mono);
+}
+.mkt-filter-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mkt-filter-btn:hover  { color: var(--text-primary); border-color: var(--accent-teal); }
+.mkt-filter-btn.active { background: var(--accent-teal); border-color: var(--accent-teal);
+                          color: var(--bg-primary); font-weight: 600; }
+
+
+/* ── Commodity table ──────────────────────────────────────────────────────── */
+
+/* Scrollable wrapper so the table doesn't overflow the modal */
+.mkt-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 52vh;        /* leave room for stats bar + intel strip */
+}
+
+/* Full-width grid table — one row per commodity */
+.mkt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Column headers */
+.mkt-table thead th {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 4px 6px;
+  position: sticky;
+  top: 0;
+  text-align: left;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+/* Sortable headers get a pointer and highlight on hover */
+.mkt-th--sortable { cursor: pointer; user-select: none; }
+.mkt-th--sortable:hover { color: var(--accent-teal); }
+
+/* Sort direction arrow — dims when inactive */
+.mkt-sort-arrow { font-size: 8px; margin-left: 3px; }
+.mkt-sort-arrow--inactive { opacity: 0.35; }
+
+/* Name column is wider than the rest */
+.mkt-th--name { min-width: 130px; }
+
+/* Commodity data rows */
+.mkt-row td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  padding: 4px 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.mkt-row:last-child td  { border-bottom: none; }
+.mkt-row:hover td       { background: color-mix(in srgb, var(--accent-teal) 5%, transparent); }
+
+/* Highlight rows where the player is holding stock */
+.mkt-row--held td { background: color-mix(in srgb, var(--accent-gold) 4%, transparent); }
+.mkt-row--held:hover td { background: color-mix(in srgb, var(--accent-gold) 8%, transparent); }
+
+/* Commodity name cell */
+.mkt-col__name {
+  color: var(--text-bright);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Price cells */
+.mkt-col__price    { text-align: right; min-width: 58px; }
+.mkt-price--buy  td,
+.mkt-price--buy    { color: var(--accent-teal); }
+.mkt-price--sell td,
+.mkt-price--sell   { color: var(--accent-gold); }
+
+/* Supply / demand cells — number + bar stacked vertically */
+.mkt-col__bar {
+  min-width: 70px;
+}
+.mkt-val {
+  display: block;
+  font-size: 10px;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+/* Inline mini bar */
+.mkt-bar {
+  background: var(--bg-tertiary);
+  border-radius: 1px;
+  height: 4px;
+  overflow: hidden;
+  width: 56px;
+}
+.mkt-bar__fill           { height: 100%; border-radius: 1px; }
+.mkt-bar__fill--supply   { background: var(--accent-teal); }
+.mkt-bar__fill--demand   { background: var(--accent-gold); }
+
+/* "Held" quantity cell */
+.mkt-col__held { text-align: center; min-width: 36px; }
+.mkt-held { color: var(--accent-gold); font-weight: 600; }
+
+/* Action cells */
+.mkt-col__action { min-width: 110px; }
+
+/* Qty input + BUY/SELL/MAX buttons in a single row */
+.mkt-action-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Small number input */
 .market-qty-input {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -1316,8 +1480,39 @@
   font-size: 11px;
   padding: 2px 4px;
   text-align: center;
+  width: 38px;
 }
 .market-qty-input:focus { outline: none; border-color: var(--accent-teal); }
+
+/* Extra-small button variant for the tight table layout */
+.btn--xs {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+}
+
+/* Ghost button — minimal, uncoloured; used for MAX / ALL helpers */
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 1px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 5px;
+  transition: border-color 0.12s, color 0.12s;
+}
+.btn--ghost:hover { border-color: var(--accent-teal); color: var(--accent-teal); }
+
+/* Empty-state row when no commodities pass the active filter */
+.mkt-empty {
+  color: var(--text-dim);
+  font-size: var(--font-size-xs);
+  padding: var(--sp-4) 0;
+  text-align: center;
+}
 
 
 /* ===========================================================================
@@ -1636,9 +1831,16 @@
   border-right: 1px solid var(--border-color);
 }
 
+/* Filter tabs above the commodity table — reuse .mkt-filter-btn from Phase 5 */
+.trade-filters {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+
 .trade-table-header {
   display: grid;
-  grid-template-columns: 1fr 90px 70px 70px 70px 200px;
+  /* name | buy ◈ | sell ◈ | supply | demand | held | actions */
+  grid-template-columns: 1fr 80px 72px 90px 90px 58px 1fr;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
   background: var(--bg-tertiary);
@@ -1658,7 +1860,7 @@
 
 .trade-row {
   display: grid;
-  grid-template-columns: 1fr 90px 70px 70px 70px 200px;
+  grid-template-columns: 1fr 80px 72px 90px 90px 58px 1fr;
   gap: var(--sp-2);
   align-items: center;
   padding: var(--sp-2) var(--sp-3);
@@ -1666,19 +1868,27 @@
   transition: background var(--transition-fast);
 }
 
-.trade-row:hover { background: rgba(255,255,255,0.02); }
+.trade-row:hover    { background: rgba(255,255,255,0.03); }
+/* Highlight rows where the player holds inventory */
+.trade-row--held    { background: color-mix(in srgb, var(--accent-gold) 4%, transparent); }
+.trade-row--held:hover { background: color-mix(in srgb, var(--accent-gold) 7%, transparent); }
 
-.trade-row__name  { font-size: var(--font-size-sm); color: var(--text-primary); }
-.trade-row__price { font-size: var(--font-size-sm); color: var(--accent-gold); }
-.trade-row__held--has { color: var(--accent-teal); }
+.trade-row__name        { font-size: var(--font-size-sm); color: var(--text-primary); }
+.trade-row__price       { font-size: var(--font-size-sm); color: var(--accent-teal); text-align: right; }
+.trade-row__sell-price  { font-size: var(--font-size-sm); color: var(--accent-gold); text-align: right; }
+.trade-row__held--has   { color: var(--accent-gold); font-weight: 600; }
+
+/* Inline stat value in supply/demand cells */
+.trade-stat-val { display: block; font-size: 10px; margin-bottom: 2px; color: var(--text-primary); }
 
 /* Grid column aliases (same as header) */
 .tc-name    { /* col 1 — fills flex */ }
 .tc-price   { text-align: right; }
-.tc-supply  { text-align: right; }
-.tc-demand  { text-align: right; }
-.tc-held    { text-align: right; font-size: var(--font-size-xs); color: var(--text-dim); }
-.tc-actions { display: flex; align-items: center; gap: var(--sp-1); justify-content: flex-end; }
+.tc-sell-head { text-align: right; }
+.tc-supply  { /* bar + value stacked */ }
+.tc-demand  { /* bar + value stacked */ }
+.tc-held    { text-align: center; font-size: var(--font-size-xs); color: var(--text-dim); }
+.tc-actions { display: flex; align-items: center; gap: var(--sp-1); }
 
 /* Sortable column header buttons */
 .tc-sort-btn {
@@ -1748,19 +1958,22 @@
 .deal-list { display: flex; flex-direction: column; gap: 2px; }
 
 .deal-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
+  gap: var(--sp-2);
   padding: 3px var(--sp-2);
   font-size: var(--font-size-xs);
   border-radius: 2px;
   background: var(--bg-tertiary);
 }
 
-.deal-row__name { color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.deal-row__val        { font-family: var(--font-mono); }
-.deal-row__val--buy   { color: var(--accent-teal); }
-.deal-row__val--sell  { color: var(--accent-gold); }
+.deal-row__name   { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deal-row__val    { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+.deal-row__val--buy  { color: var(--accent-teal); }
+.deal-row__val--sell { color: var(--accent-gold); }
+/* Tertiary stock/demand label */
+.deal-row__supply { color: var(--text-dim); font-size: 9px; text-align: right; white-space: nowrap; }
 
 /* Empty / loading states */
 .trade-empty   { color: var(--text-dim); font-size: var(--font-size-sm); padding: var(--sp-4); text-align: center; }

@@ -862,89 +862,414 @@ function _renderMarketSection(systemName, market) {
 }
 
 
-/** Build and wire the commodity table HTML for use inside the market modal. */
+// ---------------------------------------------------------------------------
+// Market modal — information-dense redesign
+// ---------------------------------------------------------------------------
+
+/**
+ * Current sort state for the market table.
+ * key: "name" | "price" | "supply" | "demand" | "held"
+ * dir: "asc" | "desc"
+ */
+let _mktSort = { key: "name", dir: "asc" };
+
+/**
+ * Current filter for the market table.
+ * "all" | "buyable" | "held"
+ */
+let _mktFilter = "all";
+
+
+/**
+ * Build a small inline percentage bar for supply/demand columns.
+ * maxVal is the largest value across all commodities for that column.
+ *
+ * @param {number} value
+ * @param {number} maxVal
+ * @param {"supply"|"demand"} kind
+ */
+function _mktBar(value, maxVal, kind) {
+  const pct = maxVal > 0 ? Math.min(100, Math.round((value / maxVal) * 100)) : 0;
+  return `<div class="mkt-bar"><div class="mkt-bar__fill mkt-bar__fill--${kind}" style="width:${pct}%"></div></div>`;
+}
+
+
+/**
+ * Build the <tbody> rows for the commodity table, respecting the current
+ * filter and sort state.  Called both on initial render and after sorting /
+ * filtering without re-building the entire modal.
+ *
+ * @param {string} systemName
+ * @param {object[]} commodities  — raw commodity array from the market API
+ * @param {number}   credits      — player credits
+ * @param {number}   cargoFree    — remaining cargo units
+ */
+function _buildMarketRows(systemName, commodities, credits, cargoFree) {
+  // Compute column maxima for relative bar widths
+  const maxSupply = Math.max(...commodities.map(c => c.supply || 0), 1);
+  const maxDemand = Math.max(...commodities.map(c => c.demand || 0), 1);
+
+  // Apply active filter
+  let visible = commodities;
+  if (_mktFilter === "buyable") visible = commodities.filter(c => c.supply > 0 && c.price > 0);
+  if (_mktFilter === "held")    visible = commodities.filter(c => c.in_inventory > 0);
+
+  // Apply sort
+  visible = [...visible].sort((a, b) => {
+    let av, bv;
+    switch (_mktSort.key) {
+      case "price":  av = a.price;        bv = b.price;        break;
+      case "supply": av = a.supply;       bv = b.supply;       break;
+      case "demand": av = a.demand;       bv = b.demand;       break;
+      case "held":   av = a.in_inventory; bv = b.in_inventory; break;
+      default:       av = a.name.toLowerCase(); bv = b.name.toLowerCase();
+    }
+    if (av < bv) return _mktSort.dir === "asc" ? -1 :  1;
+    if (av > bv) return _mktSort.dir === "asc" ?  1 : -1;
+    return 0;
+  });
+
+  if (!visible.length) {
+    return `<tr><td colspan="8" class="mkt-empty">No commodities match the current filter.</td></tr>`;
+  }
+
+  return visible.map(c => {
+    const price     = c.price ?? 0;
+    const sellPrice = Math.round(price * 0.8);
+    const canBuy    = price > 0 && c.supply > 0 && cargoFree > 0;
+    const canSell   = price > 0 && c.in_inventory > 0;
+    // Max buyable: bounded by supply, cargo space, and affordability
+    const maxBuy    = canBuy ? Math.min(c.supply, cargoFree, Math.floor(credits / price)) : 0;
+
+    return `
+      <tr class="mkt-row${c.in_inventory > 0 ? " mkt-row--held" : ""}"
+          data-commodity="${esc(c.name)}">
+
+        <td class="mkt-col__name">${esc(c.name)}</td>
+
+        <td class="mkt-col__price mkt-price--buy">
+          ${price > 0 ? price + " ◈" : `<span class="muted">—</span>`}
+        </td>
+
+        <td class="mkt-col__price mkt-price--sell">
+          ${price > 0 ? sellPrice + " ◈" : `<span class="muted">—</span>`}
+        </td>
+
+        <td class="mkt-col__bar">
+          <span class="mkt-val">${c.supply}</span>
+          ${_mktBar(c.supply, maxSupply, "supply")}
+        </td>
+
+        <td class="mkt-col__bar">
+          <span class="mkt-val">${c.demand}</span>
+          ${_mktBar(c.demand, maxDemand, "demand")}
+        </td>
+
+        <td class="mkt-col__held">
+          ${c.in_inventory > 0
+            ? `<span class="mkt-held">${c.in_inventory}</span>`
+            : `<span class="muted">—</span>`}
+        </td>
+
+        <td class="mkt-col__action">
+          ${canBuy ? `
+            <div class="mkt-action-group">
+              <input type="number" class="market-qty-input" value="1" min="1" max="${maxBuy}"
+                     data-commodity="${esc(c.name)}" data-action="buy">
+              <button class="btn btn--xs btn--primary btn-trade"
+                      data-system="${esc(systemName)}" data-commodity="${esc(c.name)}"
+                      data-action="buy">BUY</button>
+              <button class="btn btn--xs btn--ghost btn-max"
+                      data-commodity="${esc(c.name)}" data-action="buy"
+                      data-max="${maxBuy}" title="Fill to max affordable (${maxBuy})">MAX</button>
+            </div>
+          ` : `<span class="muted">—</span>`}
+        </td>
+
+        <td class="mkt-col__action">
+          ${canSell ? `
+            <div class="mkt-action-group">
+              <input type="number" class="market-qty-input" value="1" min="1" max="${c.in_inventory}"
+                     data-commodity="${esc(c.name)}" data-action="sell">
+              <button class="btn btn--xs btn--secondary btn-trade"
+                      data-system="${esc(systemName)}" data-commodity="${esc(c.name)}"
+                      data-action="sell">SELL</button>
+              <button class="btn btn--xs btn--ghost btn-max"
+                      data-commodity="${esc(c.name)}" data-action="sell"
+                      data-max="${c.in_inventory}" title="Sell all (${c.in_inventory})">ALL</button>
+            </div>
+          ` : `<span class="muted">—</span>`}
+        </td>
+
+      </tr>
+    `;
+  }).join("");
+}
+
+
+/**
+ * Build the complete market modal body HTML: stats bar, market intelligence
+ * panel, filter tabs, sort-able commodity table.
+ *
+ * @param {string} systemName
+ * @param {object} market  — response from GET /api/market/{system}
+ */
 function _buildMarketBody(systemName, market) {
   const commodities = market.commodities || [];
   const credits     = market.player_credits ?? state.gameState?.player?.credits ?? 0;
+  const cargoUsed   = market.cargo_used ?? 0;
+  // Prefer the value returned by the market endpoint; fall back to game state
+  const maxCargo    = market.max_cargo  ?? state.gameState?.ship?.max_cargo ?? 0;
+  const cargoFree   = maxCargo > 0 ? maxCargo - cargoUsed : 0;
+  const bestBuys    = market.best_buys  || [];
+  const bestSells   = market.best_sells || [];
 
-  const rows = commodities.map(c => {
-    const price   = c.price ?? 0;
-    const sellEst = Math.round(price * 0.8);
-    const canBuy  = price > 0 && c.supply > 0;
-    const canSell = price > 0 && c.in_inventory > 0;
-    return `
-      <div class="market-row" data-commodity="${esc(c.name)}">
-        <div class="market-row__name">${esc(c.name)}</div>
-        <div class="market-row__prices">
-          <span style="color:var(--accent-teal)">${canBuy ? price + " ⊕ buy" : "—"}</span>
-          <span style="color:var(--accent-gold)">${price > 0 ? sellEst + " ⊗ sell" : "—"}</span>
-        </div>
-        <div class="market-row__stock muted">
-          ${c.supply ?? "—"} in stock${c.in_inventory > 0 ? ` · holding ${c.in_inventory}` : ""}
-        </div>
-        <div class="market-row__actions">
-          ${canBuy ? `
-            <input type="number" class="market-qty-input" value="1" min="1"
-                   data-commodity="${esc(c.name)}" data-action="buy" style="width:44px">
-            <button class="btn btn--sm btn--primary btn-trade"
-                    data-system="${esc(systemName)}" data-commodity="${esc(c.name)}" data-action="buy">BUY</button>
-          ` : ""}
-          ${canSell ? `
-            <input type="number" class="market-qty-input" value="1" min="1" max="${c.in_inventory}"
-                   data-commodity="${esc(c.name)}" data-action="sell" style="width:44px">
-            <button class="btn btn--sm btn--secondary btn-trade"
-                    data-system="${esc(systemName)}" data-commodity="${esc(c.name)}" data-action="sell">SELL</button>
-          ` : ""}
-        </div>
-      </div>
-    `;
-  }).join("");
+  // Net inventory value at sell prices — useful for gauging trade potential
+  const invValue = commodities.reduce((sum, c) =>
+    sum + (c.in_inventory * Math.round((c.price ?? 0) * 0.8)), 0);
+
+  // Cargo bar colour: red if full, gold if tight, teal otherwise
+  const cargoPct   = maxCargo > 0 ? Math.round((cargoUsed / maxCargo) * 100) : 0;
+  const cargoColor = cargoPct >= 90 ? "var(--accent-red,#ff4444)"
+                   : cargoPct >= 70 ? "var(--accent-gold)"
+                   : "var(--accent-teal)";
+
+  // Market intelligence: top recommended buys & sells
+  const buyTips = bestBuys.slice(0, 4).map(b =>
+    `<span class="mkt-tip mkt-tip--buy">
+       ${esc(b.name)} <span class="mkt-tip__price">${b.price}◈</span>
+     </span>`
+  ).join("");
+  const sellTips = bestSells.slice(0, 4).map(s =>
+    `<span class="mkt-tip mkt-tip--sell">
+       ${esc(s.name)} <span class="mkt-tip__price">${Math.round(s.price * 0.8)}◈</span>
+     </span>`
+  ).join("");
+
+  // Sort indicator arrows for column headers
+  function sortArrow(key) {
+    if (_mktSort.key !== key) return `<span class="mkt-sort-arrow mkt-sort-arrow--inactive">⇅</span>`;
+    return `<span class="mkt-sort-arrow">${_mktSort.dir === "asc" ? "▲" : "▼"}</span>`;
+  }
+
+  // Filter tab counts
+  const nAll     = commodities.length;
+  const nBuyable = commodities.filter(c => c.supply > 0 && c.price > 0).length;
+  const nHeld    = commodities.filter(c => c.in_inventory > 0).length;
 
   return `
-    <div style="margin-bottom:var(--sp-3);font-size:var(--font-size-xs);color:var(--text-dim)">
-      Credits: <strong style="color:var(--accent-gold)">${credits.toLocaleString()} ◈</strong>
+    <!-- ── Stats bar ──────────────────────────────────────────── -->
+    <div class="mkt-stats-bar" id="mkt-stats-bar">
+
+      <div class="mkt-stat">
+        <span class="mkt-stat__label">CREDITS</span>
+        <span class="mkt-stat__value" style="color:var(--accent-gold)">
+          ${credits.toLocaleString()} ◈
+        </span>
+      </div>
+
+      ${maxCargo > 0 ? `
+      <div class="mkt-stat">
+        <span class="mkt-stat__label">CARGO</span>
+        <span class="mkt-stat__value" style="color:${cargoColor}">
+          ${cargoUsed} / ${maxCargo}
+        </span>
+      </div>
+      <div class="mkt-stat">
+        <span class="mkt-stat__label">FREE</span>
+        <span class="mkt-stat__value">${cargoFree}</span>
+      </div>
+      ` : ""}
+
+      ${invValue > 0 ? `
+      <div class="mkt-stat">
+        <span class="mkt-stat__label">INV. VALUE</span>
+        <span class="mkt-stat__value" style="color:var(--accent-gold)">
+          ${invValue.toLocaleString()} ◈
+        </span>
+      </div>
+      ` : ""}
+
     </div>
-    <div class="market-table" id="market-modal-table">${rows}</div>
+
+    <!-- ── Market intelligence ───────────────────────────────── -->
+    ${(buyTips || sellTips) ? `
+    <div class="mkt-intel" id="mkt-intel">
+      ${buyTips  ? `<div class="mkt-intel__group">
+                     <span class="mkt-intel__label">⊕ BUY</span>${buyTips}
+                   </div>` : ""}
+      ${sellTips ? `<div class="mkt-intel__group">
+                     <span class="mkt-intel__label">⊗ SELL</span>${sellTips}
+                   </div>` : ""}
+    </div>
+    ` : ""}
+
+    <!-- ── Filter tabs ───────────────────────────────────────── -->
+    <div class="mkt-filters" id="mkt-filters">
+      <button class="mkt-filter-btn${_mktFilter === "all"     ? " active" : ""}"
+              data-filter="all">ALL (${nAll})</button>
+      <button class="mkt-filter-btn${_mktFilter === "buyable" ? " active" : ""}"
+              data-filter="buyable">IN STOCK (${nBuyable})</button>
+      <button class="mkt-filter-btn${_mktFilter === "held"    ? " active" : ""}"
+              data-filter="held">HELD (${nHeld})</button>
+    </div>
+
+    <!-- ── Commodity table ───────────────────────────────────── -->
+    <div class="mkt-table-wrap">
+      <table class="mkt-table" id="market-modal-table">
+        <thead>
+          <tr>
+            <th class="mkt-th--sortable mkt-th--name" data-sort="name">
+              COMMODITY ${sortArrow("name")}
+            </th>
+            <th class="mkt-th--sortable" data-sort="price">
+              BUY ◈ ${sortArrow("price")}
+            </th>
+            <th>SELL ◈</th>
+            <th class="mkt-th--sortable" data-sort="supply">
+              SUPPLY ${sortArrow("supply")}
+            </th>
+            <th class="mkt-th--sortable" data-sort="demand">
+              DEMAND ${sortArrow("demand")}
+            </th>
+            <th class="mkt-th--sortable" data-sort="held">
+              HELD ${sortArrow("held")}
+            </th>
+            <th>BUY</th>
+            <th>SELL</th>
+          </tr>
+        </thead>
+        <tbody id="mkt-tbody">
+          ${_buildMarketRows(systemName, commodities, credits, cargoFree)}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
 
 /** Open the market modal for a system. */
 function _openMarketModal(systemName, market) {
+  // Reset sort/filter to defaults whenever a new market is opened
+  _mktSort   = { key: "name", dir: "asc" };
+  _mktFilter = "all";
+
   showModal(`Market — ${systemName}`, _buildMarketBody(systemName, market), [
     { label: "Close", className: "btn--secondary", onClick: () => closeModal() },
   ], { wide: true });
 
-  _wireMarketModal(systemName);
+  _wireMarketModal(systemName, market);
 }
 
 
-/** Wire buy/sell buttons inside the currently-open market modal. */
-function _wireMarketModal(systemName) {
-  const table = document.getElementById("market-modal-table");
-  table?.querySelectorAll(".btn-trade").forEach(btn => {
+/**
+ * Wire all interactive controls inside the open market modal:
+ *   • Buy / Sell trade buttons
+ *   • MAX / ALL quick-fill buttons
+ *   • Filter tabs (ALL / IN STOCK / HELD)
+ *   • Sortable column headers
+ *
+ * @param {string} systemName
+ * @param {object} market — full market object (needed for re-renders on sort/filter)
+ */
+function _wireMarketModal(systemName, market) {
+  const modal = document.getElementById("modal-body");
+  if (!modal) return;
+
+  // ── Buy / Sell trade buttons ───────────────────────────────────────────────
+  modal.querySelectorAll(".btn-trade").forEach(btn => {
     btn.addEventListener("click", () => {
       const commodity = btn.dataset.commodity;
       const action    = btn.dataset.action;
       const system    = btn.dataset.system;
-      const qtyInput  = table.querySelector(
+      const qtyInput  = modal.querySelector(
         `.market-qty-input[data-commodity="${CSS.escape(commodity)}"][data-action="${action}"]`
       );
       const qty = parseInt(qtyInput?.value || "1", 10);
       _doTrade(system, commodity, action, qty, btn, systemName);
     });
   });
+
+  // ── MAX / ALL quick-fill buttons ───────────────────────────────────────────
+  modal.querySelectorAll(".btn-max").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const commodity = btn.dataset.commodity;
+      const action    = btn.dataset.action;
+      const max       = parseInt(btn.dataset.max || "1", 10);
+      const qtyInput  = modal.querySelector(
+        `.market-qty-input[data-commodity="${CSS.escape(commodity)}"][data-action="${action}"]`
+      );
+      if (qtyInput) qtyInput.value = max;
+    });
+  });
+
+  // ── Filter tabs ────────────────────────────────────────────────────────────
+  modal.querySelectorAll(".mkt-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _mktFilter = btn.dataset.filter;
+      // Update active class
+      modal.querySelectorAll(".mkt-filter-btn").forEach(b =>
+        b.classList.toggle("active", b.dataset.filter === _mktFilter)
+      );
+      // Rebuild only the tbody
+      const tbody = document.getElementById("mkt-tbody");
+      const credits   = market.player_credits ?? state.gameState?.player?.credits ?? 0;
+      const maxCargo  = market.max_cargo ?? state.gameState?.ship?.max_cargo ?? 0;
+      const cargoUsed = market.cargo_used ?? 0;
+      const cargoFree = maxCargo > 0 ? maxCargo - cargoUsed : 0;
+      if (tbody) {
+        tbody.innerHTML = _buildMarketRows(systemName, market.commodities || [], credits, cargoFree);
+        _wireMarketModal(systemName, market);
+      }
+    });
+  });
+
+  // ── Sortable column headers ────────────────────────────────────────────────
+  modal.querySelectorAll(".mkt-th--sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (_mktSort.key === key) {
+        // Toggle direction
+        _mktSort.dir = _mktSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        _mktSort = { key, dir: "asc" };
+      }
+      // Rebuild thead + tbody to update sort arrows
+      const credits   = market.player_credits ?? state.gameState?.player?.credits ?? 0;
+      const maxCargo  = market.max_cargo ?? state.gameState?.ship?.max_cargo ?? 0;
+      const cargoUsed = market.cargo_used ?? 0;
+      const cargoFree = maxCargo > 0 ? maxCargo - cargoUsed : 0;
+      const tbody = document.getElementById("mkt-tbody");
+      if (tbody) {
+        tbody.innerHTML = _buildMarketRows(systemName, market.commodities || [], credits, cargoFree);
+      }
+      // Update sort arrows in all header cells
+      modal.querySelectorAll(".mkt-th--sortable").forEach(h => {
+        const arrow = h.querySelector(".mkt-sort-arrow");
+        if (!arrow) return;
+        if (h.dataset.sort === _mktSort.key) {
+          arrow.textContent = _mktSort.dir === "asc" ? "▲" : "▼";
+          arrow.classList.remove("mkt-sort-arrow--inactive");
+        } else {
+          arrow.textContent = "⇅";
+          arrow.classList.add("mkt-sort-arrow--inactive");
+        }
+      });
+      // Re-wire new rows
+      _wireMarketModal(systemName, market);
+    });
+  });
 }
 
 
 /**
- * Execute a buy or sell trade action, then refresh the market section.
+ * Execute a buy or sell trade action, then refresh the market modal in-place.
  *
- * @param {string} systemName
- * @param {string} commodity
+ * @param {string}      systemName
+ * @param {string}      commodity
  * @param {"buy"|"sell"} action
- * @param {number} quantity
- * @param {HTMLElement} btn   The button that was clicked (for disabled feedback)
+ * @param {number}      quantity
+ * @param {HTMLElement} btn   — button that was clicked (for loading state)
  */
 async function _doTrade(systemName, commodity, action, quantity, btn) {
   if (!quantity || quantity < 1) {
@@ -952,8 +1277,8 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
     return;
   }
 
-  const origText = btn.textContent;
-  btn.disabled   = true;
+  const origText  = btn.textContent;
+  btn.disabled    = true;
   btn.textContent = action === "buy" ? "BUYING…" : "SELLING…";
 
   try {
@@ -962,22 +1287,22 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
 
     notify("TRADE", result.message || `${action.toUpperCase()} complete.`);
 
-    // Update credits in local state immediately so HUD reflects the change
+    // Sync credits into local game state immediately so the HUD updates
     if (state.gameState?.player) {
       state.gameState.player.credits = result.credits_remaining;
     }
 
-    // Re-fetch market and refresh the modal body in-place
+    // Re-fetch fresh market data then rebuild the entire modal body in-place
     _marketData = await getMarket(systemName);
     const modalBody = document.getElementById("modal-body");
     if (modalBody) {
       modalBody.innerHTML = _buildMarketBody(systemName, _marketData);
-      _wireMarketModal(systemName);
+      _wireMarketModal(systemName, _marketData);
     }
 
   } catch (err) {
     notify("ERROR", err.message || "Trade failed.");
-    btn.disabled   = false;
+    btn.disabled    = false;
     btn.textContent = origText;
   }
 }

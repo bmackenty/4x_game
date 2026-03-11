@@ -1941,13 +1941,24 @@ async def get_market(system_name: str):
     # Sort alphabetically for a stable display order
     commodities.sort(key=lambda c: c["name"])
 
+    # Compute cargo stats from the active ship so the frontend can calculate
+    # max-buyable quantities without a separate /api/ship call.
+    ship = None
+    try:
+        ship = game.get_active_ship()
+    except Exception:
+        pass
+    max_cargo  = getattr(ship, "max_cargo",  0) if ship else 0
+    cargo_used = sum(game.inventory.values()) if game.inventory else 0
+
     return {
-        "system_name":  system_name,
-        "commodities":  commodities,
-        "best_buys":    [{"name": b[0], "price": b[1], "supply": b[2]} for b in info.get("best_buys",  [])],
-        "best_sells":   [{"name": s[0], "price": s[1], "demand": s[2]} for s in info.get("best_sells", [])],
+        "system_name":    system_name,
+        "commodities":    commodities,
+        "best_buys":      [{"name": b[0], "price": b[1], "supply": b[2]} for b in info.get("best_buys",  [])],
+        "best_sells":     [{"name": s[0], "price": s[1], "demand": s[2]} for s in info.get("best_sells", [])],
         "player_credits": game.credits,
-        "cargo_used":   sum(game.inventory.values()) if game.inventory else 0,
+        "cargo_used":     cargo_used,
+        "max_cargo":      max_cargo,
     }
 
 
