@@ -48,7 +48,7 @@ from species import get_playable_species
 from factions import factions                                  # module-level dict
 from research import all_research                              # full research tree
 from energies import all_energies                              # 50 energy types
-from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex
+from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
 from backend.colony import ColonyManager                       # colony system
 from backend.gnn import generate_gnn_summary                   # end-of-turn broadcast
 
@@ -2056,16 +2056,21 @@ async def trade_sell(request: TradeRequest):
 @app.get("/api/npc_ships")
 async def get_npc_ships():
     """
-    Return every NPC bot's current 3D coordinates so the galaxy map can
-    render their ship markers on the canvas.
+    Return every NPC bot's position pre-projected to 2D axial hex coordinates.
+
+    NPC bots are typically docked inside star systems, so their raw 3D
+    coordinates project onto the exact same hex as the host system.  This
+    makes clicking that hex always open the system panel instead of the NPC
+    ship detail.  To prevent that, we compute the intended hex for each bot
+    and, if it collides with any star-system hex, nudge it to the nearest
+    unoccupied adjacent hex so the bot marker always renders outside systems.
 
     Response shape:
-      { ships: [{ name, bot_type, coordinates: [x, y, z] }, ...] }
+      { ships: [{ name, bot_type, coordinates: [x, y, z],
+                  hex_q: int, hex_r: int }, ...] }
 
-    The frontend projects the 3D coordinates to 2D axial hex using the same
-    GALAXY_SCALE constant as the player ship marker.  This endpoint is polled
-    on each galaxy-map mount (not every frame) so bots appear in their
-    updated positions after each end-of-turn tick.
+    hex_q / hex_r are the collision-free axial positions the frontend must
+    use; the raw coordinates are included for reference only.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
@@ -2074,7 +2079,36 @@ async def get_npc_ships():
     if not bot_mgr:
         return {"ships": []}
 
+    # Build the set of hexes already occupied by star systems and deep-space
+    # stations so NPC ships are never placed on top of either.
+    #
+    # IMPORTANT: we must use resolve_hex_collisions() — not the raw
+    # galaxy_coords_to_hex() projection — because the galaxy-map endpoint
+    # nudges colliding systems to neighbouring hexes.  The raw projection
+    # would give the wrong hex for any system that was nudged, so we'd miss
+    # those hexes and still land NPC ships on top of them.
+    occupied: set = set()
+
+    galaxy = getattr(game.navigation, "galaxy", None) if hasattr(game, "navigation") else None
+    if galaxy and hasattr(galaxy, "systems"):
+        # Re-run the same minimal projection that /api/galaxy/map uses so we get
+        # the collision-resolved hex positions, not the raw projections.
+        raw = [{"name": d.get("name", ""), "x": c[0], "y": c[1], "z": c[2]}
+               for c, d in galaxy.systems.items()]
+        for s in resolve_hex_collisions(raw):
+            occupied.add(HexCoord(s["hex_q"], s["hex_r"]))
+
+    # Deep-space station hexes (already pre-projected and stored on each dict)
+    station_mgr = getattr(game, "station_manager", None)
+    if station_mgr:
+        for st in station_mgr.get_deep_space_stations():
+            if "hex_q" in st and "hex_r" in st:
+                occupied.add(HexCoord(st["hex_q"], st["hex_r"]))
+
     ships = []
+    # Track hexes already claimed by earlier NPC ships so they don't stack.
+    claimed: set = set(occupied)
+
     for bot in bot_mgr.bots:
         bot_ship = getattr(bot, "ship", None)
         if not bot_ship:
@@ -2082,10 +2116,24 @@ async def get_npc_ships():
         coords = getattr(bot_ship, "coordinates", None)
         if coords is None:
             continue
+
+        # Project the bot's 3D position to the nearest axial hex.
+        raw_hex = galaxy_coords_to_hex(coords[0], coords[1])
+
+        # If the natural hex is inside a system (or already taken by another
+        # NPC ship), find the nearest free neighbouring hex instead.
+        if raw_hex in claimed:
+            placed = _find_free_hex(raw_hex, claimed)
+        else:
+            placed = raw_hex
+        claimed.add(placed)
+
         ships.append({
             "name":        bot.name,
             "bot_type":    bot.bot_type,
-            "coordinates": list(coords),  # tuple → JSON array
+            "coordinates": list(coords),  # kept for reference
+            "hex_q":       placed.q,      # collision-free hex position
+            "hex_r":       placed.r,
         })
 
     return {"ships": ships}

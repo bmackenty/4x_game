@@ -121,15 +121,16 @@ export const galaxyView = {
     systemsData  = state.galaxyMap;
     stationsData = state.stationsData || [];
 
-    // Fetch NPC bot positions and project them to axial hex coordinates
-    // using the same GALAXY_SCALE constant as the player ship marker.
+    // Fetch NPC bot positions.  The backend pre-projects each bot to axial
+    // hex coordinates and ensures they never overlap a star-system hex, so we
+    // use hex_q / hex_r directly rather than re-projecting from raw coordinates.
     try {
       const npcResult = await getNpcShips();
       npcShipsData = (npcResult.ships || []).map(ship => ({
         name:     ship.name,
         bot_type: ship.bot_type,
-        hex_q:    Math.round(ship.coordinates[0] / GALAXY_SCALE),
-        hex_r:    Math.round(ship.coordinates[1] / GALAXY_SCALE),
+        hex_q:    ship.hex_q,
+        hex_r:    ship.hex_r,
       }));
     } catch (_) {
       npcShipsData = [];  // NPC ships are cosmetic — silently fail
