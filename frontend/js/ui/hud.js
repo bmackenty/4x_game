@@ -25,7 +25,7 @@ export function refreshHud() {
   setText("hud-player-name", p.name);
   setText("hud-class", p.character_class);
   setText("hud-credits", `⬡ ${p.credits.toLocaleString()}`);
-  setText("hud-turn",    `Turn ${t.current_turn} / ${t.max_turns}`);
+  setText("hud-turn",    `Turn ${t.current_turn}${t.max_turns > 0 ? " / " + t.max_turns : ""}`);
   renderActionPips(t.actions_remaining, t.max_actions);
 
   if (r.active) {

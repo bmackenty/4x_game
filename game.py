@@ -74,7 +74,7 @@ class Game:
         
         # Turn-based game system
         self.current_turn = 1
-        self.max_turns = 100  # Default game length
+        self.max_turns = 0    # 0 = unlimited; kept for save compatibility
         self.turn_actions_remaining = 3  # Actions per turn
         self.max_actions_per_turn = 3
         self.game_ended = False
@@ -666,8 +666,8 @@ class Game:
         # Advance turn
         self.current_turn += 1
         
-        # Check if game should end
-        if self.current_turn > self.max_turns:
+        # Check if game should end — max_turns == 0 means unlimited
+        if self.max_turns > 0 and self.current_turn > self.max_turns:
             self.game_ended = True
             self.add_log_entry('system', f"Game ended after {self.max_turns} turns", {
                 'final_turn': self.current_turn - 1

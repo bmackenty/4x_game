@@ -147,7 +147,7 @@ def save_game(game, save_name: Optional[str] = None) -> bool:
             
             # Turn system
             'current_turn': getattr(game, 'current_turn', 1),
-            'max_turns': getattr(game, 'max_turns', 100),
+            'max_turns': getattr(game, 'max_turns', 0),
             'turn_actions_remaining': getattr(game, 'turn_actions_remaining', 3),
             'max_actions_per_turn': getattr(game, 'max_actions_per_turn', 3),
             'game_ended': getattr(game, 'game_ended', False),
@@ -253,7 +253,7 @@ def load_game(game, save_path: str) -> bool:
         
         # Load turn system
         game.current_turn = save_data.get('current_turn', 1)
-        game.max_turns = save_data.get('max_turns', 100)
+        game.max_turns = save_data.get('max_turns', 0)
         game.turn_actions_remaining = save_data.get('turn_actions_remaining', 3)
         game.max_actions_per_turn = save_data.get('max_actions_per_turn', 3)
         game.game_ended = save_data.get('game_ended', False)

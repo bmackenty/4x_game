@@ -161,7 +161,7 @@ function updateHud(gs) {
   setText("hud-credits", `⬡ ${p.credits.toLocaleString()}`);
 
   // Turn counter
-  setText("hud-turn", `Turn ${t.current_turn} / ${t.max_turns}`);
+  setText("hud-turn", `Turn ${t.current_turn}${t.max_turns > 0 ? " / " + t.max_turns : ""}`);
 
   // Action pips
   renderActionPips(t.actions_remaining, t.max_actions);
