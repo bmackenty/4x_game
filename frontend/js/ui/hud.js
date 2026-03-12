@@ -55,13 +55,15 @@ const INDEX_META = {
   spi: {
     label:       "Strategic Power Index",
     color:       "var(--accent-red, #e05050)",
-    description: "Measures overall military and strategic capability. Reflects fleet size, " +
-                 "planetary defenses, weapons development, and intelligence gathering capacity.",
+    description: "Measures overall military and strategic capability. Starts near zero and grows " +
+                 "only through real in-game progress: fleet production, colony defenses, completed " +
+                 "research, and alignment with military-adjacent factions (Industry / Technology).",
     components: {
-      "Fleet Strength":          "Ships × 20  +  KIN ÷ 4",
-      "Defense Grid":            "Colony Defense/turn × 20  +  KIN ÷ 5",
-      "Strategic Weapons":       "KIN ÷ 3  +  Research Completed × 2",
-      "Intelligence Capability": "INT ÷ 4  +  COH ÷ 6",
+      "Fleet Strength (pool)":   "Fleet Pool  (grows via Shipyards each turn)",
+      "Defense Grid":            "Colony Defense/turn × 25  +  Colonies × 20",
+      "Combat Doctrine":         "Research Completed × 4  +  KIN ÷ 20",
+      "Intelligence Capability": "INT ÷ 20  +  COH ÷ 20",
+      "Faction Bonus":           "Allied faction (Industry/Technology): rep>10 → +4,  rep>50 → +12,  rep>75 → +25",
     },
   },
   rei: {
@@ -102,7 +104,9 @@ const INDEX_META = {
 };
 
 const INDEX_INPUTS = {
-  spi: ["Ships owned", "KIN stat", "INT stat", "COH stat", "Research completed", "Colony defense/turn"],
+  spi: ["Fleet pool", "Colony defense/turn", "Colonies founded", "Research completed",
+        "KIN stat", "INT stat", "COH stat",
+        "Allied faction", "Faction focus", "Faction reputation"],
   rei: ["Ships owned", "Colony minerals/turn", "Colony ether/turn", "AEF stat", "Systems visited"],
   kii: ["Colony research/turn", "Research completed", "INT stat", "SYN stat", "AEF stat", "COH stat"],
   eci: ["Colony minerals/turn", "Colony food/turn", "Colony credits/turn", "Colony ether/turn", "AEF stat", "Credits"],

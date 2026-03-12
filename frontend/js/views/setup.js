@@ -27,6 +27,7 @@ const form = {
   background:       "",
   species:          "",
   faction:          "",
+  profession:       "",   // chosen from the PROFESSIONS catalogue
   stats: {          // Default: all stats at base value (30)
     VIT: 30, KIN: 30, INT: 30, AEF: 30, COH: 30, INF: 30, SYN: 30,
   },
@@ -149,8 +150,11 @@ function buildSetupHtml(opts) {
           })
         ))}
 
-        <!-- STEP 5: Faction Allegiance (optional) -->
-        ${buildStep(5, "Faction Allegiance — Optional", `
+        <!-- STEP 5: Professional Specialization -->
+        ${buildStep(5, "Professional Specialization", buildProfessionSection(opts.professions, opts.profession_categories))}
+
+        <!-- STEP 6: Faction Allegiance (optional) -->
+        ${buildStep(6, "Faction Allegiance — Optional", `
           <p style="font-size:var(--font-size-xs);color:var(--text-dim);margin-bottom:var(--sp-4)">
             Starting with an allegiance grants +25 reputation with that faction.
             Leave blank for a neutral start — useful for diplomatic playstyles.
@@ -169,8 +173,8 @@ function buildSetupHtml(opts) {
           )}
         `)}
 
-        <!-- STEP 6: Stat Allocation -->
-        ${buildStep(6, "Attribute Allocation", buildStatSection(opts.stats))}
+        <!-- STEP 7: Stat Allocation -->
+        ${buildStep(7, "Attribute Allocation", buildStatSection(opts.stats))}
 
       </div><!-- /.setup-steps -->
 
@@ -240,6 +244,69 @@ function buildCardGrid(items, dataKey, mapper) {
   }).join("");
 
   return `<div class="card-grid">${cards}</div>`;
+}
+
+
+/**
+ * Build the profession selection section.
+ *
+ * Renders a row of category filter tabs above the card grid.
+ * Only cards matching the active category are shown; clicking a tab
+ * swaps the visible set without re-rendering the whole setup form.
+ *
+ * @param {Array}  professions  - Array of profession objects from /api/game/options
+ * @param {Array}  categories   - Ordered category name list
+ */
+function buildProfessionSection(professions, categories) {
+  if (!professions || professions.length === 0) {
+    return "<p style='color:var(--text-dim)'>No professions available.</p>";
+  }
+
+  const cats = categories || [...new Set(professions.map(p => p.category))];
+
+  // Tab buttons — one per category
+  const tabs = cats.map((cat, i) => `
+    <button
+      class="prof-tab${i === 0 ? " prof-tab--active" : ""}"
+      data-cat="${escapeAttr(cat)}"
+      type="button"
+    >${escapeHtml(cat)}</button>
+  `).join("");
+
+  // One hidden card grid per category
+  const grids = cats.map((cat, i) => {
+    const subset = professions.filter(p => p.category === cat);
+    const cards  = subset.map(p => {
+      // Show first two skills as trait tags; show base_benefits as tooltip-style sub-list
+      const skillTags  = (p.skills || []).slice(0, 3)
+        .map(s => `<span class="trait-tag">${escapeHtml(s)}</span>`).join("");
+      return `
+        <div class="choice-card" data-type="profession" data-value="${escapeAttr(p.name)}">
+          <div class="choice-card__name">${escapeHtml(p.name)}</div>
+          <div class="choice-card__category">${escapeHtml(p.category)}</div>
+          <div class="choice-card__desc">${escapeHtml(p.description)}</div>
+          <div class="choice-card__traits">${skillTags}</div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="prof-grid card-grid"
+           data-cat-grid="${escapeAttr(cat)}"
+           style="${i === 0 ? "" : "display:none"}">
+        ${cards}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <p style="font-size:var(--font-size-xs);color:var(--text-dim);margin-bottom:var(--sp-4)">
+      Your profession shaped who you were before this journey began. It grants
+      skills and benefits that grow as you level up (1–10).
+    </p>
+    <div class="prof-tabs" id="prof-tabs">${tabs}</div>
+    ${grids}
+  `;
 }
 
 
@@ -314,12 +381,13 @@ function attachEventListeners(container) {
 
     // Map the step numbers in the actual HTML order (species=step2, class=step3…)
     // We use the data-type directly on form
-    if (type === "species")    { form.species           = value; updateStepLabel(2, value); }
-    if (type === "class")      { form.character_class   = value; updateStepLabel(3, value); }
-    if (type === "background") { form.background        = value; updateStepLabel(4, value); }
+    if (type === "species")     { form.species           = value; updateStepLabel(2, value); }
+    if (type === "class")       { form.character_class   = value; updateStepLabel(3, value); }
+    if (type === "background")  { form.background        = value; updateStepLabel(4, value); }
+    if (type === "profession")  { form.profession        = value; updateStepLabel(5, value); }
     if (type === "faction")    {
       form.faction = value === "(None — Neutral Start)" ? "" : value;
-      updateStepLabel(5, value === "(None — Neutral Start)" ? "None" : value);
+      updateStepLabel(6, value === "(None — Neutral Start)" ? "None" : value);
     }
   });
 
@@ -345,6 +413,25 @@ function attachEventListeners(container) {
   const resetBtn = container.querySelector("#btn-setup-reset");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => resetForm(container));
+  }
+
+  // Profession category tab switching
+  const profTabsEl = container.querySelector("#prof-tabs");
+  if (profTabsEl) {
+    profTabsEl.addEventListener("click", e => {
+      const tab = e.target.closest(".prof-tab");
+      if (!tab) return;
+      const cat = tab.dataset.cat;
+
+      // Toggle active tab styling
+      profTabsEl.querySelectorAll(".prof-tab")
+        .forEach(t => t.classList.toggle("prof-tab--active", t === tab));
+
+      // Show only the grid for the selected category
+      container.querySelectorAll("[data-cat-grid]").forEach(grid => {
+        grid.style.display = grid.dataset.catGrid === cat ? "" : "none";
+      });
+    });
   }
 
   // Begin button
@@ -431,8 +518,8 @@ function resetForm(container) {
     if (valEl) valEl.textContent = BASE_STAT;
   });
 
-  // Reset step labels
-  [2, 3, 4, 5].forEach(n => updateStepLabel(n, ""));
+  // Reset step labels (steps 2–6 have selection labels; step 7 is stats)
+  [2, 3, 4, 5, 6].forEach(n => updateStepLabel(n, ""));
 
   refreshPointsDisplay(container);
   hideError(container);
@@ -471,6 +558,7 @@ async function handleSubmit(container) {
       background:       form.background,
       species:          form.species,
       faction:          form.faction,
+      profession:       form.profession,
       stats:            { ...form.stats },
       research_paths:   [],
     });

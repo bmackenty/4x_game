@@ -2951,3 +2951,36 @@
 .char-gear-item__rarity--rare     { color: #6699ff; }
 .char-gear-item__rarity--epic     { color: #cc66ff; }
 .char-gear-item__rarity--legendary { color: #ffaa00; }
+
+/* ── Profession category filter tabs (setup step 5) ─────────────────────────── */
+.prof-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.prof-tab {
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.prof-tab:hover {
+  border-color: var(--accent-teal);
+  color: var(--text-bright);
+}
+
+.prof-tab--active {
+  background: rgba(0, 212, 170, 0.12);
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}

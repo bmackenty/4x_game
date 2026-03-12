@@ -44,6 +44,7 @@ from characters import (
     BASE_STAT_VALUE,
     POINT_BUY_POINTS,
 )
+from professions import PROFESSIONS, PROFESSION_CATEGORIES_ORDERED, ProfessionSystem
 from species import get_playable_species
 from factions import factions                                  # module-level dict
 from research import all_research                              # full research tree
@@ -103,6 +104,7 @@ class NewGameRequest(BaseModel):
     background: str
     species: str
     faction: str = ""
+    profession: str = ""          # optional: chosen profession from PROFESSIONS
     research_paths: list[str] = []
     # 7 stats: VIT, KIN, INT, AEF, COH, INF, SYN — each 30–100
     stats: dict[str, int] = {}
@@ -130,7 +132,9 @@ def _compute_indices() -> dict:
     frontend can display both the total and a per-component tooltip.
 
     SPI  Strategic Power Index
-         Fleet_Strength + Defense_Grid + Strategic_Weapons + Intelligence_Capability
+         Fleet_Strength + Defense_Grid + Strategic_Weapons + Intelligence_Capability + Faction_Bonus
+         Starts near zero; grows only through fleet production, colony defense, and research.
+         Faction bonus applies when allied faction has Industry/Technology focus and rep > 10.
     REI  Resource Extraction Index
          Raw_Material_Access + Energy_Production + Logistics_Capacity
     KII  Knowledge & Innovation Index
@@ -184,12 +188,48 @@ def _compute_indices() -> dict:
     empire_size = len(colony_manager.colonies) if colony_manager else 0
 
     # ── SPI ──────────────────────────────────────────────────────────────────
-    fleet_strength          = fleet_pool                          # from production chain
-    defense_grid            = defense_pts * 20 + empire_size * 15 + kin // 5
-    strategic_weapons       = kin // 3 + n_completed * 2
-    intelligence_capability = int_ // 4 + coh // 6
+    # Fleet Strength: backed entirely by the production chain (fleet_pool).
+    # Starts at 0 and grows only via Shipyards — no free points from stats.
+    fleet_strength = fleet_pool
 
-    spi = fleet_strength + defense_grid + strategic_weapons + intelligence_capability
+    # Defense Grid: actual built infrastructure.  Zero until colonies exist.
+    defense_grid = defense_pts * 25 + empire_size * 20
+
+    # Combat Doctrine: reflects learned military techniques (completed research)
+    # and the commander's kinetic aptitude (KIN).  No weapon hardware implied.
+    combat_doctrine = n_completed * 4 + kin // 20
+
+    # Intelligence Capability: passive cognitive advantage; deliberately small
+    # so that raw stats never dominate the index at game start.
+    intelligence_capability = int_ // 20 + coh // 20
+
+    # Faction Bonus: allied factions with military-adjacent focus provide a
+    # reputational boost to SPI.  Rep starts at +25 (from faction allegiance),
+    # so Industry / Technology players get a small head-start.
+    #   rep >  10 → small bonus   (+4)
+    #   rep >  50 → medium bonus  (+12)
+    #   rep >  75 → large bonus   (+25)
+    _SPI_FACTION_FOCUSES = {"Industry", "Technology"}
+    _allied_faction       = getattr(game, "character_faction", "") or ""
+    _faction_focus        = factions.get(_allied_faction, {}).get("primary_focus", "")
+    _faction_rep          = 0
+    try:
+        _faction_rep = game.faction_system.player_relations.get(_allied_faction, 0)
+    except Exception:
+        pass
+    if _faction_focus in _SPI_FACTION_FOCUSES:
+        if _faction_rep > 75:
+            faction_bonus_spi = 25
+        elif _faction_rep > 50:
+            faction_bonus_spi = 12
+        elif _faction_rep > 10:
+            faction_bonus_spi = 4
+        else:
+            faction_bonus_spi = 0
+    else:
+        faction_bonus_spi = 0
+
+    spi = fleet_strength + defense_grid + combat_doctrine + intelligence_capability + faction_bonus_spi
 
     # ── REI ──────────────────────────────────────────────────────────────────
     # refined_ore is included in raw material access — it represents processed
@@ -226,8 +266,9 @@ def _compute_indices() -> dict:
             "spi": {
                 "Fleet Strength (pool)":   fleet_strength,
                 "Defense Grid":            defense_grid,
-                "Strategic Weapons":       strategic_weapons,
+                "Combat Doctrine":         combat_doctrine,
                 "Intelligence Capability": intelligence_capability,
+                "Faction Bonus":           faction_bonus_spi,
             },
             "rei": {
                 "Raw Material Access": raw_material_access,
@@ -262,9 +303,13 @@ def _compute_indices() -> dict:
             "Colony credits/turn":      credits_prod,
             "Colony defense/turn":      defense_pts,
             "Colony refined ore/turn":  refined_ore,
+            "Colonies founded":         empire_size,
             "Systems visited":          visited,
             "Credits":                  credits,
             "Fleet pool":               fleet_pool,
+            "Allied faction":           _allied_faction or "None",
+            "Faction focus":            _faction_focus  or "None",
+            "Faction reputation":       _faction_rep,
         },
     }
 
@@ -391,6 +436,7 @@ def _build_state_snapshot() -> dict:
             "background": game.character_background,
             "species": game.character_species,
             "faction": game.character_faction,
+            "profession": getattr(game, "character_profession", ""),
             "credits": game.credits,
             "fleet_pool": getattr(game, "fleet_pool", 0),
         },
@@ -540,6 +586,15 @@ async def new_game(request: NewGameRequest):
     # to nudge this value rather than setting it directly.
     if request.faction and request.faction in game.faction_system.player_relations:
         game.faction_system.set_player_home_faction(request.faction, reputation=80)
+
+    # Initialise profession system and assign the chosen profession (if any).
+    # game.profession_system is used by ProfessionSystem throughout the session.
+    game.profession_system = ProfessionSystem()
+    if request.profession and request.profession in PROFESSIONS:
+        game.profession_system.assign_profession(request.profession)
+        game.character_profession = request.profession
+    else:
+        game.character_profession = ""
 
     return {
         "success": True,
@@ -759,11 +814,29 @@ async def get_game_options():
         for key in STAT_NAMES
     ]
 
+    # Build profession list grouped by category for the UI.
+    # Each entry carries enough data for the selection card.
+    professions_list = [
+        {
+            "name":                  name,
+            "category":              data["category"],
+            "description":           data["description"],
+            "skills":                data.get("skills", []),
+            "base_benefits":         data.get("base_benefits", []),
+            "intermediate_benefits": data.get("intermediate_benefits", []),
+            "advanced_benefits":     data.get("advanced_benefits", []),
+            "master_benefits":       data.get("master_benefits", []),
+        }
+        for name, data in PROFESSIONS.items()
+    ]
+
     return {
         "classes": classes_list,
         "backgrounds": backgrounds_list,
         "species": species_list,
         "factions": factions_list,
+        "professions": professions_list,
+        "profession_categories": PROFESSION_CATEGORIES_ORDERED,
         "stats": {
             "names": stat_meta,
             "base_value": BASE_STAT_VALUE,
