@@ -2293,6 +2293,25 @@ async def get_character_sheet():
         "skills":    class_data.get("skills", []),
         "bonuses":   formatted_bonuses,
         "traits":    bg_data.get("traits", []),
+        # Profession — populated from the ProfessionSystem assigned at game start
+        "profession":             getattr(game, "character_profession", ""),
+        "profession_category":    PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("category", ""),
+        "profession_description": PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("description", ""),
+        "profession_skills":      PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("skills", []),
+        "profession_level":       getattr(game, "profession_system", None) and
+                                  game.profession_system.profession_levels.get(getattr(game, "character_profession", ""), 1) or 1,
+        "profession_xp":          getattr(game, "profession_system", None) and
+                                  game.profession_system.profession_experience.get(getattr(game, "character_profession", ""), 0) or 0,
+        # Unlocked benefits are gated by profession level (same logic as ProfessionSystem)
+        "profession_benefits":    getattr(game, "profession_system", None) and
+                                  game.profession_system.get_profession_bonuses(getattr(game, "character_profession", "")) or [],
+        # All four tiers always included so the UI can display locked ones dimmed
+        "profession_tiers": {
+            "base":         PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("base_benefits", []),
+            "intermediate": PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("intermediate_benefits", []),
+            "advanced":     PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("advanced_benefits", []),
+            "master":       PROFESSIONS.get(getattr(game, "character_profession", ""), {}).get("master_benefits", []),
+        },
         # Inventory slots — placeholders until the equipment system is active
         "equipment":             [],
         "cybernetics":           [],

@@ -2984,3 +2984,138 @@
   border-color: var(--accent-teal);
   color: var(--accent-teal);
 }
+
+/* ── Character sheet — profession section ───────────────────────────────────── */
+
+/* Profession tag in the header meta row */
+.char-sheet__tag--profession {
+  color: var(--accent-teal);
+  border: 1px solid rgba(0, 212, 170, 0.35);
+  padding: 1px var(--sp-2);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+}
+
+/* Skill chips in the profession section (slightly different colour from class skills) */
+.char-skill--prof {
+  background: rgba(0, 212, 170, 0.08);
+  border-color: rgba(0, 212, 170, 0.25);
+  color: var(--accent-teal);
+}
+
+.char-skills--prof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+
+/* Category tag below section title */
+.char-prof__category-tag {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  padding: 1px var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+/* XP bar row (reuses .char-sheet__xp-bar from the header) */
+.char-prof__xp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+
+.char-prof__xp-label {
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.char-prof__xp-val {
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Tier container */
+.char-prof__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.char-prof__tier {
+  border-left: 2px solid var(--accent-teal);
+  padding-left: var(--sp-3);
+}
+
+.char-prof__tier--locked {
+  border-left-color: var(--border-dim);
+  opacity: 0.55;
+}
+
+.char-prof__tier-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent-teal);
+  margin-bottom: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.char-prof__tier--locked .char-prof__tier-label {
+  color: var(--text-dim);
+}
+
+.char-prof__lock {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  border: 1px solid var(--border-dim);
+  padding: 0 var(--sp-1);
+}
+
+/* Individual benefit rows */
+.char-prof__tier-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.char-prof__benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.char-prof__benefit--locked {
+  color: var(--text-dim);
+}
+
+.char-prof__benefit-dot {
+  color: var(--accent-teal);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.char-prof__benefit--locked .char-prof__benefit-dot {
+  color: var(--border-color);
+}
+
+.char-prof__benefit-text {
+  flex: 1;
+}

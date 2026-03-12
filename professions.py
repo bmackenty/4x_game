@@ -2240,6 +2240,38 @@ PROFESSIONS = {
             "Use art as a diplomatic instrument to shift inter-faction relationships without negotiation",
         ],
     },
+"Reality Pattern Weaver": {
+    "category": CATEGORY_ARTISTIC,
+    "description": (
+        "Artisans and mystic-technicians affiliated with the Weavers who manipulate etheric "
+        "threads, quantum structures, and symbolic geometries to shape localized patterns in "
+        "space-time. Their work blends art, physics, and mysticism, producing textiles, tools, "
+        "and environments that subtly alter reality through woven structure."
+    ),
+    "skills": [
+        "etheric thread manipulation",
+        "pattern geometry design",
+        "space-time fabric modeling",
+        "symbolic resonance alignment",
+        "cosmic loom operation",
+    ],
+    "base_benefits": [
+        "Weave minor etheric textiles that stabilize emotional or environmental fields",
+        "Recognize and reproduce basic cosmic pattern structures used by the Weavers",
+    ],
+    "intermediate_benefits": [
+        "Create functional reality fabrics capable of reinforcing structures or shielding environments",
+        "Repair damaged etheric patterns in ships, habitats, or ritual spaces",
+    ],
+    "advanced_benefits": [
+        "Weave localized distortions in space-time to enhance navigation, protection, or perception",
+        "Design complex pattern matrices that interact with collective consciousness networks",
+    ],
+    "master_benefits": [
+        "Create enduring reality tapestries that reshape environments or alter physical laws within bounded regions",
+        "Weave large-scale cosmic patterns capable of stabilizing unstable regions of space-time",
+    ],
+},
 
     "Ritual Systems Designer": {
         "category": CATEGORY_ARTISTIC,
