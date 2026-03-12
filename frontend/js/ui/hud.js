@@ -69,36 +69,65 @@ const INDEX_META = {
   rei: {
     label:       "Resource Extraction Index",
     color:       "var(--accent-gold, #d4a800)",
-    description: "Measures the empire’s capacity to extract and distribute raw resources. " +
-                 "Driven by mineral production, ether energy, and exploration reach.",
+    description: "Measures the empire’s capacity to extract, harvest, and distribute raw " +
+                 "resources across explored space. Driven by colony production chains, " +
+                 "etheric energy output, exploration reach, character stats (KIN/SYN/COH/AEF), " +
+                 "and profession — 20 extraction and logistics professions apply direct " +
+                 "multipliers to sub-components, scaled by profession level (10% at level 1 → " +
+                 "100% at level 10). Industry and Exploration-aligned factions provide " +
+                 "rep-gated network bonuses.",
     components: {
-      "Raw Material Access": "Colony Minerals/turn × 8  +  Systems Visited × 2",
-      "Energy Production":   "Colony Ether/turn × 10  +  AEF ÷ 5",
-      "Logistics Capacity":  "Ships × 12  +  Systems Visited × 3",
+      "Raw Material Access":   "Colony Minerals/turn × 8  +  Refined Ore/turn × 6  +  Systems Visited × 2",
+      "Energy Production":     "Colony Ether/turn × 10  +  AEF ÷ 5",
+      "Logistics Capacity":    "Ships × 12  +  Systems Visited × 3",
+      "Extraction Aptitude":   "KIN ÷ 8  +  SYN ÷ 10  +  COH ÷ 12  (physical precision + tech integration + sustained ops)",
+      "Prospecting Advantage": "AEF ÷ 6  +  Systems Visited  (etheric deposit sensing + exploration breadth)",
+      "Profession Bonus":      "Per-component multipliers × profession level ÷ 10  (extraction/logistics professions only)",
+      "Faction Bonus":         "Industry / Exploration faction: rep>10 → +5,  rep>50 → +15,  rep>75 → +30",
     },
   },
   kii: {
     label:       "Knowledge & Innovation Index",
     color:       "var(--accent-teal, #00d4aa)",
     description: "Measures scientific advancement and the rate of technological discovery. " +
-                 "Reflects active research, completed technologies, and cognitive capability.",
+                 "Driven by colony research output, completed technologies, AI and etheric " +
+                 "cognition, and character stats (INT/SYN/COH/AEF). Two new components " +
+                 "compound over time: Cognitive Aptitude (raw intellectual capacity) and " +
+                 "Knowledge Network (breadth of research + exploration reinforcing new " +
+                 "discovery). 25 research, education, and AI professions apply direct " +
+                 "multipliers to sub-components, scaled by profession level (10% → 100%). " +
+                 "Technology and Science factions provide rep-gated archive bonuses.",
     components: {
-      "Research Output": "Colony Research/turn × 8  +  INT ÷ 4",
-      "Education Level": "Research Completed × 6  +  INT ÷ 3",
-      "AI Capability":   "SYN ÷ 3  +  AEF ÷ 6",
-      "Innovation Rate": "SYN ÷ 5  +  COH ÷ 8",
+      "Research Output":    "Colony Research/turn × 8  +  INT ÷ 4",
+      "Education Level":    "Research Completed × 6  +  INT ÷ 3",
+      "AI Capability":      "SYN ÷ 3  +  AEF ÷ 6",
+      "Innovation Rate":    "SYN ÷ 5  +  COH ÷ 8",
+      "Cognitive Aptitude": "INT ÷ 6  +  COH ÷ 8  +  AEF ÷ 8  (raw intellectual + etheric pattern recognition)",
+      "Knowledge Network":  "Research Completed × 3  +  Systems Visited ÷ 2  (breadth compounds discovery)",
+      "Profession Bonus":   "Per-component multipliers × profession level ÷ 10  (research/education/AI professions only)",
+      "Faction Bonus":      "Technology / Science faction: rep>10 → +5,  rep>50 → +15,  rep>75 → +30",
     },
   },
   eci: {
     label:       "Economic Capability Index",
     color:       "#4caf80",
-    description: "Measures the economic strength of the empire. Combines industrial output " +
-                 "from colonies, trade income, energy conversion, and financial reserves.",
+    description: "Measures the economic strength of the empire. Combines colony industrial " +
+                 "output, trade income, energy conversion, and financial reserves with two " +
+                 "compounding drivers: Commercial Acumen (INT/SYN/COH stat-driven capacity " +
+                 "for negotiation and market integration) and Infrastructure Depth (colonies, " +
+                 "ships, and refined ore signalling upstream industrial maturity). 20 trade, " +
+                 "industrial, and logistics professions apply direct multipliers, scaled by " +
+                 "profession level (10% → 100%). Trade, Commerce, and Industry factions " +
+                 "provide rep-gated lane and tariff bonuses.",
     components: {
-      "Industrial Output":   "Colony Minerals/turn × 4  +  Colony Food/turn × 3",
-      "Trade Volume":        "Colony Credits/turn × 10  +  Credits ÷ 5000",
-      "Energy Output":       "Colony Ether/turn × 6  +  AEF ÷ 5",
-      "Financial Liquidity": "min(500,  Credits ÷ 2000)",
+      "Industrial Output":    "Colony Minerals/turn × 4  +  Colony Food/turn × 3",
+      "Trade Volume":         "Colony Credits/turn × 10  +  Credits ÷ 5000",
+      "Energy Output":        "Colony Ether/turn × 6  +  AEF ÷ 5",
+      "Financial Liquidity":  "min(500,  Credits ÷ 2000)",
+      "Commercial Acumen":    "INT ÷ 8  +  SYN ÷ 10  +  COH ÷ 12  (pricing, market integration, relationship stability)",
+      "Infrastructure Depth": "Colonies × 4  +  Ships × 3  +  Refined Ore/turn × 2  (upstream industrial maturity)",
+      "Profession Bonus":     "Per-component multipliers × profession level ÷ 10  (trade/industrial/logistics professions only)",
+      "Faction Bonus":        "Trade / Commerce / Industry faction: rep>10 → +5,  rep>50 → +15,  rep>75 → +30",
     },
   },
 };
@@ -107,9 +136,26 @@ const INDEX_INPUTS = {
   spi: ["Fleet pool", "Colony defense/turn", "Colonies founded", "Research completed",
         "KIN stat", "INT stat", "COH stat",
         "Allied faction", "Faction focus", "Faction reputation"],
-  rei: ["Ships owned", "Colony minerals/turn", "Colony ether/turn", "AEF stat", "Systems visited"],
-  kii: ["Colony research/turn", "Research completed", "INT stat", "SYN stat", "AEF stat", "COH stat"],
-  eci: ["Colony minerals/turn", "Colony food/turn", "Colony credits/turn", "Colony ether/turn", "AEF stat", "Credits"],
+  rei: [
+    "Colony minerals/turn", "Colony refined ore/turn", "Colony ether/turn",
+    "Ships owned", "Systems visited",
+    "KIN stat", "SYN stat", "COH stat", "AEF stat",
+    "REI Profession", "REI Profession level", "REI Profession scale",
+    "Allied faction", "Faction focus", "Faction reputation",
+  ],
+  kii: [
+    "Colony research/turn", "Research completed", "Systems visited",
+    "INT stat", "SYN stat", "COH stat", "AEF stat",
+    "KII Profession", "KII Profession level", "KII Profession scale",
+    "Allied faction", "Faction focus", "Faction reputation",
+  ],
+  eci: [
+    "Colony minerals/turn", "Colony food/turn", "Colony credits/turn", "Colony ether/turn",
+    "Colony refined ore/turn", "Colonies founded", "Ships owned", "Credits",
+    "INT stat", "SYN stat", "COH stat", "AEF stat",
+    "ECI Profession", "ECI Profession level", "ECI Profession scale",
+    "Allied faction", "Faction focus", "Faction reputation",
+  ],
 };
 
 let _lastIndices = null;

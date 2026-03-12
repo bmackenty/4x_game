@@ -137,10 +137,23 @@ def _compute_indices() -> dict:
          Faction bonus applies when allied faction has Industry/Technology focus and rep > 10.
     REI  Resource Extraction Index
          Raw_Material_Access + Energy_Production + Logistics_Capacity
+         + Extraction_Aptitude + Prospecting_Advantage + Profession_Bonus + Faction_Bonus
+         Profession bonus: 20 extraction/logistics professions apply per-component multipliers
+           scaled by profession level (level 1 = 10%, level 10 = 100% of stated multiplier).
+           Add future extraction modifiers (upgrades, events, policies) to _REI_PROFESSION_BONUSES.
     KII  Knowledge & Innovation Index
          Research_Output + Education_Level + AI_Capability + Innovation_Rate
+         + Cognitive_Aptitude + Knowledge_Network + Profession_Bonus + Faction_Bonus
+         Profession bonus: 25 research/education/AI professions apply per-component multipliers
+           scaled by profession level.  Technology/Science factions add rep-gated bonus.
+         Add future KII modifiers to _KII_PROFESSION_BONUSES.
     ECI  Economic Capability Index
          Industrial_Output + Trade_Volume + Energy_Output + Financial_Liquidity
+         + Commercial_Acumen + Infrastructure_Depth + Profession_Bonus + Faction_Bonus
+         Profession bonus: 20 trade/industrial/logistics professions apply per-component
+           multipliers scaled by profession level.
+         Trade / Commerce / Industry factions add rep-gated bonus.
+         Add future ECI modifiers to _ECI_PROFESSION_BONUSES.
     """
     if not game or not game.character_created:
         return {}
@@ -232,29 +245,265 @@ def _compute_indices() -> dict:
     spi = fleet_strength + defense_grid + combat_doctrine + intelligence_capability + faction_bonus_spi
 
     # ── REI ──────────────────────────────────────────────────────────────────
-    # refined_ore is included in raw material access — it represents processed
-    # industrial capacity sitting upstream of the military chain.
+    # Professions that directly boost REI sub-components.
+    # Keys: sub-component names used in the formula below.
+    # Values are fractional multipliers applied to each sub-component total;
+    # the final bonus is further scaled by profession_level / 10 so that
+    # a level-1 player gets 10% of the stated value and a level-10 master
+    # gets the full 100%.  Add new professions or adjust weights here only —
+    # no other code changes are needed to pick them up.
+    _REI_PROFESSION_BONUSES: dict[str, dict[str, float]] = {
+        # ── Directly extractive ─────────────────────────────────────────────
+        "Resource Vein Prospector":              {"raw": 0.20, "energy": 0.05, "prospecting": 0.15},
+        "Atmospheric Harvest Technician":        {"energy": 0.25},
+        "Etheric Materials Synthesist":          {"energy": 0.15, "raw": 0.05},
+        "Salvage Systems Diver":                 {"raw": 0.10},
+        "Nano-Fabrication Artisan":              {"raw": 0.10},
+        "Bio-Integrated Manufacturing Director": {"raw": 0.15},
+        "Terraforming Ecologist":                {"raw": 0.05, "energy": 0.05},
+        "Planetary Renewal Engineer":            {"raw": 0.05},
+        # ── Exploration and surveying ────────────────────────────────────────
+        "Void Cartographer":                     {"logistics": 0.15, "prospecting": 0.10},
+        "Deep Space Reconnaissance Operative":   {"logistics": 0.10, "prospecting": 0.15},
+        "Chrono-Synthetic Flux Analyst":          {"prospecting": 0.10},
+        # ── Logistics and infrastructure ────────────────────────────────────
+        "Ether Drive Tuner":                     {"energy": 0.10, "logistics": 0.10},
+        "Gravitic Systems Engineer":             {"logistics": 0.15},
+        "Wormline Infrastructure Engineer":      {"logistics": 0.20},
+        "Orbital Dockmaster":                    {"logistics": 0.15},
+        "Interstellar Quartermaster":            {"logistics": 0.20},
+        "Habitat Systems Warden":                {"logistics": 0.10},
+    }
+
+    # Base colony-production chain
+    # refined_ore represents processed industrial capacity upstream of the chain.
     raw_material_access = minerals * 8 + refined_ore * 6 + visited * 2
     energy_production   = ether * 10 + aef // 5
     logistics_capacity  = ships * 12 + visited * 3
 
-    rei = raw_material_access + energy_production + logistics_capacity
+    # Stat-driven contributions
+    # KIN — physical precision in drilling, recovery, and field operations
+    # SYN — ability to integrate heterogeneous extraction technologies
+    # COH — sustained focus across distributed long-range mining sites
+    extraction_aptitude = kin // 8 + syn // 10 + coh // 12
+
+    # Prospecting advantage
+    # AEF amplifies etheric deposit sensing; breadth of exploration multiplies discovery chance
+    prospecting_advantage = aef // 6 + visited
+
+    # Profession bonus: multiply base sub-components by stated weights, scaled by level
+    _prof_name   = getattr(game, "character_profession", "") or ""
+    _prof_system = getattr(game, "profession_system", None)
+    _prof_level  = _prof_system.profession_levels.get(_prof_name, 1) if _prof_system else 1
+    _prof_scale  = _prof_level / 10.0   # level 1 → 0.10,  level 10 → 1.0
+    _prof_mults  = _REI_PROFESSION_BONUSES.get(_prof_name, {})
+
+    profession_bonus_rei = int(
+        raw_material_access   * _prof_mults.get("raw",         0) * _prof_scale
+        + energy_production   * _prof_mults.get("energy",      0) * _prof_scale
+        + logistics_capacity  * _prof_mults.get("logistics",   0) * _prof_scale
+        + prospecting_advantage * _prof_mults.get("prospecting", 0) * _prof_scale
+    )
+
+    # Faction bonus: Industry / Exploration factions provide better extraction networks
+    # (same rep-gating pattern as SPI faction bonus)
+    _REI_FACTION_FOCUSES = {"Industry", "Exploration"}
+    if _faction_focus in _REI_FACTION_FOCUSES:
+        if _faction_rep > 75:
+            faction_bonus_rei = 30
+        elif _faction_rep > 50:
+            faction_bonus_rei = 15
+        elif _faction_rep > 10:
+            faction_bonus_rei = 5
+        else:
+            faction_bonus_rei = 0
+    else:
+        faction_bonus_rei = 0
+
+    rei = (
+        raw_material_access
+        + energy_production
+        + logistics_capacity
+        + extraction_aptitude
+        + prospecting_advantage
+        + profession_bonus_rei
+        + faction_bonus_rei
+    )
 
     # ── KII ──────────────────────────────────────────────────────────────────
+    # Professions that directly boost KII sub-components.
+    # Same scaling rule as REI: multiplier × (profession_level / 10).
+    # Add new professions or adjust weights here only.
+    _KII_PROFESSION_BONUSES: dict[str, dict[str, float]] = {
+        # ── Research and analysis ────────────────────────────────────────────
+        "Astrobiologist":                       {"research": 0.15, "innovation": 0.05},
+        "Quantum Computer Scientist":           {"research": 0.20, "ai": 0.15},
+        "Ancient Systems Decipherer":           {"research": 0.15, "education": 0.10},
+        "Etheric Historian":                    {"education": 0.15, "research": 0.05},
+        "Memory Forensics Analyst":             {"research": 0.10, "education": 0.10},
+        "Chrono-Synthetic Flux Analyst":        {"research": 0.10, "innovation": 0.10},
+        "Myth-Systems Scholar":                 {"education": 0.10},
+        "Cultural Pattern Archivist":           {"education": 0.10},
+        "Relic Recovery Specialist":            {"research": 0.10},
+        # ── Consciousness, AI, and cognition ────────────────────────────────
+        "Consciousness Engineer":               {"ai": 0.20, "innovation": 0.10},
+        "AI-Ether Integration Specialist":      {"ai": 0.25},
+        "Cognitive Archive Curator":            {"education": 0.15, "ai": 0.10},
+        "Quantum Consciousness Transfer Technician": {"ai": 0.10},
+        "Collective Consciousness Integrator":  {"ai": 0.15, "innovation": 0.10},
+        "Consciousness Confluence Architect":   {"ai": 0.20, "research": 0.10},
+        "Shared Mind Systems Steward":          {"ai": 0.10, "education": 0.10},
+        # ── Education and mentorship ─────────────────────────────────────────
+        "Adaptive Education Designer":          {"education": 0.20},
+        "Knowledge Systems Mentor":             {"education": 0.20, "innovation": 0.05},
+        "Cognitive Apprenticeship Instructor":  {"education": 0.15},
+        "Inter-Species Education Facilitator":  {"education": 0.15},
+        "Foundational Learning Guide":          {"education": 0.10},
+        # ── Exploration feeding discovery ────────────────────────────────────
+        "Quantum Navigator":                    {"innovation": 0.10, "ai": 0.05},
+        "Void Cartographer":                    {"research": 0.05, "innovation": 0.05},
+        "Deep Space Reconnaissance Operative":  {"research": 0.05},
+    }
+
+    # Base production-chain components (existing formulas unchanged)
     research_output = research_pts * 8 + int_ // 4
     education_level = n_completed * 6 + int_ // 3
     ai_capability   = syn // 3 + aef // 6
     innovation_rate = syn // 5 + coh // 8
 
-    kii = research_output + education_level + ai_capability + innovation_rate
+    # Cognitive aptitude: raw intellectual and perceptual capacity
+    # INT — analytical processing; COH — sustained mental coherence across long research arcs;
+    # AEF — etheric pattern recognition that amplifies discovery in anomalous phenomena.
+    # Deliberately kept smaller than per-component stat terms so it adds flavour,
+    # not dominance, at game start.
+    cognitive_aptitude = int_ // 6 + coh // 8 + aef // 8
+
+    # Knowledge network: breadth of completed research and explored space reinforces itself —
+    # the more you know and have seen, the faster new connections form.
+    knowledge_network = n_completed * 3 + visited // 2
+
+    # Profession bonus: apply per-component multipliers scaled by profession level
+    _kii_prof_mults = _KII_PROFESSION_BONUSES.get(_prof_name, {})
+
+    profession_bonus_kii = int(
+        research_output     * _kii_prof_mults.get("research",   0) * _prof_scale
+        + education_level   * _kii_prof_mults.get("education",  0) * _prof_scale
+        + ai_capability     * _kii_prof_mults.get("ai",         0) * _prof_scale
+        + innovation_rate   * _kii_prof_mults.get("innovation", 0) * _prof_scale
+    )
+
+    # Faction bonus: Technology / Science factions provide access to research networks,
+    # knowledge archives, and collaborative discovery infrastructure.
+    _KII_FACTION_FOCUSES = {"Technology", "Science"}
+    if _faction_focus in _KII_FACTION_FOCUSES:
+        if _faction_rep > 75:
+            faction_bonus_kii = 30
+        elif _faction_rep > 50:
+            faction_bonus_kii = 15
+        elif _faction_rep > 10:
+            faction_bonus_kii = 5
+        else:
+            faction_bonus_kii = 0
+    else:
+        faction_bonus_kii = 0
+
+    kii = (
+        research_output
+        + education_level
+        + ai_capability
+        + innovation_rate
+        + cognitive_aptitude
+        + knowledge_network
+        + profession_bonus_kii
+        + faction_bonus_kii
+    )
 
     # ── ECI ──────────────────────────────────────────────────────────────────
+    # Professions that directly boost ECI sub-components.
+    # Same scaling rule as REI/KII: multiplier × (profession_level / 10).
+    # Add new professions or adjust weights here only.
+    _ECI_PROFESSION_BONUSES: dict[str, dict[str, float]] = {
+        # ── Trade, commerce, and brokerage ──────────────────────────────────
+        "Exotic Commodities Broker":            {"trade": 0.25, "liquidity": 0.10},
+        "Trade Route Adjudicator":              {"trade": 0.20},
+        "Interstellar Diplomatic Attaché":      {"trade": 0.10, "liquidity": 0.05},
+        "Faction Liaison Officer":              {"trade": 0.10},
+        "Universal Translation Mediator":       {"trade": 0.10},
+        # ── Industrial production ────────────────────────────────────────────
+        "Bio-Integrated Manufacturing Director":{"industrial": 0.20},
+        "Nano-Fabrication Artisan":             {"industrial": 0.15},
+        "Closed-Loop Sustainability Planner":   {"industrial": 0.15, "energy": 0.05},
+        "Terraforming Ecologist":               {"industrial": 0.10},
+        "Planetary Renewal Engineer":           {"industrial": 0.10},
+        "Programmable Matter Architect":        {"industrial": 0.15, "energy": 0.05},
+        "Nano-Swarm Systems Engineer":          {"industrial": 0.10},
+        "Programmable Matter Fabrication Technician": {"industrial": 0.10},
+        # ── Energy and resource conversion ───────────────────────────────────
+        "Atmospheric Harvest Technician":       {"energy": 0.20},
+        "Etheric Materials Synthesist":         {"energy": 0.15},
+        "Gravitic Systems Engineer":            {"energy": 0.10},
+        "Ether Drive Tuner":                    {"energy": 0.10},
+        # ── Logistics, supply, and operations ───────────────────────────────
+        "Interstellar Quartermaster":           {"industrial": 0.10, "trade": 0.10},
+        "Orbital Dockmaster":                   {"trade": 0.15},
+        "Habitat Systems Warden":               {"industrial": 0.05, "liquidity": 0.05},
+        "Wormline Infrastructure Engineer":     {"trade": 0.10},
+    }
+
+    # Base colony-production chain (existing formulas unchanged)
     industrial_output   = minerals * 4 + food * 3
     trade_volume        = credits_prod * 10 + credits // 5000
     energy_output       = ether * 6 + aef // 5
     financial_liquidity = min(500, credits // 2000)
 
-    eci = industrial_output + trade_volume + energy_output + financial_liquidity
+    # Commercial acumen: stat-driven capacity for negotiation, resource valuation,
+    # and optimizing transactions.
+    # INT — analytical pricing and contract evaluation
+    # SYN — integrating diverse market systems and alien economic frameworks
+    # COH — maintaining reliable long-term trade relationships
+    commercial_acumen = int_ // 8 + syn // 10 + coh // 12
+
+    # Infrastructure depth: how well-developed the empire's physical and
+    # logistical foundations are — colony count amplifies per-turn output,
+    # ship network enables trade reach, and refined ore signals upstream
+    # industrial maturity.
+    infrastructure_depth = empire_size * 4 + ships * 3 + refined_ore * 2
+
+    # Profession bonus: apply per-component multipliers scaled by profession level
+    _eci_prof_mults = _ECI_PROFESSION_BONUSES.get(_prof_name, {})
+
+    profession_bonus_eci = int(
+        industrial_output   * _eci_prof_mults.get("industrial", 0) * _prof_scale
+        + trade_volume      * _eci_prof_mults.get("trade",      0) * _prof_scale
+        + energy_output     * _eci_prof_mults.get("energy",     0) * _prof_scale
+        + financial_liquidity * _eci_prof_mults.get("liquidity", 0) * _prof_scale
+    )
+
+    # Faction bonus: Trade / Commerce factions open access to preferred
+    # shipping lanes, tariff exemptions, and market intelligence.
+    _ECI_FACTION_FOCUSES = {"Trade", "Commerce", "Industry"}
+    if _faction_focus in _ECI_FACTION_FOCUSES:
+        if _faction_rep > 75:
+            faction_bonus_eci = 30
+        elif _faction_rep > 50:
+            faction_bonus_eci = 15
+        elif _faction_rep > 10:
+            faction_bonus_eci = 5
+        else:
+            faction_bonus_eci = 0
+    else:
+        faction_bonus_eci = 0
+
+    eci = (
+        industrial_output
+        + trade_volume
+        + energy_output
+        + financial_liquidity
+        + commercial_acumen
+        + infrastructure_depth
+        + profession_bonus_eci
+        + faction_bonus_eci
+    )
 
     return {
         "spi": spi,
@@ -271,21 +520,33 @@ def _compute_indices() -> dict:
                 "Faction Bonus":           faction_bonus_spi,
             },
             "rei": {
-                "Raw Material Access": raw_material_access,
-                "Energy Production":   energy_production,
-                "Logistics Capacity":  logistics_capacity,
+                "Raw Material Access":    raw_material_access,
+                "Energy Production":      energy_production,
+                "Logistics Capacity":     logistics_capacity,
+                "Extraction Aptitude":    extraction_aptitude,
+                "Prospecting Advantage":  prospecting_advantage,
+                "Profession Bonus":       profession_bonus_rei,
+                "Faction Bonus":          faction_bonus_rei,
             },
             "kii": {
-                "Research Output": research_output,
-                "Education Level": education_level,
-                "AI Capability":   ai_capability,
-                "Innovation Rate": innovation_rate,
+                "Research Output":    research_output,
+                "Education Level":    education_level,
+                "AI Capability":      ai_capability,
+                "Innovation Rate":    innovation_rate,
+                "Cognitive Aptitude": cognitive_aptitude,
+                "Knowledge Network":  knowledge_network,
+                "Profession Bonus":   profession_bonus_kii,
+                "Faction Bonus":      faction_bonus_kii,
             },
             "eci": {
-                "Industrial Output":   industrial_output,
-                "Trade Volume":        trade_volume,
-                "Energy Output":       energy_output,
-                "Financial Liquidity": financial_liquidity,
+                "Industrial Output":    industrial_output,
+                "Trade Volume":         trade_volume,
+                "Energy Output":        energy_output,
+                "Financial Liquidity":  financial_liquidity,
+                "Commercial Acumen":    commercial_acumen,
+                "Infrastructure Depth": infrastructure_depth,
+                "Profession Bonus":     profession_bonus_eci,
+                "Faction Bonus":        faction_bonus_eci,
             },
         },
         "inputs": {
@@ -310,6 +571,16 @@ def _compute_indices() -> dict:
             "Allied faction":           _allied_faction or "None",
             "Faction focus":            _faction_focus  or "None",
             "Faction reputation":       _faction_rep,
+            # Profession inputs (same values, displayed under whichever index is clicked)
+            "REI Profession":           _prof_name or "None",
+            "REI Profession level":     _prof_level,
+            "REI Profession scale":     f"{int(_prof_scale * 100)}%",
+            "KII Profession":           _prof_name or "None",
+            "KII Profession level":     _prof_level,
+            "KII Profession scale":     f"{int(_prof_scale * 100)}%",
+            "ECI Profession":           _prof_name or "None",
+            "ECI Profession level":     _prof_level,
+            "ECI Profession scale":     f"{int(_prof_scale * 100)}%",
         },
     }
 
