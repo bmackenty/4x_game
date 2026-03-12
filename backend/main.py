@@ -926,11 +926,8 @@ async def end_turn():
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    success, end_message = game.end_turn()
-    # advance_turn also increments current_turn internally; end_turn already did
-    # that too — the game is intentionally designed so end_turn is the canonical
-    # "pass the turn" action and advance_turn runs the subsystem tick.
-    events = game.advance_turn()
+    success, end_message = game.end_turn()   # increments current_turn, resets actions
+    events = game.advance_turn()             # runs subsystem tick; does NOT increment turn
 
     # Snapshot credits BEFORE colony income so the ledger can show the delta.
     credits_before = game.credits

@@ -67,6 +67,48 @@ export const TERRAIN_COLORS = {
   geothermal:"#1e1208",
 };
 
+// ---------------------------------------------------------------------------
+// Z-elevation band helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Classify a system's z coordinate into one of five galactic elevation bands.
+ *
+ * Bands are defined by standard-deviation distance from the dataset mean:
+ *   "high"  z >  mean + 2σ   — well above the galactic plane
+ *   "above" z >  mean + 1σ   — above the plane
+ *   "plane" |z - mean| ≤ 1σ  — at the galactic midplane
+ *   "below" z <  mean - 1σ   — below the plane
+ *   "deep"  z <  mean - 2σ   — well below the galactic plane
+ *
+ * @param {number}                         z
+ * @param {{ mean: number, std: number }|null} zStats
+ * @returns {"high"|"above"|"plane"|"below"|"deep"}
+ */
+function _zBand(z, zStats) {
+  if (!zStats || zStats.std === 0) return "plane";
+  const d = (z - zStats.mean) / zStats.std;
+  if (d >  2) return "high";
+  if (d >  1) return "above";
+  if (d < -2) return "deep";
+  if (d < -1) return "below";
+  return "plane";
+}
+
+/**
+ * Visual style for each z-elevation band.
+ * dot  — colour of the small elevation dot drawn below the star glyph (null = none)
+ * ring — colour of the outer elevation ring drawn for extreme bands (null = none)
+ */
+const Z_BAND_STYLES = {
+  high:  { dot: "#00e5ff", ring: "rgba(0,229,255,0.50)"  },  // cyan  — high above plane
+  above: { dot: "#4fc3f7", ring: null                    },  // pale blue
+  plane: { dot: null,      ring: null                    },  // no indicator at midplane
+  below: { dot: "#ffb74d", ring: null                    },  // amber
+  deep:  { dot: "#ff7043", ring: "rgba(255,112,67,0.45)" },  // orange-red — deep below plane
+};
+
+
 /** Improvement icons (emoji / ASCII) drawn inside colony hex tiles */
 const IMPROVEMENT_ICONS = {
   "Mineral Extractor":    "⛏",
@@ -236,7 +278,8 @@ function _drawTerritoryBorders(ctx, systems, size) {
  */
 export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   const ctx = canvas.getContext("2d");
-  const { panX, panY, zoom, selectedSystemName, stations = [], selectedStationName } = viewState;
+  const { panX, panY, zoom, selectedSystemName, stations = [], selectedStationName,
+          zStats = null, activeZFilter = "all" } = viewState;
 
   // Clear to deep space background
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -258,6 +301,14 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
 
   for (const sys of systems) {
     const { x: px, y: py } = axialToPixel(sys.hex_q, sys.hex_r, size);
+
+    // ── Z-elevation: compute band and filter dimming ──────────────────────
+    // Every system carries a z coordinate from the backend; classify it into
+    // one of five elevation bands relative to the dataset mean/std.
+    const band   = zStats ? _zBand(sys.z ?? 0, zStats) : "plane";
+    const dimmed = activeZFilter !== "all" && band !== activeZFilter;
+    // Dimmed systems render at ~10% alpha so the galaxy silhouette stays visible
+    ctx.globalAlpha = dimmed ? 0.10 : 1.0;
 
     // Faction colour tint
     const factionColor = sys.controlling_faction
@@ -308,12 +359,32 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.stroke();
     }
 
+    // Elevation ring — extra outer ring for extreme bands (high / deep) so
+    // these systems are immediately legible even without the filter active.
+    if (zStats && visited && !dimmed) {
+      const zStyle = Z_BAND_STYLES[band];
+      if (zStyle.ring) {
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 180) * (60 * i);
+          const hx = px + (size + 5) * Math.cos(angle);
+          const hy = py + (size + 5) * Math.sin(angle);
+          i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = zStyle.ring;
+        ctx.lineWidth   = 1.2;
+        ctx.stroke();
+      }
+    }
+
     if (!visited) {
       // Fog-of-war: just a faint dot
       ctx.fillStyle = "rgba(90,122,154,0.15)";
       ctx.beginPath();
       ctx.arc(px, py, 2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1.0;   // reset before continue
       continue;
     }
 
@@ -328,6 +399,18 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(glyph, px, py);
+    }
+
+    // Elevation dot — small coloured circle below the star glyph.
+    // Absent for "plane" systems to avoid clutter; always drawn unless dimmed.
+    if (zStats && !dimmed) {
+      const zStyle = Z_BAND_STYLES[band];
+      if (zStyle.dot) {
+        ctx.beginPath();
+        ctx.arc(px, py + size * 0.68, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = zStyle.dot;
+        ctx.fill();
+      }
     }
 
     // System name label (always shown; ship presence highlighted in teal)
@@ -353,6 +436,9 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.fillText("⌂", px + size * 0.60 * Math.cos(iconAngle),
                        py + size * 0.60 * Math.sin(iconAngle));
     }
+
+    // Reset alpha after each system so subsequent draws are unaffected
+    ctx.globalAlpha = 1.0;
   }
 
   // Territory borders — drawn after all hex tiles so lines sit in the gaps

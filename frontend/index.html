@@ -74,7 +74,8 @@
         <button class="hud__nav-btn" data-view="research"  title="Research Tree (R)">R&amp;D</button>
         <button class="hud__nav-btn" data-view="diplomacy" title="Faction Diplomacy (D)">DIP</button>
         <button class="hud__nav-btn" data-view="colonies"  title="Colony Management (L)">COL</button>
-        <button class="hud__nav-btn" data-view="character" title="Character Sheet (P)">CHR</button>
+        <button class="hud__nav-btn" data-view="character"  title="Character Sheet (P)">CHR</button>
+        <button class="hud__nav-btn" data-view="galaxy3d"  title="3D Galaxy View (3)">3D</button>
       </nav>
 
       <button class="btn btn--primary btn--end-turn" id="btn-end-turn">
@@ -196,6 +197,14 @@
       <div id="view-character" class="view" role="main" aria-label="Character sheet">
         <div id="character-container" class="character-container"></div>
       </div>
+
+      <!--
+        3D GALAXY VIEW
+        Read-only rotatable/zoomable 3D scatter plot of all star systems.
+        Uses raw (x,y,z) galaxy coordinates + a Canvas 2D perspective projection.
+        No gameplay actions — visualisation only.
+      -->
+      <div id="view-galaxy3d" class="view" role="main" aria-label="3D Galaxy visualisation"></div>
 
     </main>
 

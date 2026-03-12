@@ -24,6 +24,7 @@ import { diplomacyView } from "./views/diplomacy.js";
 import { shipView }      from "./views/ship.js";
 import { tradeView }     from "./views/trade.js";
 import { characterView } from "./views/character.js";
+import { galaxy3dView }  from "./views/galaxy3d.js";
 
 // ---------------------------------------------------------------------------
 // View registry — maps view name → { mount(), unmount() }
@@ -38,6 +39,7 @@ const VIEWS = {
   diplomacy: diplomacyView,
   trade:     tradeView,
   character: characterView,
+  galaxy3d:  galaxy3dView,
 };
 
 /** DOM container for each view */
@@ -51,6 +53,7 @@ const viewEls = {
   diplomacy: document.getElementById("view-diplomacy"),
   trade:     document.getElementById("view-trade"),
   character: document.getElementById("view-character"),
+  galaxy3d:  document.getElementById("view-galaxy3d"),
 };
 
 // ---------------------------------------------------------------------------
@@ -418,6 +421,9 @@ function setupKeyboardShortcuts() {
         break;
       case "p":                     // P → character sheet (profile)
         if (state.currentView !== "character") switchView("character");
+        break;
+      case "3":                     // 3 → 3D galaxy view
+        if (state.currentView !== "galaxy3d") switchView("galaxy3d");
         break;
     }
   });

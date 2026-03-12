@@ -88,11 +88,62 @@ let systemsData    = [];     // cached from /api/galaxy/map
 let stationsData   = [];     // deep-space stations from /api/galaxy/map
 let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-projected)
 
+// Z-elevation state
+let zStats        = null;    // { mean, std, min, max } computed from systemsData z values
+let activeZFilter = "all";   // "all"|"high"|"above"|"plane"|"below"|"deep"
+
 // View transform
 let viewState = { panX: 0, panY: 0, zoom: 1.0, selectedSystemName: null, selectedStationName: null };
 
 /** Cached market data for the currently selected system. */
 let _marketData = null;
+
+
+// ---------------------------------------------------------------------------
+// Z-elevation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute mean and standard deviation of the z coordinates across all systems.
+ * Used to classify each system into an elevation band (high/above/plane/below/deep).
+ * @param {Array} systems
+ * @returns {{ mean: number, std: number, min: number, max: number }|null}
+ */
+function _computeZStats(systems) {
+  if (!systems || !systems.length) return null;
+  const zs   = systems.map(s => s.z ?? 0);
+  const min  = Math.min(...zs);
+  const max  = Math.max(...zs);
+  const mean = zs.reduce((a, b) => a + b, 0) / zs.length;
+  const std  = Math.sqrt(zs.reduce((a, b) => a + (b - mean) ** 2, 0) / zs.length);
+  return { mean, std, min, max };
+}
+
+/**
+ * Build the HTML for the galactic plane filter bar.
+ * The active button is marked with the z-filter-btn--active class.
+ * @returns {string}
+ */
+function _buildZFilterBar() {
+  const bands = [
+    { key: "all",   label: "ALL DEPTHS", title: "Show all systems at every galactic elevation" },
+    { key: "high",  label: "↑↑ HIGH",    title: "Systems >2σ above the galactic midplane" },
+    { key: "above", label: "↑ ABOVE",    title: "Systems 1–2σ above the galactic midplane" },
+    { key: "plane", label: "— PLANE",    title: "Systems within ±1σ of the galactic midplane" },
+    { key: "below", label: "↓ BELOW",    title: "Systems 1–2σ below the galactic midplane" },
+    { key: "deep",  label: "↓↓ DEEP",    title: "Systems >2σ below the galactic midplane" },
+  ];
+  const btns = bands.map(b => `
+    <button class="z-filter-btn${activeZFilter === b.key ? " z-filter-btn--active" : ""}"
+            data-zband="${b.key}" title="${b.title}">${b.label}</button>
+  `).join("");
+  return `
+    <div class="z-filter-bar" id="z-filter-bar">
+      <span class="z-filter-bar__label">GALACTIC PLANE</span>
+      ${btns}
+    </div>
+  `;
+}
 
 
 // ---------------------------------------------------------------------------
@@ -120,6 +171,26 @@ export const galaxyView = {
     }
     systemsData  = state.galaxyMap;
     stationsData = state.stationsData || [];
+
+    // Compute z-elevation statistics across all systems now that data is loaded.
+    zStats = _computeZStats(systemsData);
+
+    // Inject the galactic-plane filter bar above the canvas.
+    // Remove any stale bar from a previous mount first to avoid duplication.
+    const oldBar = document.getElementById("z-filter-bar");
+    if (oldBar) oldBar.remove();
+    canvas.insertAdjacentHTML("beforebegin", _buildZFilterBar());
+    const filterBarEl = document.getElementById("z-filter-bar");
+    filterBarEl.addEventListener("click", e => {
+      const btn = e.target.closest("[data-zband]");
+      if (!btn) return;
+      activeZFilter = btn.dataset.zband;
+      // Update active button styling immediately
+      filterBarEl.querySelectorAll(".z-filter-btn").forEach(b => {
+        b.classList.toggle("z-filter-btn--active", b.dataset.zband === activeZFilter);
+      });
+      isDirty = true;
+    });
 
     // Fetch NPC bot positions.  The backend pre-projects each bot to axial
     // hex coordinates and ensures they never overlap a star-system hex, so we
@@ -184,6 +255,10 @@ export const galaxyView = {
       inputControls.detach();
       inputControls = null;
     }
+    // Remove the galactic plane filter bar
+    const filterBar = document.getElementById("z-filter-bar");
+    if (filterBar) filterBar.remove();
+
     // Hide the right panel
     hideRightPanel();
   },
@@ -211,7 +286,8 @@ function startRenderLoop(canvas) {
       renderGalaxyMap(
         canvas,
         systemsData,
-        { ...viewState, shipHex, jumpRangePx, stations: stationsData, npcShips: npcShipsData },
+        { ...viewState, shipHex, jumpRangePx, stations: stationsData, npcShips: npcShipsData,
+          zStats, activeZFilter },
         FACTION_COLORS
       );
     }
@@ -552,6 +628,46 @@ async function _handleBuyUpgrade(btn, stationName, category, upgradeName, conten
 
 
 /** Build the HTML for the system detail panel */
+/**
+ * Build the coordinates + galactic elevation stat rows for the system panel.
+ * Shows raw (x, y, z) and the elevation band derived from the current zStats.
+ * @param {object} system - system data object including x, y, z fields
+ * @returns {string} HTML
+ */
+function _coordRowHtml(system) {
+  const x = system.x ?? system.coordinates?.[0];
+  const y = system.y ?? system.coordinates?.[1];
+  const z = system.z ?? system.coordinates?.[2];
+  if (x == null || y == null || z == null) return "";
+
+  // Derive elevation band label + colour (mirrors _zBand in hex-render.js)
+  let bandLabel = "—";
+  let bandColor = "var(--text-dim)";
+  if (zStats) {
+    const d = zStats.std > 0 ? (z - zStats.mean) / zStats.std : 0;
+    if      (d >  2) { bandLabel = "↑↑ HIGH";  bandColor = "#00e5ff"; }
+    else if (d >  1) { bandLabel = "↑ ABOVE";  bandColor = "#4fc3f7"; }
+    else if (d < -2) { bandLabel = "↓↓ DEEP";  bandColor = "#ff7043"; }
+    else if (d < -1) { bandLabel = "↓ BELOW";  bandColor = "#ffb74d"; }
+    else             { bandLabel = "— PLANE";  bandColor = "var(--text-dim)"; }
+  }
+
+  const fmt = n => (Math.round(n * 10) / 10).toFixed(1);
+  return `
+    <div class="stat-row">
+      <span class="stat-row__label">Coordinates</span>
+      <span class="stat-row__value" style="font-family:var(--font-mono);letter-spacing:0.02em">
+        (${fmt(x)},&thinsp;${fmt(y)},&thinsp;${fmt(z)})
+      </span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-row__label">Galactic Elevation</span>
+      <span class="stat-row__value" style="color:${bandColor}">${bandLabel}</span>
+    </div>
+  `;
+}
+
+
 function buildSystemPanelHtml(system, shipCoords) {
   const threatColor = system.threat_level >= 7 ? "var(--accent-red)"
     : system.threat_level >= 4 ? "var(--accent-orange)"
@@ -663,6 +779,7 @@ function buildSystemPanelHtml(system, shipCoords) {
           <span class="stat-row__label">Faction</span>
           <button class="btn-faction-link" data-faction="${esc(system.controlling_faction)}">${esc(system.controlling_faction)}</button>
         </div>` : ""}
+        ${_coordRowHtml(system)}
       </div>
 
       <!-- Description -->

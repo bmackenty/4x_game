@@ -108,13 +108,9 @@ class Game:
 
         turn_log: list[dict] = []
 
-        # Basic turn counter; older code may still use `turn`.
-        if hasattr(self, "current_turn"):
-            self.current_turn += 1
-            turn_number = self.current_turn
-        else:
-            self.turn = getattr(self, "turn", 0) + 1  # type: ignore[attr-defined]
-            turn_number = self.turn
+        # Turn number is incremented exclusively by end_turn(); advance_turn() just
+        # reads the current value so subsystems can log the correct turn number.
+        turn_number = getattr(self, "current_turn", getattr(self, "turn", 1))
 
         turn_log.append({
             "channel": "TURN",
