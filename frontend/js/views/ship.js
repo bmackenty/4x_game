@@ -313,22 +313,53 @@ function buildSlotSection(slotKey, slotData, installed) {
 
   const rows = available.map(comp => {
     const isInstalled = isComponentInstalled(comp.name, installed);
+
+    // Faction lock badge
     const lockLabel = comp.faction_lock
       ? `<span class="comp-lock">[${Array.isArray(comp.faction_lock)
           ? comp.faction_lock.join(", ") : comp.faction_lock}]</span>`
       : "";
+
+    // Stat pills — each key_stat shown as a coloured chip with sign and value
+    const statPills = (comp.key_stats || []).map(s => {
+      const positive = s.value >= 0;
+      const sign     = positive ? "+" : "";
+      return `<span class="comp-stat-pill ${positive ? "comp-stat-pill--pos" : "comp-stat-pill--neg"}">
+                ${s.name} <strong>${sign}${s.value}</strong>
+              </span>`;
+    }).join("");
+
+    // Lore / flavor text
+    const loreHtml = comp.lore
+      ? `<p class="comp-lore">${comp.lore}</p>`
+      : "";
+
     return `
-      <div class="comp-row ${isInstalled ? "comp-row--active" : ""}">
-        <div class="comp-row__info">
-          <span class="comp-row__name">${comp.name}</span>
+      <div class="comp-card ${isInstalled ? "comp-card--active" : ""}">
+
+        <!-- Header row: name + meta badges -->
+        <div class="comp-card__header">
+          <span class="comp-card__name">${comp.name}</span>
           ${lockLabel}
-          <span class="comp-row__cost">${comp.cost.toLocaleString()} cr</span>
-          <span class="comp-row__risk" title="Failure risk">${comp.failure_chance}% risk</span>
+          <span class="comp-card__cost">${comp.cost.toLocaleString()} ◈</span>
+          <span class="comp-card__risk" title="Probability of component failure per jump">
+            ${comp.failure_chance}% risk
+          </span>
+          ${isInstalled ? `<span class="comp-card__installed-badge">INSTALLED</span>` : ""}
         </div>
+
+        <!-- Flavor text -->
+        ${loreHtml}
+
+        <!-- Key stat pills -->
+        ${statPills ? `<div class="comp-stat-pills">${statPills}</div>` : ""}
+
+        <!-- Install button -->
         ${!isInstalled ? `
           <button class="btn btn--sm btn-install"
                   data-category="${slotKey}"
                   data-name="${comp.name}">INSTALL</button>` : ""}
+
       </div>
     `;
   }).join("");

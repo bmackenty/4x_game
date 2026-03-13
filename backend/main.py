@@ -1640,6 +1640,28 @@ async def get_ship_components():
         raise HTTPException(status_code=400, detail="No active ship.")
 
     from ship_builder import get_available_components, ship_components, COMPONENT_CATEGORY_LABELS
+    from ship_attributes import SHIP_ATTRIBUTE_DEFINITIONS
+
+    # Build a quick id→display-name lookup from the attribute definitions
+    _attr_names: dict[str, str] = {
+        attr_id: defn.get("name", attr_id.replace("_", " ").title())
+        for attr_id, defn in SHIP_ATTRIBUTE_DEFINITIONS.items()
+    }
+
+    def _key_stats(attributes: dict, top_n: int = 6) -> list[dict]:
+        """
+        Return the top_n non-zero attributes sorted by absolute value
+        (descending).  Each entry is {"name": display_name, "value": float}.
+        Skips zero values so the card only shows meaningful stats.
+        """
+        nonzero = [
+            (k, v) for k, v in attributes.items() if v != 0.0
+        ]
+        nonzero.sort(key=lambda kv: abs(kv[1]), reverse=True)
+        return [
+            {"name": _attr_names.get(k, k.replace("_", " ").title()), "value": round(v, 1)}
+            for k, v in nonzero[:top_n]
+        ]
 
     player_faction = getattr(game, "player_faction", None)
     if not player_faction and hasattr(game, "character") and game.character:
@@ -1653,11 +1675,13 @@ async def get_ship_components():
             "label": COMPONENT_CATEGORY_LABELS.get(slot_key, slot_key.title()),
             "available": [
                 {
-                    "name":         name,
-                    "cost":         int(data.get("cost", 0)),
-                    "faction_lock": data.get("faction_lock"),
+                    "name":           name,
+                    "cost":           int(data.get("cost", 0)),
+                    "faction_lock":   data.get("faction_lock"),
                     "failure_chance": round(float(data.get("failure_chance", 0)) * 100, 1),
-                    "lore":         data.get("lore", ""),
+                    "lore":           data.get("lore", ""),
+                    # Top attributes by magnitude so the UI can show stat pills
+                    "key_stats":      _key_stats(dict(data.get("attributes", {}))),
                 }
                 for name, data in available.items()
             ],
