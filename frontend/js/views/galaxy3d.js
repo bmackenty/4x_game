@@ -31,8 +31,6 @@ export const galaxy3dView = { mount, unmount };
 
 /** Raw + normalised system data loaded from the API */
 let _systems   = [];
-/** Normalisation scale so the cloud fits a unit sphere (radius ≈ 1) */
-let _scale     = 1;
 /** Orbit angles (radians) */
 let _azimuth   = 0.4;
 let _elevation = 0.25;
@@ -51,13 +49,6 @@ let _ctx       = null;
 /** Whether data has been loaded */
 let _loaded    = false;
 
-
-// ---------------------------------------------------------------------------
-// Territory border parameters
-// ---------------------------------------------------------------------------
-
-/** Max normalised distance between two same-faction systems to draw a border */
-const BORDER_DIST_THRESHOLD = 0.35;
 
 /** Perspective projection — eye distance multiplier; larger = less distortion */
 const PERSPECTIVE_DEPTH = 2.0;
@@ -99,7 +90,7 @@ function _factionColor(faction) {
 // mount / unmount
 // ---------------------------------------------------------------------------
 
-async function mount(context) {
+async function mount() {
   // Reset module state for a clean mount
   _systems       = [];
   _loaded        = false;
@@ -210,8 +201,6 @@ function _processData(rawSystems) {
     const d  = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (d > maxDist) maxDist = d;
   });
-
-  _scale = maxDist;
 
   _systems = rawSystems.map(s => ({
     name:               s.name,
@@ -371,44 +360,7 @@ function _render() {
   // Z-sort back-to-front so closer systems render on top
   projected.sort((a, b) => b.depth - a.depth);
 
-  // --- Step 2: territory borders -------------------------------------------
-  // Group systems by faction
-  const byFaction = {};
-  projected.forEach(s => {
-    if (!s.controlling_faction) return;
-    (byFaction[s.controlling_faction] ||= []).push(s);
-  });
-
-  // Determine threshold in normalised units (distance in 3D before projection)
-  // We compare the pre-projected normalised coordinates to avoid drawing
-  // borders that would cross the entire star field just because two systems
-  // happen to project near each other.
-  const thresh = BORDER_DIST_THRESHOLD;
-
-  _ctx.save();
-  _ctx.lineWidth = 0.8;
-  for (const [faction, members] of Object.entries(byFaction)) {
-    const col = _factionColor(faction);
-    _ctx.strokeStyle = col.replace("55%)", "55%,0.35)").replace("hsl(", "hsla(");
-    _ctx.beginPath();
-    for (let i = 0; i < members.length; i++) {
-      for (let j = i + 1; j < members.length; j++) {
-        const a = members[i], b = members[j];
-        // 3D distance in normalised space
-        const dist = Math.sqrt(
-          (a.nx - b.nx) ** 2 + (a.ny - b.ny) ** 2 + (a.nz - b.nz) ** 2
-        );
-        if (dist < thresh) {
-          _ctx.moveTo(a.sx, a.sy);
-          _ctx.lineTo(b.sx, b.sy);
-        }
-      }
-    }
-    _ctx.stroke();
-  }
-  _ctx.restore();
-
-  // --- Step 3: galactic plane reference grid --------------------------------
+  // --- Step 2: galactic plane reference grid --------------------------------
   _drawPlaneGrid(cw, ch);
 
   // --- Step 4: star systems -------------------------------------------------
