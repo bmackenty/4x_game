@@ -1256,6 +1256,37 @@
    Phase 5 — Trade market modal (information-dense redesign)
    =========================================================================== */
 
+/* ── Market flavor / atmosphere text ─────────────────────────────────────── */
+
+/* Wrapper for the faction-aware flavor paragraph at the top of the modal */
+.mkt-flavor {
+  border-left: 3px solid var(--accent-teal);
+  background: rgba(0, 212, 170, 0.05);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Faction name shown as a small header above the paragraph */
+.mkt-flavor__faction {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-teal);
+  margin-bottom: var(--sp-2);
+  opacity: 0.85;
+}
+
+/* The flavor paragraph itself */
+.mkt-flavor__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary, #90a4ae);
+  font-style: italic;
+}
+
 /* ── Stats bar ────────────────────────────────────────────────────────────── */
 
 /* Horizontal row of key/value stat chips at the top of the market modal */

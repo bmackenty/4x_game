@@ -2237,6 +2237,106 @@ async def faction_action(faction_name: str, request: FactionActionRequest):
 # Trade / Market endpoints  (Phase 5)
 # ===========================================================================
 
+# ---------------------------------------------------------------------------
+# Faction-aware market flavor text
+# ---------------------------------------------------------------------------
+
+# Templates keyed by faction primary_focus.  Each entry is a list of
+# sentences; we pick by a hash of the system name so the same system always
+# gets the same text (deterministic without storing state).
+_MARKET_FLAVOR_BY_FOCUS: dict[str, list[str]] = {
+    "Trade": [
+        "Freight terminals hum with activity as Guild factors negotiate contracts across a dozen species. The exchange boards flicker with real-time commodity flows from a hundred star systems — prices here respond to the galaxy's pulse.",
+        "Brokers from the Stellar Nexus Guild crowd every corridor, their comm-beads chattering with cargo manifests and futures contracts. Arbitrage is the local religion.",
+        "A vast clearinghouse of interstellar commerce: bulk ore shares the docking ring with luxury silks, and a Guild adjudicator settles a dispute over rare-earth pricing in the next booth.",
+    ],
+    "Research": [
+        "The market here is quiet and orderly — academics and archivists dominate the stalls, trading in data cores, experimental reagents, and survey maps as readily as raw ore. Commerce is viewed as a necessary discipline, not a passion.",
+        "Prices are posted to four decimal places; the local factor once published a monograph on optimal bid-ask spreads. You get the sense that every transaction is logged for future analysis.",
+        "Scientific equipment and exotic samples move alongside mundane cargo. A faction librarian cross-references your manifest before stamping the clearance — thoroughness first, throughput second.",
+    ],
+    "Technology": [
+        "The market floor doubles as a showcase floor: prototype components sit under glass beside bulk listings, and the collective's neural-interface terminals let registered traders query inventory with a thought.",
+        "Transactions here feel less like commerce and more like data exchange — the Collective tracks supply chains across the entire network, routing goods with machine precision.",
+        "Every commodity is graded to exacting tolerances. A hive-mind logistics overseer flags any irregularity in the manifest before it reaches the exchange floor.",
+    ],
+    "Industry": [
+        "The Gearwrights have turned commerce into craft: goods are inspected, stamped, and graded before they reach the floor. Inferior merchandise doesn't make it past the dock inspector.",
+        "Smelling of machine oil and hot metal, the trading floor is a working space — deals struck amid the clatter of pneumatic loaders and the hiss of pressurised cargo locks.",
+        "Every lot carries a Guild mark certifying provenance and quality. The local factor will remind you, unprompted, that authenticity has a price — and that knockoffs are confiscated.",
+    ],
+    "Cultural": [
+        "Harmonic chimes mark each completed transaction, and the vendors wrap every purchase in botanical fibre rather than plasticene. Commerce here carries an almost ceremonial weight.",
+        "The Consortium's factors insist on face-to-face negotiation; the automated exchange terminals stand dark by local regulation. Relationships, they say, are the only true currency.",
+        "Aromatic diffusers mist the trading hall with calming frequencies. Prices are fair and unhurried — the Consortium discourages panic-buying as energetically as it discourages panic.",
+    ],
+    "Mysticism": [
+        "Trade here observes the tidal cycles of the local biosphere; the Enclave opens the exchange only when the ecosystem indicators are favourable. Patience is the cost of doing business.",
+        "Every commodity listing includes an ecological-impact assessment. Sellers of synthetic goods pay a restoration tithe; sellers of naturally-sourced materials receive a small premium.",
+        "The market is open-air, roofed only by bioluminescent canopy. The factors are unhurried, and the prices reflect that — nothing is rushed, nothing discounted in haste.",
+    ],
+    "Military": [
+        "This is a supply depot first and a market second. Bulk contracts for fuel cells, rations, and armour plating are posted on the tactical board; everything else is secondary.",
+        "The exchange operates under strict accountability protocols — every lot is bonded, every buyer credentialled. Efficiency here means zero discrepancies, not fast transactions.",
+        "Armed customs officers screen every manifest at the gate. The prices are firm and non-negotiable: the military administration sets them quarterly and does not accept appeals.",
+    ],
+}
+
+# Generic templates for systems with no controlling faction.
+_MARKET_FLAVOR_NEUTRAL: list[str] = [
+    "An independent free-port where no single authority sets the rates. Prices fluctuate with the tides of supply and captain's desperation; sharp eyes find opportunities that regulated markets never offer.",
+    "The station operates on an honour-ledger system: no faction oversight, no tariffs beyond a modest docking fee. What you find here is what traders have chosen to bring.",
+    "Unclaimed space breeds eclectic commerce. Crates of unknown provenance sit beside certified lots, and the factor behind the exchange terminal has clearly seen things that broadened their definition of 'legal'.",
+    "A crossroads market: factions pass through but none claim it, so prices bend to the negotiation skill of whoever is at the table today.",
+    "The exchange board lists commodities from six different trade networks, each denominated in a different credit system. The local converter adds two percent and pretends it's a service.",
+]
+
+
+def _generate_market_flavor(system_name: str) -> tuple[str, str | None]:
+    """
+    Return (flavor_text, controlling_faction_name) for a market located in
+    system_name.  The flavor text is a deterministic paragraph that blends the
+    system's controlling faction identity with market atmosphere.
+
+    Uses a hash of system_name to pick consistently from the template lists so
+    the same system always shows the same text across sessions.
+    """
+    # Locate the system in the galaxy to find its controlling faction
+    controlling_faction: str | None = None
+    system_type: str = "Star"
+    if game and hasattr(game, "galaxy") and game.galaxy:
+        for sdata in game.galaxy.systems.values():
+            if sdata.get("name") == system_name:
+                controlling_faction = sdata.get("controlling_faction") or None
+                system_type = sdata.get("type", "Star")
+                break
+
+    # Deterministic index: hash of system name → stable pick per system
+    idx = abs(hash(system_name))
+
+    if controlling_faction and controlling_faction in factions:
+        fdata   = factions[controlling_faction]
+        focus   = fdata.get("primary_focus", "Trade")
+        phil    = fdata.get("philosophy", "")
+        desc    = fdata.get("description", "")
+        prefs   = fdata.get("preferred_trades", [])
+        templates = _MARKET_FLAVOR_BY_FOCUS.get(focus, _MARKET_FLAVOR_NEUTRAL)
+        base_text = templates[idx % len(templates)]
+
+        # Append a brief faction-specific coda so each faction feels distinct
+        pref_str = ", ".join(prefs[:3]) if prefs else ""
+        coda = (
+            f" {controlling_faction} ({phil}) administers this exchange. "
+            f"{desc}"
+            + (f" Their factors show particular interest in {pref_str}." if pref_str else "")
+        )
+        return base_text + coda, controlling_faction
+
+    # No faction — neutral free-port text
+    neutral = _MARKET_FLAVOR_NEUTRAL[idx % len(_MARKET_FLAVOR_NEUTRAL)]
+    return neutral, None
+
+
 class TradeRequest(BaseModel):
     """Request body for a buy or sell transaction."""
     system_name: str
@@ -2292,14 +2392,19 @@ async def get_market(system_name: str):
     max_cargo  = getattr(ship, "max_cargo",  0) if ship else 0
     cargo_used = sum(game.inventory.values()) if game.inventory else 0
 
+    # Generate faction-aware flavor text for this market
+    market_description, market_faction = _generate_market_flavor(system_name)
+
     return {
-        "system_name":    system_name,
-        "commodities":    commodities,
-        "best_buys":      [{"name": b[0], "price": b[1], "supply": b[2]} for b in info.get("best_buys",  [])],
-        "best_sells":     [{"name": s[0], "price": s[1], "demand": s[2]} for s in info.get("best_sells", [])],
-        "player_credits": game.credits,
-        "cargo_used":     cargo_used,
-        "max_cargo":      max_cargo,
+        "system_name":        system_name,
+        "commodities":        commodities,
+        "best_buys":          [{"name": b[0], "price": b[1], "supply": b[2]} for b in info.get("best_buys",  [])],
+        "best_sells":         [{"name": s[0], "price": s[1], "demand": s[2]} for s in info.get("best_sells", [])],
+        "player_credits":     game.credits,
+        "cargo_used":         cargo_used,
+        "max_cargo":          max_cargo,
+        "market_description": market_description,
+        "controlling_faction": market_faction,
     }
 
 

@@ -1175,7 +1175,17 @@ function _buildMarketBody(systemName, market) {
   const nBuyable = commodities.filter(c => c.supply > 0 && c.price > 0).length;
   const nHeld    = commodities.filter(c => c.in_inventory > 0).length;
 
+  // Flavor text block — shown when the backend supplies market_description
+  const flavorHtml = market.market_description ? `
+    <div class="mkt-flavor">
+      ${market.controlling_faction
+        ? `<span class="mkt-flavor__faction">${esc(market.controlling_faction)}</span>`
+        : ""}
+      <p class="mkt-flavor__text">${esc(market.market_description)}</p>
+    </div>` : "";
+
   return `
+    ${flavorHtml}
     <!-- ── Stats bar ──────────────────────────────────────────── -->
     <div class="mkt-stats-bar" id="mkt-stats-bar">
 
