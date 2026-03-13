@@ -1785,20 +1785,17 @@
 .ship__error   { color: var(--accent-red); padding: var(--sp-6); }
 .ship__empty   { color: var(--text-dim); font-size: var(--font-size-sm); }
 
-/* ASCII ship schematic */
-.ship-schematic {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--accent-teal);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-dim);
-  border-radius: 3px;
-  padding: var(--sp-3) var(--sp-4);
-  overflow-x: auto;
-  margin: 0;
-  white-space: pre;
-  user-select: none;
+/* 8-bit pixel-art ship schematic canvas wrapper */
+.ship-schematic-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #05080f;
+  border: 1px solid rgba(0, 212, 170, 0.15);
+  border-radius: 4px;
+  padding: var(--sp-3);
+  /* pixelated rendering so the upscaled canvas stays crisp */
+  image-rendering: pixelated;
 }
 
 

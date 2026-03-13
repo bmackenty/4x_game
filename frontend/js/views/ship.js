@@ -182,7 +182,7 @@ function buildComponentsTab() {
     <div class="ship-components">
       <section class="ship-comp-section">
         <h3 class="ship-comp-section__title">SHIP SCHEMATIC</h3>
-        <pre class="ship-schematic">${buildShipSchematic(installed)}</pre>
+        <div class="ship-schematic-canvas-wrap">${buildShipSchematic(installed)}</div>
       </section>
       <section class="ship-comp-section">
         <h3 class="ship-comp-section__title">INSTALLED COMPONENTS</h3>
@@ -197,98 +197,203 @@ function buildComponentsTab() {
 }
 
 
-// ── ASCII schematic ─────────────────────────────────────────────────────────
+// ── 8-bit pixel art ship schematic ──────────────────────────────────────────
 
 /**
- * Build a top-down ASCII art schematic of the ship showing its component slots.
+ * Pixel-art colour palette.
+ * Each character maps to an RGBA/hex colour (null = transparent/skip).
+ */
+const _PIX_PAL = {
+  '.': null,        // transparent — draw nothing (shows canvas bg)
+  's': '#08111c',   // deep shadow
+  'd': '#17354f',   // dark hull
+  'm': '#1f4d6e',   // mid hull
+  'b': '#2f6a90',   // body
+  'h': '#4a90b8',   // hull highlight
+  'l': '#6db0d4',   // bright hull edge
+  'T': '#00d4aa',   // teal core / cockpit
+  't': '#007a62',   // teal shadow
+  'E': '#ff8c00',   // engine warm glow
+  'e': '#ff4400',   // engine hot core
+  'W': '#c8eeff',   // bright specular
+  'R': '#cc3333',   // red weapon port
+};
+
+/**
+ * Three ship sprites — 20 columns × 18 rows each (top-down, nose points up).
  *
- * Layout (all lines in a <pre> monospace block):
+ * SCOUT  : narrow dart — for scouts/explorers/ghosts/drifters
+ * HEAVY  : wide body   — for freighters/transports/traders
+ * COMBAT : flanged hull — for corsairs/interceptors/pursuit/runners
  *
- *              ╔══════════════════╗   ← ENGINE box (centre-aligned)
- *              ║    ◄ ENGINE ►    ║
- *              ║  [engine name]   ║
- *              ╠══════════════════╣
- *  ╔════════════╬══════════════════╬════════════╗   ← HULL + wings
- *  ║  WEAPONS   ║    H U L L       ║  SHIELDS   ║
- *  ║ [wpn name] ║  [hull name]     ║ [shd name] ║
- *  ╠════════════╬══════════════════╬════════════╣
- *  ║  SENSORS   ║                  ║  SUPPORT   ║
- *  ║ [sen name] ║                  ║ [sup name] ║
- *  ╚════════════╬══════════════════╬════════════╝
- *              ║  ▼  THRUST  ▼    ║
- *              ╚══════════════════╝
+ * Each row MUST be exactly 20 characters.  Rows shorter than 20 are
+ * right-padded with '.' at render time.
+ */
+const _SPRITES = {
+
+  // ── SCOUT ──────────────────────────────────────────────────────────────────
+  // Sleek dart with teal cockpit bubble and twin engines
+  scout: [
+    '........lll.........',   // nose tip
+    '.......lhThl........',   // cockpit front
+    '......lhTWThl.......',   // cockpit (W = bright specular)
+    '.....lhTTWTThl......',
+    '....mhhTTTTThhm.....',
+    '...mmbbhTTTThbbmm...',
+    '..dmmbbhTtTthbbmmd..',   // teal shadow transitions
+    '.ddmmbbhhTThhbbmmdd.',   // wing roots widen
+    'dddmmbbbhTThbbbmmdd.',   // widest — main wing span
+    'dddmmbbhTTTThbbmmdd.',   // mirror
+    '.ddmmbbhhTThhbbmmdd.',
+    '..dmmmbbbhhbbbmmmdd.',
+    '...dddmmmbbbbmmmddd.',   // tail narrows
+    '....dddmmttttmmddd..',
+    '.....ddddEEEEdddd...',   // engine shroud
+    '......dddEEEEddd....',
+    '.......ddEEEEdd.....',   // nozzle flare
+    '........eEEEe.......',
+  ],
+
+  // ── HEAVY FREIGHTER ────────────────────────────────────────────────────────
+  // Wide boxy body with central cargo bay (teal) and quad engines
+  heavy: [
+    '.......bhhb.........',   // blunt nose
+    '......bbhThbb.......',
+    '.....mbbhTWhbbm.....',
+    '....mmbbhTTThbbmm...',
+    '...dmmbbhTTTThbbmmd.',
+    '..ddmmbhhTTTThhbbmdd',   // widest nose-block
+    '.dddmmbbhTtTthbbmmdd',
+    'ddddmmbbbhTThbbbmmdd',   // max wing span (cargo pod width)
+    'ddddmmbbbhTThbbbmmdd',   // hold — same width for boxy feel
+    'ddddmmbbbhTThbbbmmdd',
+    '.dddmmbbhTTTThbbmmdd',
+    '..ddmmbhhTTTThhbbmdd',
+    '...dmmmbbbhThbbbmmmd',
+    '....ddmmmbbbbbmmmdd.',
+    '.....dddmmtttmmddd..',
+    '....dddEEddddEEdd...',   // quad engine ports
+    '....dEEEEddddEEEEd..',
+    '.....eEEe....eEEe...',
+  ],
+
+  // ── COMBAT ─────────────────────────────────────────────────────────────────
+  // Aggressive swept wings, red weapon ports at tips, narrow cockpit
+  combat: [
+    '.........Tl.........',   // sharp nose
+    '........TThl........',
+    '.......TTThhl.......',
+    '......mTTThhbm......',
+    '.....mmhTThhbbm.....',
+    '....dmmhhTThbbmmd...',
+    '...dmmbbhTThbbmmdd..',   // wing sweep starts
+    '..RdmmbhhTThhibmddR.',   // R = weapon ports at wing tips
+    '.RddmmbbhTThbbmmddR.',   // widest — swept wings
+    '..RdmmbbhTThbbmmdR..',
+    '...ddmmbhTTThbmmddd.',
+    '....dddmhTTThmddd...',
+    '.....ddmmhTThmmdd...',   // fuselage narrows
+    '......ddmhTThmddd...',
+    '.......dmmttmmd.....',
+    '......ddEEttEEdd....',   // twin engines angled out
+    '......dEEEttEEEd....',
+    '.......eEe..eEe.....',
+  ],
+};
+
+/**
+ * Pick which sprite variant to use based on the ship class name string.
+ * Keywords are matched case-insensitively.
+ */
+function _pickSprite(shipClass) {
+  const s = (shipClass || '').toLowerCase();
+  if (/corsair|intercept|pursuit|shadow|combat|phantom|fighter/.test(s)) return 'combat';
+  if (/freighter|transport|trader|hauler|heavy|cargo|genesis|aurora/.test(s)) return 'heavy';
+  return 'scout';   // explorer, scout, wanderer, drifter, voyager, ghost, etc.
+}
+
+/**
+ * Return the HTML for the ship pixel-art section.
+ * The canvas is drawn after mount via drawShipPixelArt().
  */
 function buildShipSchematic(installed) {
-  const L = 12;  // wing inner width
-  const C = 18;  // centre body inner width
+  // Canvas: 20 px-cells × 7 px/cell = 140, plus 20 px padding each side → 180
+  // Height: 18 rows × 7 + 40 = 166
+  return `<canvas id="ship-pixel-canvas" width="180" height="166"
+    style="display:block;margin:0 auto;image-rendering:pixelated"></canvas>`;
+}
 
-  /** Pad/truncate string to exactly `w` chars. */
-  const fit = (s, w) => {
-    const str = String(s || '').substring(0, w);
-    return str + ' '.repeat(w - str.length);
-  };
+/**
+ * Render the pixel-art ship sprite onto #ship-pixel-canvas.
+ * Called after the DOM is ready (wireEvents).
+ *
+ * @param {string} shipClass  — ship_class string from the attributes response
+ */
+function drawShipPixelArt(shipClass) {
+  const canvas = document.getElementById('ship-pixel-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
 
-  /** Centre string in `w` chars. */
-  const cen = (s, w) => {
-    const str = String(s || '').substring(0, w);
-    const p = w - str.length;
-    return ' '.repeat(Math.floor(p / 2)) + str + ' '.repeat(Math.ceil(p / 2));
-  };
+  const PX   = 7;    // pixels per sprite cell
+  const COLS = 20;   // sprite columns
+  const ROWS = 18;   // sprite rows
+  const OX   = 10;   // x offset (centres the 140px sprite in the 180px canvas)
+  const OY   = 13;   // y offset
 
-  // p13: 13 spaces aligns the engine/thrust box with the centre ╬ junction
-  const p13 = ' '.repeat(L + 1);
+  // ── Background: deep space with tiny stars ──────────────────────────────
+  ctx.fillStyle = '#05080f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Pull first item from list-based slots
-  const first = (arr) => Array.isArray(arr) ? (arr[0] || null) : null;
+  // Deterministic star field — same hash every call so it doesn't flicker
+  const stars = [
+    [12,8],[40,5],[155,10],[170,3],[8,80],[175,60],[20,150],[160,140],
+    [90,4],[100,160],[5,120],[178,100],[50,162],[130,8],[65,155],
+  ];
+  ctx.fillStyle = 'rgba(200,230,255,0.5)';
+  stars.forEach(([x, y]) => ctx.fillRect(x, y, 1, 1));
 
-  const engineName = installed.engine || null;
-  const hullName   = installed.hull   || null;
-  const wpnName    = first(installed.weapons);
-  const shdName    = first(installed.shields);
-  const senName    = first(installed.sensors);
-  const supName    = first(installed.support);
+  // ── Engine glow (drawn behind the sprite) ───────────────────────────────
+  // Radial gradient centred on where the engine nozzles sit
+  const glowX = OX + COLS * PX / 2;
+  const glowY = OY + ROWS * PX + 6;
+  const grd = ctx.createRadialGradient(glowX, glowY, 2, glowX, glowY, 28);
+  grd.addColorStop(0,   'rgba(255,140,0,0.55)');
+  grd.addColorStop(0.5, 'rgba(255,80,0,0.18)');
+  grd.addColorStop(1,   'rgba(255,80,0,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Extra weapons/shields beyond [0]
-  const wpnExtra = (installed.weapons || []).length > 1
-    ? ` +${(installed.weapons || []).length - 1}` : '';
-  const shdExtra = (installed.shields || []).length > 1
-    ? ` +${(installed.shields || []).length - 1}` : '';
-  const senExtra = (installed.sensors || []).length > 1
-    ? ` +${(installed.sensors || []).length - 1}` : '';
-  const supExtra = (installed.support || []).length > 1
-    ? ` +${(installed.support || []).length - 1}` : '';
+  // ── Sprite ──────────────────────────────────────────────────────────────
+  const sprite = _SPRITES[_pickSprite(shipClass)] || _SPRITES.scout;
 
-  const engine = cen(engineName ? engineName.substring(0, C) : '─ none ─', C);
-  const hull   = cen(hullName   ? hullName.substring(0, C)   : '─ none ─', C);
+  sprite.forEach((row, ry) => {
+    // Pad row to COLS chars in case it's shorter
+    const padded = row.padEnd(COLS, '.');
+    for (let cx = 0; cx < COLS; cx++) {
+      const ch  = padded[cx];
+      const col = _PIX_PAL[ch];
+      if (!col) continue;   // transparent — skip
+      ctx.fillStyle = col;
+      ctx.fillRect(OX + cx * PX, OY + ry * PX, PX, PX);
+    }
+  });
 
-  // Wing cells: " Name +N  " (leading space + name + extra + trailing)
-  const wingVal = (name, extra, w) => {
-    const label = name ? ((name + extra).substring(0, w - 1)) : '─ none ─';
-    return fit(' ' + label, w);
-  };
+  // ── Teal cockpit glow overlay ────────────────────────────────────────────
+  // Soft glow centred around rows 1-4 where the cockpit T pixels are
+  const ckX = OX + COLS * PX / 2;
+  const ckY = OY + 3 * PX;
+  const ckG = ctx.createRadialGradient(ckX, ckY, 0, ckX, ckY, 30);
+  ckG.addColorStop(0,   'rgba(0,212,170,0.18)');
+  ckG.addColorStop(1,   'rgba(0,212,170,0)');
+  ctx.fillStyle = ckG;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const wpn = wingVal(wpnName, wpnExtra, L);
-  const shd = wingVal(shdName, shdExtra, L);
-  const sen = wingVal(senName, senExtra, L);
-  const sup = wingVal(supName, supExtra, L);
-
-  // Escape the schematic for innerHTML (using esc would double-escape ─)
-  // These chars are all safe ASCII / box-drawing — no HTML escaping needed.
-  return [
-    p13 + '╔' + '═'.repeat(C) + '╗',
-    p13 + '║' + cen('◄  E N G I N E  ►', C) + '║',
-    p13 + '║' + engine + '║',
-    p13 + '╠' + '═'.repeat(C) + '╣',
-    '╔' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╗',
-    '║' + cen('W E A P O N S', L) + '║' + cen('H U L L', C) + '║' + cen('S H I E L D S', L) + '║',
-    '║' + wpn + '║' + hull + '║' + shd + '║',
-    '╠' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╣',
-    '║' + cen('S E N S O R S', L) + '║' + ' '.repeat(C) + '║' + cen('S U P P O R T', L) + '║',
-    '║' + sen + '║' + ' '.repeat(C) + '║' + sup + '║',
-    '╚' + '═'.repeat(L) + '╬' + '═'.repeat(C) + '╬' + '═'.repeat(L) + '╝',
-    p13 + '║' + cen('▼  T H R U S T  ▼', C) + '║',
-    p13 + '╚' + '═'.repeat(C) + '╝',
-  ].join('\n');
+  // ── Ship name label ──────────────────────────────────────────────────────
+  const name = _attrs?.ship_name || '';
+  ctx.font      = '9px monospace';
+  ctx.fillStyle = 'rgba(0,212,170,0.55)';
+  ctx.textAlign = 'center';
+  ctx.fillText(name.toUpperCase(), canvas.width / 2, canvas.height - 3);
 }
 
 function buildInstalledSection(installed) {
@@ -386,6 +491,11 @@ function isComponentInstalled(name, installed) {
 // ---------------------------------------------------------------------------
 
 function wireEvents(container) {
+  // Draw pixel-art ship sprite if the components tab (which hosts the canvas) is active
+  if (_tab === "components") {
+    drawShipPixelArt(_attrs?.ship_class || '');
+  }
+
   // Tab buttons
   container.querySelectorAll(".ship-tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
