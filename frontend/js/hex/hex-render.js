@@ -318,8 +318,26 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     // Background fill
     const bgColor = SYSTEM_TYPE_COLORS[sys.type] || SYSTEM_TYPE_COLORS.default;
 
-    // Fog-of-war: unvisited systems are dark with no label
-    const visited = sys.visited;
+    // Scan visibility:
+    //   in_scan_range: true  — currently within sensor range, full render
+    //   in_scan_range: false — previously discovered but out of range, ghost render
+    //   (systems never scanned are not returned by the API at all)
+    const inScanRange = sys.in_scan_range !== false;  // default true for backward compat
+
+    if (!inScanRange) {
+      // Ghost render: dim hex outline + name only, no faction/glyph/details
+      ctx.globalAlpha = dimmed ? 0.04 : 0.22;
+      drawHex(ctx, px, py, size - 1, "#0a0e1a", "#1a2840", 0.5);
+      if (zoom >= 0.7) {
+        ctx.fillStyle = "rgba(120,150,180,0.5)";
+        ctx.font = `${Math.max(7, Math.floor(8 * zoom))}px "Courier New", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(sys.name, px, py + size * 0.55);
+      }
+      ctx.globalAlpha = 1.0;
+      continue;
+    }
 
     // Border colour: selected = bright teal, colonised = solid teal,
     //                faction-owned = faction dim, default = dark
@@ -339,7 +357,7 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     drawHex(ctx, px, py, size - 1, bgColor, borderColor, borderWidth);
 
     // Faction colour overlay (very subtle tint)
-    if (factionColor && visited) {
+    if (factionColor) {
       const overlayColor = factionColor.replace(/[\d.]+\)$/, "0.10)");
       drawHex(ctx, px, py, size - 1, overlayColor, "transparent", 0);
     }
@@ -359,9 +377,8 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.stroke();
     }
 
-    // Elevation ring — extra outer ring for extreme bands (high / deep) so
-    // these systems are immediately legible even without the filter active.
-    if (zStats && visited && !dimmed) {
+    // Elevation ring — extra outer ring for extreme bands (high / deep)
+    if (zStats && !dimmed) {
       const zStyle = Z_BAND_STYLES[band];
       if (zStyle.ring) {
         ctx.beginPath();
@@ -376,16 +393,6 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
         ctx.lineWidth   = 1.2;
         ctx.stroke();
       }
-    }
-
-    if (!visited) {
-      // Fog-of-war: just a faint dot
-      ctx.fillStyle = "rgba(90,122,154,0.15)";
-      ctx.beginPath();
-      ctx.arc(px, py, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;   // reset before continue
-      continue;
     }
 
     // Star glyph — hidden when the player's ship is at this hex (ship marker replaces it)

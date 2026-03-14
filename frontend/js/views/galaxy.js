@@ -332,6 +332,12 @@ async function handleHexClick({ q, r }) {
   state.selectedSystem = sys;
   isDirty = true;
 
+  if (sys.in_scan_range === false) {
+    // Out of scanner range — show limited ghost panel without API call
+    showOutOfRangePanel(sys);
+    return;
+  }
+
   // Fetch detailed system data (planets, market, etc.)
   try {
     const detail = await getSystem(sys.name);
@@ -357,6 +363,45 @@ function handleHexHover({ q, r }) {
 // ---------------------------------------------------------------------------
 // System detail panel (right sidebar)
 // ---------------------------------------------------------------------------
+
+/**
+ * Show a limited panel for a system that is known but outside scanner range.
+ * No live intel — only name, type, and last-known coordinates.
+ */
+function showOutOfRangePanel(sys) {
+  const panel = document.getElementById("panel-right");
+  const content = document.getElementById("panel-right-content");
+  if (!panel || !content) return;
+
+  panel.classList.remove("panel--hidden");
+  state.rightPanelOpen = true;
+
+  const fmt = n => (Math.round((n ?? 0) * 10) / 10).toFixed(1);
+  content.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-title">${esc(sys.name)}</div>
+      <div style="color:var(--text-dim);font-size:var(--font-size-xs);
+                  text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--sp-3)">
+        ${esc(sys.type ?? "Unknown")}
+      </div>
+      <div style="padding:var(--sp-3);background:var(--bg-secondary);
+                  border-left:2px solid var(--accent-orange);margin-bottom:var(--sp-3);
+                  font-size:var(--font-size-xs)">
+        <div style="color:var(--accent-orange);text-transform:uppercase;
+                    letter-spacing:0.08em;margin-bottom:var(--sp-2)">
+          ⊘ OUT OF SCANNER RANGE
+        </div>
+        <div style="color:var(--text-dim)">
+          Signal degraded. Last known position:
+          (${fmt(sys.x)},&thinsp;${fmt(sys.y)},&thinsp;${fmt(sys.z)})
+        </div>
+        <div style="color:var(--text-dim);margin-top:var(--sp-1)">
+          Move within scanner range for full intelligence.
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 async function showSystemPanel(system) {
   const panel = document.getElementById("panel-right");

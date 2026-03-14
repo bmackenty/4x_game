@@ -272,10 +272,11 @@ async function handleEndTurn() {
       notify("TURN", "The game has ended. Final score coming in Phase 6.");
     }
 
-    // Show the Galactic News Network end-of-turn broadcast modal
-    if (result.gnn_summary) {
-      _showGnnModal(result.gnn_summary);
-    }
+    // Show scripted events modal first, then GNN on dismiss
+    const showGnn = () => {
+      if (result.gnn_summary) _showGnnModal(result.gnn_summary);
+    };
+    _showEventsModal(result.events ?? [], showGnn);
   } catch (err) {
     notify("ERROR", err.message);
   } finally {
@@ -286,6 +287,31 @@ async function handleEndTurn() {
   }
 }
 
+
+/**
+ * Show the end-of-turn events modal.  When the player dismisses it, calls
+ * onContinue so the GNN modal can follow.
+ *
+ * @param {Array}    events     - List of event strings from the end-turn response.
+ * @param {Function} onContinue - Called after the player clicks "Continue".
+ */
+function _showEventsModal(events, onContinue) {
+  import("./ui/modal.js").then(({ showModal, closeModal }) => {
+    const bodyHtml = events.length
+      ? `<ul class="events-list">${events.map(e => `<li>${e}</li>`).join("")}</ul>`
+      : `<p class="events-empty">No notable events this turn.</p>`;
+
+    showModal(
+      "END OF TURN — EVENTS",
+      bodyHtml,
+      [{
+        label: "CONTINUE",
+        className: "btn--primary",
+        onClick: () => { closeModal(); onContinue(); },
+      }],
+    );
+  });
+}
 
 /**
  * Build and display the Galactic News Network modal for the end-of-turn

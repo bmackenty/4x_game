@@ -368,9 +368,11 @@ function _render() {
   const mouseX = _lastMouse.x, mouseY = _lastMouse.y;
 
   projected.forEach(s => {
-    // Base dot radius — slightly bigger for visited/populated systems
-    const base   = s.visited ? 4.5 : 2.5;
-    const radius = base * (1 + (s.population > 0 ? 0.6 : 0));
+    const inScanRange = s.in_scan_range !== false;  // default true for backward compat
+
+    // Base dot radius — slightly bigger for in-range/populated systems
+    const base   = inScanRange ? 4.5 : 2.5;
+    const radius = base * (1 + (inScanRange && s.population > 0 ? 0.6 : 0));
 
     // Perspective scale: closer = slightly larger
     const perspScale = Math.max(0.5, 1.5 / Math.max(s.depth, 0.3));
@@ -378,14 +380,14 @@ function _render() {
 
     // Colour
     let color = TYPE_COLORS[s.type] || DEFAULT_COLOR;
-    if (!s.visited) color = "#37474f";                  // Unvisited: dim grey
-    if (s.controlling_faction) {
+    if (!inScanRange) color = "#263238";               // Out of range: dark ghost
+    if (inScanRange && s.controlling_faction) {
       // Tint toward faction colour
       color = _factionColor(s.controlling_faction);
     }
 
-    // Glow for visited + factioned systems
-    if (s.visited && s.controlling_faction) {
+    // Glow for in-range + factioned systems
+    if (inScanRange && s.controlling_faction) {
       _ctx.save();
       const grd = _ctx.createRadialGradient(s.sx, s.sy, 0, s.sx, s.sy, r * 3);
       grd.addColorStop(0, color.replace("55%)", "55%,0.4)").replace("hsl(", "hsla("));
@@ -467,12 +469,15 @@ function _drawPlaneGrid(cw, ch) {
 // ---------------------------------------------------------------------------
 
 function _drawTooltip(s, cw, ch) {
-  const lines = [
-    s.name,
-    s.type,
-    s.controlling_faction ? `⬡ ${s.controlling_faction}` : "",
-    s.visited ? `(${Math.round(s.x)}, ${Math.round(s.y)}, ${Math.round(s.z)})` : "Unvisited",
-  ].filter(Boolean);
+  const inScanRange = s.in_scan_range !== false;
+  const lines = inScanRange
+    ? [
+        s.name,
+        s.type,
+        s.controlling_faction ? `⬡ ${s.controlling_faction}` : "",
+        `(${Math.round(s.x)}, ${Math.round(s.y)}, ${Math.round(s.z)})`,
+      ].filter(Boolean)
+    : [s.name, s.type || "Unknown", "— out of scanner range —"];
 
   const PADDING    = 8;
   const LINE_H     = 16;

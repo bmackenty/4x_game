@@ -16,6 +16,7 @@ Design rules:
     routes always win over the file-server.
 """
 
+import math
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -58,6 +59,272 @@ from backend.gnn import generate_gnn_summary                   # end-of-turn bro
 # ---------------------------------------------------------------------------
 game: Optional[Game] = None
 colony_manager: Optional[ColonyManager] = None
+
+# ---------------------------------------------------------------------------
+# Scan / discovery tracking
+# ---------------------------------------------------------------------------
+# Set of system names the player has ever had in scan range.  Persists for
+# the session; seeded from visited systems on first use so save-loads work.
+_discovered_systems: set[str] = set()
+_discovery_seeded: bool = False
+
+# Base scan range in 3D galaxy units (galaxy is 500×500×200).
+# Will scale with scanner component tech in future.
+_BASE_SCAN_RANGE: float = 40.0
+
+# Sensor component → scan range bonus (additive, in galaxy units)
+_SENSOR_RANGE: dict[str, float] = {
+    "Oracle Crown Array":       0.0,   # starter — base range only
+    "Meridian Pulse Scanner":  10.0,
+    "Helios Resonance Array":  20.0,
+    "Void Lens Array":         35.0,
+    "Quantum Echo Suite":      55.0,
+}
+
+
+def _effective_scan_range() -> float:
+    """Return the ship's effective scan range in galaxy units."""
+    try:
+        sensors = game.navigation.current_ship.components.get("sensors", [])
+        bonus = max((_SENSOR_RANGE.get(s, 0.0) for s in sensors), default=0.0)
+        return _BASE_SCAN_RANGE + bonus
+    except Exception:
+        return _BASE_SCAN_RANGE
+
+
+def _seed_discovery() -> None:
+    """Pre-populate _discovered_systems from visited systems (called once after load)."""
+    global _discovery_seeded
+    if _discovery_seeded or not game or not game.character_created:
+        return
+    try:
+        for data in game.navigation.galaxy.systems.values():
+            if data.get("visited", False):
+                _discovered_systems.add(data.get("name", ""))
+        _discovery_seeded = True
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Research Points (RP) system
+# ---------------------------------------------------------------------------
+
+# Maps short research-path names (stored in game.character_research_paths)
+# to the full category strings used in all_research entries.
+RESEARCH_PATH_CATEGORIES: dict[str, str] = {
+    "Quantum":       "Quantum and Transdimensional",
+    "Etheric":       "Etheric and Cosmic",
+    "Biology":       "Biological and Xenogenetic",
+    "Consciousness": "Existential and Metaconscious",
+    "Engineering":   "Engineering and Applied Etheric",
+    "Computing":     "Computational and Predictive",
+    "Planetary":     "Planetary, Stellar, and Environmental",
+    "Philosophy":    "Ethics, Philosophy, and Intercultural",
+    "Medicine":      "Health, Medicine, and Post-Mortality",
+    "Theory":        "Theoretical and Foundational",
+    "Ships":         "Ship Technology Sciences",
+}
+
+# Per-faction RP bonuses keyed to specific research categories.
+# "__all__" applies to every category.
+# Bonus only activates when player has neutral+ reputation with that faction.
+FACTION_RESEARCH_BONUSES: dict[str, dict[str, float]] = {
+    "The Veritas Covenant":              {"__all__": 2.0},
+    "The Scholara Nexus":                {"__all__": 2.0},
+    "The Icaron Collective":             {
+        "Engineering and Applied Etheric": 2.0,
+        "Computational and Predictive":    2.0,
+        "Ship Technology Sciences":        1.5,
+    },
+    "The Quantum Artificers Guild":      {
+        "Quantum and Transdimensional":    3.0,
+        "Engineering and Applied Etheric": 1.5,
+    },
+    "The Technotheos":                   {
+        "Computational and Predictive":    2.0,
+        "Engineering and Applied Etheric": 1.5,
+        "Ship Technology Sciences":        1.0,
+    },
+    "Technomancers":                     {
+        "Etheric and Cosmic":              2.0,
+        "Engineering and Applied Etheric": 1.5,
+        "Computational and Predictive":    1.0,
+    },
+    "The Gaian Enclave":                 {
+        "Biological and Xenogenetic":            2.0,
+        "Etheric and Cosmic":                    1.5,
+        "Planetary, Stellar, and Environmental": 2.0,
+    },
+    "The Harmonic Resonance Collective": {
+        "Etheric and Cosmic":           3.0,
+        "Existential and Metaconscious":2.0,
+    },
+    "Keepers of the Spire":              {
+        "Quantum and Transdimensional":    2.0,
+        "Etheric and Cosmic":              2.0,
+        "Existential and Metaconscious":   1.5,
+    },
+    "Etheric Preservationists":          {"Etheric and Cosmic": 3.0},
+    "The Voidbound Monks":               {
+        "Existential and Metaconscious":   3.0,
+        "Quantum and Transdimensional":    1.5,
+    },
+    "Keeper of the Keys":                {
+        "Quantum and Transdimensional":    2.5,
+        "Existential and Metaconscious":   2.0,
+    },
+    "The Gearwrights Guild":             {
+        "Engineering and Applied Etheric": 2.5,
+        "Theoretical and Foundational":    1.5,
+        "Ship Technology Sciences":        1.5,
+    },
+    "The Ironclad Collective":           {
+        "Engineering and Applied Etheric": 2.0,
+        "Theoretical and Foundational":    1.0,
+    },
+    "Harmonic Vitality Consortium":      {
+        "Biological and Xenogenetic":           2.5,
+        "Health, Medicine, and Post-Mortality": 3.0,
+    },
+    "The Brewmasters' Guild":            {"Biological and Xenogenetic": 2.0},
+    "The Provocateurs' Guild":           {
+        "Ethics, Philosophy, and Intercultural": 2.0,
+        "Existential and Metaconscious":         1.5,
+    },
+    "The Stellar Cartographers Alliance":{
+        "Planetary, Stellar, and Environmental": 2.5,
+        "Ship Technology Sciences":              2.0,
+        "Theoretical and Foundational":          1.5,
+    },
+    "The Collective of Commonality":     {
+        "Ethics, Philosophy, and Intercultural": 2.5,
+        "Health, Medicine, and Post-Mortality":  1.5,
+    },
+    "Stellar Nexus Guild":               {
+        "Computational and Predictive":  1.5,
+        "Theoretical and Foundational":  1.0,
+    },
+}
+
+# Extended gameplay unlock IDs keyed by research name and functional category.
+# Used for display in the research UI and as feature gates for future systems.
+EXTENDED_UNLOCKS: dict[str, dict[str, list[str]]] = {
+    "Fusion Technology":                 {"ship": ["jump_range_boost_1"],          "abilities": ["emergency_burn"],             "economic": ["energy_futures_market"]},
+    "Plasma Physics":                    {"ship": ["plasma_weapon_mount"],         "abilities": ["overcharge_weapons"]},
+    "Graviton Physics":                  {"ship": ["gravity_cannon", "gravity_tow_beam"], "abilities": ["graviton_pulse"]},
+    "Quantum Mechanics":                 {"ship": ["phase_jump_drive"],            "abilities": ["phase_dodge"],                "security": ["quantum_encryption"]},
+    "Temporal Manipulation":             {"ship": ["time_dilation_field"],         "abilities": ["temporal_rewind_combat"],     "crew": ["chronologist_role"]},
+    "Nanotechnology":                    {"ship": ["nanite_repair_hull"],          "abilities": ["nanite_burst_repair"],        "economic": ["nanite_manufacturing"]},
+    "Cloaking Technology":               {"ship": ["stealth_field_gen"],           "abilities": ["active_cloak", "emergency_cloak"], "security": ["counter_surveillance_mode"]},
+    "Subspace Navigation":               {"ship": ["subspace_jump_drive"],         "abilities": ["subspace_scout"]},
+    "Particle Physics":                  {"ship": ["particle_beam_weapon"]},
+    "Dark Matter Research":              {"ship": ["dark_matter_shield"],          "abilities": ["dark_matter_scan"]},
+    "Bio-Engineering":                   {"crew": ["xenobiologist_role"],          "economic": ["bio_commodity_market"]},
+    "Advanced Research":                 {"crew": ["lab_technician_role"],         "economic": ["research_licensing"]},
+    "Cognitive Enhancement Systems":     {"crew": ["neural_officer_role"],         "security": ["psychic_intrusion_defense"]},
+    "Xenogenetics":                      {"crew": ["xenogeneticist_role"],         "diplomacy": ["xenogenetic_treaty"]},
+    "Null Space Exploration":            {"abilities": ["void_drift"],             "security": ["void_shield_defense"]},
+    "Quantum Temporal Dynamics":         {"abilities": ["temporal_scan"]},
+    "Causal Integrity Theory":           {"abilities": ["timeline_lock"]},
+    "The Nexus Principle":               {"abilities": ["transcendence_burst"]},
+    "Threshold Consciousness Research":  {"abilities": ["mind_link"],              "diplomacy": ["consciousness_exchange_protocol"]},
+    "Multiversal Diplomacy":             {"diplomacy": ["multiverse_embassy"]},
+    "Synthetic Sentience Rights":        {"diplomacy": ["ai_rights_treaty"]},
+    "Post-Temporal Ethics":              {"diplomacy": ["temporal_nonaggression_pact"]},
+    "Inter-species Moral Entanglement":  {"diplomacy": ["collective_ethics_treaty"]},
+    "Mining Automation":                 {"economic": ["automated_ore_processing"]},
+    "Hyperluminal Drift Analysis":       {"ship": ["hyperluminal_sensors"]},
+}
+
+# Max total RP contribution from all faction bonuses combined (anti-stacking cap).
+_FACTION_RP_CAP: float = 10.0
+
+
+def _calculate_rp_per_turn() -> dict:
+    """
+    Compute the player's Research Points per turn from all sources.
+
+    Returns {"total": int, "breakdown": {source: value, ...}}.
+    """
+    try:
+        stats  = game.character_stats or {}
+        int_   = stats.get("INT", 30)
+        cls    = getattr(game, "character_class", "") or ""
+        bg     = getattr(game, "character_background", "") or ""
+        paths  = getattr(game, "character_research_paths", []) or []
+
+        # Intellect contribution (scaled 1–6 across INT 30–100)
+        base_int     = 1.0 + (int_ - 30) / 14.0
+        class_mult   = 1.25 if cls == "Scientist" else 1.0
+        int_component = round(base_int * class_mult, 2)
+
+        background_bonus = 0.5 if bg == "Academic Researcher" else 0.0
+
+        # Research path bonus: +1 if active project's category is in chosen paths
+        active     = getattr(game, "active_research", None)
+        active_cat = all_research.get(active, {}).get("category", "") if active else ""
+        path_cats  = {RESEARCH_PATH_CATEGORIES.get(p, p) for p in paths}
+        path_bonus = 1.0 if (active_cat and active_cat in path_cats) else 0.0
+
+        # Colony research output
+        colony_rp = 0
+        if colony_manager and colony_manager.colonies:
+            try:
+                prod      = colony_manager.calculate_all_production()
+                colony_rp = int(prod.get("research", 0))
+            except Exception:
+                colony_rp = 0
+
+        # Faction bonuses — category-specific, neutral+ rep required, capped
+        faction_bonus = 0.0
+        try:
+            relations = game.faction_system.player_relations
+            for fname, rep in relations.items():
+                # Player's own faction ignores rep threshold
+                own = getattr(game, "character_faction", "")
+                if rep < 0 and fname != own:
+                    continue
+                cat_bonuses = FACTION_RESEARCH_BONUSES.get(fname, {})
+                bonus = cat_bonuses.get("__all__", 0.0)
+                if active_cat:
+                    bonus += cat_bonuses.get(active_cat, 0.0)
+                faction_bonus += bonus
+            faction_bonus = min(faction_bonus, _FACTION_RP_CAP)
+            faction_bonus = round(faction_bonus, 2)
+        except Exception:
+            faction_bonus = 0.0
+
+        crew_bonus = float(getattr(game, "crew_research_bonus", 0))
+
+        total = int_component + background_bonus + path_bonus + colony_rp + faction_bonus + crew_bonus
+        total = max(1, int(round(total)))
+
+        return {
+            "total": total,
+            "breakdown": {
+                "intellect":  int_component,
+                "background": background_bonus,
+                "path_bonus": path_bonus,
+                "colony":     colony_rp,
+                "faction":    faction_bonus,
+                "crew":       crew_bonus,
+            },
+        }
+    except Exception:
+        return {"total": 1, "breakdown": {"intellect": 1.0}}
+
+
+def _get_unlocked_features(category: str) -> set[str]:
+    """Return all unlock IDs of the given category from completed research."""
+    result: set[str] = set()
+    try:
+        for project in game.completed_research:
+            for uid in EXTENDED_UNLOCKS.get(project, {}).get(category, []):
+                result.add(uid)
+    except Exception:
+        pass
+    return result
 
 
 @asynccontextmanager
@@ -802,10 +1069,12 @@ async def new_game(request: NewGameRequest):
     Creates a brand-new Game instance (discarding any previous session) and
     calls initialize_new_game() with the player's character choices.
     """
-    global game, colony_manager
+    global game, colony_manager, _discovered_systems, _discovery_seeded
     # Always start with a clean slate
     game = Game()
     colony_manager = ColonyManager(game)
+    _discovered_systems = set()
+    _discovery_seeded = False
 
     character_data = {
         "name": request.name,
@@ -928,6 +1197,15 @@ async def end_turn():
 
     success, end_message = game.end_turn()   # increments current_turn, resets actions
     events = game.advance_turn()             # runs subsystem tick; does NOT increment turn
+
+    # Inject extra research progress so total increment equals RP/turn.
+    # The engine already added +1 inside advance_turn(); we add (rp - 1) more.
+    if game.active_research:
+        _rp = _calculate_rp_per_turn()["total"]
+        game.research_progress += max(0, _rp - 1)
+        _rt = all_research.get(game.active_research, {}).get("research_time", 1)
+        if game.research_progress >= _rt:
+            game.complete_research()
 
     # Snapshot credits BEFORE colony income so the ledger can show the delta.
     credits_before = game.credits
@@ -1135,27 +1413,62 @@ async def get_galaxy_map():
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    galaxy = game.navigation.galaxy
+    # Seed discovery set from visited systems on first call after a load
+    _seed_discovery()
+
+    galaxy      = game.navigation.galaxy
+    ship_coords = _ship_coords()   # (sx, sy, sz) or None
+    scan_range  = _effective_scan_range()
     raw_systems = []
 
     for coords, data in galaxy.systems.items():
         x, y, z = coords
-        raw_systems.append({
-            "name":                data.get("name", "Unknown"),
-            "x": x, "y": y, "z": z,
-            "type":                data.get("type", "Unknown"),
-            "population":          data.get("population", 0),
-            "threat_level":        data.get("threat_level", 0),
-            "resources":           data.get("resources", "Unknown"),
-            "description":         data.get("description", ""),
-            "controlling_faction": data.get("controlling_faction"),
-            "visited":             data.get("visited", False),
-            # Count only planet/habitable bodies
-            "planet_count": len([
-                b for b in data.get("celestial_bodies", [])
-                if b.get("object_type") == "Planet"
-            ]),
-        })
+        name = data.get("name", "Unknown")
+
+        # Compute distance from player's ship to this system
+        if ship_coords:
+            sx, sy, sz = ship_coords
+            dist = math.sqrt((x - sx) ** 2 + (y - sy) ** 2 + (z - sz) ** 2)
+        else:
+            dist = float("inf")
+
+        in_range = dist <= scan_range
+
+        if in_range:
+            # Currently in scanner range — full data, mark as discovered
+            _discovered_systems.add(name)
+            raw_systems.append({
+                "name":                name,
+                "x": x, "y": y, "z": z,
+                "type":                data.get("type", "Unknown"),
+                "population":          data.get("population", 0),
+                "threat_level":        data.get("threat_level", 0),
+                "resources":           data.get("resources", "Unknown"),
+                "description":         data.get("description", ""),
+                "controlling_faction": data.get("controlling_faction"),
+                "visited":             data.get("visited", False),
+                "in_scan_range":       True,
+                "planet_count": len([
+                    b for b in data.get("celestial_bodies", [])
+                    if b.get("object_type") == "Planet"
+                ]),
+            })
+        elif name in _discovered_systems:
+            # Previously scanned — partial data only (no live intel)
+            raw_systems.append({
+                "name":                name,
+                "x": x, "y": y, "z": z,
+                "type":                data.get("type", "Unknown"),
+                "population":          None,
+                "threat_level":        None,
+                "resources":           None,
+                "description":         None,
+                "controlling_faction": None,
+                "visited":             data.get("visited", False),
+                "in_scan_range":       False,
+                "planet_count":        None,
+            })
+        # else: never scanned — omit entirely (true fog of war)
 
     # Project 3D→2D and resolve hex collisions
     projected = resolve_hex_collisions(raw_systems)
@@ -1168,17 +1481,23 @@ async def get_galaxy_map():
     for sys in projected:
         sys["has_player_colony"] = sys["name"] in colonized_systems
 
-    # Include deep-space stations (system_name == None) for map rendering
+    # Include deep-space stations within scan range only
     deep_space_stations = []
     station_mgr = getattr(game, "station_manager", None)
     if station_mgr:
         for st in station_mgr.get_deep_space_stations():
+            sc = st.get("coordinates")
+            if sc and ship_coords:
+                sx, sy, sz = ship_coords
+                dist = math.sqrt((sc[0]-sx)**2 + (sc[1]-sy)**2 + (sc[2]-sz)**2)
+                if dist > scan_range:
+                    continue
             deep_space_stations.append({
                 "name":        st["name"],
                 "type":        st["type"],
                 "hex_q":       st["hex_q"],
                 "hex_r":       st["hex_r"],
-                "coordinates": list(st["coordinates"]),
+                "coordinates": list(sc),
                 "services":    st.get("services", []),
                 "description": st.get("description", ""),
             })
@@ -2048,33 +2367,50 @@ async def get_research_tree():
     if game.active_research and game.active_research in all_research:
         active_time = all_research[game.active_research].get("research_time", 1)
 
+    rp_data    = _calculate_rp_per_turn()
+    rp_per_turn = rp_data["total"]
+
+    paths     = getattr(game, "character_research_paths", []) or []
+    path_cats = {RESEARCH_PATH_CATEGORIES.get(p, p) for p in paths}
+
     nodes = []
     for name, data in all_research.items():
         completed  = name in game.completed_research
         active     = (name == game.active_research)
         available  = (name in available_names) and not completed
+        rp_cost    = data.get("research_time", 0)
+        progress   = game.research_progress if active else 0
+        remaining  = max(0, rp_cost - progress)
+        turns_est  = math.ceil(remaining / max(1, rp_per_turn)) if remaining > 0 else 0
+        in_path    = data.get("category", "") in path_cats
 
         nodes.append({
-            "name":           name,
-            "category":       data.get("category", ""),
-            "description":    data.get("description", ""),
-            "difficulty":     data.get("difficulty", 5),
-            "research_cost":  data.get("research_cost", 0),
-            "research_time":  data.get("research_time", 0),
-            "prerequisites":  data.get("prerequisites", []),
-            "unlocks":        data.get("unlocks", []),
-            "related_energy": data.get("related_energy", ""),
-            "completed":      completed,
-            "active":         active,
-            "available":      available,
+            "name":             name,
+            "category":         data.get("category", ""),
+            "description":      data.get("description", ""),
+            "difficulty":       data.get("difficulty", 5),
+            "research_cost":    data.get("research_cost", 0),   # kept for save-compat; not shown
+            "research_time":    rp_cost,
+            "rp_cost":          rp_cost,
+            "prerequisites":    data.get("prerequisites", []),
+            "unlocks":          data.get("unlocks", []),
+            "extended_unlocks": EXTENDED_UNLOCKS.get(name, {}),
+            "related_energy":   data.get("related_energy", ""),
+            "completed":        completed,
+            "active":           active,
+            "available":        available,
+            "turns_to_complete": turns_est,
+            "in_research_path": in_path,
         })
 
     return {
-        "nodes":           nodes,
-        "active_research": game.active_research,
-        "research_progress": game.research_progress,
+        "nodes":                nodes,
+        "active_research":      game.active_research,
+        "research_progress":    game.research_progress,
         "active_research_time": active_time,
-        "completed_count": len(game.completed_research),
+        "completed_count":      len(game.completed_research),
+        "rp_per_turn":          rp_per_turn,
+        "rp_breakdown":         rp_data["breakdown"],
     }
 
 
@@ -2088,17 +2424,23 @@ async def get_research_status():
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
+    rp_data = _calculate_rp_per_turn()
     if not game.active_research:
-        return {"active": None, "progress": 0, "total_time": 0, "percent": 0.0}
+        return {"active": None, "progress": 0, "total_time": 0, "percent": 0.0,
+                "rp_per_turn": rp_data["total"], "turns_to_complete": 0}
 
-    total = all_research.get(game.active_research, {}).get("research_time", 1)
-    percent = round(min(100.0, game.research_progress / max(total, 1) * 100), 1)
+    total      = all_research.get(game.active_research, {}).get("research_time", 1)
+    percent    = round(min(100.0, game.research_progress / max(total, 1) * 100), 1)
+    remaining  = max(0, total - game.research_progress)
+    turns_est  = math.ceil(remaining / max(1, rp_data["total"]))
 
     return {
-        "active":       game.active_research,
-        "progress":     game.research_progress,
-        "total_time":   total,
-        "percent":      percent,
+        "active":            game.active_research,
+        "progress":          game.research_progress,
+        "total_time":        total,
+        "percent":           percent,
+        "rp_per_turn":       rp_data["total"],
+        "turns_to_complete": turns_est,
     }
 
 
@@ -2117,15 +2459,27 @@ async def start_research(request: StartResearchRequest):
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
+    # Bypass the engine's credit gate — research is now turn-based only.
+    # Temporarily lend infinite credits so start_research_project() doesn't
+    # reject the request for insufficient funds, then restore the balance.
+    _saved_credits = game.credits
+    game.credits   = 10_000_000_000
     success, message = game.start_research_project(request.research_name)
+    game.credits   = _saved_credits   # always restore regardless of outcome
+
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
+    rp_data   = _calculate_rp_per_turn()
+    rp_cost   = all_research.get(game.active_research, {}).get("research_time", 1)
+    turns_est = math.ceil(rp_cost / max(1, rp_data["total"]))
+
     return {
-        "success":         True,
-        "message":         message,
-        "active_research": game.active_research,
-        "credits_remaining": game.credits,
+        "success":           True,
+        "message":           message,
+        "active_research":   game.active_research,
+        "rp_per_turn":       rp_data["total"],
+        "turns_to_complete": turns_est,
     }
 
 
@@ -2579,6 +2933,9 @@ async def get_npc_ships():
     # Track hexes already claimed by earlier NPC ships so they don't stack.
     claimed: set = set(occupied)
 
+    ship_coords = _ship_coords()
+    scan_range  = _effective_scan_range()
+
     for bot in bot_mgr.bots:
         bot_ship = getattr(bot, "ship", None)
         if not bot_ship:
@@ -2586,6 +2943,13 @@ async def get_npc_ships():
         coords = getattr(bot_ship, "coordinates", None)
         if coords is None:
             continue
+
+        # Hide NPC ships that are outside the player's scanner range
+        if ship_coords:
+            sx, sy, sz = ship_coords
+            dist = math.sqrt((coords[0]-sx)**2 + (coords[1]-sy)**2 + (coords[2]-sz)**2)
+            if dist > scan_range:
+                continue
 
         # Project the bot's 3D position to the nearest axial hex.
         raw_hex = galaxy_coords_to_hex(coords[0], coords[1])

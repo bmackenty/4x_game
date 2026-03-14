@@ -31,6 +31,10 @@ import { confirm }       from "../ui/modal.js";
 /** Full research tree response from /api/research/tree */
 let _tree = null;
 
+/** RP/turn total and breakdown from the last tree fetch */
+let _rpPerTurn  = 0;
+let _rpBreakdown = {};
+
 /** Currently selected node object */
 let _selectedNode = null;
 
@@ -129,11 +133,15 @@ export const researchView = {
 
 async function _loadTree() {
     try {
-        _tree = await getResearchTree();
+        _tree       = await getResearchTree();
+        _rpPerTurn  = _tree.rp_per_turn  ?? 0;
+        _rpBreakdown = _tree.rp_breakdown ?? {};
     } catch (err) {
         notify("ERROR", `Could not load research tree: ${err.message}`);
         _tree = { nodes: [], active_research: null, research_progress: 0,
                   active_research_time: null, completed_count: 0 };
+        _rpPerTurn  = 0;
+        _rpBreakdown = {};
     }
 }
 
@@ -165,12 +173,39 @@ function _renderLeftPanel() {
     const panel = document.getElementById("research-left-panel");
     if (!panel) return;
 
+    // RP/turn breakdown panel
+    const rpLabelMap = {
+        intellect:   "Intellect (INT)",
+        background:  "Background",
+        path_bonus:  "Research Path",
+        colony:      "Colony Buildings",
+        faction:     "Faction Bonus",
+        crew:        "Crew",
+    };
+    const rpRows = Object.entries(_rpBreakdown)
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `
+            <div class="rp-row">
+                <span class="rp-label">${esc(rpLabelMap[k] ?? k)}</span>
+                <span class="rp-value">+${v}</span>
+            </div>
+        `).join("");
+    const rpHtml = `
+        <div class="rp-total-row">
+            <span>Research Output</span>
+            <span class="stat-gold">${_rpPerTurn} RP/turn</span>
+        </div>
+        ${rpRows ? `<div class="rp-breakdown">${rpRows}</div>` : ""}
+    `;
+
     // Active research progress bar
     let progressHtml = "";
     if (_tree?.active_research) {
-        const pct  = _tree.active_research_time
+        const pct       = _tree.active_research_time
             ? Math.round(Math.min(100, _tree.research_progress / _tree.active_research_time * 100))
             : 0;
+        const activeNode = _tree.nodes?.find(n => n.active);
+        const turnsLeft  = activeNode?.turns_to_complete ?? "?";
         progressHtml = `
             <div class="research-active-box">
                 <div class="research-active-label">Active Research</div>
@@ -178,7 +213,10 @@ function _renderLeftPanel() {
                 <div class="research-progress-bar">
                     <div class="research-progress-fill" style="width:${pct}%"></div>
                 </div>
-                <div class="research-progress-text">${_tree.research_progress} / ${_tree.active_research_time} turns (${pct}%)</div>
+                <div class="research-progress-text">
+                    ${_tree.research_progress} / ${_tree.active_research_time} RP
+                    &nbsp;·&nbsp; <span class="stat-gold">~${turnsLeft} turns</span>
+                </div>
                 <button class="btn btn--danger btn--sm research-cancel-btn" id="btn-cancel-research">
                     Cancel Research
                 </button>
@@ -210,6 +248,10 @@ function _renderLeftPanel() {
                 <div class="research-stat"><span>${available}</span>Available</div>
                 <div class="research-stat"><span>${total - completed}</span>Remaining</div>
             </div>
+        </div>
+
+        <div class="panel-section">
+            ${rpHtml}
         </div>
 
         <div class="panel-section">
@@ -321,19 +363,33 @@ function _buildNodeCard(node) {
     const selected   = _selectedNode?.name === node.name ? "research-node-card--selected" : "";
     const difficulty = "●".repeat(node.difficulty) + "○".repeat(Math.max(0, 10 - node.difficulty));
 
+    const rpCost   = node.rp_cost ?? node.research_time ?? 0;
+    const turnsEst = node.turns_to_complete > 0 ? `~${node.turns_to_complete}t` : (node.completed ? "✓" : "—");
+    const pathBadge = node.in_research_path
+        ? `<span class="research-path-badge" title="In your research path">◈</span>` : "";
+
+    // Extended unlock category icons
+    const extUnlocks = node.extended_unlocks ?? {};
+    const unlockIconMap = { abilities: "⚡", ship: "⛵", crew: "◉", security: "⊛", economic: "◈", diplomacy: "⬡" };
+    const unlockIcons = Object.entries(extUnlocks)
+        .filter(([, v]) => v.length > 0)
+        .map(([cat]) => `<span class="unlock-icon" title="${esc(cat)}">${unlockIconMap[cat] ?? "◆"}</span>`)
+        .join("");
+
     return `
         <div class="research-node-card ${statusClass} ${selected}"
              data-name="${esc(node.name)}"
              style="border-left-color:${catColor}">
             <div class="research-node-card__header">
-                <span class="research-node-card__name">${esc(node.name)}</span>
+                <span class="research-node-card__name">${esc(node.name)}${pathBadge}</span>
                 <span class="research-node-card__status">${statusLabel}</span>
             </div>
             <div class="research-node-card__meta">
                 <span class="research-node-card__diff" title="Difficulty">${difficulty}</span>
-                <span class="research-node-card__cost">${node.research_cost.toLocaleString()} cr</span>
-                <span class="research-node-card__time">${node.research_time} turns</span>
+                <span class="research-node-card__rp" title="RP required">${rpCost} RP</span>
+                <span class="research-node-card__time">${turnsEst}</span>
             </div>
+            ${unlockIcons ? `<div class="research-node-card__unlocks">${unlockIcons}</div>` : ""}
             ${node.related_energy
                 ? `<div class="research-node-card__energy">⚡ ${esc(node.related_energy)}</div>`
                 : ""}
@@ -367,7 +423,7 @@ function _renderRightPanel() {
     } else if (node.available && !_tree?.active_research) {
         actionHtml = `
             <button class="btn btn--primary" id="btn-research-start">
-                ▶ Start Research (${node.research_cost.toLocaleString()} cr)
+                ▶ Start Research
             </button>
         `;
     } else if (node.available && _tree?.active_research) {
@@ -396,23 +452,54 @@ function _renderRightPanel() {
     // Difficulty stars
     const diff = "●".repeat(node.difficulty) + "○".repeat(Math.max(0, 10 - node.difficulty));
 
+    // Path bonus indicator
+    const pathIndicator = node.in_research_path
+        ? `<div class="research-path-indicator">◈ In your research path (+1 RP/turn)</div>` : "";
+
+    // Extended unlocks sections
+    const extCategories = {
+        abilities:  "Abilities Unlocked",
+        ship:       "Ship Functions Unlocked",
+        crew:       "Crew Roles Unlocked",
+        security:   "Security Functions Unlocked",
+        economic:   "Economic Functions Unlocked",
+        diplomacy:  "Diplomacy Options Unlocked",
+    };
+    let extHtml = "";
+    for (const [cat, label] of Object.entries(extCategories)) {
+        const items = (node.extended_unlocks ?? {})[cat] ?? [];
+        if (!items.length) continue;
+        extHtml += `
+            <div class="research-detail__section">
+                <div class="panel-subheading">${esc(label)}</div>
+                <ul class="research-list">
+                    ${items.map(id => `<li>◆ ${esc(_formatUnlockId(id))}</li>`).join("")}
+                </ul>
+            </div>
+        `;
+    }
+
+    const rpCost  = node.rp_cost ?? node.research_time ?? 0;
+    const turnsEst = node.turns_to_complete > 0 ? `~${node.turns_to_complete} turns` : (node.completed ? "Complete" : "—");
+
     panel.innerHTML = `
         <div class="research-detail">
             <div class="research-detail__header" style="border-left:3px solid ${catColor}">
                 <h3 class="research-detail__name">${esc(node.name)}</h3>
                 <div class="research-detail__category">${esc(node.category)}</div>
+                ${pathIndicator}
             </div>
 
             <div class="research-detail__description">${esc(node.description)}</div>
 
             <div class="research-detail__stats">
                 <div class="research-stat-row">
-                    <span>Cost</span>
-                    <span class="stat-gold">${node.research_cost.toLocaleString()} cr</span>
+                    <span>RP Required</span>
+                    <span class="stat-gold">${rpCost.toLocaleString()}</span>
                 </div>
                 <div class="research-stat-row">
-                    <span>Time</span>
-                    <span>${node.research_time} turns</span>
+                    <span>Est. Turns</span>
+                    <span>${turnsEst}</span>
                 </div>
                 <div class="research-stat-row">
                     <span>Difficulty</span>
@@ -435,6 +522,8 @@ function _renderRightPanel() {
                 <ul class="research-list">${unlocksHtml}</ul>
             </div>
 
+            ${extHtml}
+
             <div class="research-detail__action">
                 ${actionHtml}
             </div>
@@ -453,6 +542,11 @@ function _renderRightPanel() {
 // Prerequisite helper
 // ---------------------------------------------------------------------------
 
+/** Convert a snake_case unlock ID to a human-readable Title Case string. */
+function _formatUnlockId(id) {
+    return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 /** Return true if a prerequisite name appears in the completed list. */
 function game_prereq_met(prereqName) {
     if (!_tree?.nodes) return false;
@@ -466,8 +560,8 @@ function game_prereq_met(prereqName) {
 
 async function _doStart(node) {
     try {
-        const result = await startResearch(node.name);
-        notify("RD", result.message);
+        await startResearch(node.name);
+        notify("RD", `Research started: ${node.name} (~${node.turns_to_complete ?? "?"} turns)`);
         // Re-fetch tree so progress info and status flags are fresh
         await _loadTree();
         _selectedNode = _tree.nodes.find(n => n.name === node.name) || null;
@@ -481,7 +575,7 @@ async function _doStart(node) {
 async function _doCancel() {
     const ok = await confirm(
         "Cancel Research",
-        `Cancel research on "${_tree?.active_research}"? No credits will be refunded.`
+        `Cancel research on "${_tree?.active_research}"? Accumulated RP progress will be lost.`
     );
     if (!ok) return;
 

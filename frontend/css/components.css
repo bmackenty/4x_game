@@ -3395,3 +3395,92 @@
   color: var(--border-color);
   margin: 0 2px;
 }
+
+/* ── End-of-turn events modal ──────────────────────────────────────────── */
+.events-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.events-list li {
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--accent-color, #7af);
+  background: var(--panel-bg, rgba(255,255,255,0.04));
+  line-height: 1.4;
+}
+
+.events-empty {
+  color: var(--text-muted, #888);
+  font-style: italic;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* ── Research RP breakdown panel ───────────────────────────────────────── */
+.rp-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--sp-1) 0 var(--sp-2);
+}
+
+.rp-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+}
+
+.rp-value {
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+}
+
+/* Research path badge inline in card name */
+.research-path-badge {
+  color: var(--accent-gold);
+  font-size: 0.75em;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Research path indicator in detail panel */
+.research-path-indicator {
+  font-size: var(--font-size-xs);
+  color: var(--accent-gold);
+  margin-top: var(--sp-1);
+  letter-spacing: 0.04em;
+}
+
+/* Inline unlock category icons on node cards */
+.research-node-card__unlocks {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.unlock-icon {
+  font-size: 0.75em;
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* RP cost field on node cards */
+.research-node-card__rp {
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}

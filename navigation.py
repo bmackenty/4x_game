@@ -356,8 +356,8 @@ class Galaxy:
         
         # Calculate how many systems we already have
         existing_count = len(self.systems)
-        # Generate 100 additional procedural systems scattered across the galaxy
-        num_to_generate = 100
+        # Generate 300 additional procedural systems scattered across the galaxy
+        num_to_generate = 300
         
         print(f"Generating {num_to_generate} additional procedural systems...")
         
@@ -392,6 +392,49 @@ class Galaxy:
             "Phi Virginis", "Chi Bootis", "Psi Coronae", "Omega Draconis",
             "Alsafi Station", "Ran Outpost", "Sarin Depot", "Ogma Base",
             "Cervantes Hub", "Copernicus Reach",
+            # Extended pool for 300-system generation
+            "Vela Remnant", "Pyxis Crossing", "Puppis Gate", "Columba Rift",
+            "Caelum Relay", "Horologium Deep", "Reticulum Drift", "Pictor Fringe",
+            "Dorado Station", "Mensa Outpost", "Volans Base", "Carina Expanse",
+            "Musca Waypoint", "Crux Beacon", "Norma Reach", "Ara Junction",
+            "Triangulum Australis", "Apus Crossing", "Pavo Drift", "Indus Gate",
+            "Microscopium Base", "Telescopium Hub", "Grus Station", "Phoenix Relay",
+            "Sculptor Void", "Fornax Deep", "Eridanus Fringe", "Caelum Hollow",
+            "Lepus Waypoint", "Monoceros Crossing", "Hydra Expanse", "Sextans Gate",
+            "Crater Rim", "Corvus Station", "Virgo Reach", "Leo Minor Hub",
+            "Canes Venatici", "Coma Berenices", "Berenice Drift", "Bootes Hollow",
+            "Corona Borealis", "Serpens Waypoint", "Ophiuchus Gate", "Scutum Base",
+            "Aquila Crossing", "Sagitta Relay", "Vulpecula Hub", "Lyra Station",
+            "Cygnus Expanse", "Lacerta Fringe", "Andromeda Reach", "Triangulum Deep",
+            "Perseus Hollow", "Auriga Waypoint", "Gemini Gate", "Cancer Base",
+            "Canis Major Relay", "Canis Minor Hub", "Orion Expanse", "Taurus Drift",
+            "Aries Station", "Pisces Crossing", "Aquarius Gate", "Capricornus Reach",
+            "Sagittarius Hollow", "Scorpius Waypoint", "Libra Base", "Virgo Hub",
+            "Hydrus Station", "Tucana Relay", "Piscis Austrinus", "Cetus Expanse",
+            "Delphinus Gate", "Equuleus Base", "Aquila Fringe", "Scutum Deep",
+            "Serpens Cauda", "Ophiuchus South", "Lupus Station", "Centaurus Hub",
+            "Vela South", "Antlia Relay", "Pyxis Deep", "Puppis Fringe",
+            "Naos Outpost", "Wezen Base", "Adhara Station", "Mirzam Crossing",
+            "Furud Gate", "Aludra Reach", "Sirius Fringe", "Procyon Deep",
+            "Gomeisa Relay", "Castor Station", "Pollux Hub", "Alhena Base",
+            "Tejat Waypoint", "Propus Crossing", "Mebsuda Gate", "Wasat Reach",
+            "Alzirr Station", "Mekbuda Deep", "Keid Relay", "Beid Hub",
+            "Sadira Base", "Rana Fringe", "Zaurak Crossing", "Azha Gate",
+            "Acamar Reach", "Achernar Station", "Ankaa Relay", "Alrai Hub",
+            "Errai Base", "Alfirk Waypoint", "Zeta Cephei", "Iota Cephei",
+            "Kruger 60", "Struve 2398", "Groombridge 34", "61 Ursae Majoris",
+            "Sigma Bootis", "Tau Bootis", "Kappa Coronae", "Iota Coronae",
+            "Nu Coronae", "Sigma Coronae", "Zeta Aquilae", "Eta Aquilae",
+            "Theta Aquilae", "Iota Aquilae", "Lambda Aquilae", "Mu Aquilae",
+            "Deneb Station", "Sadr Hub", "Gienah Relay", "Albireo Deep",
+            "Aljanah Base", "Rukh Fringe", "Fawaris Crossing", "Khafajah Gate",
+            "Nusakan Reach", "Alphecca Station", "Gemma Hub", "Muphrid Relay",
+            "Seginus Base", "Izar Waypoint", "Alkalurops Crossing", "Nekkar Gate",
+            "Merga Reach", "Asellus Australis", "Asellus Borealis", "Acubens Deep",
+            "Tegmine Station", "Algieba Hub", "Adhafera Relay", "Rasalas Base",
+            "Subra Waypoint", "Al Minliar Crossing", "Zosma Gate", "Chertan Reach",
+            "Zavijava Station", "Zaniah Hub", "Porrima Relay", "Auva Deep",
+            "Minelauva Base", "Vindemiatrix Fringe", "Heze Crossing", "Syrma Gate",
         ]
         
         # Remove names already used by predefined systems
