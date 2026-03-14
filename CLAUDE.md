@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Run the game:**
 ```bash
-python run.py
+python3 run.py
 ```
 Opens the browser at http://localhost:8765 with auto-reload enabled.
 
