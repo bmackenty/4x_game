@@ -2211,7 +2211,96 @@ class Game:
         })
         
         return True, f"Purchased {research_name} for {purchase_cost:,} credits"
-    
+
+    def calculate_rp_per_turn(self, colony_rp: int = 0) -> dict:
+        """
+        Compute Research Points generated per turn from all sources.
+
+        colony_rp is supplied by the caller (backend) from the ColonyManager,
+        since the Game class has no direct access to colony infrastructure.
+
+        Returns {"total": int, "breakdown": {source: value, ...}}.
+        """
+        from research import all_research, RESEARCH_PATH_CATEGORIES
+        from factions import FACTION_RESEARCH_BONUSES
+
+        _FACTION_RP_CAP = 10.0
+
+        try:
+            stats  = self.character_stats or {}
+            int_   = stats.get("INT", 30)
+            cls    = getattr(self, "character_class", "") or ""
+            bg     = getattr(self, "character_background", "") or ""
+            paths  = getattr(self, "character_research_paths", []) or []
+
+            # Intellect contribution — scales from 1 RP (INT 30) to ~6 RP (INT 100).
+            # Scientist class multiplies this by 1.25.
+            base_int      = 1.0 + (int_ - 30) / 14.0
+            class_mult    = 1.25 if cls == "Scientist" else 1.0
+            int_component = round(base_int * class_mult, 2)
+
+            background_bonus = 0.5 if bg == "Academic Researcher" else 0.0
+
+            # Path bonus: +1 RP when the active project's category is in the
+            # player's chosen research paths.
+            active_cat = ""
+            if self.active_research:
+                active_cat = all_research.get(self.active_research, {}).get("category", "")
+            path_cats  = {RESEARCH_PATH_CATEGORIES.get(p, p) for p in paths}
+            path_bonus = 1.0 if (active_cat and active_cat in path_cats) else 0.0
+
+            # Faction bonuses — category-specific, neutral+ rep required, capped.
+            faction_bonus = 0.0
+            try:
+                relations = self.faction_system.player_relations
+                own = getattr(self, "character_faction", "")
+                for fname, rep in relations.items():
+                    if rep < 0 and fname != own:
+                        continue
+                    cat_bonuses = FACTION_RESEARCH_BONUSES.get(fname, {})
+                    bonus = cat_bonuses.get("__all__", 0.0)
+                    if active_cat:
+                        bonus += cat_bonuses.get(active_cat, 0.0)
+                    faction_bonus += bonus
+                faction_bonus = min(faction_bonus, _FACTION_RP_CAP)
+                faction_bonus = round(faction_bonus, 2)
+            except Exception:
+                faction_bonus = 0.0
+
+            crew_bonus = float(getattr(self, "crew_research_bonus", 0))
+
+            total = int_component + background_bonus + path_bonus + colony_rp + faction_bonus + crew_bonus
+            total = max(1, int(round(total)))
+
+            return {
+                "total": total,
+                "breakdown": {
+                    "intellect":  int_component,
+                    "background": background_bonus,
+                    "path_bonus": path_bonus,
+                    "colony":     colony_rp,
+                    "faction":    faction_bonus,
+                    "crew":       crew_bonus,
+                },
+            }
+        except Exception:
+            return {"total": 1, "breakdown": {"intellect": 1.0}}
+
+    def get_unlocked_features(self, category: str) -> set:
+        """
+        Return all unlock IDs of the given category from completed research.
+        Used as a feature gate for abilities, ship functions, crew roles, etc.
+        """
+        from research import EXTENDED_UNLOCKS
+        result = set()
+        try:
+            for project in self.completed_research:
+                for uid in EXTENDED_UNLOCKS.get(project, {}).get(category, []):
+                    result.add(uid)
+        except Exception:
+            pass
+        return result
+
     # ========== END RESEARCH SYSTEM ==========
 
     def purchase_menu(self):

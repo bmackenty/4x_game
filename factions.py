@@ -699,3 +699,105 @@ factions = {
         "origin_story": "Ancient mystical sisterhood claiming descent from the Three Sisters who survived the First Cataclysm and transcended mortality."
     }
 }
+
+
+# ---------------------------------------------------------------------------
+# Faction research bonuses
+# Per-faction RP bonus keyed to specific research categories.
+# "__all__" applies to every category.
+# Bonus activates when player rep >= 0 with that faction, or it is their
+# own faction (any rep level).
+# ---------------------------------------------------------------------------
+
+FACTION_RESEARCH_BONUSES: dict = {
+    # General research factions
+    "The Veritas Covenant":               {"__all__": 2.0},
+    "The Scholara Nexus":                 {"__all__": 2.0},
+
+    # Technology factions
+    "The Icaron Collective":              {
+        "Engineering and Applied": 2.0,
+        "Computational and Predictive":    2.0,
+        "Ship Technology Sciences":        1.5,
+    },
+    "The Quantum Artificers Guild":       {
+        "Quantum and Transdimensional":    3.0,
+        "Engineering and Applied": 1.5,
+    },
+    "The Technotheos":                    {
+        "Computational and Predictive":    2.0,
+        "Engineering and Applied": 1.5,
+        "Ship Technology Sciences":        1.0,
+    },
+    "Technomancers":                      {
+        "Etheric and Cosmic":              2.0,
+        "Engineering and Applied": 1.5,
+        "Computational and Predictive":    1.0,
+    },
+
+    # Mysticism factions
+    "The Gaian Enclave":                  {
+        "Biological and Xenogenetic":              2.0,
+        "Etheric and Cosmic":                      1.5,
+        "Planetary and Environmental":   2.0,
+    },
+    "The Harmonic Resonance Collective":  {
+        "Etheric and Cosmic":              3.0,
+        "Existential and Metaconscious":   2.0,
+    },
+    "Keepers of the Spire":               {
+        "Quantum and Transdimensional":    2.0,
+        "Etheric and Cosmic":              2.0,
+        "Existential and Metaconscious":   1.5,
+    },
+    "Etheric Preservationists":           {"Etheric and Cosmic": 3.0},
+    "The Voidbound Monks":                {
+        "Existential and Metaconscious":   3.0,
+        "Quantum and Transdimensional":    1.5,
+    },
+    "Keeper of the Keys":                 {
+        "Quantum and Transdimensional":    2.5,
+        "Existential and Metaconscious":   2.0,
+    },
+
+    # Industry factions
+    "The Gearwrights Guild":              {
+        "Engineering and Applied": 2.5,
+        "Theoretical and Foundational":    1.5,
+        "Ship Technology Sciences":        1.5,
+    },
+    "The Ironclad Collective":            {
+        "Engineering and Applied": 2.0,
+        "Theoretical and Foundational":    1.0,
+    },
+
+    # Cultural / bio factions
+    "Harmonic Vitality Consortium":       {
+        "Biological and Xenogenetic":            2.5,
+        "Health and Medicine":  3.0,
+    },
+    "The Brewmasters' Guild":             {"Biological and Xenogenetic": 2.0},
+    "The Provocateurs' Guild":            {
+        "Ethics and Philosophy": 2.0,
+        "Existential and Metaconscious":         1.5,
+    },
+
+    # Exploration factions
+    "The Stellar Cartographers Alliance": {
+        "Planetary and Environmental": 2.5,
+        "Ship Technology Sciences":              2.0,
+        "Theoretical and Foundational":          1.5,
+    },
+
+    # Diplomacy factions
+    "The Collective of Commonality":      {
+        "Ethics and Philosophy": 2.5,
+        "Health and Medicine":  1.5,
+    },
+
+    # Trade factions
+    "Stellar Nexus Guild":                {
+        "Computational and Predictive":  1.5,
+        "Theoretical and Foundational":  1.0,
+    },
+}

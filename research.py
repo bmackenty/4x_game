@@ -523,6 +523,156 @@ engineering_sciences = {
         "prerequisites": ["Temporal Resonance Engineering"],
         "unlocks": ["Harmonic Structures", "Phase-Locked Systems"],
         "related_energy": "Concordant Harmony"
+    },
+    "Etheric-Mechanical Integration": {
+        "category": "Engineering and Applied",
+        "description": "Bridging classical mechanical systems with etheric energy flows, yielding actuators and drive components that draw efficiency directly from the etheric substrate rather than conventional power sources.",
+        "difficulty": 5,
+        "research_cost": 40000,
+        "research_time": 55,
+        "prerequisites": [],
+        "unlocks": ["Etheric Actuators", "Hybrid Drive Components"],
+        "related_energy": "Etheric Energy"
+    },
+    "Etheric Drive Harmonics": {
+        "category": "Engineering and Applied",
+        "description": "Synchronizing ship propulsion systems with natural etheric current patterns, dramatically reducing energy cost and enabling drift-riding maneuvers impossible with standard drives.",
+        "difficulty": 5,
+        "research_cost": 50000,
+        "research_time": 60,
+        "prerequisites": ["Etheric-Mechanical Integration"],
+        "unlocks": ["Current-Riding Navigation", "Harmonic Thruster Array"],
+        "related_energy": "Etheric Energy"
+    },
+    "Programmable Matter Synthesis": {
+        "category": "Engineering and Applied",
+        "description": "Engineering matter at the atomic level that can be reconfigured on command via embedded etheric instruction lattices, allowing a single material substrate to become virtually any required form.",
+        "difficulty": 6,
+        "research_cost": 90000,
+        "research_time": 80,
+        "prerequisites": [],
+        "unlocks": ["Reconfigurable Plating", "Adaptive Tools"],
+        "related_energy": "Quantum Flux"
+    },
+    "Resonant Frequency Manufacturing": {
+        "category": "Engineering and Applied",
+        "description": "Assembling and disassembling components using precisely tuned harmonic resonances, eliminating physical contact between tools and workpiece and enabling fabrication in otherwise inaccessible locations.",
+        "difficulty": 6,
+        "research_cost": 105000,
+        "research_time": 90,
+        "prerequisites": [],
+        "unlocks": ["Resonance Fabricators", "Harmonic Welding"],
+        "related_energy": "Concordant Harmony"
+    },
+    "Morphic Alloy Engineering": {
+        "category": "Engineering and Applied",
+        "description": "Developing alloys encoded with shape-memory at the quantum level. Components remember stored configurations and return to them on command, enabling hulls and mechanisms that reshape and repair themselves mid-voyage.",
+        "difficulty": 7,
+        "research_cost": 180000,
+        "research_time": 110,
+        "prerequisites": ["Programmable Matter Synthesis"],
+        "unlocks": ["Memory Metal Hulls", "Self-Reassembling Components"],
+        "related_energy": "Quantum Flux"
+    },
+    "Etheric Superstructure Weaving": {
+        "category": "Engineering and Applied",
+        "description": "Braiding dense etheric filaments into load-bearing macroscopic lattices, producing structural members stronger than conventional alloys at a fraction of the mass — revolutionizing megastructure and hull design.",
+        "difficulty": 7,
+        "research_cost": 160000,
+        "research_time": 130,
+        "prerequisites": ["Reactive Etheric Constructs"],
+        "unlocks": ["Woven Ether Hulls", "Etheric Load Beams"],
+        "related_energy": "Etheric Energy"
+    },
+    "Nanostructural Etheric Weaving": {
+        "category": "Engineering and Applied",
+        "description": "Infusing nanoscale structural lattices with etheric binding energy to achieve material properties — thermal resistance, tensile strength, radiation shielding — far beyond conventional nanotechnology.",
+        "difficulty": 7,
+        "research_cost": 190000,
+        "research_time": 115,
+        "prerequisites": ["Nanotechnology"],
+        "unlocks": ["Etheric Nanocomposites", "Quantum-Threaded Armor"],
+        "related_energy": "Etheric Energy"
+    },
+    "Vortex Energy Capture": {
+        "category": "Engineering and Applied",
+        "description": "Harnessing rotational energy from etheric vortices that form naturally at dimensional boundary intersections, tapping a power source that intensifies near transit corridors and spatial anomalies.",
+        "difficulty": 7,
+        "research_cost": 170000,
+        "research_time": 100,
+        "prerequisites": ["Flux-Driven Systems Engineering"],
+        "unlocks": ["Vortex Collector Arrays", "Dimensional Boundary Taps"],
+        "related_energy": "Chaotic Potential"
+    },
+    "Sympathetic Resonance Bridging": {
+        "category": "Engineering and Applied",
+        "description": "Engineering systems that exploit natural resonance pairs in the etheric substrate to channel energy and signals across stellar distances without physical conduit, creating instantaneous sympathetic links between paired installations.",
+        "difficulty": 7,
+        "research_cost": 200000,
+        "research_time": 120,
+        "prerequisites": ["Phase-Aligned Harmonic Construction"],
+        "unlocks": ["Resonance Relays", "Sympathetic Signal Arrays"],
+        "related_energy": "Concordant Harmony"
+    },
+    "Living Metal Cultivation": {
+        "category": "Engineering and Applied",
+        "description": "Cultivating metallic bio-organisms that grow into precisely shaped structural components, conduct energy through their living fibers, and perform autonomous self-repair through biological rather than mechanical processes.",
+        "difficulty": 8,
+        "research_cost": 380000,
+        "research_time": 150,
+        "prerequisites": ["Bio-Engineering"],
+        "unlocks": ["Biogenic Hull Panels", "Living Engine Cores"],
+        "related_energy": "Vital Essence"
+    },
+    "Adaptive Quantum Infrastructure": {
+        "category": "Engineering and Applied",
+        "description": "Infrastructure built from quantum-state materials that sense usage patterns and autonomously reconfigure their physical and energetic properties in real time, eliminating maintenance cycles and optimizing under any load condition.",
+        "difficulty": 8,
+        "research_cost": 350000,
+        "research_time": 145,
+        "prerequisites": ["Quantum Crystalized Matter Engineering"],
+        "unlocks": ["Smart Grid Infrastructure", "Self-Optimizing Systems"],
+        "related_energy": "Quantum Flux"
+    },
+    "Chrono-Tempered Materials": {
+        "category": "Engineering and Applied",
+        "description": "Exposing raw materials to controlled temporal stress cycles — compressing millions of years of molecular evolution into hours — to achieve structural and energetic properties unreachable through any conventional processing method.",
+        "difficulty": 8,
+        "research_cost": 420000,
+        "research_time": 160,
+        "prerequisites": ["Temporal Manipulation"],
+        "unlocks": ["Temporal-Hardened Armor", "Chrono-Stabilized Reactor Cores"],
+        "related_energy": "Chrono-Energy"
+    },
+    "Coherent Matter Projection": {
+        "category": "Engineering and Applied",
+        "description": "Projecting stable solid-state structures from converged energy matrices, enabling instant deployment of fortifications, barriers, and temporary architecture anywhere an emitter can reach.",
+        "difficulty": 8,
+        "research_cost": 450000,
+        "research_time": 140,
+        "prerequisites": ["Reactive Etheric Constructs", "Quantum Mechanics"],
+        "unlocks": ["Matter Projectors", "Deployable Energy Barriers"],
+        "related_energy": "Quantum Flux"
+    },
+    "Compressed Spacetime Scaffolding": {
+        "category": "Engineering and Applied",
+        "description": "Engineering structural frameworks that fold local spacetime within their boundaries, producing interiors dramatically larger than their outer hulls — revolutionizing cargo capacity, habitat design, and mobile shipyard logistics.",
+        "difficulty": 9,
+        "research_cost": 720000,
+        "research_time": 240,
+        "prerequisites": ["Graviton Physics"],
+        "unlocks": ["Pocket Space Architecture", "Extradimensional Holds"],
+        "related_energy": "Gravitational Energy"
+    },
+    "Void Architecture": {
+        "category": "Engineering and Applied",
+        "description": "Using null-space itself as a structural medium, anchoring megastructures and stations to dimensional voids rather than physical foundations. Void-anchored installations are impervious to conventional siege and invisible to most sensors.",
+        "difficulty": 9,
+        "research_cost": 680000,
+        "research_time": 200,
+        "prerequisites": ["Null Space Exploration"],
+        "unlocks": ["Null-Frame Stations", "Void-Anchored Fortresses"],
+        "related_energy": "Null Energy"
     }
 }
 
@@ -1034,3 +1184,68 @@ def get_available_research(completed_research):
         if all(prereq in completed_research for prereq in prerequisites):
             available[name] = data
     return available
+
+
+# ---------------------------------------------------------------------------
+# Research path → category mapping
+# Maps short path names (stored in character_research_paths) to the full
+# category strings used in all_research entries.
+# ---------------------------------------------------------------------------
+
+RESEARCH_PATH_CATEGORIES: dict = {
+    "Quantum":       "Quantum and Transdimensional",
+    "Etheric":       "Etheric and Cosmic",
+    "Biology":       "Biological and Xenogenetic",
+    "Consciousness": "Existential and Metaconscious",
+    "Engineering":   "Engineering and Applied",
+    "Computing":     "Computational and Predictive",
+    "Planetary":     "Planetary and Environmental",
+    "Philosophy":    "Ethics and Philosophy",
+    "Medicine":      "Health and Medicine",
+    "Theory":        "Theoretical and Foundational",
+    "Ships":         "Ship Technology Sciences",
+}
+
+# ---------------------------------------------------------------------------
+# Extended gameplay unlock IDs
+# Maps research name → category → list of unlock IDs.
+# Used for UI display and as feature gates in future systems.
+# ---------------------------------------------------------------------------
+
+EXTENDED_UNLOCKS: dict = {
+    "Fusion Technology":                {"ship": ["jump_range_boost_1"],               "abilities": ["emergency_burn"],                  "economic": ["energy_futures_market"]},
+    "Plasma Physics":                   {"ship": ["plasma_weapon_mount"],              "abilities": ["overcharge_weapons"]},
+    "Graviton Physics":                 {"ship": ["gravity_cannon", "gravity_tow_beam"],"abilities": ["graviton_pulse"]},
+    "Quantum Mechanics":                {"ship": ["phase_jump_drive"],                 "abilities": ["phase_dodge"],                      "security": ["quantum_encryption"]},
+    "Temporal Manipulation":            {"ship": ["time_dilation_field"],              "abilities": ["temporal_rewind_combat"],            "crew": ["chronologist_role"]},
+    "Nanotechnology":                   {"ship": ["nanite_repair_hull"],               "abilities": ["nanite_burst_repair"],               "economic": ["nanite_manufacturing"]},
+    "Cloaking Technology":              {"ship": ["stealth_field_gen"],                "abilities": ["active_cloak", "emergency_cloak"],   "security": ["counter_surveillance_mode"]},
+    "Subspace Navigation":              {"ship": ["subspace_jump_drive"],              "abilities": ["subspace_scout"]},
+    "Particle Physics":                 {"ship": ["particle_beam_weapon"]},
+    "Dark Matter Research":             {"ship": ["dark_matter_shield"],               "abilities": ["dark_matter_scan"]},
+    "Bio-Engineering":                  {"crew": ["xenobiologist_role"],               "economic": ["bio_commodity_market"]},
+    "Advanced Research":                {"crew": ["lab_technician_role"],              "economic": ["research_licensing"]},
+    "Cognitive Enhancement Systems":    {"crew": ["neural_officer_role"],              "security": ["psychic_intrusion_defense"]},
+    "Xenogenetics":                     {"crew": ["xenogeneticist_role"],              "diplomacy": ["xenogenetic_treaty"]},
+    "Null Space Exploration":           {"abilities": ["void_drift"],                  "security": ["void_shield_defense"]},
+    "Quantum Temporal Dynamics":        {"abilities": ["temporal_scan"]},
+    "Causal Integrity Theory":          {"abilities": ["timeline_lock"]},
+    "The Nexus Principle":              {"abilities": ["transcendence_burst"]},
+    "Threshold Consciousness Research": {"abilities": ["mind_link"],                   "diplomacy": ["consciousness_exchange_protocol"]},
+    "Multiversal Diplomacy":            {"diplomacy": ["multiverse_embassy"]},
+    "Synthetic Sentience Rights":       {"diplomacy": ["ai_rights_treaty"]},
+    "Post-Temporal Ethics":             {"diplomacy": ["temporal_nonaggression_pact"]},
+    "Inter-species Moral Entanglement": {"diplomacy": ["collective_ethics_treaty"]},
+    "Mining Automation":                {"economic": ["automated_ore_processing"]},
+    "Hyperluminal Drift Analysis":      {"ship": ["hyperluminal_sensors"]},
+    "Programmable Matter Synthesis":    {"ship": ["adaptive_hull_plating"],          "economic": ["programmable_matter_fab"]},
+    "Morphic Alloy Engineering":        {"ship": ["morphic_armor"],                  "economic": ["morphic_manufacturing"]},
+    "Etheric Drive Harmonics":          {"ship": ["etheric_drive_harmonics"]},
+    "Nanostructural Etheric Weaving":   {"ship": ["etheric_nanocomposite_hull"]},
+    "Chrono-Tempered Materials":        {"ship": ["chrono_hardened_armor"]},
+    "Living Metal Cultivation":         {"ship": ["living_hull"],                    "crew": ["living_hull_tender_role"]},
+    "Coherent Matter Projection":       {"abilities": ["matter_wall", "deploy_barrier"], "security": ["matter_projection_defense"]},
+    "Compressed Spacetime Scaffolding": {"ship": ["extradimensional_hold"],          "economic": ["pocket_space_logistics"]},
+    "Void Architecture":                {"economic": ["void_station_construction"],  "security": ["null_frame_defense"]},
+    "Sympathetic Resonance Bridging":   {"ship": ["resonance_relay_array"]},
+}

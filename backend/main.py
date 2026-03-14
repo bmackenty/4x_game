@@ -48,7 +48,7 @@ from characters import (
 from professions import PROFESSIONS, PROFESSION_CATEGORIES_ORDERED, ProfessionSystem
 from species import get_playable_species
 from factions import factions                                  # module-level dict
-from research import all_research                              # full research tree
+from research import all_research, RESEARCH_PATH_CATEGORIES, EXTENDED_UNLOCKS  # research data
 from energies import all_energies                              # 50 energy types
 from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
 from backend.colony import ColonyManager                       # colony system
@@ -106,225 +106,15 @@ def _seed_discovery() -> None:
         pass
 
 
-# ---------------------------------------------------------------------------
-# Research Points (RP) system
-# ---------------------------------------------------------------------------
 
-# Maps short research-path names (stored in game.character_research_paths)
-# to the full category strings used in all_research entries.
-RESEARCH_PATH_CATEGORIES: dict[str, str] = {
-    "Quantum":       "Quantum and Transdimensional",
-    "Etheric":       "Etheric and Cosmic",
-    "Biology":       "Biological and Xenogenetic",
-    "Consciousness": "Existential and Metaconscious",
-    "Engineering":   "Engineering and Applied Etheric",
-    "Computing":     "Computational and Predictive",
-    "Planetary":     "Planetary, Stellar, and Environmental",
-    "Philosophy":    "Ethics, Philosophy, and Intercultural",
-    "Medicine":      "Health, Medicine, and Post-Mortality",
-    "Theory":        "Theoretical and Foundational",
-    "Ships":         "Ship Technology Sciences",
-}
-
-# Per-faction RP bonuses keyed to specific research categories.
-# "__all__" applies to every category.
-# Bonus only activates when player has neutral+ reputation with that faction.
-FACTION_RESEARCH_BONUSES: dict[str, dict[str, float]] = {
-    "The Veritas Covenant":              {"__all__": 2.0},
-    "The Scholara Nexus":                {"__all__": 2.0},
-    "The Icaron Collective":             {
-        "Engineering and Applied Etheric": 2.0,
-        "Computational and Predictive":    2.0,
-        "Ship Technology Sciences":        1.5,
-    },
-    "The Quantum Artificers Guild":      {
-        "Quantum and Transdimensional":    3.0,
-        "Engineering and Applied Etheric": 1.5,
-    },
-    "The Technotheos":                   {
-        "Computational and Predictive":    2.0,
-        "Engineering and Applied Etheric": 1.5,
-        "Ship Technology Sciences":        1.0,
-    },
-    "Technomancers":                     {
-        "Etheric and Cosmic":              2.0,
-        "Engineering and Applied Etheric": 1.5,
-        "Computational and Predictive":    1.0,
-    },
-    "The Gaian Enclave":                 {
-        "Biological and Xenogenetic":            2.0,
-        "Etheric and Cosmic":                    1.5,
-        "Planetary, Stellar, and Environmental": 2.0,
-    },
-    "The Harmonic Resonance Collective": {
-        "Etheric and Cosmic":           3.0,
-        "Existential and Metaconscious":2.0,
-    },
-    "Keepers of the Spire":              {
-        "Quantum and Transdimensional":    2.0,
-        "Etheric and Cosmic":              2.0,
-        "Existential and Metaconscious":   1.5,
-    },
-    "Etheric Preservationists":          {"Etheric and Cosmic": 3.0},
-    "The Voidbound Monks":               {
-        "Existential and Metaconscious":   3.0,
-        "Quantum and Transdimensional":    1.5,
-    },
-    "Keeper of the Keys":                {
-        "Quantum and Transdimensional":    2.5,
-        "Existential and Metaconscious":   2.0,
-    },
-    "The Gearwrights Guild":             {
-        "Engineering and Applied Etheric": 2.5,
-        "Theoretical and Foundational":    1.5,
-        "Ship Technology Sciences":        1.5,
-    },
-    "The Ironclad Collective":           {
-        "Engineering and Applied Etheric": 2.0,
-        "Theoretical and Foundational":    1.0,
-    },
-    "Harmonic Vitality Consortium":      {
-        "Biological and Xenogenetic":           2.5,
-        "Health, Medicine, and Post-Mortality": 3.0,
-    },
-    "The Brewmasters' Guild":            {"Biological and Xenogenetic": 2.0},
-    "The Provocateurs' Guild":           {
-        "Ethics, Philosophy, and Intercultural": 2.0,
-        "Existential and Metaconscious":         1.5,
-    },
-    "The Stellar Cartographers Alliance":{
-        "Planetary, Stellar, and Environmental": 2.5,
-        "Ship Technology Sciences":              2.0,
-        "Theoretical and Foundational":          1.5,
-    },
-    "The Collective of Commonality":     {
-        "Ethics, Philosophy, and Intercultural": 2.5,
-        "Health, Medicine, and Post-Mortality":  1.5,
-    },
-    "Stellar Nexus Guild":               {
-        "Computational and Predictive":  1.5,
-        "Theoretical and Foundational":  1.0,
-    },
-}
-
-# Extended gameplay unlock IDs keyed by research name and functional category.
-# Used for display in the research UI and as feature gates for future systems.
-EXTENDED_UNLOCKS: dict[str, dict[str, list[str]]] = {
-    "Fusion Technology":                 {"ship": ["jump_range_boost_1"],          "abilities": ["emergency_burn"],             "economic": ["energy_futures_market"]},
-    "Plasma Physics":                    {"ship": ["plasma_weapon_mount"],         "abilities": ["overcharge_weapons"]},
-    "Graviton Physics":                  {"ship": ["gravity_cannon", "gravity_tow_beam"], "abilities": ["graviton_pulse"]},
-    "Quantum Mechanics":                 {"ship": ["phase_jump_drive"],            "abilities": ["phase_dodge"],                "security": ["quantum_encryption"]},
-    "Temporal Manipulation":             {"ship": ["time_dilation_field"],         "abilities": ["temporal_rewind_combat"],     "crew": ["chronologist_role"]},
-    "Nanotechnology":                    {"ship": ["nanite_repair_hull"],          "abilities": ["nanite_burst_repair"],        "economic": ["nanite_manufacturing"]},
-    "Cloaking Technology":               {"ship": ["stealth_field_gen"],           "abilities": ["active_cloak", "emergency_cloak"], "security": ["counter_surveillance_mode"]},
-    "Subspace Navigation":               {"ship": ["subspace_jump_drive"],         "abilities": ["subspace_scout"]},
-    "Particle Physics":                  {"ship": ["particle_beam_weapon"]},
-    "Dark Matter Research":              {"ship": ["dark_matter_shield"],          "abilities": ["dark_matter_scan"]},
-    "Bio-Engineering":                   {"crew": ["xenobiologist_role"],          "economic": ["bio_commodity_market"]},
-    "Advanced Research":                 {"crew": ["lab_technician_role"],         "economic": ["research_licensing"]},
-    "Cognitive Enhancement Systems":     {"crew": ["neural_officer_role"],         "security": ["psychic_intrusion_defense"]},
-    "Xenogenetics":                      {"crew": ["xenogeneticist_role"],         "diplomacy": ["xenogenetic_treaty"]},
-    "Null Space Exploration":            {"abilities": ["void_drift"],             "security": ["void_shield_defense"]},
-    "Quantum Temporal Dynamics":         {"abilities": ["temporal_scan"]},
-    "Causal Integrity Theory":           {"abilities": ["timeline_lock"]},
-    "The Nexus Principle":               {"abilities": ["transcendence_burst"]},
-    "Threshold Consciousness Research":  {"abilities": ["mind_link"],              "diplomacy": ["consciousness_exchange_protocol"]},
-    "Multiversal Diplomacy":             {"diplomacy": ["multiverse_embassy"]},
-    "Synthetic Sentience Rights":        {"diplomacy": ["ai_rights_treaty"]},
-    "Post-Temporal Ethics":              {"diplomacy": ["temporal_nonaggression_pact"]},
-    "Inter-species Moral Entanglement":  {"diplomacy": ["collective_ethics_treaty"]},
-    "Mining Automation":                 {"economic": ["automated_ore_processing"]},
-    "Hyperluminal Drift Analysis":       {"ship": ["hyperluminal_sensors"]},
-}
-
-# Max total RP contribution from all faction bonuses combined (anti-stacking cap).
-_FACTION_RP_CAP: float = 10.0
-
-
-def _calculate_rp_per_turn() -> dict:
-    """
-    Compute the player's Research Points per turn from all sources.
-
-    Returns {"total": int, "breakdown": {source: value, ...}}.
-    """
+def _colony_research_output() -> int:
+    """Extract current research RP from all colonies (backend glue — passed to game method)."""
+    if not (colony_manager and colony_manager.colonies):
+        return 0
     try:
-        stats  = game.character_stats or {}
-        int_   = stats.get("INT", 30)
-        cls    = getattr(game, "character_class", "") or ""
-        bg     = getattr(game, "character_background", "") or ""
-        paths  = getattr(game, "character_research_paths", []) or []
-
-        # Intellect contribution (scaled 1–6 across INT 30–100)
-        base_int     = 1.0 + (int_ - 30) / 14.0
-        class_mult   = 1.25 if cls == "Scientist" else 1.0
-        int_component = round(base_int * class_mult, 2)
-
-        background_bonus = 0.5 if bg == "Academic Researcher" else 0.0
-
-        # Research path bonus: +1 if active project's category is in chosen paths
-        active     = getattr(game, "active_research", None)
-        active_cat = all_research.get(active, {}).get("category", "") if active else ""
-        path_cats  = {RESEARCH_PATH_CATEGORIES.get(p, p) for p in paths}
-        path_bonus = 1.0 if (active_cat and active_cat in path_cats) else 0.0
-
-        # Colony research output
-        colony_rp = 0
-        if colony_manager and colony_manager.colonies:
-            try:
-                prod      = colony_manager.calculate_all_production()
-                colony_rp = int(prod.get("research", 0))
-            except Exception:
-                colony_rp = 0
-
-        # Faction bonuses — category-specific, neutral+ rep required, capped
-        faction_bonus = 0.0
-        try:
-            relations = game.faction_system.player_relations
-            for fname, rep in relations.items():
-                # Player's own faction ignores rep threshold
-                own = getattr(game, "character_faction", "")
-                if rep < 0 and fname != own:
-                    continue
-                cat_bonuses = FACTION_RESEARCH_BONUSES.get(fname, {})
-                bonus = cat_bonuses.get("__all__", 0.0)
-                if active_cat:
-                    bonus += cat_bonuses.get(active_cat, 0.0)
-                faction_bonus += bonus
-            faction_bonus = min(faction_bonus, _FACTION_RP_CAP)
-            faction_bonus = round(faction_bonus, 2)
-        except Exception:
-            faction_bonus = 0.0
-
-        crew_bonus = float(getattr(game, "crew_research_bonus", 0))
-
-        total = int_component + background_bonus + path_bonus + colony_rp + faction_bonus + crew_bonus
-        total = max(1, int(round(total)))
-
-        return {
-            "total": total,
-            "breakdown": {
-                "intellect":  int_component,
-                "background": background_bonus,
-                "path_bonus": path_bonus,
-                "colony":     colony_rp,
-                "faction":    faction_bonus,
-                "crew":       crew_bonus,
-            },
-        }
+        return int(colony_manager.calculate_all_production().get("research", 0))
     except Exception:
-        return {"total": 1, "breakdown": {"intellect": 1.0}}
-
-
-def _get_unlocked_features(category: str) -> set[str]:
-    """Return all unlock IDs of the given category from completed research."""
-    result: set[str] = set()
-    try:
-        for project in game.completed_research:
-            for uid in EXTENDED_UNLOCKS.get(project, {}).get(category, []):
-                result.add(uid)
-    except Exception:
-        pass
-    return result
+        return 0
 
 
 @asynccontextmanager
@@ -1201,7 +991,7 @@ async def end_turn():
     # Inject extra research progress so total increment equals RP/turn.
     # The engine already added +1 inside advance_turn(); we add (rp - 1) more.
     if game.active_research:
-        _rp = _calculate_rp_per_turn()["total"]
+        _rp = game.calculate_rp_per_turn(colony_rp=_colony_research_output())["total"]
         game.research_progress += max(0, _rp - 1)
         _rt = all_research.get(game.active_research, {}).get("research_time", 1)
         if game.research_progress >= _rt:
@@ -2367,7 +2157,7 @@ async def get_research_tree():
     if game.active_research and game.active_research in all_research:
         active_time = all_research[game.active_research].get("research_time", 1)
 
-    rp_data    = _calculate_rp_per_turn()
+    rp_data     = game.calculate_rp_per_turn(colony_rp=_colony_research_output())
     rp_per_turn = rp_data["total"]
 
     paths     = getattr(game, "character_research_paths", []) or []
@@ -2424,7 +2214,7 @@ async def get_research_status():
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    rp_data = _calculate_rp_per_turn()
+    rp_data = game.calculate_rp_per_turn(colony_rp=_colony_research_output())
     if not game.active_research:
         return {"active": None, "progress": 0, "total_time": 0, "percent": 0.0,
                 "rp_per_turn": rp_data["total"], "turns_to_complete": 0}
@@ -2470,7 +2260,7 @@ async def start_research(request: StartResearchRequest):
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
-    rp_data   = _calculate_rp_per_turn()
+    rp_data   = game.calculate_rp_per_turn(colony_rp=_colony_research_output())
     rp_cost   = all_research.get(game.active_research, {}).get("research_time", 1)
     turns_est = math.ceil(rp_cost / max(1, rp_data["total"]))
 
