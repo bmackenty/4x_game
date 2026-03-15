@@ -1079,6 +1079,12 @@ async def load_game(request: LoadRequest):
     _init_bot_manager(game)
     _init_station_manager(game)
 
+    # Re-apply the full bonus stack (research/faction/character) on top of the
+    # component profile that save_game restores via calculate_stats_from_components().
+    _loaded_ship = getattr(game.navigation, "current_ship", None) if game.navigation else None
+    if _loaded_ship:
+        apply_all_bonuses_to_ship(_loaded_ship, game)
+
     return {
         "success": True,
         "message": message,
@@ -1614,6 +1620,78 @@ async def buy_station_upgrade(station_name: str, request: StationUpgradeRequest)
     }
 
 
+# ===========================================================================
+# Ship bonus helper — applies research/faction/character bonuses to the ship
+# ===========================================================================
+
+def _get_player_faction(g) -> Optional[str]:
+    """Return the player's faction name from whichever attribute is populated."""
+    faction = getattr(g, "player_faction", None)
+    if not faction and getattr(g, "character", None):
+        faction = g.character.get("faction")
+    return faction
+
+
+def apply_all_bonuses_to_ship(ship, g) -> None:
+    """
+    Layer research, faction, and character-stat bonuses on top of the
+    component-derived attribute profile already stored in
+    ``ship.attribute_profile``, then re-derive the legacy engine properties
+    (max_cargo, max_fuel, jump_range, scan_range) so real gameplay reflects
+    the full bonus stack.
+
+    Call this immediately after any ``ship.calculate_stats_from_components()``
+    invocation so the two steps always stay in sync.
+    """
+    profile = dict(getattr(ship, "attribute_profile", None) or {})
+    if not profile:
+        # No component profile yet — nothing to augment.
+        return
+
+    from ship_bonus_rules import (
+        calculate_research_bonuses,
+        calculate_faction_bonuses,
+        calculate_character_stat_bonuses,
+    )
+
+    completed_research: list = getattr(g, "completed_research", None) or []
+    faction_name: Optional[str] = _get_player_faction(g)
+    char_stats: dict = getattr(g, "character_stats", None) or {}
+
+    for bonus_dict in (
+        calculate_research_bonuses(completed_research),
+        calculate_faction_bonuses(faction_name),
+        calculate_character_stat_bonuses(char_stats),
+    ):
+        for attr_id, bonus in bonus_dict.items():
+            if attr_id in profile:
+                profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
+
+    ship.attribute_profile = profile
+
+    # Re-derive legacy engine properties using the same formulas as
+    # navigation.Ship.calculate_stats_from_components() so the engine's
+    # actual gameplay values stay in sync with the full bonus stack.
+    hull_integrity     = profile.get("hull_integrity",              30.0)
+    mass_efficiency    = profile.get("mass_efficiency",             30.0)
+    energy_storage     = profile.get("energy_storage",              30.0)
+    engine_efficiency  = profile.get("engine_efficiency",           30.0)
+    engine_output      = profile.get("engine_output",               30.0)
+    ftl_capacity       = profile.get("ftl_jump_capacity",           30.0)
+    detection_range    = profile.get("detection_range",             30.0)
+    etheric_sensitivity = profile.get("etheric_sensitivity",        20.0)
+
+    ship.health    = max(100, int(hull_integrity * 10))
+    ship.max_cargo = max(30,  int(mass_efficiency * 3 + hull_integrity))
+
+    fuel_capacity  = max(80,  int(energy_storage * 3 + engine_efficiency * 2.5))
+    ship.max_fuel  = fuel_capacity
+    ship.fuel      = min(ship.fuel, ship.max_fuel)
+
+    ship.jump_range = max(5,   int(ftl_capacity / 2 + engine_output / 6))
+    ship.scan_range = max(5.0, detection_range / 3.0 + etheric_sensitivity / 6.0)
+
+
 class JumpRequest(BaseModel):
     """Request body for jumping the player's ship."""
     target_x: float
@@ -1696,6 +1774,11 @@ async def get_ship_attributes():
     from ship_builder import compute_ship_profile
     from ship_attributes import SHIP_ATTRIBUTE_CATEGORIES, SHIP_ATTRIBUTE_DEFINITIONS
     from crew import calculate_crew_bonuses
+    from ship_bonus_rules import (
+        calculate_research_bonuses,
+        calculate_faction_bonuses,
+        calculate_character_stat_bonuses,
+    )
 
     # Compute base profile from installed components
     profile = compute_ship_profile(getattr(ship, "components", {}) or {})
@@ -1708,6 +1791,20 @@ async def get_ship_attributes():
                     profile[stat] = min(100.0, profile[stat] + bonus)
         except Exception:
             pass
+
+    # Layer research, faction, and character-stat bonuses
+    completed_research: list = getattr(game, "completed_research", None) or []
+    faction_name: Optional[str] = _get_player_faction(game)
+    char_stats: dict = getattr(game, "character_stats", None) or {}
+
+    for bonus_dict in (
+        calculate_research_bonuses(completed_research),
+        calculate_faction_bonuses(faction_name),
+        calculate_character_stat_bonuses(char_stats),
+    ):
+        for attr_id, bonus in bonus_dict.items():
+            if attr_id in profile:
+                profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
 
     # Group by category for the frontend
     categories = []
@@ -1852,8 +1949,9 @@ async def install_ship_component(request: InstallComponentRequest):
     if cost > 0:
         game.credits -= cost
 
-    # Recompute all derived stats
+    # Recompute all derived stats then layer in bonus stack
     ship.calculate_stats_from_components()
+    apply_all_bonuses_to_ship(ship, game)
 
     return {
         "success":           True,
