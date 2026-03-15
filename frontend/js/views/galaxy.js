@@ -18,7 +18,8 @@ import { getGalaxyMap, getSystem, jumpToCoords,
          getMarket, buyGoods, sellGoods,
          getSystemPresence,
          getStation, getStationUpgrades, buyStationUpgrade,
-         getNpcShips } from "../api.js";
+         getNpcShips,
+         harvestDeepSpace, foundDeepSpaceOutpost } from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { showModal, closeModal } from "../ui/modal.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
@@ -37,10 +38,8 @@ const GALAXY_SCALE = 12.5;  // 500 galaxy units / 40 hex columns
  */
 function shipCoordsToHex(coords) {
   if (!coords || coords.length < 2) return null;
-  return {
-    q: Math.round(coords[0] / GALAXY_SCALE),
-    r: Math.round(coords[1] / GALAXY_SCALE),
-  };
+  const q = Math.round(coords[0] / GALAXY_SCALE);
+  return { q, r: Math.round(coords[1] / GALAXY_SCALE - q / 2) };
 }
 
 /**
@@ -56,6 +55,18 @@ function hexToPixel(q, r, size) {
     x: size * 1.5 * q,
     y: size * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r),
   };
+}
+
+/**
+ * Convert an axial hex (q, r) back to 3D galaxy coordinates.
+ * Inverse of galaxy_coords_to_hex in backend/hex_utils.py.
+ * Z is fixed at the galactic midplane (25) — same default used by DeepSpaceManager.
+ * @param {number} q
+ * @param {number} r
+ * @returns {{ x: number, y: number, z: number }}
+ */
+function hexToGalaxyCoords(q, r) {
+  return { x: q * GALAXY_SCALE, y: (r + q / 2) * GALAXY_SCALE, z: 25 };
 }
 
 
@@ -86,6 +97,7 @@ let rafHandle      = null;   // requestAnimationFrame handle
 let isDirty        = true;   // if true, redraw on next frame
 let systemsData    = [];     // cached from /api/galaxy/map
 let stationsData   = [];     // deep-space stations from /api/galaxy/map
+let dsoData        = [];     // deep space objects from /api/galaxy/map
 let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-projected)
 
 // Z-elevation state
@@ -160,8 +172,9 @@ export const galaxyView = {
     // are up to date without requiring a browser refresh.
     try {
       const result = await getGalaxyMap();
-      state.galaxyMap    = result.systems  || [];
-      state.stationsData = result.stations || [];
+      state.galaxyMap         = result.systems            || [];
+      state.stationsData      = result.stations           || [];
+      state.deepSpaceObjects  = result.deep_space_objects || [];
     } catch (err) {
       // Fall back to cached data if the fetch fails
       if (state.galaxyMap.length === 0) {
@@ -170,7 +183,8 @@ export const galaxyView = {
       }
     }
     systemsData  = state.galaxyMap;
-    stationsData = state.stationsData || [];
+    stationsData = state.stationsData      || [];
+    dsoData      = state.deepSpaceObjects  || [];
 
     // Compute z-elevation statistics across all systems now that data is loaded.
     zStats = _computeZStats(systemsData);
@@ -287,7 +301,7 @@ function startRenderLoop(canvas) {
         canvas,
         systemsData,
         { ...viewState, shipHex, jumpRangePx, stations: stationsData, npcShips: npcShipsData,
-          zStats, activeZFilter },
+          deepSpaceObjects: dsoData, zStats, activeZFilter },
         FACTION_COLORS
       );
     }
@@ -317,12 +331,23 @@ async function handleHexClick({ q, r }) {
   const sys = systemsData.find(s => s.hex_q === q && s.hex_r === r);
 
   if (!sys) {
-    // Clicked empty space — deselect
+    // Check for a deep space object at this hex
+    const dso = dsoData.find(d => d.hex_q === q && d.hex_r === r);
+    if (dso) {
+      viewState.selectedSystemName  = null;
+      viewState.selectedStationName = null;
+      state.selectedSystem = null;
+      isDirty = true;
+      showDsoPanel(dso, q, r);
+      return;
+    }
+
+    // Truly empty hex — show a "move here" panel
     viewState.selectedSystemName  = null;
     viewState.selectedStationName = null;
     state.selectedSystem = null;
-    hideRightPanel();
     isDirty = true;
+    showEmptyHexPanel(q, r);
     return;
   }
 
@@ -478,6 +503,144 @@ function hideRightPanel() {
   const panel = document.getElementById("panel-right");
   if (panel) panel.classList.add("panel--hidden");
   state.rightPanelOpen = false;
+}
+
+
+// ---------------------------------------------------------------------------
+// Empty-hex panel — move to deep space
+// ---------------------------------------------------------------------------
+
+/**
+ * Show a minimal panel when the player clicks an empty hex with no system or DSO.
+ * Offers a "Move here" button to jump to empty space.
+ */
+function showEmptyHexPanel(q, r) {
+  const panel   = document.getElementById("panel-right");
+  const content = document.getElementById("panel-right-content");
+  if (!panel || !content) return;
+
+  panel.classList.remove("panel--hidden");
+  state.rightPanelOpen = true;
+
+  const coords = hexToGalaxyCoords(q, r);
+  content.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-title" style="color:var(--text-dim)">DEEP SPACE</div>
+      <div style="color:var(--text-dim);font-size:var(--font-size-xs);
+                  text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--sp-3)">
+        Hex (${q}, ${r})
+      </div>
+      <div style="padding:var(--sp-3);background:var(--bg-secondary);
+                  border-left:2px solid var(--text-dim);margin-bottom:var(--sp-3);
+                  font-size:var(--font-size-xs);color:var(--text-dim)">
+        Empty space. No objects detected on long-range sensors.<br>
+        <span style="opacity:0.6">Coords: (${coords.x.toFixed(0)}, ${coords.y.toFixed(0)}, ${coords.z.toFixed(0)})</span>
+      </div>
+      <button class="btn btn-secondary btn-move-deep-space"
+              data-q="${q}" data-r="${r}"
+              style="width:100%;margin-top:var(--sp-2)">
+        ▶ MOVE HERE
+      </button>
+    </div>
+  `;
+
+  content.querySelector(".btn-move-deep-space")
+    ?.addEventListener("click", () => handleDeepSpaceMove(q, r));
+}
+
+
+// ---------------------------------------------------------------------------
+// Deep space object detail panel
+// ---------------------------------------------------------------------------
+
+/** Icons for each DSO type */
+const DSO_ICONS = {
+  derelict:      "⊘",
+  anomaly:       "✦",
+  resource_node: "◈",
+  outpost_site:  "○",
+};
+
+/** Accent colours for each DSO type */
+const DSO_COLORS = {
+  derelict:      "var(--accent-orange)",
+  anomaly:       "rgba(140,80,255,0.9)",
+  resource_node: "rgba(0,212,100,0.9)",
+  outpost_site:  "rgba(0,170,255,0.9)",
+};
+
+/**
+ * Show the detail panel for a deep space object.
+ * If the ship is already here, show action buttons.
+ */
+function showDsoPanel(dso, q, r) {
+  const panel   = document.getElementById("panel-right");
+  const content = document.getElementById("panel-right-content");
+  if (!panel || !content) return;
+
+  panel.classList.remove("panel--hidden");
+  state.rightPanelOpen = true;
+
+  const icon   = DSO_ICONS[dso.type]   || "·";
+  const color  = DSO_COLORS[dso.type]  || "var(--text-dim)";
+  const coords = hexToGalaxyCoords(q, r);
+
+  const shipCoords = state.gameState?.ship?.coordinates;
+  const shipHex = shipCoords
+    ? { q: Math.round(shipCoords[0] / GALAXY_SCALE), r: Math.round(shipCoords[1] / GALAXY_SCALE) }
+    : null;
+  const shipIsHere = shipHex && shipHex.q === q && shipHex.r === r;
+
+  const typeLabel = dso.type.replace(/_/g, " ").toUpperCase();
+  const displayName = dso.name || dso.subtype || typeLabel;
+  const displayDesc = dso.description || "Sensor data incomplete. Move closer to scan.";
+
+  let actionHtml = "";
+  if (shipIsHere && !dso.depleted) {
+    if (dso.type === "resource_node" || dso.type === "derelict") {
+      const label = dso.type === "derelict" ? "⊘ SALVAGE" : "◈ HARVEST";
+      actionHtml = `<button class="btn btn-primary btn-dso-harvest"
+                            style="width:100%;margin-top:var(--sp-2)">${label}</button>`;
+    } else if (dso.type === "outpost_site") {
+      actionHtml = `<button class="btn btn-secondary btn-dso-outpost"
+                            style="width:100%;margin-top:var(--sp-2)">○ FOUND OUTPOST</button>`;
+    }
+  } else if (!shipIsHere) {
+    actionHtml = `<button class="btn btn-secondary btn-move-deep-space"
+                          data-q="${q}" data-r="${r}"
+                          style="width:100%;margin-top:var(--sp-2)">▶ MOVE HERE</button>`;
+  }
+
+  if (dso.depleted) {
+    actionHtml = `<div style="color:var(--text-dim);font-size:var(--font-size-xs);
+                              margin-top:var(--sp-2);text-align:center">DEPLETED</div>`;
+  }
+
+  content.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-title" style="color:${color}">${icon} ${esc(displayName)}</div>
+      <div style="color:${color};font-size:var(--font-size-xs);
+                  text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--sp-3)">
+        ${typeLabel} · Hex (${q}, ${r})
+      </div>
+      <div style="padding:var(--sp-3);background:var(--bg-secondary);
+                  border-left:2px solid ${color};margin-bottom:var(--sp-3);
+                  font-size:var(--font-size-xs);color:var(--text-secondary)">
+        ${esc(displayDesc)}
+        <div style="color:var(--text-dim);margin-top:var(--sp-2);opacity:0.6">
+          Coords: (${coords.x.toFixed(0)}, ${coords.y.toFixed(0)}, ${coords.z.toFixed(0)})
+        </div>
+      </div>
+      ${actionHtml}
+    </div>
+  `;
+
+  content.querySelector(".btn-dso-harvest")
+    ?.addEventListener("click", () => handleDsoHarvest(dso));
+  content.querySelector(".btn-dso-outpost")
+    ?.addEventListener("click", () => handleDsoOutpost());
+  content.querySelector(".btn-move-deep-space")
+    ?.addEventListener("click", () => handleDeepSpaceMove(q, r));
 }
 
 
@@ -1516,6 +1679,112 @@ async function handleJump(system) {
     notify("ERROR", `Jump failed: ${err.message}`);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "▶ JUMP TO SYSTEM"; }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Deep space move action
+// ---------------------------------------------------------------------------
+
+/**
+ * Jump to an empty hex (no system, possibly a DSO).
+ * After arrival, if the backend reports a deep_space_object, show its panel.
+ */
+async function handleDeepSpaceMove(q, r) {
+  const btn = document.querySelector(".btn-move-deep-space");
+  if (btn) { btn.disabled = true; btn.textContent = "MOVING..."; }
+
+  try {
+    const { x, y, z } = hexToGalaxyCoords(q, r);
+    const result = await jumpToCoords(x, y, z);
+
+    if (result.success) {
+      // Update ship position immediately
+      if (state.gameState?.ship && result.new_coords) {
+        state.gameState.ship.coordinates = result.new_coords;
+      }
+
+      const dso = result.deep_space_object;
+      if (dso) {
+        notify("NAV", `Arrived at ${dso.name || dso.subtype || "deep space"}.  Fuel: ${result.fuel_remaining}`);
+        // Reveal the DSO in local cache
+        const cached = dsoData.find(d => d.hex_q === q && d.hex_r === r);
+        if (cached) {
+          cached.discovered = true;
+          cached.name = dso.name;
+          cached.description = dso.description;
+        } else if (dso.type) {
+          dsoData.push({ ...dso, hex_q: q, hex_r: r });
+          state.deepSpaceObjects = dsoData;
+        }
+        isDirty = true;
+        showDsoPanel({ ...dso, hex_q: q, hex_r: r }, q, r);
+      } else {
+        notify("NAV", `Entered deep space at (${q}, ${r}).  Fuel: ${result.fuel_remaining}`);
+        isDirty = true;
+        showEmptyHexPanel(q, r);
+      }
+    } else {
+      notify("ERROR", result.message || "Move failed.");
+      if (btn) { btn.disabled = false; btn.textContent = "▶ MOVE HERE"; }
+    }
+  } catch (err) {
+    notify("ERROR", `Move failed: ${err.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = "▶ MOVE HERE"; }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Deep space harvest/salvage action
+// ---------------------------------------------------------------------------
+
+async function handleDsoHarvest(dso) {
+  const btn = document.querySelector(".btn-dso-harvest");
+  if (btn) { btn.disabled = true; btn.textContent = "HARVESTING..."; }
+
+  try {
+    const result = await harvestDeepSpace();
+    if (result.success) {
+      const parts = [];
+      if (result.credits_gained > 0) parts.push(`${result.credits_gained} cr`);
+      for (const [k, v] of Object.entries(result.cargo_added || {})) {
+        parts.push(`${v} ${k}`);
+      }
+      notify("NAV", `Salvage complete: ${parts.join(", ") || "nothing found"}.`);
+
+      if (state.gameState?.player) {
+        state.gameState.player.credits = result.credits;
+      }
+
+      // Mark as depleted in local cache
+      const dsoQ = dso.hex_q;
+      const dsoR = dso.hex_r;
+      const cached = dsoData.find(d => d.hex_q === dsoQ && d.hex_r === dsoR);
+      if (cached) cached.depleted = true;
+
+      isDirty = true;
+      // Refresh the panel to show depleted state
+      showDsoPanel({ ...dso, depleted: true }, dsoQ, dsoR);
+    }
+  } catch (err) {
+    notify("ERROR", err.message || "Harvest failed.");
+    if (btn) { btn.disabled = false; btn.textContent = dso.type === "derelict" ? "⊘ SALVAGE" : "◈ HARVEST"; }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Deep space outpost action (stub)
+// ---------------------------------------------------------------------------
+
+async function handleDsoOutpost() {
+  try {
+    const result = await foundDeepSpaceOutpost();
+    notify("NAV", result.message || "Outpost system unavailable.");
+  } catch (err) {
+    notify("ERROR", err.message || "Outpost unavailable.");
   }
 }
 

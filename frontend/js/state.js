@@ -37,6 +37,11 @@ export const state = {
    *                threat_level, controlling_faction, visited, planet_count } */
   galaxyMap: [],
 
+  /** Array of deep space objects from GET /api/galaxy/map
+   *  Each entry: { type, hex_q, hex_r, x, y, z, subtype, name, description,
+   *                discovered, depleted } */
+  deepSpaceObjects: [],
+
   /** The currently selected (clicked) star system object, or null */
   selectedSystem: null,
 

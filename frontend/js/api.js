@@ -436,3 +436,23 @@ export function getLoreSpecies() {
 export function getNpcShips() {
   return get("/api/npc_ships");
 }
+
+// ===========================================================================
+// Deep space actions
+// ===========================================================================
+
+/**
+ * Harvest the resource node or salvage the derelict at the ship's current position.
+ * Returns { success, credits_gained, cargo_added, credits, cargo }.
+ */
+export function harvestDeepSpace() {
+  return post("/api/deep_space/harvest");
+}
+
+/**
+ * Attempt to found an outpost at the ship's current position (stub — future feature).
+ * Returns { success, message }.
+ */
+export function foundDeepSpaceOutpost() {
+  return post("/api/deep_space/found_outpost");
+}

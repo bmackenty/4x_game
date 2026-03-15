@@ -52,6 +52,7 @@ from research import all_research, RESEARCH_PATH_CATEGORIES, EXTENDED_UNLOCKS  #
 from energies import all_energies                              # 50 energy types
 from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
 from backend.colony import ColonyManager                       # colony system
+from backend.deep_space import DeepSpaceManager                # deep space objects
 from backend.gnn import generate_gnn_summary                   # end-of-turn broadcast
 
 # ---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ from backend.gnn import generate_gnn_summary                   # end-of-turn bro
 # ---------------------------------------------------------------------------
 game: Optional[Game] = None
 colony_manager: Optional[ColonyManager] = None
+deep_space_manager: Optional[DeepSpaceManager] = None
 
 # ---------------------------------------------------------------------------
 # Scan / discovery tracking
@@ -124,9 +126,10 @@ async def lifespan(app: FastAPI):
     Creates the initial (empty) Game instance at startup so the /api/game/state
     endpoint can safely report "not initialized" before the player starts a game.
     """
-    global game, colony_manager
+    global game, colony_manager, deep_space_manager
     game = Game()
     colony_manager = ColonyManager(game)
+    deep_space_manager = DeepSpaceManager()
     print("[4X] Game engine ready.")
     yield
     print("[4X] Shutting down.")
@@ -848,6 +851,46 @@ def _init_station_manager(g) -> None:
 
 
 # ===========================================================================
+# Helper — deep space object initialisation
+# Called from both /api/game/new and /api/game/load.
+# ===========================================================================
+
+def _init_deep_space(g) -> None:
+    """
+    (Re-)generate deep space objects for the current galaxy.
+
+    Uses the galaxy object count as a seed offset so the DSO layout is
+    deterministic for a given galaxy while being independent of the default seed.
+    Objects are placed only on empty hexes (no star system).
+    """
+    global deep_space_manager
+
+    try:
+        galaxy = g.navigation.galaxy
+        # Build the set of hexes that already have star systems
+        system_hex_set = set()
+        for _sys in galaxy.systems.values():
+            hq = _sys.get("hex_q")
+            hr = _sys.get("hex_r")
+            if hq is not None and hr is not None:
+                system_hex_set.add((hq, hr))
+            else:
+                # Fall back to projection if hex coords not yet assigned
+                from backend.hex_utils import galaxy_coords_to_hex
+                coords = _sys.get("coordinates", (0, 0, 0))
+                h = galaxy_coords_to_hex(coords[0], coords[1])
+                system_hex_set.add((h.q, h.r))
+
+        # Use len(galaxy.systems) as a stable, per-galaxy seed offset
+        seed = 1000 + len(galaxy.systems)
+        deep_space_manager = DeepSpaceManager(galaxy_seed=seed)
+        deep_space_manager.generate(system_hex_set)
+    except Exception as _e:
+        print(f"[4X] Warning: deep_space_manager init failed: {_e}")
+        deep_space_manager = DeepSpaceManager()
+
+
+# ===========================================================================
 # Game lifecycle endpoints
 # ===========================================================================
 
@@ -859,7 +902,7 @@ async def new_game(request: NewGameRequest):
     Creates a brand-new Game instance (discarding any previous session) and
     calls initialize_new_game() with the player's character choices.
     """
-    global game, colony_manager, _discovered_systems, _discovery_seeded
+    global game, colony_manager, deep_space_manager, _discovered_systems, _discovery_seeded
     # Always start with a clean slate
     game = Game()
     colony_manager = ColonyManager(game)
@@ -909,6 +952,7 @@ async def new_game(request: NewGameRequest):
     # Initialise NPC infrastructure — bots and stations are generated fresh each game.
     _init_bot_manager(game)
     _init_station_manager(game)
+    _init_deep_space(game)
 
     # If the player chose a faction, start them at Allied standing with that faction.
     # All other factions are initialised to neutral by FactionSystem.initialize_factions().
@@ -1042,8 +1086,9 @@ async def save_game(request: SaveRequest):
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    # Inject colony state so save_game.py persists it transparently via game.colony_state.
+    # Inject colony and deep-space state so save_game.py persists them via game.*_state.
     game.colony_state = colony_manager.serialize()
+    game.deep_space_state = deep_space_manager.serialize() if deep_space_manager else {}
 
     ok = save_game_module.save_game(game, request.slot_name)
     return {"success": ok, "slot_name": request.slot_name}
@@ -1078,6 +1123,13 @@ async def load_game(request: LoadRequest):
     # in save files, so they must be rebuilt every time a game is loaded.
     _init_bot_manager(game)
     _init_station_manager(game)
+
+    # Restore deep space state, or regenerate fresh if missing from old saves.
+    _ds_saved = getattr(game, "deep_space_state", {})
+    if _ds_saved:
+        deep_space_manager.deserialize(_ds_saved)
+    else:
+        _init_deep_space(game)
 
     # Re-apply the full bonus stack (research/faction/character) on top of the
     # component profile that save_game restores via calculate_stats_from_components().
@@ -1298,7 +1350,22 @@ async def get_galaxy_map():
                 "description": st.get("description", ""),
             })
 
-    return {"systems": projected, "stations": deep_space_stations}
+    # Include deep space objects using the same scan-range fog-of-war as systems:
+    #   - within current scan range → auto-discover and include
+    #   - previously discovered      → include
+    #   - never seen                 → omit entirely
+    dso_list = []
+    if deep_space_manager:
+        for dso in deep_space_manager.list_all():
+            if ship_coords:
+                sx, sy, sz = ship_coords
+                dso_dist = math.sqrt((dso.x - sx) ** 2 + (dso.y - sy) ** 2 + (dso.z - sz) ** 2)
+                if dso_dist <= scan_range and not dso.discovered:
+                    deep_space_manager.discover(dso.hex_q, dso.hex_r)
+            if dso.discovered:
+                dso_list.append(dso.to_dict())
+
+    return {"systems": projected, "stations": deep_space_stations, "deep_space_objects": dso_list}
 
 
 @app.get("/api/system/{system_name}")
@@ -1704,8 +1771,11 @@ async def ship_jump(request: JumpRequest):
     """
     Jump the player's ship to the target galaxy coordinates.
 
-    Consumes one action point.  The jump validates fuel, jump range, and
-    ether energy friction using the existing Ship.jump_to() method.
+    Movement costs fuel only — no action point is consumed per hop, so players
+    can chain multiple hops in one turn.  Action points are reserved for
+    actions taken at destinations (trading, colonising, diplomacy, etc.).
+
+    The engine validates fuel and jump range as before.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
@@ -1715,23 +1785,109 @@ async def ship_jump(request: JumpRequest):
     if not ship:
         raise HTTPException(status_code=400, detail="No active ship.")
 
-    # Check action points first
-    can_act, reason = game.consume_action("navigation")
-    if not can_act:
-        raise HTTPException(status_code=400, detail=reason)
-
     target = (request.target_x, request.target_y, request.target_z)
     success, message = ship.jump_to(target, nav.galaxy, game)
 
-    # Determine if there is a system at the destination
+    if not success:
+        return {
+            "success":              False,
+            "message":              message,
+            "new_coords":           list(ship.coordinates),
+            "fuel_remaining":       ship.fuel,
+            "system_at_destination": None,
+            "deep_space_object":    None,
+        }
+
+    # Determine if there is a star system at the destination
     dest_system = nav.galaxy.get_system_at(*target)
 
+    # Check for a deep space object at the destination hex
+    dest_hex = galaxy_coords_to_hex(request.target_x, request.target_y)
+    dso = None
+    if deep_space_manager:
+        dso_obj = deep_space_manager.get_at_hex(dest_hex.q, dest_hex.r)
+        if dso_obj:
+            if not dso_obj.discovered:
+                deep_space_manager.discover(dest_hex.q, dest_hex.r)
+            dso = dso_obj.to_dict()
+
     return {
-        "success":     success,
-        "message":     message,
-        "new_coords":  list(ship.coordinates),
-        "fuel_remaining": ship.fuel,
+        "success":               True,
+        "message":               message,
+        "new_coords":            list(ship.coordinates),
+        "fuel_remaining":        ship.fuel,
         "system_at_destination": dest_system,
+        "deep_space_object":     dso,
+    }
+
+
+# ===========================================================================
+# Deep space action endpoints
+# ===========================================================================
+
+@app.post("/api/deep_space/harvest")
+async def deep_space_harvest():
+    """
+    Harvest the resource node or salvage the derelict at the ship's current hex.
+
+    Adds loot to ship cargo and marks the object as depleted.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+    if not deep_space_manager:
+        raise HTTPException(status_code=503, detail="Deep space system not ready.")
+
+    coords = ship.coordinates
+    dest_hex = galaxy_coords_to_hex(coords[0], coords[1])
+    try:
+        loot = deep_space_manager.harvest(dest_hex.q, dest_hex.r)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Add loot to cargo
+    credits_gained = loot.pop("credits", 0)
+    game.credits = getattr(game, "credits", 0) + credits_gained
+    cargo_added = {}
+    for resource, amount in loot.items():
+        current = ship.cargo.get(resource, 0)
+        ship.cargo[resource] = current + amount
+        cargo_added[resource] = amount
+
+    return {
+        "success":        True,
+        "credits_gained": credits_gained,
+        "cargo_added":    cargo_added,
+        "credits":        game.credits,
+        "cargo":          dict(ship.cargo),
+    }
+
+
+@app.post("/api/deep_space/found_outpost")
+async def deep_space_found_outpost():
+    """
+    Stub endpoint for founding an outpost at the ship's current hex.
+    Returns a placeholder response; full outpost building is a future feature.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+    if not deep_space_manager:
+        raise HTTPException(status_code=503, detail="Deep space system not ready.")
+
+    coords = ship.coordinates
+    dest_hex = galaxy_coords_to_hex(coords[0], coords[1])
+    dso = deep_space_manager.get_at_hex(dest_hex.q, dest_hex.r)
+    if not dso or dso.type != "outpost_site":
+        raise HTTPException(status_code=400, detail="No outpost site at current location.")
+
+    return {
+        "success": False,
+        "message": "Outpost construction is not yet available. Survey complete — location logged for future development.",
     }
 
 

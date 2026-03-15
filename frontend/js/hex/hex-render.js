@@ -276,10 +276,60 @@ function _drawTerritoryBorders(ctx, systems, size) {
  *                                      stations, selectedStationName }
  * @param {Map}    factionColors    - faction name → CSS colour
  */
+// ---------------------------------------------------------------------------
+// Deep space object rendering helpers
+// ---------------------------------------------------------------------------
+
+/** Glyph and colour for each DSO type */
+const DSO_RENDER = {
+  derelict:      { glyph: "⊘", color: "rgba(220,120,30,0.85)",  bg: "#1a0a00" },
+  anomaly:       { glyph: "✦", color: "rgba(160,80,255,0.90)",  bg: "#0e0020" },
+  resource_node: { glyph: "◈", color: "rgba(0,210,100,0.90)",   bg: "#001a08" },
+  outpost_site:  { glyph: "○", color: "rgba(0,170,255,0.85)",   bg: "#001020" },
+};
+
+/**
+ * Draw deep space object markers (one per visible/discovered DSO).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array}  dsos   - from viewState.deepSpaceObjects
+ * @param {number} size   - hex radius in pixels
+ * @param {number} zoom
+ */
+function _drawDsoMarkers(ctx, dsos, size, zoom) {
+  for (const dso of dsos) {
+    if (dso.depleted) continue;   // depleted objects fade from the map
+    const render = DSO_RENDER[dso.type] || DSO_RENDER.anomaly;
+    const { x: dx, y: dy } = axialToPixel(dso.hex_q, dso.hex_r, size);
+
+    // Subtle hex background
+    drawHex(ctx, dx, dy, size - 2, render.bg, render.color, 0.6);
+
+    // Glyph
+    ctx.fillStyle = render.color;
+    ctx.font = `${Math.max(8, size * 0.55)}px "Courier New", monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(render.glyph, dx, dy);
+
+    // Name label (only when zoomed in and discovered)
+    if (zoom >= 0.8 && dso.name) {
+      ctx.fillStyle = render.color;
+      ctx.globalAlpha = 0.75;
+      ctx.font = `${Math.max(6, Math.floor(7 * zoom))}px "Courier New", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(dso.name.length > 18 ? dso.name.slice(0, 16) + "…" : dso.name,
+                   dx, dy + size * 0.55);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+}
+
+
 export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   const ctx = canvas.getContext("2d");
   const { panX, panY, zoom, selectedSystemName, stations = [], selectedStationName,
-          zStats = null, activeZFilter = "all" } = viewState;
+          deepSpaceObjects = [], zStats = null, activeZFilter = "all" } = viewState;
 
   // Clear to deep space background
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -295,6 +345,38 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   ctx.scale(zoom, zoom);
 
   const size = GALAXY_HEX_SIZE;
+
+  // -----------------------------------------------------------------------
+  // Pass 0: Full hex grid background — every cell in the galaxy bounding
+  // box rendered as a dim, empty tile.  This makes the grid the primary
+  // visual whether or not a cell has content.
+  // The galaxy spans 500×500 units at GALAXY_SCALE=12.5, giving ≈40×40 hexes.
+  // We use a fixed margin of 3 hexes beyond the galaxy edge.
+  // -----------------------------------------------------------------------
+  {
+    // Q spans the column axis; V spans visual rows (vrow = r + q/2).
+    // Iterating over (q, vrow) and computing r = round(vrow - q/2) ensures
+    // the covered pixel area is rectangular rather than a parallelogram.
+    const Q_MIN = -3, Q_MAX = 46;
+    const V_MIN = -3, V_MAX = 46;
+
+    // Viewport bounds in world space (for culling off-screen hexes)
+    const halfW = canvas.width  / 2;
+    const halfH = canvas.height / 2;
+    const vLeft   = (-halfW - panX) / zoom - size * 2;
+    const vRight  = ( halfW - panX) / zoom + size * 2;
+    const vTop    = (-halfH - panY) / zoom - size * 2;
+    const vBottom = ( halfH - panY) / zoom + size * 2;
+
+    for (let q = Q_MIN; q <= Q_MAX; q++) {
+      for (let vrow = V_MIN; vrow <= V_MAX; vrow++) {
+        const r = Math.round(vrow - q / 2);
+        const { x: gx, y: gy } = axialToPixel(q, r, size);
+        if (gx < vLeft || gx > vRight || gy < vTop || gy > vBottom) continue;
+        drawHex(ctx, gx, gy, size - 0.5, "#060a10", "#0d1622", 0.35);
+      }
+    }
+  }
 
   // Territory fills drawn first so hex tiles render on top of the wash
   _drawTerritoryFills(ctx, systems, size);
@@ -450,6 +532,13 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
 
   // Territory borders — drawn after all hex tiles so lines sit in the gaps
   _drawTerritoryBorders(ctx, systems, size);
+
+  // -----------------------------------------------------------------------
+  // Deep space object markers — drawn after territory, before stations
+  // -----------------------------------------------------------------------
+  if (deepSpaceObjects.length > 0) {
+    _drawDsoMarkers(ctx, deepSpaceObjects, size, zoom);
+  }
 
   // -----------------------------------------------------------------------
   // Deep-space station markers — drawn after systems, before ship

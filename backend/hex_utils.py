@@ -132,7 +132,7 @@ def galaxy_coords_to_hex(x: float, y: float) -> HexCoord:
     renderer instead.  x and y map to the horizontal hex plane.
     """
     q = round(x / GALAXY_SCALE)
-    r = round(y / GALAXY_SCALE)
+    r = round(y / GALAXY_SCALE - q / 2)  # compensate for flat-top axial shear
     return HexCoord(q, r)
 
 
