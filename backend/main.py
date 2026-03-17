@@ -1771,11 +1771,9 @@ async def ship_jump(request: JumpRequest):
     """
     Jump the player's ship to the target galaxy coordinates.
 
-    Movement costs fuel only — no action point is consumed per hop, so players
-    can chain multiple hops in one turn.  Action points are reserved for
-    actions taken at destinations (trading, colonising, diplomacy, etc.).
-
-    The engine validates fuel and jump range as before.
+    Costs one action point per jump in addition to fuel.  If the engine
+    rejects the jump (out of range, insufficient fuel, etc.) the action
+    point is refunded so the player is not penalised for invalid moves.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
@@ -1785,10 +1783,26 @@ async def ship_jump(request: JumpRequest):
     if not ship:
         raise HTTPException(status_code=400, detail="No active ship.")
 
+    # Consume one action point before attempting the jump
+    ok, reason = game.consume_action("move")
+    if not ok:
+        return {
+            "success":               False,
+            "message":               reason,
+            "new_coords":            list(ship.coordinates),
+            "fuel_remaining":        ship.fuel,
+            "system_at_destination": None,
+            "deep_space_object":     None,
+        }
+
     target = (request.target_x, request.target_y, request.target_z)
     success, message = ship.jump_to(target, nav.galaxy, game)
 
     if not success:
+        # Refund the action — the move never happened
+        game.turn_actions_remaining = min(
+            game.turn_actions_remaining + 1, game.max_actions_per_turn
+        )
         return {
             "success":              False,
             "message":              message,
