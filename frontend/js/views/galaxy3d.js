@@ -15,8 +15,8 @@
  *   and are within BORDER_DIST_THRESHOLD normalised units of one another.
  */
 
-import { getGalaxyMap } from "../api.js";
-import { notify }       from "../ui/notifications.js";
+import { getGalaxyMap, getShipStatus } from "../api.js";
+import { notify }                      from "../ui/notifications.js";
 
 // ---------------------------------------------------------------------------
 // Public view object
@@ -48,6 +48,13 @@ let _canvas    = null;
 let _ctx       = null;
 /** Whether data has been loaded */
 let _loaded    = false;
+
+/** Player ship normalised position in [-1,1] space (null until loaded) */
+let _shipNorm  = null;   // { nx, ny, nz, x, y, z }
+
+/** Centroid + scale used to normalise galaxy coords — saved so ship pos can
+ *  be normalised with the same transform as the system dots. */
+let _normCx = 0, _normCy = 0, _normCz = 0, _normMax = 1;
 
 
 /** Perspective projection — eye distance multiplier; larger = less distortion */
@@ -95,6 +102,9 @@ async function mount() {
   _systems       = [];
   _loaded        = false;
   _hoveredSystem = null;
+  _shipNorm      = null;
+  _normCx = _normCy = _normCz = 0;
+  _normMax = 1;
   _factionHueIndex = 0;
   Object.keys(_factionColorCache).forEach(k => delete _factionColorCache[k]);
 
@@ -130,10 +140,22 @@ async function mount() {
   // Start render loop immediately (shows loading message)
   _startRenderLoop();
 
-  // Fetch galaxy data
+  // Fetch galaxy data and ship position in parallel
   try {
-    const data = await getGalaxyMap();
-    _processData(data.systems || []);
+    const [mapData, shipData] = await Promise.all([getGalaxyMap(), getShipStatus()]);
+    _processData(mapData.systems || []);
+
+    // Normalise ship position using the same centroid + scale computed in _processData
+    const sc = shipData && shipData.coordinates;
+    if (sc) {
+      _shipNorm = {
+        nx: (sc[0] - _normCx) / _normMax,
+        ny: (sc[1] - _normCy) / _normMax,
+        nz: (sc[2] - _normCz) / _normMax,
+        x: sc[0], y: sc[1], z: sc[2],
+      };
+    }
+
     _loaded = true;
   } catch (err) {
     notify("ERROR", `3D view: ${err.message}`);
@@ -201,6 +223,9 @@ function _processData(rawSystems) {
     const d  = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (d > maxDist) maxDist = d;
   });
+
+  // Save so mount() can normalise the ship position with the same transform
+  _normCx = cx;  _normCy = cy;  _normCz = cz;  _normMax = maxDist;
 
   _systems = rawSystems.map(s => ({
     name:               s.name,
@@ -419,7 +444,12 @@ function _render() {
     _drawTooltip(_hoveredSystem, cw, ch);
   }
 
-  // --- Step 6: HUD overlay --------------------------------------------------
+  // --- Step 6: player ship marker ------------------------------------------
+  if (_shipNorm) {
+    _drawShipMarker(cw, ch);
+  }
+
+  // --- Step 7: HUD overlay --------------------------------------------------
   _drawHudOverlay(cw, ch);
 }
 
@@ -433,8 +463,8 @@ function _drawPlaneGrid(cw, ch) {
   const GRID_STEP  = 2 / GRID_LINES; // in normalised space [-1, 1]
 
   _ctx.save();
-  _ctx.strokeStyle = "rgba(0,212,170,0.06)";
-  _ctx.lineWidth   = 0.5;
+  _ctx.strokeStyle = "rgba(0,212,170,0.22)";
+  _ctx.lineWidth   = 0.8;
 
   for (let i = 0; i <= GRID_LINES; i++) {
     const u = -1 + i * GRID_STEP;
@@ -459,6 +489,68 @@ function _drawPlaneGrid(cw, ch) {
     _ctx.lineTo(q2.sx, q2.sy);
     _ctx.stroke();
   }
+
+  _ctx.restore();
+}
+
+
+// ---------------------------------------------------------------------------
+// Player ship marker
+// ---------------------------------------------------------------------------
+
+/**
+ * Draw a bright, animated teal marker at the player ship's 3D position.
+ * Uses Date.now() to drive a pulsing outer ring so the marker is always
+ * easy to spot regardless of the surrounding star density.
+ */
+function _drawShipMarker(cw, ch) {
+  const s = _shipNorm;
+  const r = _rotate(s.nx, s.ny, s.nz, _azimuth, _elevation);
+  const p = _project(r.x, r.y, r.z, cw, ch);
+  const { sx, sy } = p;
+
+  // Pulse: oscillate between 0 and 1 on a ~1.4 second period
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 700);
+
+  _ctx.save();
+
+  // --- Outer pulsing glow ring ---
+  const ringR = 18 + pulse * 8;
+  _ctx.beginPath();
+  _ctx.arc(sx, sy, ringR, 0, Math.PI * 2);
+  _ctx.strokeStyle = `rgba(0,212,170,${0.15 + pulse * 0.25})`;
+  _ctx.lineWidth   = 2;
+  _ctx.stroke();
+
+  // --- Second inner ring (solid, no pulse) ---
+  _ctx.beginPath();
+  _ctx.arc(sx, sy, 11, 0, Math.PI * 2);
+  _ctx.strokeStyle = "rgba(0,255,200,0.7)";
+  _ctx.lineWidth   = 1.5;
+  _ctx.stroke();
+
+  // --- Bright filled core dot ---
+  const grd = _ctx.createRadialGradient(sx, sy, 0, sx, sy, 9);
+  grd.addColorStop(0, "rgba(0,255,200,1.0)");
+  grd.addColorStop(1, "rgba(0,180,140,0.0)");
+  _ctx.beginPath();
+  _ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+  _ctx.fillStyle = grd;
+  _ctx.fill();
+
+  // --- ▲ chevron glyph in the centre ---
+  _ctx.fillStyle    = "#021a14";
+  _ctx.font         = "bold 10px monospace";
+  _ctx.textAlign    = "center";
+  _ctx.textBaseline = "middle";
+  _ctx.fillText("▲", sx, sy + 1);
+
+  // --- "YOU" label below the marker ---
+  _ctx.fillStyle    = "#00ffcc";
+  _ctx.font         = "bold 10px monospace";
+  _ctx.textAlign    = "center";
+  _ctx.textBaseline = "top";
+  _ctx.fillText("YOU", sx, sy + 14);
 
   _ctx.restore();
 }

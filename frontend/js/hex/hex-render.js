@@ -30,14 +30,14 @@ export const PLANET_HEX_SIZE = 32;
 
 /** Background fill colour for each star system type */
 const SYSTEM_TYPE_COLORS = {
-  "Core World":    "#0d1a30",
-  "Urban":         "#0d1e2e",
-  "Military":      "#1a1200",
-  "Scientific":    "#001a1a",
-  "Trading":       "#1a1400",
-  "Frontier":      "#0a1020",
-  "Outpost":       "#0a0f18",
-  default:         "#0a0e1a",
+  "Core World":    "#152848",
+  "Urban":         "#152c44",
+  "Military":      "#281c00",
+  "Scientific":    "#002828",
+  "Trading":       "#281e00",
+  "Frontier":      "#101830",
+  "Outpost":       "#101620",
+  default:         "#101420",
 };
 
 /** Glyph used as the star icon for each system type */
@@ -373,7 +373,7 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
         const r = Math.round(vrow - q / 2);
         const { x: gx, y: gy } = axialToPixel(q, r, size);
         if (gx < vLeft || gx > vRight || gy < vTop || gy > vBottom) continue;
-        drawHex(ctx, gx, gy, size - 0.5, "#060a10", "#0d1622", 0.35);
+        drawHex(ctx, gx, gy, size - 0.5, "#0c1520", "#1a2840", 0.5);
       }
     }
   }
