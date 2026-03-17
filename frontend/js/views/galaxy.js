@@ -338,16 +338,27 @@ async function handleHexClick({ q, r }) {
       viewState.selectedStationName = null;
       state.selectedSystem = null;
       isDirty = true;
-      showDsoPanel(dso, q, r);
+      // If not already here, move then show panel (handleDeepSpaceMove shows it on arrival)
+      const dsoCoords = hexToGalaxyCoords(q, r);
+      if (!_playerIsAt([dsoCoords.x, dsoCoords.y, dsoCoords.z])) {
+        handleDeepSpaceMove(q, r);
+      } else {
+        showDsoPanel(dso, q, r);
+      }
       return;
     }
 
-    // Truly empty hex — show a "move here" panel
+    // Truly empty hex — move there immediately
     viewState.selectedSystemName  = null;
     viewState.selectedStationName = null;
     state.selectedSystem = null;
     isDirty = true;
-    showEmptyHexPanel(q, r);
+    const emptyCoords = hexToGalaxyCoords(q, r);
+    if (!_playerIsAt([emptyCoords.x, emptyCoords.y, emptyCoords.z])) {
+      handleDeepSpaceMove(q, r);
+    } else {
+      showEmptyHexPanel(q, r);
+    }
     return;
   }
 
@@ -363,7 +374,12 @@ async function handleHexClick({ q, r }) {
     return;
   }
 
-  // Fetch detailed system data (planets, market, etc.)
+  // Jump immediately if not already at this system
+  if (!_playerIsAt(sys.coordinates)) {
+    handleJump(sys);  // fire-and-forget; panel loads in parallel
+  }
+
+  // Fetch detailed system data (planets, market, etc.) and show panel
   try {
     const detail = await getSystem(sys.name);
     // Mark as visited in our local cache too
@@ -442,12 +458,6 @@ async function showSystemPanel(system) {
 
   // Render the panel immediately with what we have (no presence/market yet)
   content.innerHTML = buildSystemPanelHtml(system, null, null);
-
-  // Wire jump button
-  const jumpBtn = content.querySelector(".btn-jump");
-  if (jumpBtn) {
-    jumpBtn.addEventListener("click", () => handleJump(system));
-  }
 
   // Faction name link → open diplomacy view focused on that faction
   content.querySelector(".btn-faction-link")?.addEventListener("click", async (e) => {
@@ -536,16 +546,8 @@ function showEmptyHexPanel(q, r) {
         Empty space. No objects detected on long-range sensors.<br>
         <span style="opacity:0.6">Coords: (${coords.x.toFixed(0)}, ${coords.y.toFixed(0)}, ${coords.z.toFixed(0)})</span>
       </div>
-      <button class="btn btn-secondary btn-move-deep-space"
-              data-q="${q}" data-r="${r}"
-              style="width:100%;margin-top:var(--sp-2)">
-        ▶ MOVE HERE
-      </button>
     </div>
   `;
-
-  content.querySelector(".btn-move-deep-space")
-    ?.addEventListener("click", () => handleDeepSpaceMove(q, r));
 }
 
 
@@ -605,10 +607,6 @@ function showDsoPanel(dso, q, r) {
       actionHtml = `<button class="btn btn-secondary btn-dso-outpost"
                             style="width:100%;margin-top:var(--sp-2)">○ FOUND OUTPOST</button>`;
     }
-  } else if (!shipIsHere) {
-    actionHtml = `<button class="btn btn-secondary btn-move-deep-space"
-                          data-q="${q}" data-r="${r}"
-                          style="width:100%;margin-top:var(--sp-2)">▶ MOVE HERE</button>`;
   }
 
   if (dso.depleted) {
@@ -1000,12 +998,6 @@ function buildSystemPanelHtml(system, shipCoords) {
 
       <!-- Navigation info (distance, range) -->
       ${navInfoHtml}
-
-      <!-- Jump button — hidden when already at this system -->
-      ${!atSystem ? `
-      <button class="btn btn--primary btn-jump" style="width:100%;margin-bottom:var(--sp-4)">
-        ▶ JUMP TO SYSTEM
-      </button>` : ""}
 
       <!-- Planets -->
       <div class="section-header" style="margin-bottom:var(--sp-2)">
@@ -1649,9 +1641,6 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
 // ---------------------------------------------------------------------------
 
 async function handleJump(system) {
-  const btn = document.querySelector(".btn-jump");
-  if (btn) { btn.disabled = true; btn.textContent = "JUMPING..."; }
-
   try {
     const [sx, sy, sz] = system.coordinates ?? [system.x, system.y, system.z];
     const result = await jumpToCoords(sx, sy, sz);
@@ -1677,8 +1666,6 @@ async function handleJump(system) {
     }
   } catch (err) {
     notify("ERROR", `Jump failed: ${err.message}`);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "▶ JUMP TO SYSTEM"; }
   }
 }
 
@@ -1692,9 +1679,6 @@ async function handleJump(system) {
  * After arrival, if the backend reports a deep_space_object, show its panel.
  */
 async function handleDeepSpaceMove(q, r) {
-  const btn = document.querySelector(".btn-move-deep-space");
-  if (btn) { btn.disabled = true; btn.textContent = "MOVING..."; }
-
   try {
     const { x, y, z } = hexToGalaxyCoords(q, r);
     const result = await jumpToCoords(x, y, z);
@@ -1727,11 +1711,9 @@ async function handleDeepSpaceMove(q, r) {
       }
     } else {
       notify("ERROR", result.message || "Move failed.");
-      if (btn) { btn.disabled = false; btn.textContent = "▶ MOVE HERE"; }
     }
   } catch (err) {
     notify("ERROR", `Move failed: ${err.message}`);
-    if (btn) { btn.disabled = false; btn.textContent = "▶ MOVE HERE"; }
   }
 }
 
