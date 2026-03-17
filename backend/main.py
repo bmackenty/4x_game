@@ -3063,11 +3063,12 @@ async def get_character_sheet():
         calculate_derived_attributes,
     )
 
-    raw_stats = game.character_stats or {}
-    derived   = calculate_derived_attributes(raw_stats) if raw_stats else {}
+    raw_stats    = game.character_stats or {}
+    derived      = calculate_derived_attributes(raw_stats) if raw_stats else {}
 
-    class_data = character_classes.get(game.character_class, {})
-    bg_data    = character_backgrounds.get(game.character_background, {})
+    class_data   = character_classes.get(game.character_class, {})
+    bg_data      = character_backgrounds.get(game.character_background, {})
+    species_data = get_playable_species().get(game.character_species, {})
 
     # Format bonuses as human-readable strings (e.g. "trade_discount" → "Trade Discount: +10%")
     formatted_bonuses = {}
@@ -3084,7 +3085,11 @@ async def get_character_sheet():
         "class_description": class_data.get("description", ""),
         "background":       game.character_background,
         "background_description": bg_data.get("description", ""),
-        "species":          game.character_species,
+        "species":             game.character_species,
+        "species_description": species_data.get("description", ""),
+        "species_biology":     species_data.get("biology", ""),
+        "species_traits":      species_data.get("special_traits", []),
+        "species_category":    species_data.get("category", ""),
         "faction":          game.character_faction,
         "faction_description": factions.get(game.character_faction, {}).get("description", ""),
         "faction_philosophy":  factions.get(game.character_faction, {}).get("philosophy", ""),

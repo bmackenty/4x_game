@@ -1,9 +1,7 @@
 /**
  * views/character.js — Character sheet view.
  *
- * Displays base stats, derived metrics, class info, background traits,
- * and equipment/cybernetic/etheric slots.
- *
+ * Tab-based layout: vertical nav on the left, content panel on the right.
  * All data comes from GET /api/character/sheet.
  */
 
@@ -33,73 +31,140 @@ async function mount() {
   }
 
   container.innerHTML = _buildSheet(sheet);
+  _attachTabHandlers(container);
 }
 
 function unmount() { /* nothing to clean up */ }
 
 
 // ---------------------------------------------------------------------------
-// Rendering
+// Tab wiring
 // ---------------------------------------------------------------------------
 
+function _attachTabHandlers(container) {
+  const nav = container.querySelector(".char-tabs__nav");
+  if (!nav) return;
+
+  nav.addEventListener("click", e => {
+    const tab = e.target.closest(".char-tabs__tab");
+    if (!tab || tab.classList.contains("char-tabs__tab--reserved")) return;
+
+    const id = tab.dataset.tab;
+
+    nav.querySelectorAll(".char-tabs__tab").forEach(t => t.classList.remove("char-tabs__tab--active"));
+    tab.classList.add("char-tabs__tab--active");
+
+    container.querySelectorAll(".char-tabs__panel").forEach(p => p.classList.remove("char-tabs__panel--active"));
+    const panel = container.querySelector(`[data-panel="${id}"]`);
+    if (panel) panel.classList.add("char-tabs__panel--active");
+  });
+}
+
+
+// ---------------------------------------------------------------------------
+// Shell
+// ---------------------------------------------------------------------------
+
+const TABS = [
+  { id: "designation",    label: "Commander Designation" },
+  { id: "species",        label: "Species Origin" },
+  { id: "command-path",   label: "Command Path" },
+  { id: "background",     label: "Background History" },
+  { id: "specialization", label: "Professional Specialization" },
+  { id: "faction",        label: "Faction Allegiance" },
+  { id: "attributes",     label: "Attribute Allocation" },
+  { id: "equipment",      label: "Equipment",   reserved: true },
+  { id: "cybernetics",    label: "Cybernetics", reserved: true },
+];
+
 function _buildSheet(s) {
+  const navItems = TABS.map((t, i) => {
+    const cls = ["char-tabs__tab"];
+    if (i === 0)    cls.push("char-tabs__tab--active");
+    if (t.reserved) cls.push("char-tabs__tab--reserved");
+    return `<div class="${cls.join(" ")}" data-tab="${t.id}">${esc(t.label)}</div>`;
+  }).join("");
+
+  const panelContent = [
+    { id: "designation",    html: _buildDesignationPanel(s) },
+    { id: "species",        html: _buildSpeciesPanel(s) },
+    { id: "command-path",   html: _buildClassSection(s) },
+    { id: "background",     html: _buildBackgroundSection(s) },
+    { id: "specialization", html: _buildProfessionSection(s) },
+    { id: "faction",        html: _buildFactionPanel(s) },
+    { id: "attributes",     html: _buildStatsSection(s.stats) + _buildDerivedSection(s.derived) },
+    { id: "equipment",      html: _buildGearSection("EQUIPMENT",   s.equipment,   "No equipment installed.") },
+    { id: "cybernetics",    html: _buildGearSection("CYBERNETICS", s.cybernetics, "No cybernetic augmentations.") },
+  ];
+
+  const panels = panelContent.map((p, i) =>
+    `<div class="char-tabs__panel${i === 0 ? " char-tabs__panel--active" : ""}" data-panel="${p.id}">${p.html}</div>`
+  ).join("");
+
   return `
     <div class="char-sheet">
-
-      ${_buildHeader(s)}
-
-      <div class="char-sheet__body">
-
-        <div class="char-sheet__col char-sheet__col--left">
-          ${_buildStatsSection(s.stats)}
-          ${_buildDerivedSection(s.derived)}
-        </div>
-
-        <div class="char-sheet__col char-sheet__col--right">
-          ${_buildClassSection(s)}
-          ${_buildProfessionSection(s)}
-          ${_buildBackgroundSection(s)}
-          ${_buildFactionSection(s)}
-          ${_buildGearSection("EQUIPMENT",            s.equipment,            "No equipment installed.")}
-          ${_buildGearSection("CYBERNETICS",          s.cybernetics,          "No cybernetic augmentations.")}
-          ${_buildGearSection("ETHERIC ENHANCEMENTS", s.etheric_enhancements, "No etheric enhancements.")}
-        </div>
-
+      <div class="char-tabs">
+        <nav class="char-tabs__nav">${navItems}</nav>
+        <div class="char-tabs__content">${panels}</div>
       </div>
     </div>
   `;
 }
 
 
-function _buildHeader(s) {
+// ---------------------------------------------------------------------------
+// Panels
+// ---------------------------------------------------------------------------
+
+function _buildDesignationPanel(s) {
   const xpPct = Math.min(100, Math.round((s.xp / Math.max(1, s.level * 100)) * 100));
   return `
-    <div class="char-sheet__header">
-      <div class="char-sheet__avatar" aria-label="Character portrait placeholder">
-        <span class="char-sheet__avatar-glyph">◉</span>
-      </div>
-      <div class="char-sheet__identity">
-        <h1 class="char-sheet__name">${esc(s.name)}</h1>
-        <div class="char-sheet__meta">
-          <span class="char-sheet__tag">${esc(s.character_class)}</span>
-          <span class="char-sheet__sep">·</span>
-          <span class="char-sheet__tag char-sheet__tag--dim">${esc(s.species)}</span>
-          <span class="char-sheet__sep">·</span>
-          <span class="char-sheet__tag char-sheet__tag--dim">${esc(s.background)}</span>
-          ${s.faction ? `<span class="char-sheet__sep">·</span>
-          <span class="char-sheet__tag char-sheet__tag--faction">${esc(s.faction)}</span>` : ""}
-          ${s.profession ? `<span class="char-sheet__sep">·</span>
-          <span class="char-sheet__tag char-sheet__tag--profession">${esc(s.profession)}</span>` : ""}
+    <section class="char-section">
+      <div class="char-section__title">COMMANDER DESIGNATION</div>
+      <div class="char-designation">
+        <div class="char-sheet__avatar" aria-label="Character portrait placeholder">
+          <span class="char-sheet__avatar-glyph">◉</span>
         </div>
-        <div class="char-sheet__xp-row">
-          <span class="char-sheet__xp-label">LVL ${s.level}</span>
-          <div class="char-sheet__xp-bar">
-            <div class="char-sheet__xp-fill" style="width:${xpPct}%"></div>
+        <div class="char-designation__info">
+          <h2 class="char-sheet__name">${esc(s.name)}</h2>
+          <div class="char-sheet__meta">
+            <span class="char-sheet__tag">${esc(s.character_class)}</span>
+            <span class="char-sheet__sep">·</span>
+            <span class="char-sheet__tag char-sheet__tag--dim">${esc(s.species)}</span>
+            <span class="char-sheet__sep">·</span>
+            <span class="char-sheet__tag char-sheet__tag--dim">${esc(s.background)}</span>
+            ${s.faction ? `<span class="char-sheet__sep">·</span>
+            <span class="char-sheet__tag char-sheet__tag--faction">${esc(s.faction)}</span>` : ""}
+            ${s.profession ? `<span class="char-sheet__sep">·</span>
+            <span class="char-sheet__tag char-sheet__tag--profession">${esc(s.profession)}</span>` : ""}
           </div>
-          <span class="char-sheet__xp-val">${s.xp} XP</span>
+          <div class="char-sheet__xp-row">
+            <span class="char-sheet__xp-label">LVL ${s.level}</span>
+            <div class="char-sheet__xp-bar">
+              <div class="char-sheet__xp-fill" style="width:${xpPct}%"></div>
+            </div>
+            <span class="char-sheet__xp-val">${s.xp} XP</span>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
+  `;
+}
+
+
+function _buildSpeciesPanel(s) {
+  const traitChips = (s.species_traits || []).map(t =>
+    `<span class="char-trait char-trait--species">${esc(t)}</span>`
+  ).join("");
+
+  return `
+    <section class="char-section">
+      <div class="char-section__title">SPECIES ORIGIN — ${esc(s.species)}</div>
+      ${s.species_category ? `<div class="char-prof__category-tag">${esc(s.species_category)}</div>` : ""}
+      ${s.species_description ? `<p class="char-section__desc">${esc(s.species_description)}</p>` : ""}
+      ${s.species_biology    ? `<p class="char-section__desc">${esc(s.species_biology)}</p>`    : ""}
+      ${traitChips ? `<div class="char-traits">${traitChips}</div>` : ""}
+    </section>
   `;
 }
 
@@ -160,7 +225,7 @@ function _buildClassSection(s) {
 
   return `
     <section class="char-section">
-      <div class="char-section__title">CLASS — ${esc(s.character_class)}</div>
+      <div class="char-section__title">COMMAND PATH — ${esc(s.character_class)}</div>
       <p class="char-section__desc">${esc(s.class_description)}</p>
       ${skillChips ? `<div class="char-skills">${skillChips}</div>` : ""}
       ${bonusChips ? `<div class="char-chips">${bonusChips}</div>` : ""}
@@ -186,7 +251,7 @@ function _buildProfessionSection(s) {
   if (!s.profession) {
     return `
       <section class="char-section">
-        <div class="char-section__title">PROFESSION</div>
+        <div class="char-section__title">PROFESSIONAL SPECIALIZATION</div>
         <p class="char-section__empty">No profession selected.</p>
       </section>
     `;
@@ -194,14 +259,12 @@ function _buildProfessionSection(s) {
 
   const level = s.profession_level || 1;
 
-  // Five core skill chips
   const skillChips = (s.profession_skills || []).map(sk =>
     `<span class="char-skill char-skill--prof">${esc(sk)}</span>`
   ).join("");
 
-  // XP bar for this profession
-  const xpPct   = Math.min(100, Math.round(((s.profession_xp % 100) / 100) * 100));
-  const xpBar   = `
+  const xpPct = Math.min(100, Math.round(((s.profession_xp % 100) / 100) * 100));
+  const xpBar = `
     <div class="char-prof__xp-row">
       <span class="char-prof__xp-label">LEVEL ${level}</span>
       <div class="char-sheet__xp-bar">
@@ -211,7 +274,6 @@ function _buildProfessionSection(s) {
     </div>
   `;
 
-  // Benefit tier definitions with unlock level thresholds
   const tiers = [
     { key: "base",         label: "TIER I — BASE",         unlockAt: 1 },
     { key: "intermediate", label: "TIER II — DEVELOPING",  unlockAt: 3 },
@@ -220,8 +282,8 @@ function _buildProfessionSection(s) {
   ];
 
   const tierHtml = tiers.map(tier => {
-    const benefits  = (s.profession_tiers || {})[tier.key] || [];
-    const unlocked  = level >= tier.unlockAt;
+    const benefits = (s.profession_tiers || {})[tier.key] || [];
+    const unlocked = level >= tier.unlockAt;
     const lockLabel = unlocked ? "" : `<span class="char-prof__lock">Unlocks at level ${tier.unlockAt}</span>`;
 
     const items = benefits.map(b => `
@@ -241,7 +303,7 @@ function _buildProfessionSection(s) {
 
   return `
     <section class="char-section">
-      <div class="char-section__title">PROFESSION — ${esc(s.profession)}</div>
+      <div class="char-section__title">PROFESSIONAL SPECIALIZATION — ${esc(s.profession)}</div>
       <div class="char-prof__category-tag">${esc(s.profession_category)}</div>
       <p class="char-section__desc">${esc(s.profession_description)}</p>
       ${xpBar}
@@ -259,7 +321,7 @@ function _buildBackgroundSection(s) {
 
   return `
     <section class="char-section">
-      <div class="char-section__title">BACKGROUND — ${esc(s.background)}</div>
+      <div class="char-section__title">BACKGROUND HISTORY — ${esc(s.background)}</div>
       <p class="char-section__desc">${esc(s.background_description)}</p>
       ${traitChips ? `<div class="char-traits">${traitChips}</div>` : ""}
     </section>
@@ -267,8 +329,16 @@ function _buildBackgroundSection(s) {
 }
 
 
-function _buildFactionSection(s) {
-  if (!s.faction) return "";
+function _buildFactionPanel(s) {
+  if (!s.faction) {
+    return `
+      <section class="char-section">
+        <div class="char-section__title">FACTION ALLEGIANCE</div>
+        <p class="char-section__empty">No faction allegiance declared.</p>
+      </section>
+    `;
+  }
+
   const chips = [
     s.faction_philosophy ? `<span class="char-trait char-trait--faction">⬡ ${esc(s.faction_philosophy)}</span>` : "",
     s.faction_focus      ? `<span class="char-trait char-trait--faction">◈ ${esc(s.faction_focus)}</span>`      : "",
@@ -276,7 +346,7 @@ function _buildFactionSection(s) {
 
   return `
     <section class="char-section">
-      <div class="char-section__title">FACTION — ${esc(s.faction)}</div>
+      <div class="char-section__title">FACTION ALLEGIANCE — ${esc(s.faction)}</div>
       ${s.faction_description ? `<p class="char-section__desc">${esc(s.faction_description)}</p>` : ""}
       ${chips ? `<div class="char-traits">${chips}</div>` : ""}
     </section>

@@ -289,7 +289,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--bg-primary);
 }
 
@@ -319,60 +319,135 @@
   letter-spacing: 0.15em;
 }
 
-/* Steps wrapper */
-.setup-steps {
+/* ── Tab layout ───────────────────────────────────────────────────────────── */
+.setup-main {
   flex: 1;
-  padding: var(--sp-6) var(--sp-8);
-  max-width: 960px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* Each collapsible step */
-.setup-step {
-  margin-bottom: var(--sp-6);
-  border: 1px solid var(--border-color);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.setup-step__header {
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
-  background: var(--bg-secondary);
+  min-height: 0;
+  border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
-  cursor: default;
 }
 
-.setup-step__number {
-  width: 24px;
-  height: 24px;
+.setup-nav {
+  width: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  overflow-y: auto;
+}
+
+.setup-tab {
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.setup-tab__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+}
+
+.setup-tab__sel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-teal);
+  margin-top: 2px;
+  min-height: 14px;
+}
+
+.setup-tab__optional {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.setup-tab:hover:not(.setup-tab--reserved) .setup-tab__label {
+  color: var(--text-primary);
+}
+
+.setup-tab:hover:not(.setup-tab--reserved) {
+  background: rgba(0, 212, 170, 0.04);
+}
+
+.setup-tab--active {
+  border-left-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+.setup-tab--active .setup-tab__label {
+  color: var(--accent-teal);
+}
+
+.setup-tab--reserved {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.setup-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-6);
+}
+
+.setup-panel {
+  display: none;
+}
+
+.setup-panel--active {
+  display: block;
+}
+
+.setup-panel__title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.setup-panel__desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  margin: 0 0 var(--sp-4);
+  line-height: 1.5;
+}
+
+.setup-panel__inline-err {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--accent-teal);
-  color: var(--accent-teal);
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(204, 51, 51, 0.1);
+  border: 1px solid var(--accent-red);
+  border-radius: 2px;
+  color: var(--accent-red);
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--sp-3);
+}
+
+.setup-panel__inline-err::before {
+  content: "⚠";
   flex-shrink: 0;
 }
 
-.setup-step__title {
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.1em;
-  color: var(--text-bright);
-}
-
-.setup-step__selection {
-  font-size: var(--font-size-xs);
-  color: var(--accent-teal);
-  margin-left: auto;
-}
-
-.setup-step__body {
-  padding: var(--sp-4);
-  background: var(--bg-primary);
+.input--error {
+  border-color: var(--accent-red) !important;
+  box-shadow: 0 0 0 1px var(--accent-red);
 }
 
 /* Stat allocation grid */
@@ -2761,6 +2836,20 @@
   margin-bottom: var(--sp-4);
 }
 
+/* ── Commander Designation panel ────────────────────────────────────────── */
+.char-designation {
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-start;
+}
+
+.char-designation__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
 /* Avatar placeholder — will hold an image later */
 .char-sheet__avatar {
   width: 88px;
@@ -2848,17 +2937,66 @@
   transition: width 0.4s ease;
 }
 
-/* ── Two-column body ─────────────────────────────────────────────────────── */
-.char-sheet__body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-4);
-}
-@media (max-width: 820px) {
-  .char-sheet__body { grid-template-columns: 1fr; }
+/* ── Tab layout ──────────────────────────────────────────────────────────── */
+.char-tabs {
+  display: flex;
+  gap: 0;
+  min-height: 500px;
 }
 
-.char-sheet__col { display: flex; flex-direction: column; gap: var(--sp-4); }
+.char-tabs__nav {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  background: var(--surface-2);
+}
+
+.char-tabs__tab {
+  padding: var(--sp-3) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  line-height: 1.4;
+}
+
+.char-tabs__tab:hover:not(.char-tabs__tab--reserved) {
+  color: var(--text-primary);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.char-tabs__tab--active {
+  color: var(--accent-teal);
+  border-left-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+.char-tabs__tab--reserved {
+  color: var(--text-dim);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.char-tabs__content {
+  flex: 1;
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+
+.char-tabs__panel {
+  display: none;
+}
+
+.char-tabs__panel--active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
 
 /* ── Shared section wrapper ──────────────────────────────────────────────── */
 .char-section {
@@ -3024,6 +3162,13 @@
   border: 1px solid rgba(0,100,200,0.22);
   border-radius: 1px;
   padding: 2px var(--sp-2);
+}
+
+/* Species trait chips */
+.char-trait--species {
+  color: #a8e6cf;
+  background: rgba(0, 180, 120, 0.1);
+  border-color: rgba(0, 180, 120, 0.25);
 }
 
 /* Faction chips use a teal-gold tint to distinguish from background traits */

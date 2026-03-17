@@ -1,15 +1,8 @@
 /**
  * views/setup.js — Character creation screen.
  *
- * Renders a multi-step form for choosing species, class, background,
- * faction, name, and stat allocation.  On submit it calls /api/game/new
- * and, on success, hands off to main.js's onGameStarted().
- *
- * The form never validates in real-time — it collects everything and
- * validates on submit, showing inline error messages.
- *
- * Follows the Alpha Centauri aesthetic: dark panels, teal accents,
- * monospace font, numbered steps.
+ * Tabbed layout: category tabs on the left, content panel on the right.
+ * On submit it calls /api/game/new and, on success, hands off to main.js.
  */
 
 import { state }           from "../state.js";
@@ -27,16 +20,15 @@ const form = {
   background:       "",
   species:          "",
   faction:          "",
-  profession:       "",   // chosen from the PROFESSIONS catalogue
-  stats: {          // Default: all stats at base value (30)
+  profession:       "",
+  stats: {
     VIT: 30, KIN: 30, INT: 30, AEF: 30, COH: 30, INF: 30, SYN: 30,
   },
 };
 
-// Points remaining in the point-buy system
-const BASE_STAT = 30;
+const BASE_STAT    = 30;
 const TOTAL_POINTS = 30;
-const MAX_STAT = 100;
+const MAX_STAT     = 100;
 
 function pointsAllocated() {
   return Object.values(form.stats).reduce((sum, v) => sum + (v - BASE_STAT), 0);
@@ -47,7 +39,24 @@ function pointsRemaining() {
 
 
 // ---------------------------------------------------------------------------
-// mount / unmount (called by switchView in main.js)
+// Tab definitions
+// ---------------------------------------------------------------------------
+
+const SETUP_TABS = [
+  { id: "designation",    label: "Commander Designation",       stepNum: 1 },
+  { id: "species",        label: "Species Origin",              stepNum: 2 },
+  { id: "command-path",   label: "Command Path",                stepNum: 3 },
+  { id: "background",     label: "Background History",          stepNum: 4 },
+  { id: "specialization", label: "Professional Specialization", stepNum: 5 },
+  { id: "faction",        label: "Faction Allegiance",          stepNum: 6, optional: true },
+  { id: "attributes",     label: "Attribute Allocation",        stepNum: 7 },
+  { id: "equipment",      label: "Equipment",                   reserved: true },
+  { id: "cybernetics",    label: "Cybernetics",                 reserved: true },
+];
+
+
+// ---------------------------------------------------------------------------
+// mount / unmount
 // ---------------------------------------------------------------------------
 
 export const setupView = {
@@ -56,13 +65,11 @@ export const setupView = {
     const container = document.getElementById("view-setup");
     if (!container) return;
 
-    // Lazy-load the circular dep
     if (!_onGameStarted) {
       const mainModule = await import("../main.js");
       _onGameStarted = mainModule.onGameStarted;
     }
 
-    // Options should already be loaded by main.js boot(), but guard anyway
     if (!state.options) {
       container.innerHTML = `<div class="flex-center" style="height:100%;color:var(--text-dim)">
         Loading game options…</div>`;
@@ -73,9 +80,7 @@ export const setupView = {
     attachEventListeners(container);
   },
 
-  unmount() {
-    // Nothing to clean up
-  },
+  unmount() {},
 };
 
 
@@ -84,103 +89,162 @@ export const setupView = {
 // ---------------------------------------------------------------------------
 
 function buildSetupHtml(opts) {
+  // ── Left nav ──────────────────────────────────────────────────────────────
+  const navHtml = SETUP_TABS.map((t, i) => {
+    const cls = ["setup-tab"];
+    if (i === 0)    cls.push("setup-tab--active");
+    if (t.reserved) cls.push("setup-tab--reserved");
+    const selSpan = t.stepNum
+      ? `<span class="setup-tab__sel" id="step-${t.stepNum}-selection"></span>`
+      : "";
+    const optionalTag = t.optional
+      ? `<span class="setup-tab__optional">optional</span>`
+      : "";
+    return `
+      <div class="${cls.join(" ")}" data-tab="${t.id}">
+        <span class="setup-tab__label">${t.label}</span>
+        ${optionalTag}${selSpan}
+      </div>
+    `;
+  }).join("");
+
+  // ── Right panels ──────────────────────────────────────────────────────────
+  const panelDefs = [
+    {
+      id: "designation",
+      html: `
+        <div class="setup-panel__title">COMMANDER DESIGNATION</div>
+        <p class="setup-panel__desc">Your name in the galactic record.</p>
+        <div class="form-group">
+          <label class="label" for="input-name">Commander name</label>
+          <input
+            class="input"
+            id="input-name"
+            type="text"
+            placeholder="e.g. Commander Vael Orishan"
+            maxlength="48"
+            autocomplete="off"
+          />
+        </div>
+      `,
+    },
+    {
+      id: "species",
+      html: `
+        <div class="setup-panel__title">SPECIES ORIGIN</div>
+        <p class="setup-panel__desc">Choose your species. Each brings distinct traits and cultural background.</p>
+        ${buildCardGrid(opts.species, "species", s => ({
+          name:     s.name,
+          category: s.category,
+          desc:     s.description,
+          extra:    s.special_traits.slice(0, 3).map(t =>
+            `<span class="trait-tag">${t}</span>`).join(""),
+        }))}
+      `,
+    },
+    {
+      id: "command-path",
+      html: `
+        <div class="setup-panel__title">COMMAND PATH</div>
+        <p class="setup-panel__desc">Your command class defines your core abilities and starting resources.</p>
+        ${buildCardGrid(opts.classes, "class", c => ({
+          name:     c.name,
+          category: `Starting credits: ⬡ ${c.starting_credits.toLocaleString()}`,
+          desc:     c.description,
+          extra:    c.skills.map(sk =>
+            `<span class="trait-tag">${sk}</span>`).join(""),
+        }))}
+      `,
+    },
+    {
+      id: "background",
+      html: `
+        <div class="setup-panel__title">BACKGROUND HISTORY</div>
+        <p class="setup-panel__desc">Your history before taking command. Grants traits and may adjust starting credits.</p>
+        ${buildCardGrid(opts.backgrounds, "background", b => ({
+          name:     b.name,
+          category: b.credit_bonus > 0
+            ? `⬡ +${b.credit_bonus.toLocaleString()} credits`
+            : b.credit_bonus < 0
+              ? `⬡ ${b.credit_bonus.toLocaleString()} credits`
+              : "No credit bonus",
+          desc:     b.description,
+          extra:    (b.traits || []).map(t =>
+            `<span class="trait-tag">${t}</span>`).join(""),
+        }))}
+      `,
+    },
+    {
+      id: "specialization",
+      html: `
+        <div class="setup-panel__title">PROFESSIONAL SPECIALIZATION</div>
+        ${buildProfessionSection(opts.professions, opts.profession_categories)}
+      `,
+    },
+    {
+      id: "faction",
+      html: `
+        <div class="setup-panel__title">FACTION ALLEGIANCE <span style="color:var(--text-dim);font-size:var(--font-size-xs);letter-spacing:0.05em">— OPTIONAL</span></div>
+        <p class="setup-panel__desc">
+          Starting with an allegiance grants +25 reputation with that faction.
+          Leave blank for a neutral start — useful for diplomatic playstyles.
+        </p>
+        ${buildCardGrid(
+          [{ name: "(None — Neutral Start)", philosophy: "", primary_focus: "", description: "Begin with no faction ties. Suitable for traders and explorers who want to remain impartial." }, ...opts.factions],
+          "faction",
+          f => ({
+            name:     f.name,
+            category: f.philosophy || "Independent",
+            desc:     f.description,
+            extra:    f.primary_focus
+              ? `<span class="trait-tag">${f.primary_focus}</span>`
+              : "",
+          })
+        )}
+      `,
+    },
+    {
+      id: "attributes",
+      html: `
+        <div class="setup-panel__title">ATTRIBUTE ALLOCATION</div>
+        ${buildStatSection(opts.stats)}
+      `,
+    },
+    {
+      id: "equipment",
+      html: `
+        <div class="setup-panel__title">EQUIPMENT</div>
+        <p class="setup-panel__desc" style="color:var(--text-dim)">Equipment slots — reserved for a future update.</p>
+      `,
+    },
+    {
+      id: "cybernetics",
+      html: `
+        <div class="setup-panel__title">CYBERNETICS</div>
+        <p class="setup-panel__desc" style="color:var(--text-dim)">Cybernetic augmentation — reserved for a future update.</p>
+      `,
+    },
+  ];
+
+  const panelsHtml = panelDefs.map((p, i) =>
+    `<div class="setup-panel${i === 0 ? " setup-panel--active" : ""}" data-panel="${p.id}">${p.html}</div>`
+  ).join("");
+
   return `
     <div class="setup-screen">
 
-      <!-- ========== BANNER ========== -->
       <div class="setup-banner">
         <h1 class="setup-banner__title">CHRONICLES OF THE ETHER</h1>
         <p class="setup-banner__subtitle">Year 7019 — The galaxy remembers, and the Ether endures</p>
       </div>
 
-      <div class="setup-steps">
-
-        <!-- STEP 1: Commander Name -->
-        ${buildStep(1, "Commander Designation", `
-          <div class="form-group">
-            <label class="label" for="input-name">Your name in the galactic record</label>
-            <input
-              class="input"
-              id="input-name"
-              type="text"
-              placeholder="e.g. Commander Vael Orishan"
-              maxlength="48"
-              autocomplete="off"
-            />
-          </div>
-        `)}
-
-        <!-- STEP 2: Species -->
-        ${buildStep(2, "Species Origin", buildCardGrid(
-          opts.species, "species",
-          s => ({
-            name: s.name,
-            category: s.category,
-            desc: s.description,
-            extra: s.special_traits.slice(0, 3).map(t =>
-              `<span class="trait-tag">${t}</span>`).join(""),
-          })
-        ))}
-
-        <!-- STEP 3: Class -->
-        ${buildStep(3, "Command Path", buildCardGrid(
-          opts.classes, "class",
-          c => ({
-            name: c.name,
-            category: `Starting credits: ⬡ ${c.starting_credits.toLocaleString()}`,
-            desc: c.description,
-            extra: c.skills.map(sk =>
-              `<span class="trait-tag">${sk}</span>`).join(""),
-          })
-        ))}
-
-        <!-- STEP 4: Background -->
-        ${buildStep(4, "Background History", buildCardGrid(
-          opts.backgrounds, "background",
-          b => ({
-            name: b.name,
-            category: b.credit_bonus > 0
-              ? `⬡ +${b.credit_bonus.toLocaleString()} credits`
-              : b.credit_bonus < 0
-                ? `⬡ ${b.credit_bonus.toLocaleString()} credits`
-                : "No credit bonus",
-            desc: b.description,
-            extra: (b.traits || []).map(t =>
-              `<span class="trait-tag">${t}</span>`).join(""),
-          })
-        ))}
-
-        <!-- STEP 5: Professional Specialization -->
-        ${buildStep(5, "Professional Specialization", buildProfessionSection(opts.professions, opts.profession_categories))}
-
-        <!-- STEP 6: Faction Allegiance (optional) -->
-        ${buildStep(6, "Faction Allegiance — Optional", `
-          <p style="font-size:var(--font-size-xs);color:var(--text-dim);margin-bottom:var(--sp-4)">
-            Starting with an allegiance grants +25 reputation with that faction.
-            Leave blank for a neutral start — useful for diplomatic playstyles.
-          </p>
-          ${buildCardGrid(
-            [{ name: "(None — Neutral Start)", philosophy: "", primary_focus: "", description: "Begin with no faction ties. Suitable for traders and explorers who want to remain impartial." }, ...opts.factions],
-            "faction",
-            f => ({
-              name: f.name,
-              category: f.philosophy || "Independent",
-              desc: f.description,
-              extra: f.primary_focus
-                ? `<span class="trait-tag">${f.primary_focus}</span>`
-                : "",
-            })
-          )}
-        `)}
-
-        <!-- STEP 7: Stat Allocation -->
-        ${buildStep(7, "Attribute Allocation", buildStatSection(opts.stats))}
-
-      </div><!-- /.setup-steps -->
+      <div class="setup-main">
+        <nav class="setup-nav">${navHtml}</nav>
+        <div class="setup-content">${panelsHtml}</div>
+      </div>
 
       <!-- ERROR BANNER — hidden until validation fails -->
-      <div id="setup-error" class="setup-error hidden"
-           style="max-width:960px;margin:0 auto var(--sp-4);padding:0 var(--sp-8)">
+      <div id="setup-error" class="setup-error hidden">
         <div style="padding:var(--sp-3) var(--sp-4);background:rgba(204,51,51,0.12);
                     border:1px solid var(--accent-red);color:var(--text-red);font-size:var(--font-size-sm)">
           <span id="setup-error-msg"></span>
@@ -195,28 +259,6 @@ function buildSetupHtml(opts) {
         </button>
       </div>
 
-    </div><!-- /.setup-screen -->
-  `;
-}
-
-
-/**
- * Wrap content in a numbered setup step container.
- * @param {number} num
- * @param {string} title
- * @param {string} bodyHtml
- */
-function buildStep(num, title, bodyHtml) {
-  return `
-    <div class="setup-step">
-      <div class="setup-step__header">
-        <span class="setup-step__number">${num}</span>
-        <span class="setup-step__title">${title}</span>
-        <span class="setup-step__selection" id="step-${num}-selection"></span>
-      </div>
-      <div class="setup-step__body">
-        ${bodyHtml}
-      </div>
     </div>
   `;
 }
@@ -224,9 +266,6 @@ function buildStep(num, title, bodyHtml) {
 
 /**
  * Build a responsive card grid for a list of choices.
- * @param {Array}    items      - Array of choice objects
- * @param {string}   dataKey   - data-type attribute value ("species" | "class" | etc.)
- * @param {Function} mapper    - (item) => { name, category, desc, extra }
  */
 function buildCardGrid(items, dataKey, mapper) {
   if (!items || items.length === 0) return "<p style='color:var(--text-dim)'>No options available.</p>";
@@ -248,14 +287,7 @@ function buildCardGrid(items, dataKey, mapper) {
 
 
 /**
- * Build the profession selection section.
- *
- * Renders a row of category filter tabs above the card grid.
- * Only cards matching the active category are shown; clicking a tab
- * swaps the visible set without re-rendering the whole setup form.
- *
- * @param {Array}  professions  - Array of profession objects from /api/game/options
- * @param {Array}  categories   - Ordered category name list
+ * Build the profession selection section with category filter tabs.
  */
 function buildProfessionSection(professions, categories) {
   if (!professions || professions.length === 0) {
@@ -264,7 +296,6 @@ function buildProfessionSection(professions, categories) {
 
   const cats = categories || [...new Set(professions.map(p => p.category))];
 
-  // Tab buttons — one per category
   const tabs = cats.map((cat, i) => `
     <button
       class="prof-tab${i === 0 ? " prof-tab--active" : ""}"
@@ -273,12 +304,10 @@ function buildProfessionSection(professions, categories) {
     >${escapeHtml(cat)}</button>
   `).join("");
 
-  // One hidden card grid per category
   const grids = cats.map((cat, i) => {
     const subset = professions.filter(p => p.category === cat);
     const cards  = subset.map(p => {
-      // Show first two skills as trait tags; show base_benefits as tooltip-style sub-list
-      const skillTags  = (p.skills || []).slice(0, 3)
+      const skillTags = (p.skills || []).slice(0, 3)
         .map(s => `<span class="trait-tag">${escapeHtml(s)}</span>`).join("");
       return `
         <div class="choice-card" data-type="profession" data-value="${escapeAttr(p.name)}">
@@ -312,7 +341,6 @@ function buildProfessionSection(professions, categories) {
 
 /**
  * Build the stat-allocation section (point-buy grid).
- * @param {{ names, base_value, point_buy_points, max_value }} statMeta
  */
 function buildStatSection(statMeta) {
   const statDescriptions = {
@@ -358,7 +386,24 @@ function buildStatSection(statMeta) {
 // ---------------------------------------------------------------------------
 
 function attachEventListeners(container) {
-  // Card selection
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  const setupNav = container.querySelector(".setup-nav");
+  if (setupNav) {
+    setupNav.addEventListener("click", e => {
+      const tab = e.target.closest(".setup-tab");
+      if (!tab || tab.classList.contains("setup-tab--reserved")) return;
+      const id = tab.dataset.tab;
+
+      setupNav.querySelectorAll(".setup-tab").forEach(t => t.classList.remove("setup-tab--active"));
+      tab.classList.add("setup-tab--active");
+
+      container.querySelectorAll(".setup-panel").forEach(p => p.classList.remove("setup-panel--active"));
+      const panel = container.querySelector(`[data-panel="${id}"]`);
+      if (panel) panel.classList.add("setup-panel--active");
+    });
+  }
+
+  // ── Card selection ─────────────────────────────────────────────────────────
   container.addEventListener("click", e => {
     const card = e.target.closest(".choice-card");
     if (!card) return;
@@ -366,75 +411,62 @@ function attachEventListeners(container) {
     const type  = card.dataset.type;
     const value = card.dataset.value;
 
-    // Deselect all cards of this type, then select the clicked one
     container.querySelectorAll(`.choice-card[data-type="${type}"]`)
       .forEach(c => c.classList.remove("choice-card--selected"));
     card.classList.add("choice-card--selected");
 
-    // Map data-type → form field
-    const stepMap = {
-      species:    [1, "species"],
-      class:      [2, "character_class"],
-      background: [3, "background"],
-      faction:    [4, "faction"],
-    };
-
-    // Map the step numbers in the actual HTML order (species=step2, class=step3…)
-    // We use the data-type directly on form
-    if (type === "species")     { form.species           = value; updateStepLabel(2, value); }
-    if (type === "class")       { form.character_class   = value; updateStepLabel(3, value); }
-    if (type === "background")  { form.background        = value; updateStepLabel(4, value); }
+    if (type === "species")     { form.species           = value; updateStepLabel(2, value); clearPanelError(container, "species"); }
+    if (type === "class")       { form.character_class   = value; updateStepLabel(3, value); clearPanelError(container, "command-path"); }
+    if (type === "background")  { form.background        = value; updateStepLabel(4, value); clearPanelError(container, "background"); }
     if (type === "profession")  { form.profession        = value; updateStepLabel(5, value); }
-    if (type === "faction")    {
+    if (type === "faction") {
       form.faction = value === "(None — Neutral Start)" ? "" : value;
       updateStepLabel(6, value === "(None — Neutral Start)" ? "None" : value);
     }
   });
 
-  // Name input
+  // ── Name input ─────────────────────────────────────────────────────────────
   const nameInput = container.querySelector("#input-name");
   if (nameInput) {
     nameInput.addEventListener("input", e => {
       form.name = e.target.value.trim();
+      updateStepLabel(1, form.name);
+      if (form.name) {
+        nameInput.classList.remove("input--error");
+        clearPanelError(container, "designation");
+      }
     });
   }
 
-  // Stat +/− buttons
+  // ── Stat +/− buttons ───────────────────────────────────────────────────────
   container.addEventListener("click", e => {
     const btn = e.target.closest(".stat-row-input__btn");
     if (!btn) return;
-
-    const stat  = btn.dataset.stat;
-    const delta = parseInt(btn.dataset.delta, 10);
-    adjustStat(stat, delta, container);
+    adjustStat(btn.dataset.stat, parseInt(btn.dataset.delta, 10), container);
   });
 
-  // Reset button
+  // ── Reset ──────────────────────────────────────────────────────────────────
   const resetBtn = container.querySelector("#btn-setup-reset");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => resetForm(container));
   }
 
-  // Profession category tab switching
+  // ── Profession category tabs ───────────────────────────────────────────────
   const profTabsEl = container.querySelector("#prof-tabs");
   if (profTabsEl) {
     profTabsEl.addEventListener("click", e => {
       const tab = e.target.closest(".prof-tab");
       if (!tab) return;
       const cat = tab.dataset.cat;
-
-      // Toggle active tab styling
       profTabsEl.querySelectorAll(".prof-tab")
         .forEach(t => t.classList.toggle("prof-tab--active", t === tab));
-
-      // Show only the grid for the selected category
       container.querySelectorAll("[data-cat-grid]").forEach(grid => {
         grid.style.display = grid.dataset.catGrid === cat ? "" : "none";
       });
     });
   }
 
-  // Begin button
+  // ── Begin ──────────────────────────────────────────────────────────────────
   const beginBtn = container.querySelector("#btn-setup-begin");
   if (beginBtn) {
     beginBtn.addEventListener("click", () => handleSubmit(container));
@@ -442,50 +474,29 @@ function attachEventListeners(container) {
 }
 
 
-/**
- * Show the current selection for a step in its header.
- * @param {number} stepNum
- * @param {string} value
- */
 function updateStepLabel(stepNum, value) {
   const el = document.getElementById(`step-${stepNum}-selection`);
   if (el) el.textContent = value ? `[ ${value} ]` : "";
 }
 
 
-/**
- * Adjust a single stat value, respecting point-buy limits.
- */
 function adjustStat(statKey, delta, container) {
-  const current = form.stats[statKey];
+  const current  = form.stats[statKey];
   const proposed = current + delta;
-
-  // Floor is base value; ceiling is MAX_STAT
   if (proposed < BASE_STAT) return;
   if (proposed > MAX_STAT)  return;
-
-  // Check we haven't spent all points
   if (delta > 0 && pointsRemaining() <= 0) return;
-
   form.stats[statKey] = proposed;
-
-  // Update the displayed value
   const valEl = container.querySelector(`#stat-val-${statKey}`);
   if (valEl) valEl.textContent = proposed;
-
-  // Update points remaining counter
   refreshPointsDisplay(container);
 }
 
 
-/**
- * Refresh the "Points remaining" display.
- */
 function refreshPointsDisplay(container) {
   const remaining = pointsRemaining();
   const countEl   = container.querySelector("#points-count");
   const displayEl = container.querySelector("#points-display");
-
   if (countEl)   countEl.textContent = remaining;
   if (displayEl) {
     displayEl.classList.toggle("points-remaining--warning", remaining <= 5 && remaining > 0);
@@ -493,36 +504,84 @@ function refreshPointsDisplay(container) {
 }
 
 
-/**
- * Reset all form selections back to defaults.
- */
 function resetForm(container) {
   form.name            = "";
   form.character_class = "";
   form.background      = "";
   form.species         = "";
   form.faction         = "";
+  form.profession      = "";
   Object.keys(form.stats).forEach(k => { form.stats[k] = BASE_STAT; });
 
-  // Clear card selections
   container.querySelectorAll(".choice-card--selected")
     .forEach(c => c.classList.remove("choice-card--selected"));
 
-  // Clear name input
   const nameInput = container.querySelector("#input-name");
   if (nameInput) nameInput.value = "";
 
-  // Reset stat displays
   Object.keys(form.stats).forEach(k => {
     const valEl = container.querySelector(`#stat-val-${k}`);
     if (valEl) valEl.textContent = BASE_STAT;
   });
 
-  // Reset step labels (steps 2–6 have selection labels; step 7 is stats)
-  [2, 3, 4, 5, 6].forEach(n => updateStepLabel(n, ""));
-
+  [1, 2, 3, 4, 5, 6].forEach(n => updateStepLabel(n, ""));
   refreshPointsDisplay(container);
   hideError(container);
+}
+
+
+// ---------------------------------------------------------------------------
+// Inline validation helpers
+// ---------------------------------------------------------------------------
+
+function switchToTab(container, tabId) {
+  const nav = container.querySelector(".setup-nav");
+  if (!nav) return;
+  nav.querySelectorAll(".setup-tab").forEach(t => t.classList.remove("setup-tab--active"));
+  const tab = nav.querySelector(`[data-tab="${tabId}"]`);
+  if (tab) tab.classList.add("setup-tab--active");
+
+  container.querySelectorAll(".setup-panel").forEach(p => p.classList.remove("setup-panel--active"));
+  const panel = container.querySelector(`[data-panel="${tabId}"]`);
+  if (panel) panel.classList.add("setup-panel--active");
+}
+
+function flashPanelError(container, tabId, message) {
+  const panel = container.querySelector(`[data-panel="${tabId}"]`);
+  if (!panel) return;
+
+  // Remove any existing inline error in this panel
+  const existing = panel.querySelector(".setup-panel__inline-err");
+  if (existing) existing.remove();
+
+  // For the name field: also add a red border to the input
+  if (tabId === "designation") {
+    const input = panel.querySelector("#input-name");
+    if (input) input.classList.add("input--error");
+  }
+
+  const errEl = document.createElement("div");
+  errEl.className = "setup-panel__inline-err";
+  errEl.textContent = message;
+
+  // Insert after the title/desc block, before the interactive content
+  const desc = panel.querySelector(".setup-panel__desc");
+  const anchor = desc || panel.querySelector(".setup-panel__title");
+  if (anchor && anchor.nextSibling) {
+    panel.insertBefore(errEl, anchor.nextSibling);
+  } else {
+    panel.appendChild(errEl);
+  }
+
+  // Scroll error into view
+  errEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function clearPanelError(container, tabId) {
+  const panel = container.querySelector(`[data-panel="${tabId}"]`);
+  if (!panel) return;
+  const err = panel.querySelector(".setup-panel__inline-err");
+  if (err) err.remove();
 }
 
 
@@ -533,21 +592,31 @@ function resetForm(container) {
 async function handleSubmit(container) {
   hideError(container);
 
-  // ---- Validation ----
-  if (!form.name)            return showError(container, "Please enter your commander's name.");
-  if (!form.species)         return showError(container, "Please select a species.");
-  if (!form.character_class) return showError(container, "Please select a command path (class).");
-  if (!form.background)      return showError(container, "Please select a background history.");
+  // Check required fields in order — navigate to the first incomplete one
+  const required = [
+    { test: !form.name,            tab: "designation",  msg: "Commander name is required." },
+    { test: !form.species,         tab: "species",      msg: "A species selection is required." },
+    { test: !form.character_class, tab: "command-path", msg: "A command path selection is required." },
+    { test: !form.background,      tab: "background",   msg: "A background selection is required." },
+  ];
 
-  // Stat validation — can't have over-spent
-  if (pointsAllocated() > TOTAL_POINTS) {
-    return showError(container, `Too many stat points allocated. Remove ${pointsAllocated() - TOTAL_POINTS} points.`);
+  for (const r of required) {
+    if (r.test) {
+      switchToTab(container, r.tab);
+      flashPanelError(container, r.tab, r.msg);
+      return;
+    }
   }
 
-  // ---- Submit ----
+  if (pointsAllocated() > TOTAL_POINTS) {
+    switchToTab(container, "attributes");
+    flashPanelError(container, "attributes", `Too many stat points allocated. Remove ${pointsAllocated() - TOTAL_POINTS} point(s).`);
+    return;
+  }
+
   const btn = container.querySelector("#btn-setup-begin");
   if (btn) {
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = "INITIALISING...";
   }
 
@@ -563,7 +632,6 @@ async function handleSubmit(container) {
       research_paths:   [],
     });
 
-    // Hand off to main.js to show HUD and switch to galaxy view
     if (_onGameStarted) {
       _onGameStarted(result.state);
     }
@@ -571,7 +639,7 @@ async function handleSubmit(container) {
   } catch (err) {
     showError(container, `Failed to start game: ${err.message}`);
     if (btn) {
-      btn.disabled = false;
+      btn.disabled    = false;
       btn.textContent = "BEGIN JOURNEY";
     }
   }
@@ -583,7 +651,6 @@ function showError(container, message) {
   const errMsg = container.querySelector("#setup-error-msg");
   if (errDiv) errDiv.classList.remove("hidden");
   if (errMsg) errMsg.textContent = message;
-  // Scroll the error into view
   if (errDiv) errDiv.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
