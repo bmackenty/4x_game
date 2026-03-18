@@ -762,5 +762,14 @@
         "Icaron Collective"
       ]
     }
-  }
+  },
+  "category_order": [
+    "Physical",
+    "Mystical",
+    "Psychic",
+    "Exotic",
+    "Utility",
+    "Faction-Specific",
+    "Chaotic"
+  ]
 }
