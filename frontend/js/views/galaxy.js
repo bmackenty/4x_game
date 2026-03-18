@@ -221,10 +221,12 @@ export const galaxyView = {
       npcShipsData = [];  // NPC ships are cosmetic — silently fail
     }
 
-    // If a system was pre-selected (e.g. returning from colony view), re-apply it
+    // Show the right panel immediately — either the pre-selected system or the default state
     if (state.selectedSystem) {
       viewState.selectedSystemName = state.selectedSystem.name;
       showSystemPanel(state.selectedSystem);
+    } else {
+      showDefaultPanel();
     }
 
     // Attach pan/zoom/click input
@@ -513,6 +515,31 @@ function hideRightPanel() {
   const panel = document.getElementById("panel-right");
   if (panel) panel.classList.add("panel--hidden");
   state.rightPanelOpen = false;
+}
+
+function showDefaultPanel() {
+  const panel   = document.getElementById("panel-right");
+  const content = document.getElementById("panel-right-content");
+  if (!panel || !content) return;
+
+  panel.classList.remove("panel--hidden");
+  state.rightPanelOpen = true;
+
+  const location = state.gameState?.ship?.current_system || "Deep Space";
+
+  content.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-title">GALAXY NAVIGATION</div>
+    </div>
+    <div class="panel-section">
+      <div style="color:var(--text-dim);font-size:var(--font-size-xs);text-transform:uppercase;
+                  letter-spacing:0.08em;margin-bottom:var(--sp-2)">Current Location</div>
+      <div style="color:var(--text-bright);font-family:var(--font-mono)">${esc(location)}</div>
+    </div>
+    <div class="panel-section">
+      <p class="legend-hint">Select a system on the map to view details, jump, or access markets.</p>
+    </div>
+  `;
 }
 
 
@@ -1809,7 +1836,7 @@ document.addEventListener("DOMContentLoaded", () => {
     closeBtn.addEventListener("click", () => {
       viewState.selectedSystemName = null;
       state.selectedSystem = null;
-      hideRightPanel();
+      showDefaultPanel();
       isDirty = true;
     });
   }
