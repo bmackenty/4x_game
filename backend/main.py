@@ -52,6 +52,24 @@ from research import all_research, RESEARCH_PATH_CATEGORIES, EXTENDED_UNLOCKS  #
 from energies import all_energies                              # 50 energy types
 from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
 from backend.colony import ColonyManager                       # colony system
+from backend.colony_systems import (                            # governing system logic
+    get_available_systems,
+    calculate_faction_affinity,
+    SYSTEM_CHANGE_COOLDOWN,
+)
+
+# Load the faction preferred-system configuration from lore/faction_systems.json.
+# This maps faction names to their preferred social/economic/political systems so
+# the player's colony choices can passively influence diplomatic standing.
+import json as _json
+_FACTION_SYSTEMS_PATH = os.path.join(PROJECT_ROOT, "lore", "faction_systems.json")
+try:
+    with open(_FACTION_SYSTEMS_PATH, encoding="utf-8") as _fsf:
+        _raw_faction_systems = _json.load(_fsf)
+    # Strip the internal comment key if present
+    FACTION_SYSTEM_PREFS: dict = {k: v for k, v in _raw_faction_systems.items() if not k.startswith("_")}
+except (FileNotFoundError, _json.JSONDecodeError):
+    FACTION_SYSTEM_PREFS: dict = {}
 from backend.deep_space import DeepSpaceManager                # deep space objects
 from backend.gnn import generate_gnn_summary                   # end-of-turn broadcast
 
@@ -1705,6 +1723,32 @@ def _get_player_faction(g) -> Optional[str]:
     return faction
 
 
+def _colony_system_affinity_for_faction(faction_name: str) -> int:
+    """
+    Compute the average system affinity score for a faction across all player
+    colonies.  Returns an integer in [-15, +15].
+
+    If the player has no colonies yet, returns 0 (neutral).
+    If the faction has no entry in FACTION_SYSTEM_PREFS, returns 0.
+    """
+    if not colony_manager or not colony_manager.colonies:
+        return 0
+    prefs = FACTION_SYSTEM_PREFS.get(faction_name)
+    if not prefs:
+        return 0
+
+    scores = [
+        calculate_faction_affinity(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+            prefs,
+        )
+        for colony in colony_manager.colonies.values()
+    ]
+    return round(sum(scores) / len(scores))
+
+
 def apply_all_bonuses_to_ship(ship, g) -> None:
     """
     Layer research, faction, and character-stat bonuses on top of the
@@ -2370,6 +2414,12 @@ class UpgradeRequest(BaseModel):
     r: int
 
 
+class SetColonySystemRequest(BaseModel):
+    """Request body for changing one of a colony's governing systems."""
+    category:  str   # "social" | "economic" | "political"
+    system_id: str   # Must match a key in colony_systems.py
+
+
 @app.post("/api/colony/{planet_name}/upgrade")
 async def upgrade_improvement(planet_name: str, request: UpgradeRequest):
     """
@@ -2393,6 +2443,161 @@ async def upgrade_improvement(planet_name: str, request: UpgradeRequest):
         "message": message,
         "colony": colony_manager.get_colony_dict(planet_name),
         "credits_remaining": game.credits,
+    }
+
+
+# ===========================================================================
+# Colony systems endpoints — social / economic / political configuration
+# ===========================================================================
+
+@app.get("/api/colony/{planet_name}/systems")
+async def get_colony_systems(planet_name: str):
+    """
+    Return the current governing systems for a colony together with all
+    available options (including lock state based on completed research) and
+    the per-faction system affinity table.
+
+    Used by the frontend Systems panel to build the selector UI without a
+    separate round-trip.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    colony = colony_manager.colonies.get(planet_name) if colony_manager else None
+    if not colony:
+        raise HTTPException(status_code=404, detail=f"Colony '{planet_name}' not found.")
+
+    completed = getattr(game, "completed_research", []) or []
+    current_turn = getattr(game, "current_turn", 1)
+
+    # Available options per category with lock state
+    options = {
+        "social":    get_available_systems("social",    completed),
+        "economic":  get_available_systems("economic",  completed),
+        "political": get_available_systems("political", completed),
+    }
+
+    # Cooldown status per category — turns remaining until change is allowed
+    def _cooldown(last_changed: int) -> int:
+        elapsed = current_turn - last_changed
+        return max(0, SYSTEM_CHANGE_COOLDOWN - elapsed)
+
+    cooldown = {
+        "social":    _cooldown(colony.social_last_changed),
+        "economic":  _cooldown(colony.economic_last_changed),
+        "political": _cooldown(colony.political_last_changed),
+    }
+
+    # Per-faction affinity for the current system configuration
+    affinity_table = {}
+    if game.faction_system:
+        for faction_name in game.faction_system.player_relations:
+            prefs = FACTION_SYSTEM_PREFS.get(faction_name)
+            if prefs:
+                affinity_table[faction_name] = calculate_faction_affinity(
+                    colony.social_system,
+                    colony.economic_system,
+                    colony.political_system,
+                    prefs,
+                )
+
+    # Coherence summary
+    colony_dict = colony_manager.get_colony_dict(planet_name) or {}
+    systems_block = colony_dict.get("systems", {})
+
+    return {
+        "planet_name":    planet_name,
+        "current_systems": {
+            "social":    colony.social_system,
+            "economic":  colony.economic_system,
+            "political": colony.political_system,
+        },
+        "coherence_score":      systems_block.get("coherence_score", 0),
+        "coherence_label":      systems_block.get("coherence_label", "Stable"),
+        "coherence_multiplier": systems_block.get("coherence_multiplier", 1.0),
+        "cooldown":      cooldown,
+        "options":       options,
+        "affinity_table": affinity_table,
+    }
+
+
+@app.post("/api/colony/{planet_name}/systems")
+async def set_colony_system(planet_name: str, request: SetColonySystemRequest):
+    """
+    Change one governing system for a colony.
+
+    Validates:
+      1. The system_id exists in the requested category.
+      2. Any research prerequisite has been completed.
+      3. The 5-turn cooldown since the last change to this category has elapsed.
+
+    Always tells the player WHY a change is blocked — the error message includes
+    the research requirement or the number of turns remaining on the cooldown.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    colony = colony_manager.colonies.get(planet_name) if colony_manager else None
+    if not colony:
+        raise HTTPException(status_code=404, detail=f"Colony '{planet_name}' not found.")
+
+    category  = request.category.lower()
+    system_id = request.system_id
+    completed = getattr(game, "completed_research", []) or []
+    current_turn = getattr(game, "current_turn", 1)
+
+    if category not in ("social", "economic", "political"):
+        raise HTTPException(status_code=400, detail=f"Unknown category '{category}'.")
+
+    # Validate the system ID and retrieve its definition
+    options = get_available_systems(category, completed)
+    option  = next((o for o in options if o["id"] == system_id), None)
+    if not option:
+        raise HTTPException(status_code=400, detail=f"Unknown system '{system_id}' for category '{category}'.")
+
+    # Research gate
+    if option["locked"]:
+        raise HTTPException(
+            status_code=400,
+            detail=option["lock_reason"] or f"Research required to unlock '{system_id}'.",
+        )
+
+    # Cooldown check
+    last_changed_attr = f"{category}_last_changed"
+    last_changed = getattr(colony, last_changed_attr, 0)
+    elapsed = current_turn - last_changed
+    if last_changed > 0 and elapsed < SYSTEM_CHANGE_COOLDOWN:
+        remaining = SYSTEM_CHANGE_COOLDOWN - elapsed
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"System change on cooldown — {remaining} turn(s) remaining.  "
+                f"Systems need {SYSTEM_CHANGE_COOLDOWN} turns to stabilise after a change."
+            ),
+        )
+
+    # Apply the change
+    setattr(colony, f"{category}_system",   system_id)
+    setattr(colony, last_changed_attr,       current_turn)
+
+    # Build updated affinity table
+    affinity_table = {}
+    if game.faction_system:
+        for faction_name in game.faction_system.player_relations:
+            prefs = FACTION_SYSTEM_PREFS.get(faction_name)
+            if prefs:
+                affinity_table[faction_name] = calculate_faction_affinity(
+                    colony.social_system,
+                    colony.economic_system,
+                    colony.political_system,
+                    prefs,
+                )
+
+    return {
+        "success":         True,
+        "message":         f"{option['name']} is now the {category} system for {planet_name}.",
+        "colony":          colony_manager.get_colony_dict(planet_name),
+        "affinity_table":  affinity_table,
     }
 
 
@@ -2596,6 +2801,12 @@ async def get_all_factions():
 
     # Sorted Allied → Enemy
     result.sort(key=lambda f: -f["reputation"])
+
+    # Attach system affinity scores — shows how compatible the player's colony
+    # systems are with each faction's preferred configuration.
+    for entry in result:
+        entry["system_affinity"] = _colony_system_affinity_for_faction(entry["name"])
+
     return {"factions": result}
 
 
@@ -2617,6 +2828,16 @@ async def get_faction(faction_name: str):
     rep      = fs.player_relations.get(faction_name, 0)
     status   = fs.get_reputation_status(faction_name)
 
+    # System affinity — how well the player's current colony configurations
+    # align with this faction's preferred social/economic/political systems.
+    prefs = FACTION_SYSTEM_PREFS.get(faction_name, {})
+    system_affinity  = _colony_system_affinity_for_faction(faction_name)
+    faction_sys_prefs = {
+        "preferred_social":    prefs.get("preferred_social"),
+        "preferred_economic":  prefs.get("preferred_economic"),
+        "preferred_political": prefs.get("preferred_political"),
+    }
+
     return {
         "name":              faction_name,
         "philosophy":        info.get("philosophy", ""),
@@ -2635,6 +2856,8 @@ async def get_faction(faction_name: str):
         "benefits":          benefits,
         "reputation":        rep,
         "status":            status,
+        "system_affinity":       system_affinity,
+        "faction_system_prefs":  faction_sys_prefs,
     }
 
 

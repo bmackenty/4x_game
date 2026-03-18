@@ -280,6 +280,29 @@ export function getImprovementsCatalogue() {
   return get("/api/colony/improvements");
 }
 
+/**
+ * Fetch the current social / economic / political systems for a colony,
+ * together with all available options (including lock state) and the
+ * faction affinity table for the current configuration.
+ * @param {string} planetName
+ */
+export function getColonySystems(planetName) {
+  return get(`/api/colony/${encodeURIComponent(planetName)}/systems`);
+}
+
+/**
+ * Change one governing system for a colony.
+ * @param {string} planetName  - Colony planet name
+ * @param {string} category    - "social" | "economic" | "political"
+ * @param {string} systemId    - System ID key (e.g. "memory_economy")
+ */
+export function setColonySystem(planetName, category, systemId) {
+  return post(`/api/colony/${encodeURIComponent(planetName)}/systems`, {
+    category,
+    system_id: systemId,
+  });
+}
+
 
 // ===========================================================================
 // Research  (Phase 4)

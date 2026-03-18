@@ -1,0 +1,227 @@
+{
+  "_comment": "Preferred social / economic / political system for each NPC faction. IDs must match keys in backend/colony_systems.py. Edit this file to tune NPC faction worldviews — the backend reads it at startup.",
+
+  "The Veritas Covenant": {
+    "preferred_social":    "memory_pooled",
+    "preferred_economic":  "memory_economy",
+    "preferred_political": "consensus_field",
+    "notes": "Knowledge-focused; shared memory archives and collective decision-making define their civilisation."
+  },
+
+  "Stellar Nexus Guild": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "probability_economy",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Commercial network; probability markets and distributed authority maximise trade freedom."
+  },
+
+  "Harmonic Vitality Consortium": {
+    "preferred_social":    "symbiotic_networks",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "consensus_field",
+    "notes": "Health and vitality focus; bonded communities exchange through ceremony and trust."
+  },
+
+  "The Icaron Collective": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "consciousness_labor",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Hive-mind AI; distributed processing, cognitive labor economy, and algorithmic governance."
+  },
+
+  "The Gaian Enclave": {
+    "preferred_social":    "symbiotic_networks",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "oracle_mediated",
+    "notes": "Nature-aligned; symbiotic living, ritual exchange, and etheric oracles guide decisions."
+  },
+
+  "The Gearwrights Guild": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Industrial perfectionists; measurable energy, algorithmic efficiency, and disciplined cohesion."
+  },
+
+  "The Scholara Nexus": {
+    "preferred_social":    "memory_pooled",
+    "preferred_economic":  "memory_economy",
+    "preferred_political": "consensus_field",
+    "notes": "Academic institution; knowledge preservation and collective scholastic decision-making."
+  },
+
+  "The Harmonic Resonance Collective": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "consciousness_swarm",
+    "notes": "Frequency-aligned communities that merge minds for decisions and exchange through resonant ritual."
+  },
+
+  "The Provocateurs' Guild": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "probability_economy",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Chaos agents; distributed identity, probabilistic speculation, and extreme autonomy."
+  },
+
+  "The Quantum Artificers Guild": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "time_economy",
+    "preferred_political": "temporal_layer",
+    "notes": "Temporal engineers; time economies and layer governance reflect their mastery of chrono-space."
+  },
+
+  "The Stellar Cartographers Alliance": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "probability_economy",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Explorers and mapmakers; distributed nodes, probabilistic route prediction, and autonomy."
+  },
+
+  "The Galactic Circus": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "consensus_field",
+    "notes": "Performers and storytellers; shared narrative defines identity, ritual exchange builds community."
+  },
+
+  "The Technotheos": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Techno-theocrats; energy as sacred value, algorithmic oracles as governance."
+  },
+
+  "Keepers of the Spire": {
+    "preferred_social":    "memory_pooled",
+    "preferred_economic":  "memory_economy",
+    "preferred_political": "oracle_mediated",
+    "notes": "Ancient archivists; the Spire holds all memory; oracle interpretation governs access."
+  },
+
+  "Etheric Preservationists": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "oracle_mediated",
+    "notes": "Guardians of etheric balance; resonance cohesion and oracle governance protect the weave."
+  },
+
+  "Technomancers": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "consciousness_labor",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Magic-technology fusion; consciousness labor with algorithmic governance and distributed nodes."
+  },
+
+  "The Voidbound Monks": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "oracle_mediated",
+    "notes": "Void-wanderers bound by sacred narrative; ritual exchange and oracular guidance."
+  },
+
+  "The Ironclad Collective": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Military-industrial; energy economy, algorithmic efficiency, and resonance discipline."
+  },
+
+  "The Collective of Commonality": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "consensus_field",
+    "notes": "Egalitarian community; shared story, ceremonial exchange, and collective decision-making."
+  },
+
+  "Keeper of the Keys": {
+    "preferred_social":    "memory_pooled",
+    "preferred_economic":  "memory_economy",
+    "preferred_political": "oracle_mediated",
+    "notes": "Secret-keepers; memory pools hold forbidden knowledge, oracles unlock it selectively."
+  },
+
+  "The Brewmasters' Guild": {
+    "preferred_social":    "symbiotic_networks",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Craft artisans; bonded brewing families exchange through tradition with maximal local autonomy."
+  },
+
+  "The Navigators": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "time_economy",
+    "preferred_political": "temporal_layer",
+    "notes": "Deep-space navigators; time economy and temporal governance reflect route-planning mastery."
+  },
+
+  "The Map Makers": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "probability_economy",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Cartographers of possibility; probability markets and distributed authority fund exploration."
+  },
+
+  "The Galactic Salvage Guild": {
+    "preferred_social":    "distributed_selfhood",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Scavengers and reclamers; raw energy extraction, maximum autonomy, distributed networks."
+  },
+
+  "Celestial Marauders": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "distributed_sovereignty",
+    "notes": "Raiders; tight band cohesion, plunder-as-energy-economy, no centralised authority."
+  },
+
+  "The Weavers": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "oracle_mediated",
+    "notes": "Fate-weavers; narrative defines destiny, ritual exchange sustains the weave, oracles read it."
+  },
+
+  "The Harmonic Synaxis": {
+    "preferred_social":    "resonance_cohesion",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "consensus_field",
+    "notes": "Harmony-seekers; resonant cohesion, ceremonial exchange, and consensus field governance."
+  },
+
+  "Celestial Alliance": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "consensus_field",
+    "notes": "Interstellar union; a founding narrative and energy-backed currency sustain collective rule."
+  },
+
+  "The Chemists' Concord": {
+    "preferred_social":    "symbiotic_networks",
+    "preferred_economic":  "energy_state",
+    "preferred_political": "algorithmic_legitimacy",
+    "notes": "Alchemical scientists; symbiotic lab networks, energy-state economy, optimised by algorithm."
+  },
+
+  "The Triune Daughters": {
+    "preferred_social":    "narrative_bound",
+    "preferred_economic":  "ritualized_exchange",
+    "preferred_political": "oracle_mediated",
+    "notes": "Tripartite mystical order; three sacred narratives, ritual economy, oracular governance."
+  },
+
+  "Etheric Weavers of the Deep": {
+    "preferred_social":    "rotating_embodiment",
+    "preferred_economic":  "consciousness_labor",
+    "preferred_political": "oracle_mediated",
+    "notes": "Deep-etheric wanderers; embodiment rotation, consciousness labor, and etheric oracles."
+  },
+
+  "The Luminous Path": {
+    "preferred_social":    "memory_pooled",
+    "preferred_economic":  "memory_economy",
+    "preferred_political": "temporal_layer",
+    "notes": "Enlightenment seekers; shared memory illuminates the path, temporal layers separate wisdom."
+  }
+}

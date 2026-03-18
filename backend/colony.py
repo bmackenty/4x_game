@@ -20,6 +20,14 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional
 
+# Social / economic / political system definitions and helpers.
+from colony_systems import (
+    get_production_modifiers,
+    calculate_coherence,
+    get_system_def,
+    ECONOMIC_SYSTEMS,
+)
+
 
 # ---------------------------------------------------------------------------
 # Improvement catalogue
@@ -543,6 +551,20 @@ class ColonyGrid:
     founded_turn: int = 1
     population: int = 1000
 
+    # ── Governing systems ────────────────────────────────────────────────────
+    # Each colony has one social, economic, and political system.  These are
+    # set by the player via the Systems panel and apply multiplier bonuses /
+    # penalties to production, diplomacy, and trade.
+    # IDs must match keys in backend/colony_systems.py.
+    social_system:   str = "resonance_cohesion"
+    economic_system: str = "energy_state"
+    political_system: str = "consensus_field"
+
+    # Turn number when each system was last changed (for cooldown enforcement).
+    social_last_changed:   int = 0
+    economic_last_changed: int = 0
+    political_last_changed: int = 0
+
 
 # ---------------------------------------------------------------------------
 # ColonyManager
@@ -783,18 +805,56 @@ class ColonyManager:
         return int(base_cost * fraction)
 
     def calculate_colony_production(self, planet_name: str) -> dict[str, float]:
-        """Sum production across all improved tiles for one colony."""
+        """
+        Sum production across all improved tiles for one colony, then apply
+        the colony's social / economic / political system modifiers and the
+        coherence multiplier.
+
+        The systems layer sits on top of the terrain + improvement layer so the
+        two calculation paths stay independent and easy to reason about.
+        """
         colony = self.colonies.get(planet_name)
         if not colony:
             return {}
 
+        # ── Base tile production ─────────────────────────────────────────────
         totals: dict[str, float] = {}
         for tile in colony.tiles.values():
             if tile.improvement:
                 for resource, amount in self.calculate_tile_production(tile).items():
                     totals[resource] = totals.get(resource, 0.0) + amount
 
-        return {k: round(v, 1) for k, v in totals.items()}
+        # ── System modifiers ─────────────────────────────────────────────────
+        # get_production_modifiers returns per-resource multipliers and a flat
+        # stability delta.  We apply "all_production" first, then per-resource.
+        mods = get_production_modifiers(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+        )
+
+        # Coherence multiplier — synergistic systems amplify output, friction
+        # systems suppress it.
+        _, _label, coherence_mult = calculate_coherence(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+        )
+
+        # "all_production" modifier is additive to the 1.0 base before coherence.
+        all_prod_delta = mods.get("all_production", 1.0) - 1.0  # e.g. 0.08 for +8%
+
+        modified: dict[str, float] = {}
+        for resource, base_value in totals.items():
+            # Skip non-multiplicative resources (fleet_points handled separately).
+            per_resource_mult = mods.get(resource, 1.0) + all_prod_delta
+            modified[resource] = base_value * per_resource_mult * coherence_mult
+
+        # Pass through stability as a flat int (not a production resource).
+        if mods.get("stability", 0):
+            modified["stability"] = mods["stability"]
+
+        return {k: round(v, 1) for k, v in modified.items()}
 
     def calculate_all_production(self) -> dict[str, float]:
         """Sum production across all colonies."""
@@ -934,6 +994,29 @@ class ColonyManager:
                            "build a Shipyard to convert this into fleet strength.",
             })
 
+        # ── Unique commodity production (economic system) ────────────────────
+        # Each economic system type produces a unique tradeable commodity each
+        # turn.  The commodity is added directly to the player's cargo inventory
+        # (game.inventory) so it can be sold at any market.
+        commodity_summary: list[str] = []
+        for planet_name, colony in self.colonies.items():
+            econ_def = ECONOMIC_SYSTEMS.get(colony.economic_system, {})
+            commodity = econ_def.get("unique_commodity")
+            amount    = econ_def.get("commodity_amount", 0)
+            if commodity and amount:
+                inv = getattr(self.game, "inventory", None)
+                if inv is None:
+                    self.game.inventory = {}
+                    inv = self.game.inventory
+                inv[commodity] = inv.get(commodity, 0) + amount
+                commodity_summary.append(f"{planet_name}: +{amount} {commodity}")
+
+        if commodity_summary:
+            turn_events.append({
+                "channel": "ECON",
+                "message": "Economic systems produced: " + "; ".join(commodity_summary),
+            })
+
         # ── Event log toast ──────────────────────────────────────────────────
         total_colony_credits = credits_earned + total_pop_income
         summary_parts = []
@@ -987,6 +1070,13 @@ class ColonyManager:
                 "founded_turn": colony.founded_turn,
                 "population":   colony.population,
                 "tiles":        tiles_data,
+                # Governing systems
+                "social_system":            colony.social_system,
+                "economic_system":          colony.economic_system,
+                "political_system":         colony.political_system,
+                "social_last_changed":      colony.social_last_changed,
+                "economic_last_changed":    colony.economic_last_changed,
+                "political_last_changed":   colony.political_last_changed,
             }
         return result
 
@@ -1013,6 +1103,13 @@ class ColonyManager:
                 founded_turn=colony_data.get("founded_turn", 1),
                 population=colony_data.get("population", 10000),
                 tiles=tiles,
+                # Governing systems — fall back to tier-1 defaults for old saves.
+                social_system=colony_data.get("social_system",   "resonance_cohesion"),
+                economic_system=colony_data.get("economic_system", "energy_state"),
+                political_system=colony_data.get("political_system", "consensus_field"),
+                social_last_changed=colony_data.get("social_last_changed",   0),
+                economic_last_changed=colony_data.get("economic_last_changed", 0),
+                political_last_changed=colony_data.get("political_last_changed", 0),
             )
 
     # -----------------------------------------------------------------------
@@ -1066,6 +1163,46 @@ class ColonyManager:
         growth_rate  = max(0.0, growth_rate)
         pop_gain_est = int(colony.population * growth_rate)
 
+        # ── Systems summary block for the frontend Systems panel ─────────────
+        coherence_score, coherence_label, coherence_mult = calculate_coherence(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+        )
+        econ_def = ECONOMIC_SYSTEMS.get(colony.economic_system, {})
+
+        def _sys_summary(sys_id: str, sys_dict: dict) -> dict:
+            """Build a compact summary dict for one system."""
+            defn = sys_dict.get(sys_id, {})
+            return {
+                "id":              sys_id,
+                "name":            defn.get("name", sys_id),
+                "description":     defn.get("description", ""),
+                "modifiers":       defn.get("modifiers", {}),
+                "research_required": defn.get("research_required"),
+            }
+
+        from colony_systems import SOCIAL_SYSTEMS, POLITICAL_SYSTEMS  # local to avoid top-level circular risk
+        systems_block = {
+            "social":   {
+                **_sys_summary(colony.social_system, SOCIAL_SYSTEMS),
+                "last_changed": colony.social_last_changed,
+            },
+            "economic": {
+                **_sys_summary(colony.economic_system, ECONOMIC_SYSTEMS),
+                "last_changed":      colony.economic_last_changed,
+                "unique_commodity":  econ_def.get("unique_commodity"),
+                "commodity_amount":  econ_def.get("commodity_amount", 0),
+            },
+            "political": {
+                **_sys_summary(colony.political_system, POLITICAL_SYSTEMS),
+                "last_changed": colony.political_last_changed,
+            },
+            "coherence_score":      coherence_score,
+            "coherence_label":      coherence_label,
+            "coherence_multiplier": round(coherence_mult, 2),
+        }
+
         return {
             "planet_name":    colony.planet_name,
             "system_name":    colony.system_name,
@@ -1079,6 +1216,7 @@ class ColonyManager:
             "tiles":          tiles_list,
             "tile_count":     len(tiles_list),
             "improvement_count": sum(1 for t in colony.tiles.values() if t.improvement),
+            "systems":        systems_block,
         }
 
     def list_colonies(self) -> list[dict]:

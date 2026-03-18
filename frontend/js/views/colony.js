@@ -23,6 +23,8 @@ import {
     demolishImprovement,
     upgradeImprovement,
     getImprovementsCatalogue,
+    getColonySystems,
+    setColonySystem,
 } from "../api.js";
 import { renderColonyMap, PLANET_HEX_SIZE } from "../hex/hex-render.js";
 import { attachHexInput }                    from "../hex/hex-input.js";
@@ -58,6 +60,16 @@ let _catalogue = [];
 
 /** Planet context stored so we can found a colony if needed */
 let _context = {};
+
+/**
+ * Which tab is active in the left panel.
+ * "hex"     — the default hex-grid + tile-info view
+ * "systems" — the social/economic/political systems panel
+ */
+let _activeTab = "hex";
+
+/** Cached response from GET /api/colony/{planet}/systems */
+let _systemsData = null;
 
 
 // ---------------------------------------------------------------------------
@@ -107,6 +119,12 @@ export const colonyView = {
             // Colony exists — show the hex grid
             _setupCanvas();
             _renderInfoPanel();
+
+            // Wire the HEX / SYSTEMS tab buttons in the left panel
+            document.getElementById("colony-tab-hex")
+                ?.addEventListener("click", () => _switchTab("hex"));
+            document.getElementById("colony-tab-systems")
+                ?.addEventListener("click", () => _switchTab("systems"));
         } else {
             // No colony yet — show a found-colony prompt
             _renderFoundPrompt();
@@ -128,6 +146,8 @@ export const colonyView = {
         _dirty        = true;
         _catalogue    = [];
         _context      = {};
+        _activeTab    = "hex";
+        _systemsData  = null;
     },
 };
 
@@ -645,6 +665,329 @@ function _renderFoundPrompt() {
 
 
 // ---------------------------------------------------------------------------
+// Tab system — HEX MAP ↔ SYSTEMS
+// ---------------------------------------------------------------------------
+
+/**
+ * Switch between the "hex" (default) and "systems" tabs.
+ * Toggling the SYSTEMS tab fetches fresh data from the API and renders the
+ * Systems panel.  Switching back to HEX restores the normal right-panel
+ * content and makes the canvas interactive again.
+ *
+ * @param {"hex"|"systems"} tab
+ */
+async function _switchTab(tab) {
+    _activeTab = tab;
+
+    // Update tab button styles
+    const tabHex = document.getElementById("colony-tab-hex");
+    const tabSys = document.getElementById("colony-tab-systems");
+    if (tabHex) tabHex.classList.toggle("colony-tab--active", tab === "hex");
+    if (tabSys) tabSys.classList.toggle("colony-tab--active", tab === "systems");
+
+    // Show/hide the canvas area
+    const canvasContainer = document.querySelector(".colony-canvas-container");
+    if (canvasContainer) canvasContainer.style.display = (tab === "hex") ? "" : "none";
+
+    if (tab === "systems") {
+        const panel = document.getElementById("colony-right-panel");
+        if (panel) panel.innerHTML = `<p class="muted">Loading systems…</p>`;
+        try {
+            const { planetName } = _context;
+            _systemsData = await getColonySystems(planetName);
+            _renderSystemsPanel();
+        } catch (err) {
+            const panel = document.getElementById("colony-right-panel");
+            if (panel) panel.innerHTML = `<p class="muted">Could not load systems: ${err.message}</p>`;
+        }
+    } else {
+        // Restore hex view
+        _renderInfoPanel();
+        // Re-show selected tile panel if one was selected
+        if (_selectedTile) _renderTilePanel(_selectedTile);
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Systems panel — social / economic / political
+// ---------------------------------------------------------------------------
+
+/**
+ * Render the full Systems panel in the right panel column.
+ * Reads from the cached _systemsData and _colony objects.
+ */
+function _renderSystemsPanel() {
+    const panel = document.getElementById("colony-right-panel");
+    if (!panel || !_systemsData) return;
+
+    const {
+        coherence_score   = 0,
+        coherence_label   = "Stable",
+        coherence_multiplier = 1.0,
+        cooldown          = {},
+        affinity_table    = {},
+        current_systems   = {},
+    } = _systemsData;
+
+    // Coherence bar colour
+    const cohColour = coherence_score >= 4 ? "#00d4aa"
+                    : coherence_score >= 1 ? "#8888ff"
+                    : coherence_score >= -1 ? "#cccccc"
+                    : coherence_score >= -3 ? "#ff8844"
+                    :                         "#ff4444";
+    const cohPct = Math.round(((coherence_score + 6) / 12) * 100);
+
+    // Build three system sections
+    const sections = [
+        { key: "social",    label: "SOCIAL SYSTEM" },
+        { key: "economic",  label: "ECONOMIC SYSTEM" },
+        { key: "political", label: "POLITICAL SYSTEM" },
+    ];
+
+    const sectionsHtml = sections.map(({ key, label }) => {
+        const sysDef = _colony?.systems?.[key] || {};
+        const cooldownTurns = cooldown[key] || 0;
+        const onCooldown = cooldownTurns > 0;
+
+        // Format modifiers as chips
+        const mods = sysDef.modifiers || {};
+        const modChips = Object.entries(mods).map(([k, v]) => {
+            const isFlat = k === "stability";
+            const sign   = v >= 0 ? "+" : "";
+            const val    = isFlat ? `${sign}${v}` : `${sign}${Math.round(v * 100)}%`;
+            const colour = v >= 0 ? "#00d4aa" : "#ff6666";
+            return `<span class="system-modifier-chip" style="color:${colour}">${_modLabel(k)} ${val}</span>`;
+        }).join(" ");
+
+        // Unique commodity (economic only)
+        const commodityHtml = key === "economic" && sysDef.unique_commodity
+            ? `<div class="colony-stat" style="margin-top:4px">
+                Produces: <span style="color:#f0c040">
+                    ${sysDef.unique_commodity} ×${sysDef.commodity_amount}/turn
+                </span>
+               </div>`
+            : "";
+
+        // Cooldown badge
+        const cooldownBadge = onCooldown
+            ? `<span class="system-cooldown-badge" title="Cooldown active">
+                ⏳ ${cooldownTurns} turn${cooldownTurns !== 1 ? "s" : ""}
+               </span>`
+            : "";
+
+        const changeBtnDisabled = onCooldown ? "disabled" : "";
+        const changeBtnTitle    = onCooldown
+            ? `Cooldown: ${cooldownTurns} turn(s) remaining`
+            : `Change ${key} system`;
+
+        return `
+        <div class="colony-system-section">
+            <div class="panel-subheading">${label}</div>
+            <div class="colony-system-active">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <strong>${sysDef.name || current_systems[key] || "—"}</strong>
+                    ${cooldownBadge}
+                    <button class="btn btn--sm btn--primary colony-sys-change-btn"
+                            data-category="${key}"
+                            ${changeBtnDisabled}
+                            title="${changeBtnTitle}">
+                        CHANGE
+                    </button>
+                </div>
+                <p class="muted" style="font-size:0.75rem;margin:4px 0">
+                    ${sysDef.description || ""}
+                </p>
+                <div class="system-modifier-chips">${modChips}</div>
+                ${commodityHtml}
+            </div>
+        </div>`;
+    }).join("");
+
+    // Faction affinity table — sorted by absolute value descending
+    const affinityEntries = Object.entries(affinity_table)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+
+    const affinityRows = affinityEntries.map(([name, score]) => {
+        const sign   = score > 0 ? "+" : "";
+        const colour = score > 0 ? "#00d4aa" : score < 0 ? "#ff6666" : "#888";
+        const arrow  = score > 0 ? "▲" : score < 0 ? "▼" : "—";
+        return `<div class="system-affinity-row">
+            <span class="system-affinity-name">${name}</span>
+            <span style="color:${colour}">${arrow} ${sign}${score}</span>
+        </div>`;
+    }).join("");
+
+    panel.innerHTML = `
+        <div class="colony-systems-panel">
+
+            <!-- Header -->
+            <div class="panel-section">
+                <div class="panel-heading">Colony Systems</div>
+                <p class="muted" style="font-size:0.75rem">
+                    Configure the social, economic and political systems that
+                    govern ${_colony?.planet_name || "this colony"}.
+                    Aligned systems unlock coherence bonuses; misaligned systems
+                    create friction penalties on all production.
+                </p>
+            </div>
+
+            <!-- Coherence score -->
+            <div class="panel-section">
+                <div class="panel-subheading">SYSTEM COHERENCE</div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="color:${cohColour}">${coherence_label}</span>
+                    <span class="muted">${coherence_multiplier >= 1 ? "+" : ""}${Math.round((coherence_multiplier - 1) * 100)}% production</span>
+                </div>
+                <div class="coherence-bar">
+                    <div class="coherence-bar__fill" style="width:${cohPct}%;background:${cohColour}"></div>
+                </div>
+            </div>
+
+            <!-- Three system sections -->
+            ${sectionsHtml}
+
+            <!-- Faction affinity table -->
+            ${affinityEntries.length > 0 ? `
+            <div class="panel-section">
+                <div class="panel-subheading">FACTION AFFINITY</div>
+                <p class="muted" style="font-size:0.75rem;margin-bottom:6px">
+                    How compatible your systems are with each faction's worldview.
+                </p>
+                <div class="system-affinity-list">${affinityRows}</div>
+            </div>` : ""}
+
+        </div>
+    `;
+
+    // Wire CHANGE buttons
+    panel.querySelectorAll(".colony-sys-change-btn").forEach(btn => {
+        btn.addEventListener("click", () => _showSystemSelector(btn.dataset.category));
+    });
+}
+
+
+/**
+ * Return a human-readable label for a modifier key.
+ * @param {string} key - e.g. "fleet_points", "pop_growth"
+ * @returns {string}
+ */
+function _modLabel(key) {
+    const MAP = {
+        minerals:         "Minerals",
+        credits:          "Credits",
+        research:         "Research",
+        food:             "Food",
+        fleet_points:     "Fleet",
+        pop_growth:       "Pop Growth",
+        trade_volume:     "Trade Vol.",
+        all_production:   "All Output",
+        faction_rep_gain: "Rep Gain",
+        all_diplomacy:    "Diplomacy",
+        stability:        "Stability",
+    };
+    return MAP[key] || key;
+}
+
+
+/**
+ * Open the system selector modal for a given category.
+ * Shows all 6 options for that category, marking the current one and any
+ * locked (research-gated) options.
+ *
+ * @param {"social"|"economic"|"political"} category
+ */
+function _showSystemSelector(category) {
+    if (!_systemsData) return;
+    const { planetName } = _context;
+    const options   = _systemsData.options?.[category] || [];
+    const current   = _systemsData.current_systems?.[category];
+
+    const label = { social: "Social", economic: "Economic", political: "Political" }[category];
+
+    const cardsHtml = options.map(opt => {
+        const isCurrent = opt.id === current;
+        const isLocked  = opt.locked;
+
+        const modChips = Object.entries(opt.modifiers || {}).map(([k, v]) => {
+            const isFlat = k === "stability";
+            const sign   = v >= 0 ? "+" : "";
+            const val    = isFlat ? `${sign}${v}` : `${sign}${Math.round(v * 100)}%`;
+            const colour = v >= 0 ? "#00d4aa" : "#ff6666";
+            return `<span class="system-modifier-chip" style="color:${colour}">${_modLabel(k)} ${val}</span>`;
+        }).join(" ");
+
+        const commodityHtml = category === "economic" && opt.unique_commodity
+            ? `<div style="font-size:0.75rem;color:#f0c040;margin-top:4px">
+                Produces: ${opt.unique_commodity} ×${opt.commodity_amount}/turn
+               </div>`
+            : "";
+
+        const lockHtml = isLocked
+            ? `<div style="font-size:0.72rem;color:#ff8844;margin-top:4px">
+                🔒 ${opt.lock_reason}
+               </div>`
+            : "";
+
+        const cardClasses = [
+            "system-card",
+            isCurrent ? "system-card--current" : "",
+            isLocked  ? "system-card--locked"  : "",
+        ].filter(Boolean).join(" ");
+
+        return `
+        <div class="${cardClasses}"
+             data-id="${opt.id}"
+             style="${isLocked ? "opacity:0.55;cursor:not-allowed" : "cursor:pointer"}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <strong>${opt.name}</strong>
+                ${isCurrent ? `<span style="color:#00d4aa;font-size:0.75rem">● ACTIVE</span>` : ""}
+            </div>
+            <p class="muted" style="font-size:0.75rem;margin:4px 0">${opt.description}</p>
+            <div class="system-modifier-chips" style="margin-bottom:4px">${modChips}</div>
+            ${commodityHtml}
+            ${lockHtml}
+        </div>`;
+    }).join("");
+
+    showModal(`Change ${label} System`, cardsHtml, [
+        { label: "Cancel", className: "btn btn--secondary", action: closeModal },
+    ]);
+
+    // Wire clicks on unlocked, non-current cards
+    document.querySelectorAll(".system-card:not(.system-card--locked):not(.system-card--current)")
+        .forEach(card => {
+            card.addEventListener("click", async () => {
+                closeModal();
+                await _doSetSystem(planetName, category, card.dataset.id);
+            });
+        });
+}
+
+
+/**
+ * Call the API to change a colony system, then refresh the systems panel.
+ *
+ * @param {string} planetName
+ * @param {string} category   - "social" | "economic" | "political"
+ * @param {string} systemId   - New system ID
+ */
+async function _doSetSystem(planetName, category, systemId) {
+    try {
+        const result = await setColonySystem(planetName, category, systemId);
+        notify("ECON", result.message);
+
+        // Update cached colony and systems data
+        _colony      = result.colony;
+        _systemsData = await getColonySystems(planetName);
+        _renderSystemsPanel();
+    } catch (err) {
+        notify("ERROR", err.message || "Failed to change system.");
+    }
+}
+
+
+// ---------------------------------------------------------------------------
 // HTML template
 // ---------------------------------------------------------------------------
 
@@ -672,6 +1015,21 @@ function _buildChrome(planetName, systemName) {
                     <h2 class="panel-title">${planetName}</h2>
                     <p class="panel-subtitle muted">${systemName}</p>
                 </div>
+
+                <!-- Tab row: HEX MAP | SYSTEMS -->
+                <div class="panel-section colony-tab-row">
+                    <button id="colony-tab-hex"
+                            class="btn btn--sm colony-tab colony-tab--active"
+                            title="Hex tile map and improvements">
+                        HEX MAP
+                    </button>
+                    <button id="colony-tab-systems"
+                            class="btn btn--sm colony-tab"
+                            title="Social, economic and political systems">
+                        SYSTEMS
+                    </button>
+                </div>
+
                 <div class="panel-section muted" id="colony-legend">
                     <p class="legend-hint">Click any tile to inspect or build.</p>
                     <p class="legend-hint">Scroll to zoom · Drag to pan.</p>
