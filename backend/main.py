@@ -949,6 +949,12 @@ async def new_game(request: NewGameRequest):
             game.navigation.current_ship.coordinates = start_sys["coordinates"]
             start_sys["visited"] = True
 
+    # Give the starter ship a generous fuel load so new players can explore freely.
+    ship = game.navigation.current_ship
+    if ship:
+        ship.max_fuel = max(ship.max_fuel, 500)
+        ship.fuel     = ship.max_fuel
+
     # Initialise NPC infrastructure — bots and stations are generated fresh each game.
     _init_bot_manager(game)
     _init_station_manager(game)
