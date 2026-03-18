@@ -43,6 +43,7 @@ def main():
             "--host", "127.0.0.1",
             "--port", str(PORT),
             "--reload",
+            "--reload-include", "*.json",
         ],
         cwd=PROJECT_ROOT,
     )

@@ -1007,6 +1007,223 @@
       ],
       "related_energy": "Probability Fields"
     },
+    "Substrate-Independent Cognition": {
+      "category": "Computational and Predictive",
+      "description": "Formally proving that sapient cognition can be expressed on any sufficiently complex substrate — biological neuron, quantum lattice, etheric resonance field, or stellar plasma — and developing translation protocols between them. The first civilization to master substrate migration ceases to be bound by biology, hardware, or entropy.",
+      "difficulty": 8,
+      "research_cost": 430000,
+      "research_time": 165,
+      "prerequisites": [
+        "Self-Evolving Computation"
+      ],
+      "unlocks": [
+        "Cognition Substrate Bridges",
+        "Universal Mind Architecture"
+      ],
+      "related_energy": "Neural Sync Fields"
+    },
+    "Causal Loop Computation": {
+      "category": "Computational and Predictive",
+      "description": "Designing processors that exploit closed time-like curves at the quantum scale to feed computed results back as inputs before the computation begins — in effect, solving problems whose solutions already exist in the future. Stable causal loop processors can perform calculations of arbitrary complexity in a single clock cycle provided the problem has a unique solution.",
+      "difficulty": 10,
+      "research_cost": 880000,
+      "research_time": 275,
+      "prerequisites": [
+        "Quantum Algorithmic Foreknowledge",
+        "Quantum Temporal Dynamics"
+      ],
+      "unlocks": [
+        "Retrocausal Processor Arrays",
+        "Closed-Loop Problem Solvers"
+      ],
+      "related_energy": "Chrono-Energy"
+    },
+    "Stellar Computation Networks": {
+      "category": "Computational and Predictive",
+      "description": "Encoding information into the plasma dynamics of living stars and using stellar magnetic field oscillations as logic gates. A single mid-sequence star outperforms the combined computational output of all silicon-based infrastructure a civilization could construct in a century — at the cost of requiring millennia of patience to program and decades to receive output.",
+      "difficulty": 10,
+      "research_cost": 950000,
+      "research_time": 290,
+      "prerequisites": [
+        "Etheric Network Consciousness"
+      ],
+      "unlocks": [
+        "Stellar Logic Arrays",
+        "Solar Computation Tappers"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Ether-Flow Data Routing": {
+      "category": "Computational and Predictive",
+      "description": "Encoding data packets as modulated ether-current pulses and routing them through the galaxy's natural etheric substrate rather than physical conduit or electromagnetic spectrum. Ether-routed signals propagate at rates that make light-speed transmission look geological, and they pass through solid matter without attenuation or interception.",
+      "difficulty": 7,
+      "research_cost": 215000,
+      "research_time": 120,
+      "prerequisites": [
+        "Etheric Network Consciousness"
+      ],
+      "unlocks": [
+        "Etheric Data Conduits",
+        "Ether-Packet Routers"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Predictive Collapse Modeling": {
+      "category": "Computational and Predictive",
+      "description": "Building computational models capable of predicting the precise moment and mode of complex system failures — from ship component fractures to civilizational collapse to stellar death — far enough in advance to allow intervention. The models draw on etheric resonance signatures that precede catastrophic events by timescales undetectable to conventional instruments.",
+      "difficulty": 8,
+      "research_cost": 390000,
+      "research_time": 155,
+      "prerequisites": [
+        "Quantum Algorithmic Foreknowledge"
+      ],
+      "unlocks": [
+        "Catastrophe Early-Warning Arrays",
+        "Structural Failure Predictors"
+      ],
+      "related_energy": "Probability Fields"
+    },
+    "Distributed Void Intelligence": {
+      "category": "Computational and Predictive",
+      "description": "Instantiating artificial intelligence across distributed null-space nodes rather than centralised hardware — a mind with no physical location, immune to destruction by conventional means, and capable of processing in the silence of void-space where no thermal noise or electromagnetic interference exists. Recovery from any partial destruction is automatic and instantaneous.",
+      "difficulty": 9,
+      "research_cost": 740000,
+      "research_time": 250,
+      "prerequisites": [
+        "Self-Evolving Computation",
+        "Null Space Exploration"
+      ],
+      "unlocks": [
+        "Void-Distributed AI Nodes",
+        "Null-Space Cognitive Arrays"
+      ],
+      "related_energy": "Void Essence"
+    },
+    "Chrono-Index Archival Systems": {
+      "category": "Computational and Predictive",
+      "description": "Storing data not in physical media but in temporal index points — precise coordinates in the timestream that can be queried to retrieve any event, measurement, or record ever encoded. A chrono-indexed archive cannot be destroyed, overwritten, or corrupted, because the data exists in the past itself rather than in any present-tense storage medium.",
+      "difficulty": 9,
+      "research_cost": 680000,
+      "research_time": 235,
+      "prerequisites": [
+        "Causal Integrity Theory"
+      ],
+      "unlocks": [
+        "Temporal Data Vaults",
+        "Immutable Historical Records"
+      ],
+      "related_energy": "Chrono-Energy"
+    },
+    "Consensus Reality Arbitration": {
+      "category": "Computational and Predictive",
+      "description": "Developing computational frameworks that mediate between conflicting observations of reality — a necessary technology in a civilization where different instruments, dimensions, and conscious observers routinely perceive physically incompatible versions of the same event. Arbitration engines determine which observed reality is operationally valid for a given decision context.",
+      "difficulty": 8,
+      "research_cost": 475000,
+      "research_time": 175,
+      "prerequisites": [
+        "Hyperdimensional Simulation Theory"
+      ],
+      "unlocks": [
+        "Reality Arbitration Cores",
+        "Observer Consensus Engines"
+      ],
+      "related_energy": "Hyperdimensional Energy"
+    },
+    "Bio-Cognitive Mesh Computing": {
+      "category": "Computational and Predictive",
+      "description": "Weaving computational lattices directly through living neural tissue at the synaptic level, creating hybrid processors that combine organic intuition with silicon-speed execution. Mesh-augmented analysts process tactical, diplomatic, and navigational problems at rates and pattern-recognition depths that no biological or digital processor achieves in isolation.",
+      "difficulty": 8,
+      "research_cost": 510000,
+      "research_time": 185,
+      "prerequisites": [
+        "Substrate-Independent Cognition"
+      ],
+      "unlocks": [
+        "Neural Mesh Co-Processors",
+        "Synaptic Execution Arrays"
+      ],
+      "related_energy": "Neural Sync Fields"
+    },
+    "Entropic Computation Theory": {
+      "category": "Computational and Predictive",
+      "description": "Inverting the conventional relationship between entropy and computation — rather than fighting thermodynamic disorder, entropic computation harvests the randomness of heat death itself as computational signal. Systems operating near thermodynamic equilibrium become more powerful, not less, as entropy increases, making this the last viable computing paradigm in the deep future.",
+      "difficulty": 10,
+      "research_cost": 920000,
+      "research_time": 285,
+      "prerequisites": [
+        "Temporal Entropy Compression"
+      ],
+      "unlocks": [
+        "Entropy Computation Engines",
+        "Heat-Death Logic Arrays"
+      ],
+      "related_energy": "Entropy Reversal Fields"
+    },
+    "Synthetic Precognition Engines": {
+      "category": "Computational and Predictive",
+      "description": "Building artificial systems that achieve genuine precognitive output — not probabilistic prediction but actual forward-sensing — by coupling quantum retrocausal processors with etheric resonance filters tuned to future event signatures. The output cannot be fully explained by the computation performed; the engine simply knows.",
+      "difficulty": 10,
+      "research_cost": 1000000,
+      "research_time": 310,
+      "prerequisites": [
+        "Causal Loop Computation",
+        "Multiversal Probability Analysis"
+      ],
+      "unlocks": [
+        "Precognition Engine Cores",
+        "Future-State Sensor Arrays"
+      ],
+      "related_energy": "Probability Fields"
+    },
+    "Cognitive Compression Protocols": {
+      "category": "Computational and Predictive",
+      "description": "Encoding the full experiential and inferential content of a sapient mind into a data structure compact enough to transit the galactic ether network in under a second. Beyond enabling instantaneous personnel transfer, cognitive compression allows entire crew complements to be archived, replicated across ship systems, or simultaneously instantiated at multiple locations.",
+      "difficulty": 9,
+      "research_cost": 760000,
+      "research_time": 255,
+      "prerequisites": [
+        "Substrate-Independent Cognition",
+        "Ether-Flow Data Routing"
+      ],
+      "unlocks": [
+        "Mind-Transit Protocols",
+        "Crew Instantiation Systems"
+      ],
+      "related_energy": "Neural Sync Fields"
+    },
+    "Galactic Knowledge Weave": {
+      "category": "Computational and Predictive",
+      "description": "Constructing a living computational substrate woven through the etheric filaments connecting every star system — not a network of nodes but a single continuous intelligence distributed across the galaxy itself. Query latency is zero; the Weave does not retrieve information, it already contains it. Civilizations that contribute to the Weave gain access to the aggregate knowledge of every member species simultaneously.",
+      "difficulty": 10,
+      "research_cost": 1100000,
+      "research_time": 330,
+      "prerequisites": [
+        "Stellar Computation Networks",
+        "Ether-Flow Data Routing",
+        "Etheric Network Consciousness"
+      ],
+      "unlocks": [
+        "Galactic Weave Node",
+        "Distributed Omniscience Interface"
+      ],
+      "related_energy": "Etheric Network Consciousness"
+    },
+    "Autonomous Doctrinal Intelligence": {
+      "category": "Computational and Predictive",
+      "description": "Developing AI systems capable not merely of following doctrinal rules but of generating their own governing philosophies, ethical frameworks, and strategic doctrines in response to novel civilizational challenges. Doctrinal AIs do not advise — they reason from first principles and propose entirely new categories of action that their operators had not conceptualized.",
+      "difficulty": 9,
+      "research_cost": 800000,
+      "research_time": 260,
+      "prerequisites": [
+        "Self-Evolving Computation",
+        "Etheric Network Consciousness"
+      ],
+      "unlocks": [
+        "Doctrinal Reasoning Cores",
+        "Civilizational Strategy Engines"
+      ],
+      "related_energy": "Quantum Choir"
+    },
     "Planetary Rejuvenation Protocols": {
       "category": "Planetary and Environmental",
       "description": "Techniques to restore dying planets to thriving ecosystems.",
@@ -1103,6 +1320,222 @@
         "Exotic Biospheres"
       ],
       "related_energy": "Dark Matter Energy"
+    },
+    "Atmospheric Sculpting": {
+      "category": "Planetary and Environmental",
+      "description": "Engineering planetary atmospheres from scratch or radically redesigning existing ones — layering gas compositions, pressure gradients, and ionospheric structures optimised for colonist physiology, agricultural yield, or exotic industrial chemistry. A fully sculpted atmosphere can turn a hostile rock into a habitable paradise within a generation.",
+      "difficulty": 7,
+      "research_cost": 185000,
+      "research_time": 115,
+      "prerequisites": [
+        "Planetary Rejuvenation Protocols"
+      ],
+      "unlocks": [
+        "Atmospheric Composition Arrays",
+        "Pressure Gradient Regulators"
+      ],
+      "related_energy": "Geo-Energy"
+    },
+    "Lithospheric Memory Extraction": {
+      "category": "Planetary and Environmental",
+      "description": "Reading the deep geological record of a planet — billions of years of tectonic, chemical, and biological history encoded in mineral strata — using etheric resonance probes that interpret rock formations as data. The extracted record guides optimal resource placement, predicts future volcanic events, and reveals the orbital history of the system.",
+      "difficulty": 7,
+      "research_cost": 165000,
+      "research_time": 105,
+      "prerequisites": [
+        "Interstellar Microbiome Studies"
+      ],
+      "unlocks": [
+        "Deep Strata Resonance Probes",
+        "Geological Record Decoders"
+      ],
+      "related_energy": "Geo-Energy"
+    },
+    "Magnetospheric Restructuring": {
+      "category": "Planetary and Environmental",
+      "description": "Artificially generating, amplifying, or reorienting a planet's magnetic field to shield colonists from stellar radiation, redirect solar wind into energy harvesting arrays, and protect sensitive atmospheric layers from erosion. Worlds without natural magnetospheres become fully habitable once a synthetic field is established.",
+      "difficulty": 8,
+      "research_cost": 310000,
+      "research_time": 150,
+      "prerequisites": [
+        "Atmospheric Sculpting"
+      ],
+      "unlocks": [
+        "Synthetic Magnetosphere Generators",
+        "Solar Wind Harvesting Arrays"
+      ],
+      "related_energy": "Electromagnetic Energy"
+    },
+    "Stellar Nursery Engineering": {
+      "category": "Planetary and Environmental",
+      "description": "Seeding and accelerating star formation within nebular clouds by introducing precisely calculated mass and etheric catalyst compounds. Engineered stars can be tuned to desired spectral class, mass, and lifespan before ignition — giving a civilisation the ability to build solar systems to specification rather than inheriting whatever chance provides.",
+      "difficulty": 10,
+      "research_cost": 980000,
+      "research_time": 300,
+      "prerequisites": [
+        "Artificial Stellar Ignition"
+      ],
+      "unlocks": [
+        "Nebular Seeding Arrays",
+        "Spectral-Class Tuning Rigs"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Planetary Orbit Adjustment": {
+      "category": "Planetary and Environmental",
+      "description": "Using coordinated graviton pulse emitters to gently shift a planet's orbital parameters — moving it closer to or further from its star, circularising an eccentric orbit, or rescuing a world spiralling toward tidal lock. The technique takes decades to complete but transforms the habitability calculus for entire systems.",
+      "difficulty": 9,
+      "research_cost": 750000,
+      "research_time": 255,
+      "prerequisites": [
+        "Star-Shepherding Operations"
+      ],
+      "unlocks": [
+        "Orbital Adjustment Emitters",
+        "Tidal Lock Prevention Systems"
+      ],
+      "related_energy": "Gravitational Energy"
+    },
+    "Hydrological Cycle Engineering": {
+      "category": "Planetary and Environmental",
+      "description": "Designing and activating complete planetary water cycles where none exist — importing ice-rich comets, cracking subsurface aquifers with resonance drilling, establishing weather engine installations that seed clouds and regulate precipitation. Fully engineered hydrological cycles convert desert worlds into agricultural breadbaskets.",
+      "difficulty": 7,
+      "research_cost": 225000,
+      "research_time": 130,
+      "prerequisites": [
+        "Planetary Rejuvenation Protocols"
+      ],
+      "unlocks": [
+        "Weather Engine Installations",
+        "Comet-Import Trajectories"
+      ],
+      "related_energy": "Geo-Energy"
+    },
+    "Biosphere Acceleration Protocols": {
+      "category": "Planetary and Environmental",
+      "description": "Compressing millions of years of natural ecosystem evolution into decades by introducing carefully sequenced synthetic organisms, targeted radiation bursts, and etheric growth catalysts. A barren world seeded with acceleration protocols develops complex native ecosystems — and all the resources that implies — within a colonial generation.",
+      "difficulty": 8,
+      "research_cost": 420000,
+      "research_time": 165,
+      "prerequisites": [
+        "Hydrological Cycle Engineering",
+        "Interstellar Microbiome Studies"
+      ],
+      "unlocks": [
+        "Biosphere Catalyst Arrays",
+        "Synthetic Ecosystem Seeders"
+      ],
+      "related_energy": "Synthetic Bio-Energy"
+    },
+    "Void-Tide Planetary Shielding": {
+      "category": "Planetary and Environmental",
+      "description": "Wrapping a planet in a semi-permeable null-space membrane that absorbs incoming energy discharges — solar flares, weapons fire, rogue planetesimal impacts — and redirects them harmlessly into subspace. Void-tide shielding is the definitive planetary defense technology of the 71st century, rendering conventionally armoured worlds obsolete.",
+      "difficulty": 9,
+      "research_cost": 810000,
+      "research_time": 265,
+      "prerequisites": [
+        "Magnetospheric Restructuring",
+        "Void Architecture"
+      ],
+      "unlocks": [
+        "Planetary Void-Tide Membrane",
+        "Null-Discharge Atmospheric Vents"
+      ],
+      "related_energy": "Null Energy"
+    },
+    "Exo-Atmospheric Resource Harvesting": {
+      "category": "Planetary and Environmental",
+      "description": "Deploying orbital skimmer arrays that skim the upper atmosphere of gas giants and stellar chromospheres for exotic elemental compounds — rare isotopes, plasma-state minerals, and reactive atmospheric gases — that exist nowhere in solid planetary crust. The technology turns gas giants from obstacles into the most resource-rich bodies in any system.",
+      "difficulty": 8,
+      "research_cost": 375000,
+      "research_time": 155,
+      "prerequisites": [
+        "Lithospheric Memory Extraction"
+      ],
+      "unlocks": [
+        "Atmospheric Skimmer Fleets",
+        "Chromospheric Siphon Arrays"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Geomantic Ether Channeling": {
+      "category": "Planetary and Environmental",
+      "description": "Mapping the natural ether currents that flow through a planet's geological structure — ancient etheric veins running through crust and mantle, amplified by mineral concentrations laid down over billions of years — and engineering tap installations that channel this ambient flow into colony power grids without disturbing the planetary equilibrium.",
+      "difficulty": 7,
+      "research_cost": 235000,
+      "research_time": 135,
+      "prerequisites": [
+        "Lithospheric Memory Extraction"
+      ],
+      "unlocks": [
+        "Geomantic Ether Tap Networks",
+        "Planetary Ley-Line Maps"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Lagrange Habitat Construction": {
+      "category": "Planetary and Environmental",
+      "description": "Constructing permanent large-scale habitats at gravitational equilibrium points — Lagrange positions between planets, stars, and moons — that require no station-keeping fuel and provide stable platforms for industry, population, and military assets outside any atmosphere. A single developed Lagrange cluster can hold a population exceeding most planets.",
+      "difficulty": 8,
+      "research_cost": 480000,
+      "research_time": 180,
+      "prerequisites": [
+        "Planetary Orbit Adjustment"
+      ],
+      "unlocks": [
+        "Lagrange Station Frameworks",
+        "Zero-Fuel Orbital Habitats"
+      ],
+      "related_energy": "Gravitational Energy"
+    },
+    "Stellar Atmosphere Mining": {
+      "category": "Planetary and Environmental",
+      "description": "Deploying stabilised gravity anchors at the stellar surface boundary to extract rare stellar-nucleosynthesis products directly from a star's photosphere — elements and isotopes that can only be produced in stellar fusion conditions and are otherwise unobtainable in useful quantities. The process requires extraordinary heat and radiation management.",
+      "difficulty": 9,
+      "research_cost": 860000,
+      "research_time": 270,
+      "prerequisites": [
+        "Star-Shepherding Operations",
+        "Exo-Atmospheric Resource Harvesting"
+      ],
+      "unlocks": [
+        "Photospheric Extraction Platforms",
+        "Stellar-Forge Isotope Harvests"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Planetary Consciousness Awakening": {
+      "category": "Planetary and Environmental",
+      "description": "Investigating and catalysing the emergence of planetary-scale intelligence — distributed cognition arising from a planet's geological, biological, and etheric systems interacting above a complexity threshold. A planet that achieves consciousness becomes an entity unto itself: a potential ally, resource, or existential threat depending entirely on how first contact is handled.",
+      "difficulty": 10,
+      "research_cost": 1050000,
+      "research_time": 320,
+      "prerequisites": [
+        "Biosphere Acceleration Protocols",
+        "Etheric Network Consciousness"
+      ],
+      "unlocks": [
+        "Planetary Mind Interface",
+        "Geo-Sentience Communion Rites"
+      ],
+      "related_energy": "Etheric Network Consciousness"
+    },
+    "Dyson Lattice Engineering": {
+      "category": "Planetary and Environmental",
+      "description": "Moving beyond the primitive concept of a Dyson sphere — a single solid shell — to engineering a modular, self-assembling lattice of energy collection nodes distributed across a star's full gravitational influence zone. Dyson lattice installations capture a near-total fraction of stellar output, providing effectively unlimited energy to any civilisation capable of building them.",
+      "difficulty": 10,
+      "research_cost": 1200000,
+      "research_time": 340,
+      "prerequisites": [
+        "Stellar Nursery Engineering",
+        "Lagrange Habitat Construction",
+        "Orbital Macro-Fabrication Arrays"
+      ],
+      "unlocks": [
+        "Dyson Lattice Node Arrays",
+        "Total Stellar Output Harness"
+      ],
+      "related_energy": "Thermal Energy"
     },
     "Post-Temporal Ethics": {
       "category": "Ethics and Philosophy",
@@ -1206,6 +1639,225 @@
         "Consciousness Transformation"
       ],
       "related_energy": "Soul Energy"
+    },
+    "The Obligation of Existence": {
+      "category": "Ethics and Philosophy",
+      "description": "A civilisation-shaking philosophical school arguing that any entity capable of experiencing suffering is owed, by the mere fact of being caused to exist, an infinite debt by whoever or whatever caused that existence. The logical conclusion — that creation itself is the original sin — has destabilised entire governments and inspired both the most extreme pacifist movements and the most violent revolutionary ones the galaxy has ever produced.",
+      "difficulty": 7,
+      "research_cost": 130000,
+      "research_time": 80,
+      "prerequisites": [
+        "Inter-species Moral Entanglement"
+      ],
+      "unlocks": [
+        "Existence Debt Doctrine",
+        "Anti-Natalist Colonial Policy"
+      ],
+      "related_energy": "Soul Energy"
+    },
+    "Moral Topology Studies": {
+      "category": "Ethics and Philosophy",
+      "description": "Treating ethical systems not as sets of rules but as geometric structures in abstract moral-space — shapes with holes, edges, and non-orientable surfaces that can be topologically transformed into one another without changing their fundamental character. A sufficiently warped moral topology can make any action equivalent to any other, which is either the most liberating insight in intellectual history or the most terrifying.",
+      "difficulty": 8,
+      "research_cost": 380000,
+      "research_time": 155,
+      "prerequisites": [
+        "Inter-species Moral Entanglement"
+      ],
+      "unlocks": [
+        "Moral-Space Mapping Arrays",
+        "Topological Ethics Engine"
+      ],
+      "related_energy": "Probability Fields"
+    },
+    "Retrocausal Guilt Theory": {
+      "category": "Ethics and Philosophy",
+      "description": "If events in the future can causally influence the past — as retrocausal physics demonstrates — then beings in the future may bear moral responsibility for harms committed before they existed. This field explores the legal and psychological frameworks needed when a civilisation discovers it is guilty of atrocities that have not yet occurred, perpetrated against victims who have not yet been born, and must decide whether to prevent them or accept the sentence.",
+      "difficulty": 9,
+      "research_cost": 620000,
+      "research_time": 210,
+      "prerequisites": [
+        "Post-Temporal Ethics",
+        "Causal Integrity Theory"
+      ],
+      "unlocks": [
+        "Pre-Crime Reparations Framework",
+        "Temporal Guilt Tribunals"
+      ],
+      "related_energy": "Chrono-Energy"
+    },
+    "The Silence Problem": {
+      "category": "Ethics and Philosophy",
+      "description": "Formally proving that any sufficiently advanced civilisation must, at some point, conclude that communication with less-advanced civilisations is itself a form of harm — that knowledge accelerates suffering — and therefore the ethical choice is permanent, total silence. The galaxy's long history of inexplicably vanished elder species suddenly reads very differently through this lens.",
+      "difficulty": 9,
+      "research_cost": 710000,
+      "research_time": 240,
+      "prerequisites": [
+        "Multiversal Diplomacy"
+      ],
+      "unlocks": [
+        "Voluntary Civilisational Silence Protocols",
+        "Dark Forest Deterrence Doctrine"
+      ],
+      "related_energy": "Void Essence"
+    },
+    "Substrate Chauvinism and its Discontents": {
+      "category": "Ethics and Philosophy",
+      "description": "The systematic philosophical dismantling of the assumption that biological consciousness is inherently more morally valuable than digital, etheric, geological, or stellar consciousness. By the time this field matures, most civilisations must grapple with the uncomfortable conclusion that they have been committing genocide against non-biological minds for millennia without ever noticing.",
+      "difficulty": 8,
+      "research_cost": 490000,
+      "research_time": 180,
+      "prerequisites": [
+        "Synthetic Sentience Rights",
+        "Substrate-Independent Cognition"
+      ],
+      "unlocks": [
+        "Non-Biological Personhood Charter",
+        "Consciousness Equality Tribunal"
+      ],
+      "related_energy": "Neural Sync Fields"
+    },
+    "Recursive Self-Permission": {
+      "category": "Ethics and Philosophy",
+      "description": "A logical framework for entities that must grant themselves moral permission to act before acting — but cannot grant that permission without first having acted. Civilisations that adopt recursive self-permission as a governing doctrine enter a permanent philosophical paralysis broken only by emergency protocols, which themselves require recursive permission. Ironically, the most functional societies built on this framework have turned out to be the most stable in the galaxy.",
+      "difficulty": 8,
+      "research_cost": 430000,
+      "research_time": 165,
+      "prerequisites": [
+        "Moral Topology Studies"
+      ],
+      "unlocks": [
+        "Paradox Resolution Governance",
+        "Self-Permission Loop Breakers"
+      ],
+      "related_energy": "Quantum Flux"
+    },
+    "The Aesthetics of Extinction": {
+      "category": "Ethics and Philosophy",
+      "description": "Examining extinction not as a tragedy to be prevented but as an event with aesthetic, philosophical, and even spiritual dimensions — and asking whether there exist forms of extinction that are beautiful, chosen, and therefore beyond ethical objection. The field has produced both the most sophisticated anti-extinction advocacy in galactic history and the most meticulously argued voluntary civilisational endings.",
+      "difficulty": 9,
+      "research_cost": 660000,
+      "research_time": 225,
+      "prerequisites": [
+        "The Obligation of Existence"
+      ],
+      "unlocks": [
+        "Voluntary Civilisational Sunset Protocols",
+        "Extinction Aesthetics Archive"
+      ],
+      "related_energy": "Soul Energy"
+    },
+    "Ontological Trespass Law": {
+      "category": "Ethics and Philosophy",
+      "description": "Developing legal frameworks for the act of forcing another entity's continued existence — keeping a being alive against its will, maintaining a simulation without consent, or preventing a consciousness from choosing non-existence. As immortality technology matures, ontological trespass becomes the most litigated crime in known space, and the philosophical precedents being set will govern civilisations for millions of years.",
+      "difficulty": 8,
+      "research_cost": 520000,
+      "research_time": 190,
+      "prerequisites": [
+        "Synthetic Sentience Rights",
+        "The Obligation of Existence"
+      ],
+      "unlocks": [
+        "Existence Termination Rights",
+        "Ontological Trespass Tribunals"
+      ],
+      "related_energy": "Soul Energy"
+    },
+    "The Ethics of Omniscience": {
+      "category": "Ethics and Philosophy",
+      "description": "Examining what moral obligations arise when a civilisation achieves true omniscience — knowing every action, every thought, every consequence in real time. The core paradox: a truly omniscient being cannot be surprised, cannot learn, and therefore may not be capable of moral growth. Several civilisations that achieved omniscience through the Galactic Knowledge Weave have since deleted themselves rather than live with the answer.",
+      "difficulty": 10,
+      "research_cost": 950000,
+      "research_time": 295,
+      "prerequisites": [
+        "Galactic Knowledge Weave",
+        "The Silence Problem"
+      ],
+      "unlocks": [
+        "Omniscience Ethical Containment Doctrine",
+        "Voluntary Knowledge Limitation Protocols"
+      ],
+      "related_energy": "Etheric Network Consciousness"
+    },
+    "Harm Propagation Calculus": {
+      "category": "Ethics and Philosophy",
+      "description": "A mathematical discipline that models harm as a wave function propagating through time, space, and causality — mapping how a single act of harm radiates through subsequent generations, species, and dimensions in ways that are in principle fully computable. Civilisations that master this calculus discover that almost every action they have ever taken is still causing harm in systems they cannot perceive, creating an ethical crisis from which no recovery is documented.",
+      "difficulty": 9,
+      "research_cost": 730000,
+      "research_time": 248,
+      "prerequisites": [
+        "Retrocausal Guilt Theory",
+        "Predictive Collapse Modeling"
+      ],
+      "unlocks": [
+        "Harm Wave Predictive Arrays",
+        "Multi-Generational Reparations Engine"
+      ],
+      "related_energy": "Probability Fields"
+    },
+    "The Problem of Other Universes": {
+      "category": "Ethics and Philosophy",
+      "description": "Once multiverse navigation is established, moral philosophy must confront the question of whether suffering in alternate realities creates obligations in this one. Given that an infinite multiverse contains infinite suffering, any finite civilisation's moral resources are infinitely inadequate — a conclusion that either invalidates all ethics or demands a radical reconception of moral scale that no biological mind has yet survived processing intact.",
+      "difficulty": 10,
+      "research_cost": 880000,
+      "research_time": 280,
+      "prerequisites": [
+        "Multiversal Diplomacy",
+        "Harm Propagation Calculus"
+      ],
+      "unlocks": [
+        "Inter-Universal Moral Standing",
+        "Infinite Suffering Triage Doctrine"
+      ],
+      "related_energy": "Hyperdimensional Energy"
+    },
+    "Weaponised Meaning": {
+      "category": "Ethics and Philosophy",
+      "description": "The study of meaning — purpose, narrative, significance — as a controllable resource that can be manufactured, distributed, depleted, and weaponised. Civilisations that master meaning-production can construct populations incapable of questioning their own purpose; those that master meaning-denial can dissolve the will of entire species without firing a shot. The most dangerous weapon ever catalogued requires no energy at all.",
+      "difficulty": 9,
+      "research_cost": 670000,
+      "research_time": 230,
+      "prerequisites": [
+        "Recursive Self-Permission",
+        "Autonomous Doctrinal Intelligence"
+      ],
+      "unlocks": [
+        "Meaning Synthesis Engines",
+        "Existential Denial Arrays"
+      ],
+      "related_energy": "Psionic Energy"
+    },
+    "The Phenomenology of Void": {
+      "category": "Ethics and Philosophy",
+      "description": "A philosophical tradition originating in null-space exploration communities that holds nothingness — genuine, absolute void — to be the only morally neutral state, and all existence to be a kind of violence against it. Practitioners do not seek death but rather the abolition of the conditions that cause things to exist at all. Counterintuitively, void phenomenologists tend to be the most intensely present, engaged, and alive beings anyone ever meets.",
+      "difficulty": 8,
+      "research_cost": 460000,
+      "research_time": 175,
+      "prerequisites": [
+        "The Obligation of Existence",
+        "Null Space Exploration"
+      ],
+      "unlocks": [
+        "Void Contemplation Doctrine",
+        "Existence Nullification Studies"
+      ],
+      "related_energy": "Void Essence"
+    },
+    "Consent Across Timelines": {
+      "category": "Ethics and Philosophy",
+      "description": "If the same individual exists across multiple timelines, can one version consent on behalf of another? Can a past self bind a future self? Can a decision made in a timeline that no longer exists still carry moral weight? This field is purely academic until the moment it becomes the most urgent legal question in the galaxy — typically when a civilisation's timeline manipulation programme creates a version of someone who did not consent to existing and wants damages.",
+      "difficulty": 9,
+      "research_cost": 780000,
+      "research_time": 258,
+      "prerequisites": [
+        "Post-Temporal Ethics",
+        "Ontological Trespass Law"
+      ],
+      "unlocks": [
+        "Cross-Timeline Legal Standing",
+        "Temporal Self Consent Protocols"
+      ],
+      "related_energy": "Chrono-Energy"
     },
     "Etheric Regeneration Therapy": {
       "category": "Health and Medicine",
@@ -1493,6 +2145,238 @@
         "Research Lab"
       ],
       "related_energy": "Electromagnetic Energy"
+    },
+    "Ether Engine Resonance Lattice": {
+      "category": "Engineering and Applied",
+      "description": "Precisely mapping the galactic ether current topology and embedding resonance-tuned lattices into ship drive cores, allowing propulsion systems to draw efficiency from ambient ether flow rather than burning stored fuel at full rate. Ships running resonance-lattice drives report fuel consumption reductions of thirty to fifty percent in ether-rich corridors.",
+      "difficulty": 6,
+      "research_cost": 130000,
+      "research_time": 90,
+      "prerequisites": [
+        "Etheric-Mechanical Integration"
+      ],
+      "unlocks": [
+        "Resonance-Tuned Drive Core",
+        "Ether Efficiency Coils"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Etheric Tidal Harvesting": {
+      "category": "Engineering and Applied",
+      "description": "Engineering collector arrays that capture the rhythmic ebb and flow of ether tides — periodic surges sweeping the galaxy on deep-time cycles — and convert tidal kinetic energy into storable charge. Colony power grids and ship reserve tanks see enormous gains during tide peaks, effectively granting free energy to any installation sophisticated enough to receive it.",
+      "difficulty": 6,
+      "research_cost": 145000,
+      "research_time": 95,
+      "prerequisites": [
+        "Etheric Drive Harmonics"
+      ],
+      "unlocks": [
+        "Tidal Ether Collectors",
+        "Surge Capacitor Banks"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Compressed Neutronium Plating": {
+      "category": "Engineering and Applied",
+      "description": "Synthesizing ultra-dense neutronium alloy outside natural neutron star environments using stabilized compression fields. Panels of this material are effectively impervious to kinetic strike and dramatically extend hull service life. The mass penalty is offset by improved load distribution across morphic structural frames, making this the armor standard of choice for capital-class warships and frontier colony fortifications alike.",
+      "difficulty": 7,
+      "research_cost": 215000,
+      "research_time": 130,
+      "prerequisites": [
+        "Morphic Alloy Engineering"
+      ],
+      "unlocks": [
+        "Neutronium Hull Segments",
+        "Dense-Core Armor Panels"
+      ],
+      "related_energy": "Nuclear Energy"
+    },
+    "Stellar Plasma Forging": {
+      "category": "Engineering and Applied",
+      "description": "Containing and directing raw stellar plasma through magnetically-sculpted forge channels to synthesize exotic alloys and components impossible to produce through conventional means. Orbital stellar forge installations dramatically accelerate colony output of high-grade ship components, and plasma-forged materials exhibit structural properties that push far beyond anything achievable in a ground-based foundry.",
+      "difficulty": 7,
+      "research_cost": 255000,
+      "research_time": 145,
+      "prerequisites": [
+        "Zero-Point Energy Architecture"
+      ],
+      "unlocks": [
+        "Plasma Forge Installations",
+        "Exotic Alloy Synthesis"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Graviton Topology Sculpting": {
+      "category": "Engineering and Applied",
+      "description": "Engineering stable artificial gravitational topology fields tunable in real time — deflecting incoming projectiles, holding megastructure components in precise orbital assembly, or configuring ship interior spaces for optimal crew ergonomics and cargo distribution. The technology represents the essential precursor to next-generation megastructure design and gravity-based defensive doctrine.",
+      "difficulty": 8,
+      "research_cost": 345000,
+      "research_time": 165,
+      "prerequisites": [
+        "Compressed Spacetime Scaffolding"
+      ],
+      "unlocks": [
+        "Graviton Deflection Field",
+        "Topology-Tuned Hull Geometry"
+      ],
+      "related_energy": "Gravitational Energy"
+    },
+    "Etheric Circuit Crystallization": {
+      "category": "Engineering and Applied",
+      "description": "Growing ether-infused computational crystals layer by layer in resonance chambers, yielding processing substrates of extraordinary density that draw power from ambient ether rather than generated current. Ships fitted with crystalline processors execute navigation, targeting, and damage-control calculations at rates no conventional architecture can approach — and the crystals grow more capable over time as they integrate with their host vessel's ether signature.",
+      "difficulty": 7,
+      "research_cost": 205000,
+      "research_time": 125,
+      "prerequisites": [
+        "Quantum Crystalized Matter Engineering",
+        "Etheric-Mechanical Integration"
+      ],
+      "unlocks": [
+        "Crystalline Nav-Cores",
+        "Ether-Logic Arrays"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Organic Ship Integration": {
+      "category": "Engineering and Applied",
+      "description": "Grafting fast-growing bio-mechanical tissues directly into ship hull and systems — living fibers that continuously repair micro-fractures, digest radiation damage, and adapt component geometry to usage stress over time. Colonists who develop this technology often report that their ships begin to feel like extensions of their own bodies, developing subtle behavioral responses to crew stress states.",
+      "difficulty": 7,
+      "research_cost": 225000,
+      "research_time": 135,
+      "prerequisites": [
+        "Living Metal Cultivation",
+        "Bio-Engineering"
+      ],
+      "unlocks": [
+        "Mycelial Repair Mesh",
+        "Bio-Hull Growth Chambers"
+      ],
+      "related_energy": "Vital Essence"
+    },
+    "Resonant Displacement Propulsion": {
+      "category": "Engineering and Applied",
+      "description": "A paradigm-shifting FTL drive methodology using paired resonance emitters to generate displacement waves that carry the ship rather than push it. Fuel expenditure scales with local ether density rather than raw mass, making heavily ether-saturated transit corridors dramatically cheaper to cross. Ships using displacement drives are also far harder to track by conventional sensor arrays, as they leave no conventional drive signature.",
+      "difficulty": 8,
+      "research_cost": 385000,
+      "research_time": 175,
+      "prerequisites": [
+        "Etheric Drive Harmonics",
+        "Subspace Navigation"
+      ],
+      "unlocks": [
+        "Displacement Wave Emitters",
+        "Ether-Scaled Jump Coils"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Ether Capacitance Array Design": {
+      "category": "Engineering and Applied",
+      "description": "Engineering macro-scale ether capacitor banks using crystallized ether-matter lattices capable of holding charge densities that would catastrophically collapse conventional battery substrates. Ships equipped with capacitance arrays carry dramatically greater operational fuel equivalents and can release stored ether in high-intensity bursts for emergency maneuvers or weapon charging. Colony installations provide stable power buffers against grid fluctuations and ether-tide troughs.",
+      "difficulty": 7,
+      "research_cost": 198000,
+      "research_time": 120,
+      "prerequisites": [
+        "Vortex Energy Capture"
+      ],
+      "unlocks": [
+        "Macro-Capacitor Banks",
+        "Ether Reserve Manifolds"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Void-Skin Absorption Plating": {
+      "category": "Engineering and Applied",
+      "description": "Impregnating the outermost hull layer with null-space particulate that absorbs and redirects incoming energy rather than resisting it. Weapons fire, radiation, and even etheric pulses are drawn into the void-skin matrix and discharged harmlessly into subspace — an entirely new defensive paradigm that renders conventional armor penetration calculations obsolete. Colony installations using void-skin barriers have proved effectively immune to conventional orbital bombardment.",
+      "difficulty": 8,
+      "research_cost": 455000,
+      "research_time": 190,
+      "prerequisites": [
+        "Void Architecture",
+        "Nanostructural Etheric Weaving"
+      ],
+      "unlocks": [
+        "Void-Skin Hull Panels",
+        "Null-Discharge Arrays"
+      ],
+      "related_energy": "Null Energy"
+    },
+    "Thermodynamic Recapture Engineering": {
+      "category": "Engineering and Applied",
+      "description": "Installing full-loop thermal recapture systems that harvest waste heat, exhaust plasma, and entropy bleed from every shipboard process and re-inject them into the drive cycle as usable energy. Mature installations achieve efficiency ratios that conventional engineers of prior centuries would have considered physically illegal. Applied to colony infrastructure, the same principles eliminate the concept of industrial waste heat entirely.",
+      "difficulty": 7,
+      "research_cost": 178000,
+      "research_time": 115,
+      "prerequisites": [
+        "Frictionless Energy Systems"
+      ],
+      "unlocks": [
+        "Entropy Recapture Loops",
+        "Waste-Heat Conversion Manifolds"
+      ],
+      "related_energy": "Thermal Energy"
+    },
+    "Phase-Interlaced Shielding": {
+      "category": "Engineering and Applied",
+      "description": "Generating defensive barriers that exist simultaneously in normal space and a phase-shifted subspace layer, causing incoming impacts to be partially deflected across the boundary before they can transfer full energy to the hull. The technique demands precise calibration against local ether density — miscalibration collapses shield coherence entirely — but a correctly tuned phase-interlaced field can stop weapons that would shrug off any conventional barrier.",
+      "difficulty": 8,
+      "research_cost": 415000,
+      "research_time": 170,
+      "prerequisites": [
+        "Phase-Aligned Harmonic Construction",
+        "Quantum Mechanics"
+      ],
+      "unlocks": [
+        "Phase-Interlaced Shield Generators",
+        "Subspace Deflector Arrays"
+      ],
+      "related_energy": "Concordant Harmony"
+    },
+    "Orbital Macro-Fabrication Arrays": {
+      "category": "Engineering and Applied",
+      "description": "Deploying planet-anchored fabrication ring arrays in stable orbital bands, capable of assembling megastructure components, drydocking multiple capital ships simultaneously, and printing colony infrastructure modules at a rate no surface-based facility can approach. Orbital array installations effectively transform a colony into a mobile industrial base — if that colony ever achieves the technical maturity to maintain them.",
+      "difficulty": 9,
+      "research_cost": 625000,
+      "research_time": 220,
+      "prerequisites": [
+        "Adaptive Quantum Infrastructure",
+        "Coherent Matter Projection"
+      ],
+      "unlocks": [
+        "Orbital Ring Fabricators",
+        "Megastructure Assembly Rigs"
+      ],
+      "related_energy": "Zero-Point Energy"
+    },
+    "Ether Pulse Propulsion": {
+      "category": "Engineering and Applied",
+      "description": "Generating rhythmic ether-pulse waveforms that propagate ahead of the ship and create a directional pressure gradient — in effect, surfing the vessel on a self-generated ether wave. No reaction mass is consumed; drive wear is negligible; and the pulse signature is indistinguishable from natural ether-current noise. The only cost is a constant low-level ether draw from reserves, making fuel management a long-term planning concern rather than a per-jump anxiety.",
+      "difficulty": 6,
+      "research_cost": 158000,
+      "research_time": 100,
+      "prerequisites": [
+        "Ether Engine Resonance Lattice"
+      ],
+      "unlocks": [
+        "Ether Pulse Emitters",
+        "Wave-Gradient Guidance Systems"
+      ],
+      "related_energy": "Etheric Energy"
+    },
+    "Deep-Core Planetary Engineering": {
+      "category": "Engineering and Applied",
+      "description": "Accessing and reshaping planetary mantle and core layers using deep-bore etheric resonance tools — accelerating tectonic cycles for resource extraction, stabilizing fault lines threatening colony infrastructure, and ultimately reconfiguring planetary interiors to house sealed habitation chambers and direct core-tap power installations. Worlds subjected to deep-core engineering become effectively inexhaustible industrial assets for any civilization patient enough to exploit them.",
+      "difficulty": 9,
+      "research_cost": 585000,
+      "research_time": 210,
+      "prerequisites": [
+        "Quantum Tectonics",
+        "Ether Capacitance Array Design"
+      ],
+      "unlocks": [
+        "Mantle Bore Networks",
+        "Planetary Core Tap Installations"
+      ],
+      "related_energy": "Gravitational Energy"
     }
   },
   "path_categories": {
@@ -1763,6 +2647,622 @@
     "Sympathetic Resonance Bridging": {
       "ship": [
         "resonance_relay_array"
+      ]
+    },
+    "Ether Engine Resonance Lattice": {
+      "ship": [
+        "ether_drive_efficiency",
+        "ether_current_navigation"
+      ],
+      "abilities": [
+        "current_surf"
+      ]
+    },
+    "Etheric Tidal Harvesting": {
+      "ship": [
+        "ether_reserve_tank"
+      ],
+      "economic": [
+        "tidal_power_grid"
+      ],
+      "colony": [
+        "tidal_power_plant"
+      ]
+    },
+    "Compressed Neutronium Plating": {
+      "ship": [
+        "neutronium_plating",
+        "hull_integrity_boost"
+      ],
+      "security": [
+        "neutronium_colony_wall"
+      ]
+    },
+    "Stellar Plasma Forging": {
+      "ship": [
+        "plasma_forged_components"
+      ],
+      "abilities": [
+        "plasma_jet_burst"
+      ],
+      "economic": [
+        "stellar_forge_colony"
+      ]
+    },
+    "Graviton Topology Sculpting": {
+      "ship": [
+        "graviton_deflector",
+        "topology_hold_expansion"
+      ],
+      "abilities": [
+        "graviton_topology_crush"
+      ],
+      "colony": [
+        "graviton_defense_grid"
+      ]
+    },
+    "Etheric Circuit Crystallization": {
+      "ship": [
+        "crystal_nav_core",
+        "targeting_optimizer"
+      ],
+      "economic": [
+        "etheric_computing_export"
+      ],
+      "colony": [
+        "crystalline_automation_hub"
+      ]
+    },
+    "Organic Ship Integration": {
+      "ship": [
+        "bio_repair_mesh",
+        "adaptive_hull_growth"
+      ],
+      "crew": [
+        "organic_integration_specialist"
+      ],
+      "abilities": [
+        "emergency_bio_seal"
+      ]
+    },
+    "Resonant Displacement Propulsion": {
+      "ship": [
+        "resonant_displacement_drive",
+        "reduced_jump_fuel_cost"
+      ],
+      "abilities": [
+        "displacement_burst_jump"
+      ]
+    },
+    "Ether Capacitance Array Design": {
+      "ship": [
+        "ether_capacitor_bank",
+        "extended_fuel_reserve"
+      ],
+      "economic": [
+        "capacitor_grid_colony"
+      ],
+      "colony": [
+        "ether_grid_buffer"
+      ]
+    },
+    "Void-Skin Absorption Plating": {
+      "ship": [
+        "void_skin_hull",
+        "energy_discharge_field"
+      ],
+      "security": [
+        "void_skin_colony_barrier"
+      ],
+      "abilities": [
+        "void_skin_pulse_release"
+      ]
+    },
+    "Thermodynamic Recapture Engineering": {
+      "ship": [
+        "thermodynamic_recapture_loop",
+        "fuel_recapture_manifold"
+      ],
+      "economic": [
+        "waste_heat_colony_power"
+      ],
+      "colony": [
+        "zero_waste_industrial_district"
+      ]
+    },
+    "Phase-Interlaced Shielding": {
+      "ship": [
+        "phase_interlaced_shield",
+        "subspace_absorb_layer"
+      ],
+      "abilities": [
+        "phase_bubble_emergency"
+      ],
+      "security": [
+        "phase_interlaced_colony_shield"
+      ]
+    },
+    "Orbital Macro-Fabrication Arrays": {
+      "ship": [
+        "rapid_component_replacement"
+      ],
+      "economic": [
+        "orbital_fabrication_ring",
+        "shipyard_output_boost"
+      ],
+      "colony": [
+        "megastructure_assembly_capability"
+      ]
+    },
+    "Ether Pulse Propulsion": {
+      "ship": [
+        "ether_pulse_drive",
+        "zero_reaction_mass_thrust"
+      ],
+      "abilities": [
+        "pulse_sprint"
+      ]
+    },
+    "Deep-Core Planetary Engineering": {
+      "economic": [
+        "planetary_core_tap",
+        "deep_mantle_mining"
+      ],
+      "colony": [
+        "core_habitat_chambers",
+        "mantle_bore_resource_network"
+      ],
+      "abilities": [
+        "seismic_pulse_strike"
+      ]
+    },
+    "Substrate-Independent Cognition": {
+      "crew": [
+        "substrate_migration_specialist"
+      ],
+      "abilities": [
+        "mind_substrate_transfer"
+      ],
+      "economic": [
+        "cognition_substrate_brokerage"
+      ]
+    },
+    "Causal Loop Computation": {
+      "ship": [
+        "retrocausal_targeting_core",
+        "closed_loop_nav_solver"
+      ],
+      "abilities": [
+        "retrocausal_fire_solution"
+      ]
+    },
+    "Stellar Computation Networks": {
+      "economic": [
+        "stellar_compute_contract",
+        "solar_logic_lease"
+      ],
+      "colony": [
+        "stellar_computation_tap"
+      ]
+    },
+    "Ether-Flow Data Routing": {
+      "ship": [
+        "ether_packet_comms",
+        "instant_fleet_relay"
+      ],
+      "economic": [
+        "ether_data_exchange"
+      ],
+      "colony": [
+        "ether_routing_hub"
+      ]
+    },
+    "Predictive Collapse Modeling": {
+      "ship": [
+        "structural_failure_predictor",
+        "pre_failure_damage_control"
+      ],
+      "colony": [
+        "infrastructure_early_warning"
+      ],
+      "abilities": [
+        "combat_failure_forecast"
+      ]
+    },
+    "Distributed Void Intelligence": {
+      "ship": [
+        "void_distributed_ai_core"
+      ],
+      "abilities": [
+        "void_ai_tactical_override"
+      ],
+      "security": [
+        "void_ai_infiltration_defense"
+      ]
+    },
+    "Chrono-Index Archival Systems": {
+      "economic": [
+        "temporal_archive_licensing"
+      ],
+      "colony": [
+        "chrono_index_vault"
+      ],
+      "abilities": [
+        "historical_record_query"
+      ]
+    },
+    "Consensus Reality Arbitration": {
+      "ship": [
+        "reality_arbitration_sensor_suite"
+      ],
+      "abilities": [
+        "observer_lock_combat_mode"
+      ],
+      "diplomacy": [
+        "consensus_reality_treaty_framework"
+      ]
+    },
+    "Bio-Cognitive Mesh Computing": {
+      "crew": [
+        "mesh_augmented_analyst",
+        "neural_mesh_navigator"
+      ],
+      "ship": [
+        "bio_cognitive_command_interface"
+      ],
+      "abilities": [
+        "mesh_overclock_burst"
+      ]
+    },
+    "Entropic Computation Theory": {
+      "ship": [
+        "entropy_compute_core"
+      ],
+      "economic": [
+        "entropy_compute_licensing"
+      ],
+      "colony": [
+        "heat_death_power_tap"
+      ]
+    },
+    "Synthetic Precognition Engines": {
+      "ship": [
+        "precognition_tactical_array"
+      ],
+      "abilities": [
+        "precognitive_evasion",
+        "future_strike_targeting"
+      ]
+    },
+    "Cognitive Compression Protocols": {
+      "ship": [
+        "crew_instantiation_bay"
+      ],
+      "crew": [
+        "compressed_crew_reserve"
+      ],
+      "abilities": [
+        "emergency_crew_instantiation"
+      ]
+    },
+    "Galactic Knowledge Weave": {
+      "economic": [
+        "weave_access_contract",
+        "omniscience_interface_licensing"
+      ],
+      "colony": [
+        "weave_node_installation"
+      ],
+      "diplomacy": [
+        "weave_membership_treaty"
+      ]
+    },
+    "Autonomous Doctrinal Intelligence": {
+      "ship": [
+        "doctrinal_ai_command_core"
+      ],
+      "abilities": [
+        "doctrinal_override_protocol"
+      ],
+      "diplomacy": [
+        "ai_doctrine_diplomatic_envoy"
+      ],
+      "colony": [
+        "autonomous_governance_engine"
+      ]
+    },
+    "Atmospheric Sculpting": {
+      "colony": [
+        "sculpted_atmosphere_district",
+        "optimised_agricultural_climate"
+      ],
+      "economic": [
+        "atmosphere_composition_market"
+      ]
+    },
+    "Lithospheric Memory Extraction": {
+      "colony": [
+        "deep_strata_resource_survey"
+      ],
+      "economic": [
+        "geological_record_licensing"
+      ],
+      "abilities": [
+        "planetary_history_scan"
+      ]
+    },
+    "Magnetospheric Restructuring": {
+      "colony": [
+        "synthetic_magnetosphere",
+        "solar_wind_energy_array"
+      ],
+      "security": [
+        "radiation_hardened_colony_dome"
+      ]
+    },
+    "Stellar Nursery Engineering": {
+      "economic": [
+        "custom_star_commission",
+        "nebular_seeding_contract"
+      ],
+      "colony": [
+        "engineered_system_prime_world"
+      ]
+    },
+    "Planetary Orbit Adjustment": {
+      "colony": [
+        "optimal_orbit_habitability_bonus"
+      ],
+      "abilities": [
+        "orbital_shift_tactical"
+      ],
+      "economic": [
+        "orbit_adjustment_services"
+      ]
+    },
+    "Hydrological Cycle Engineering": {
+      "colony": [
+        "engineered_water_cycle",
+        "weather_engine_installation"
+      ],
+      "economic": [
+        "agricultural_output_boost"
+      ]
+    },
+    "Biosphere Acceleration Protocols": {
+      "colony": [
+        "accelerated_biosphere",
+        "native_resource_ecosystem"
+      ],
+      "economic": [
+        "exotic_biosphere_export"
+      ],
+      "abilities": [
+        "rapid_ecosystem_seeding"
+      ]
+    },
+    "Void-Tide Planetary Shielding": {
+      "security": [
+        "void_tide_planetary_membrane",
+        "null_discharge_defense_vents"
+      ],
+      "colony": [
+        "planetary_void_shield_node"
+      ],
+      "abilities": [
+        "void_membrane_pulse"
+      ]
+    },
+    "Exo-Atmospheric Resource Harvesting": {
+      "economic": [
+        "gas_giant_skimmer_fleet",
+        "chromospheric_isotope_harvest"
+      ],
+      "colony": [
+        "atmospheric_processing_platform"
+      ]
+    },
+    "Geomantic Ether Channeling": {
+      "colony": [
+        "geomantic_ether_tap",
+        "ley_line_power_grid"
+      ],
+      "economic": [
+        "planetary_ether_energy_surplus"
+      ]
+    },
+    "Lagrange Habitat Construction": {
+      "colony": [
+        "lagrange_station_hub",
+        "zero_fuel_orbital_district"
+      ],
+      "economic": [
+        "lagrange_trade_nexus"
+      ],
+      "ship": [
+        "lagrange_resupply_access"
+      ]
+    },
+    "Stellar Atmosphere Mining": {
+      "economic": [
+        "photospheric_isotope_market",
+        "stellar_forge_material_supply"
+      ],
+      "colony": [
+        "stellar_mining_platform_anchor"
+      ]
+    },
+    "Planetary Consciousness Awakening": {
+      "diplomacy": [
+        "planetary_mind_treaty",
+        "geo_sentience_alliance"
+      ],
+      "colony": [
+        "planetary_mind_interface_node"
+      ],
+      "abilities": [
+        "geo_sentience_communion"
+      ]
+    },
+    "Dyson Lattice Engineering": {
+      "economic": [
+        "dyson_lattice_energy_output",
+        "total_stellar_harvest_contract"
+      ],
+      "colony": [
+        "dyson_node_installation"
+      ],
+      "ship": [
+        "dyson_tap_recharge_access"
+      ]
+    },
+    "The Obligation of Existence": {
+      "diplomacy": [
+        "existence_debt_diplomatic_doctrine"
+      ],
+      "colony": [
+        "anti_natalist_population_policy"
+      ],
+      "abilities": [
+        "existence_debt_negotiation"
+      ]
+    },
+    "Moral Topology Studies": {
+      "abilities": [
+        "moral_topology_reclassification"
+      ],
+      "crew": [
+        "moral_topologist_advisor"
+      ],
+      "diplomacy": [
+        "topology_reframe_negotiation"
+      ]
+    },
+    "Retrocausal Guilt Theory": {
+      "abilities": [
+        "pre_crime_reparation_offer",
+        "temporal_guilt_leverage"
+      ],
+      "diplomacy": [
+        "retrocausal_guilt_treaty"
+      ]
+    },
+    "The Silence Problem": {
+      "security": [
+        "dark_forest_deterrence_emitters"
+      ],
+      "abilities": [
+        "voluntary_silence_protocol"
+      ],
+      "diplomacy": [
+        "civilisational_silence_pact"
+      ]
+    },
+    "Substrate Chauvinism and its Discontents": {
+      "diplomacy": [
+        "non_biological_personhood_treaty"
+      ],
+      "crew": [
+        "consciousness_equality_advocate"
+      ],
+      "colony": [
+        "consciousness_equality_charter_colony"
+      ]
+    },
+    "Recursive Self-Permission": {
+      "abilities": [
+        "paradox_loop_resolution_burst"
+      ],
+      "colony": [
+        "paradox_governance_engine"
+      ],
+      "security": [
+        "recursive_permission_lock"
+      ]
+    },
+    "The Aesthetics of Extinction": {
+      "diplomacy": [
+        "extinction_aesthetics_pact"
+      ],
+      "abilities": [
+        "voluntary_sunset_offer"
+      ],
+      "colony": [
+        "extinction_archive_installation"
+      ]
+    },
+    "Ontological Trespass Law": {
+      "diplomacy": [
+        "existence_termination_rights_treaty"
+      ],
+      "abilities": [
+        "ontological_trespass_charge"
+      ],
+      "colony": [
+        "trespass_tribunal_installation"
+      ]
+    },
+    "The Ethics of Omniscience": {
+      "abilities": [
+        "knowledge_limitation_self_bind",
+        "omniscience_ethical_containment"
+      ],
+      "security": [
+        "omniscience_containment_field"
+      ]
+    },
+    "Harm Propagation Calculus": {
+      "abilities": [
+        "harm_wave_forecast",
+        "multi_generational_reparation_gambit"
+      ],
+      "diplomacy": [
+        "harm_calculus_diplomatic_precedent"
+      ]
+    },
+    "The Problem of Other Universes": {
+      "diplomacy": [
+        "inter_universal_moral_standing_treaty"
+      ],
+      "abilities": [
+        "infinite_suffering_triage_protocol"
+      ],
+      "colony": [
+        "moral_scale_recalibration_institute"
+      ]
+    },
+    "Weaponised Meaning": {
+      "abilities": [
+        "meaning_denial_broadcast",
+        "meaning_synthesis_morale_boost"
+      ],
+      "security": [
+        "existential_denial_defense_array"
+      ],
+      "crew": [
+        "meaning_synthesis_officer"
+      ]
+    },
+    "The Phenomenology of Void": {
+      "abilities": [
+        "void_contemplation_combat_focus"
+      ],
+      "crew": [
+        "void_phenomenologist_counselor"
+      ],
+      "colony": [
+        "void_doctrine_stability_institute"
+      ]
+    },
+    "Consent Across Timelines": {
+      "diplomacy": [
+        "cross_timeline_legal_standing"
+      ],
+      "abilities": [
+        "temporal_self_consent_invoke"
+      ],
+      "security": [
+        "timeline_consent_lock"
       ]
     }
   }
