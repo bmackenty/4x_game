@@ -276,6 +276,9 @@ function _renderDetailPanel() {
                 ${lockedHtml ? `<ul class="diplo-benefit-list">${lockedHtml}</ul>` : ""}
             </div>
 
+            <!-- System Compatibility -->
+            ${_buildSystemCompatHtml(f)}
+
             <!-- Preferred trades -->
             ${f.preferred_trades?.length ? `
             <div class="diplo-trades-section">
@@ -347,6 +350,89 @@ async function _doGift(factionName, amount) {
     } catch (err) {
         notify("ERROR", err.message || "Gift failed.");
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// System Compatibility helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the HTML for the "System Compatibility" section in the faction detail
+ * panel.  Shows how the player's colony systems compare to this faction's
+ * preferred social / economic / political systems.
+ *
+ * The faction object must include `faction_system_prefs` and `system_affinity`
+ * from the API response (added in Phase 6 backend changes).
+ *
+ * @param {object} f - Selected faction object
+ * @returns {string} HTML string (empty if no prefs available)
+ */
+function _buildSystemCompatHtml(f) {
+    const prefs = f.faction_system_prefs;
+    if (!prefs || (!prefs.preferred_social && !prefs.preferred_economic && !prefs.preferred_political)) {
+        return "";  // No preferences defined for this faction
+    }
+
+    const affinity = f.system_affinity ?? 0;
+    const sign     = affinity > 0 ? "+" : "";
+    const colour   = affinity > 0 ? "var(--accent-teal)" : affinity < 0 ? "#ff6666" : "var(--text-muted)";
+
+    // Human-readable system names (best-effort lookup from the known system IDs)
+    const SYS_NAMES = {
+        // Social
+        resonance_cohesion:   "Resonance-Based Cohesion",
+        memory_pooled:        "Memory-Pooled Identity",
+        distributed_selfhood: "Distributed Selfhood",
+        narrative_bound:      "Narrative-Bound Societies",
+        rotating_embodiment:  "Rotating Embodiment",
+        symbiotic_networks:   "Symbiotic Social Networks",
+        // Economic
+        energy_state:         "Energy-State Economy",
+        consciousness_labor:  "Consciousness-Labor Economy",
+        memory_economy:       "Memory Economy",
+        time_economy:         "Time Economy",
+        probability_economy:  "Probability Economy",
+        ritualized_exchange:  "Ritualized Exchange",
+        // Political
+        consensus_field:          "Consensus Field Governance",
+        algorithmic_legitimacy:   "Algorithmic Legitimacy",
+        oracle_mediated:          "Oracle-Mediated Governance",
+        temporal_layer:           "Temporal Layer Governance",
+        distributed_sovereignty:  "Distributed Micro-Sovereignty",
+        consciousness_swarm:      "Consciousness Swarm Deliberation",
+    };
+    const name = id => SYS_NAMES[id] || (id ? id.replace(/_/g, " ") : "—");
+
+    const rows = [
+        { label: "Social",    pref: prefs.preferred_social },
+        { label: "Economic",  pref: prefs.preferred_economic },
+        { label: "Political", pref: prefs.preferred_political },
+    ].filter(r => r.pref);
+
+    const rowsHtml = rows.map(({ label, pref }) => `
+        <div class="system-compat-row">
+            <span class="system-compat-label">${label}</span>
+            <span class="muted" style="font-size:0.72rem">${name(pref)}</span>
+            <span class="muted" style="font-size:0.72rem;opacity:0.6">(faction pref)</span>
+            <span></span>
+        </div>`
+    ).join("");
+
+    return `
+    <div class="diplo-benefits-section">
+        <div class="panel-subheading">System Compatibility</div>
+        <p class="muted" style="font-size:0.72rem;margin-bottom:6px">
+            How well your colony systems align with this faction's worldview.
+            Alignment improves diplomatic effectiveness.
+        </p>
+        ${rowsHtml}
+        <div style="margin-top:6px;font-size:0.75rem">
+            Overall affinity:
+            <strong style="color:${colour}">${sign}${affinity}</strong>
+            <span class="muted"> rep modifier per colony</span>
+        </div>
+    </div>`;
 }
 
 

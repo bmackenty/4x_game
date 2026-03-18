@@ -3629,3 +3629,175 @@
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
 }
+
+
+/* ===========================================================================
+   Colony Systems panel — social / economic / political configuration
+   =========================================================================== */
+
+/* Tab row at top of the left panel */
+.colony-tab-row {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.colony-tab {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+  background: transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.colony-tab--active {
+  color: var(--accent-teal);
+  border-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+/* Right-panel container for the systems view */
+.colony-systems-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* One system category (social / economic / political) */
+.colony-system-section {
+  padding: var(--sp-2) var(--sp-2) var(--sp-2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.colony-system-section:last-child {
+  border-bottom: none;
+}
+
+/* Active system display box — teal left accent */
+.colony-system-active {
+  border-left: 3px solid var(--accent-teal);
+  padding-left: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
+/* Small modifier chip (e.g. "+20% research") */
+.system-modifier-chip {
+  display: inline-block;
+  font-size: 0.70rem;
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin: 2px 2px 0 0;
+  white-space: nowrap;
+}
+
+.system-modifier-chips {
+  margin-top: 4px;
+  line-height: 1.8;
+}
+
+/* Coherence bar */
+.coherence-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.coherence-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* Cooldown badge shown next to system name */
+.system-cooldown-badge {
+  font-size: 0.70rem;
+  color: var(--accent-gold);
+  font-family: var(--font-mono);
+  background: rgba(255, 200, 0, 0.10);
+  border: 1px solid rgba(255, 200, 0, 0.25);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* Faction affinity list */
+.system-affinity-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.system-affinity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: var(--font-size-xs);
+}
+
+.system-affinity-name {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* System selector modal cards */
+.system-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2);
+  margin-bottom: var(--sp-1);
+  background: var(--bg-panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.system-card:not(.system-card--locked):not(.system-card--current):hover {
+  border-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.system-card--current {
+  border-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+.system-card--locked {
+  border-color: var(--border-color);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* System compatibility rows in diplomacy detail panel */
+.system-compat-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 28px;
+  gap: var(--sp-1);
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: var(--font-size-xs);
+}
+
+.system-compat-label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.system-compat-match {
+  color: var(--accent-teal);
+  text-align: center;
+  font-size: 0.9em;
+}
+
+.system-compat-no-match {
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.9em;
+}

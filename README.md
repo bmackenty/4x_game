@@ -3,7 +3,9 @@
 A single-player 4X strategy game inspired by Alpha Centauri.  Built on a
 deep Python game engine (~37 K lines) with a browser-based frontend:
 hex-grid galaxy map, hex-grid colony surface, research tech tree, faction
-diplomacy, and commodity trading.
+diplomacy, commodity trading, and a full social / economic / political
+system that shapes every colony's production, research, and diplomatic
+relationships.
 
 ---
 
