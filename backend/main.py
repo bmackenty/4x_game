@@ -2225,12 +2225,20 @@ async def get_all_colonies():
 async def get_colony_overview():
     """
     Return rich per-colony data plus empire-wide totals for the colony
-    management screen.  Includes improvement breakdown and income split.
+    management screen.  Includes improvement breakdown, income split, and
+    the full governing systems block (social / economic / political) with
+    active modifiers, coherence score, and unique commodity output.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
     from backend.colony import POPULATION_INCOME_PER_10K
+    from backend.colony_systems import (
+        SOCIAL_SYSTEMS, ECONOMIC_SYSTEMS, POLITICAL_SYSTEMS,
+        get_production_modifiers, calculate_coherence,
+    )
+
+    current_turn = getattr(game, "current_turn", 1)
 
     colonies_out = []
     for planet_name, colony in colony_manager.colonies.items():
@@ -2242,9 +2250,62 @@ async def get_colony_overview():
             if tile.improvement:
                 improvements[tile.improvement] = improvements.get(tile.improvement, 0) + 1
 
-        pop_income     = int(colony.population / 10_000 * POPULATION_INCOME_PER_10K)
-        bldg_income    = int(prod.get("credits", 0))
-        total_income   = pop_income + bldg_income
+        pop_income  = int(colony.population / 10_000 * POPULATION_INCOME_PER_10K)
+        bldg_income = int(prod.get("credits", 0))
+        total_income = pop_income + bldg_income
+
+        # ── Governing systems block ──────────────────────────────────────────
+        # Build compact summaries for each of the three system categories so
+        # the colonies overview view can display them without a separate request.
+        def _sys_info(sys_id: str, catalogue: dict) -> dict:
+            defn = catalogue.get(sys_id, {})
+            return {
+                "id":          sys_id,
+                "name":        defn.get("name", sys_id),
+                "modifiers":   defn.get("modifiers", {}),
+                "research_required": defn.get("research_required"),
+            }
+
+        coherence_score, coherence_label, coherence_mult = calculate_coherence(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+        )
+        mods = get_production_modifiers(
+            colony.social_system,
+            colony.economic_system,
+            colony.political_system,
+        )
+        econ_def = ECONOMIC_SYSTEMS.get(colony.economic_system, {})
+
+        # Cooldown turns remaining per category
+        def _cd(last: int) -> int:
+            return max(0, SYSTEM_CHANGE_COOLDOWN - (current_turn - last))
+
+        systems_block = {
+            "social":    {
+                **_sys_info(colony.social_system, SOCIAL_SYSTEMS),
+                "last_changed":    colony.social_last_changed,
+                "cooldown_turns":  _cd(colony.social_last_changed),
+            },
+            "economic":  {
+                **_sys_info(colony.economic_system, ECONOMIC_SYSTEMS),
+                "last_changed":      colony.economic_last_changed,
+                "cooldown_turns":    _cd(colony.economic_last_changed),
+                "unique_commodity":  econ_def.get("unique_commodity"),
+                "commodity_amount":  econ_def.get("commodity_amount", 0),
+            },
+            "political": {
+                **_sys_info(colony.political_system, POLITICAL_SYSTEMS),
+                "last_changed":    colony.political_last_changed,
+                "cooldown_turns":  _cd(colony.political_last_changed),
+            },
+            # Combined modifier summary — what the three systems add up to
+            "combined_modifiers":   mods,
+            "coherence_score":      coherence_score,
+            "coherence_label":      coherence_label,
+            "coherence_multiplier": round(coherence_mult, 2),
+        }
 
         colonies_out.append({
             "planet_name":      planet_name,
@@ -2259,11 +2320,12 @@ async def get_colony_overview():
             "income":           total_income,
             "pop_income":       pop_income,
             "bldg_income":      bldg_income,
+            "systems":          systems_block,
         })
 
-    all_prod    = colony_manager.calculate_all_production()
-    total_pop   = sum(c["population"]   for c in colonies_out)
-    total_income = sum(c["income"]       for c in colonies_out)
+    all_prod     = colony_manager.calculate_all_production()
+    total_pop    = sum(c["population"] for c in colonies_out)
+    total_income = sum(c["income"]     for c in colonies_out)
 
     return {
         "colonies": colonies_out,

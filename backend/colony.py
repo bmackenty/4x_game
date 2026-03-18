@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 # Social / economic / political system definitions and helpers.
-from colony_systems import (
+from .colony_systems import (
     get_production_modifiers,
     calculate_coherence,
     get_system_def,
@@ -1182,7 +1182,7 @@ class ColonyManager:
                 "research_required": defn.get("research_required"),
             }
 
-        from colony_systems import SOCIAL_SYSTEMS, POLITICAL_SYSTEMS  # local to avoid top-level circular risk
+        from .colony_systems import SOCIAL_SYSTEMS, POLITICAL_SYSTEMS  # local to avoid top-level circular risk
         systems_block = {
             "social":   {
                 **_sys_summary(colony.social_system, SOCIAL_SYSTEMS),

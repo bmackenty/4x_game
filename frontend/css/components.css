@@ -2591,6 +2591,54 @@
 /* Shared income colour */
 .col-income { color: #4caf80; }
 
+/* Governing systems block inside a colony overview card */
+.col-card__systems {
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.col-card__sys-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.col-card__sys-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.col-card__sys-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 2px 0;
+  font-size: var(--font-size-xs);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.col-card__sys-row:last-of-type {
+  border-bottom: none;
+}
+
+.col-card__sys-label {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.col-card__sys-name {
+  color: var(--text-primary);
+  flex: 1;
+}
+
 
 /* ===========================================================================
    INDEX DETAIL MODAL (SPI / REI / KII / ECI)
