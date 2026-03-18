@@ -42,6 +42,8 @@ The game engine lives entirely in the project-root Python modules and is
 │   ├── __init__.py
 │   ├── main.py             # All /api/* endpoints, singleton Game + ColonyManager
 │   ├── colony.py           # Hex tile colony system (planet surface builder)
+│   ├── colony_systems.py   # Social / economic / political system definitions
+│   │                       #   and modifier / coherence / faction-affinity logic
 │   └── hex_utils.py        # Axial hex math, 3D galaxy→2D hex projection
 │
 ├── frontend/               # Browser UI (vanilla JS ES6 modules, no bundler)
@@ -49,7 +51,8 @@ The game engine lives entirely in the project-root Python modules and is
 │   ├── css/
 │   │   ├── main.css        # Design tokens (Alpha Centauri dark palette)
 │   │   ├── layout.css      # Three-column layout + HUD
-│   │   └── components.css  # Buttons, modals, colony tiles, build menu, toasts
+│   │   └── components.css  # Buttons, modals, colony tiles, build menu, toasts,
+│   │                       #   systems panel, coherence bar, affinity rows
 │   └── js/
 │       ├── main.js         # Entry point, view router, 1 s polling loop
 │       ├── api.js          # All fetch() calls — only file that uses fetch
@@ -61,16 +64,20 @@ The game engine lives entirely in the project-root Python modules and is
 │       ├── views/
 │       │   ├── setup.js        # Character creation (multi-step form)
 │       │   ├── galaxy.js       # Galaxy map: systems, jump, system detail + market panel
-│       │   ├── colony.js       # Planet surface: hex tiles, build/demolish
+│       │   ├── colony.js       # Planet surface: hex tiles, build/demolish,
+│       │   │                   #   SYSTEMS tab (social / economic / political config)
 │       │   ├── research.js     # Tech tree browser and research queue
-│       │   └── diplomacy.js    # Faction reputation and diplomatic actions
+│       │   └── diplomacy.js    # Faction reputation, diplomatic actions,
+│       │                       #   system compatibility panel
 │       └── ui/
 │           ├── hud.js              # HUD bar updates (credits, turn, actions, research bar)
 │           ├── modal.js            # Reusable modal dialog + confirm helper
 │           └── notifications.js    # Toast notification queue
 │
 ├── lore/
-│   └── energies.json       # 50 energy types with descriptions, stats, and category
+│   ├── energies.json       # 50 energy types with descriptions, stats, and category
+│   └── faction_systems.json  # Preferred social / economic / political system for
+│                             #   each of the 32 NPC factions (editable data file)
 │
 └── [game engine — DO NOT MODIFY]
     game.py, navigation.py, research.py, factions.py, economy.py,
@@ -92,14 +99,20 @@ The loop closely follows Alpha Centauri:
 3. **Build** — Place improvements on colony tiles to generate resources per
    turn (minerals, food, research, ether, credits).  Better improvements are
    locked behind research.
-4. **Research** — Advance through the tech tree to unlock superior buildings,
-   ship components, and faction bonuses.
-5. **Trade** — Buy and sell commodities at system markets.  Prices shift with
-   supply, demand, and galactic events.
-6. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Players
-   start at Allied standing (reputation 80) with their chosen faction.  Gift
-   credits to improve standing with others; future quests and trade deals will
-   nudge relations further.
+4. **Configure** — Assign a **Social**, **Economic**, and **Political** system
+   to each colony from the Systems panel.  These choices apply modifier layers
+   on top of tile production, unlock unique tradeable commodities, shape
+   diplomatic standing, and interact with each other via a coherence score.
+5. **Research** — Advance through the tech tree to unlock superior buildings,
+   ship components, faction bonuses, and advanced governing system types.
+6. **Trade** — Buy and sell commodities at system markets.  Prices shift with
+   supply, demand, and galactic events.  Each colony's economic system also
+   produces a unique commodity per turn (e.g. Archived Experience, Cognitive
+   Cycles, Ritual Tokens).
+7. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Players
+   start at Allied standing (reputation 80) with their chosen faction.  Colony
+   system choices passively improve or reduce standing with factions whose
+   worldview aligns or conflicts with your configuration.
 
 ---
 
@@ -160,6 +173,67 @@ Research-gating improvements is the core **research → build** loop.
 
 ---
 
+## Colony Systems
+
+Each colony has three orthogonal **governing systems** configured from the
+**SYSTEMS tab** in the colony view.  They act as multiplier layers on top of
+tile production and interact with research, diplomacy, and trade.
+
+### Economic Systems
+
+| ID | Name | Research Required | Key Modifiers | Unique Commodity |
+|----|------|------------------|---------------|-----------------|
+| `energy_state` | Energy-State Economy | — | Minerals +15%, Credits +10%, Research −5% | Energy Credits (2/turn) |
+| `ritualized_exchange` | Ritualized Exchange | — | Pop Growth +15%, Rep Gain +10% | Ritual Tokens (3/turn) |
+| `consciousness_labor` | Consciousness-Labor | Collective Metaconsciousness Networks | Research +20%, Fleet +10% | Cognitive Cycles (2/turn) |
+| `memory_economy` | Memory Economy | Bio-Digital Symbiosis | Research +25%, Pop Growth +10% | Archived Experience (2/turn) |
+| `time_economy` | Time Economy | Quantum Temporal Dynamics | All Output +8% | Temporal Slices (1/turn) |
+| `probability_economy` | Probability Economy | Causal Integrity Theory | Credits +20%, trade price variance −30% | Probability Futures (1/turn) |
+
+### Political Systems
+
+| ID | Name | Research Required | Key Modifiers |
+|----|------|------------------|---------------|
+| `consensus_field` | Consensus Field Governance | — | Rep Gain +10%, Stability +15, Output −5% |
+| `distributed_sovereignty` | Distributed Micro-Sovereignty | — | Trade +20%, Output +5%, Rep Gain −5% |
+| `algorithmic_legitimacy` | Algorithmic Legitimacy | Predictive Logic Crystals | Output +15%, Research +10%, Pop −5% |
+| `oracle_mediated` | Oracle-Mediated Governance | Primordial Ether Research | Research +20%, Output +5% |
+| `temporal_layer` | Temporal Layer Governance | Quantum Temporal Dynamics | Research +15%, Output +10%, Stability −10 |
+| `consciousness_swarm` | Consciousness Swarm Deliberation | Collective Metaconsciousness Networks | Research +30%, Output +15%, Pop −10% |
+
+### Social Systems
+
+| ID | Name | Research Required | Key Modifiers |
+|----|------|------------------|---------------|
+| `resonance_cohesion` | Resonance-Based Cohesion | — | Fleet +10%, Stability +10, Pop +5% |
+| `narrative_bound` | Narrative-Bound Societies | — | Rep Gain +15%, Pop +10%, Stability +15 |
+| `symbiotic_networks` | Symbiotic Social Networks | — | Pop +20%, Food +10%, Output +5% |
+| `memory_pooled` | Memory-Pooled Identity | Bio-Digital Symbiosis | Research +20%, Stability +20, Pop +5% |
+| `distributed_selfhood` | Distributed Selfhood | Collective Metaconsciousness Networks | Trade +15%, Output +10%, Stability −5 |
+| `rotating_embodiment` | Rotating Embodiment | Trans-Phasic Genetics | Diplomacy +5%, Output +5%, Stability −10 |
+
+### Coherence
+
+Combining systems that complement each other (e.g. Memory-Pooled Identity +
+Memory Economy + Consensus Field) earns a **High Coherence** bonus (×1.15 to
+all production).  Conflicting combinations create **Friction** (×0.80).
+
+| Score | Label | Production Multiplier |
+|-------|-------|-----------------------|
+| ≥ +4 | High Coherence | ×1.15 |
+| ≥ +1 | Aligned | ×1.05 |
+| ≥ −1 | Stable | ×1.00 |
+| ≥ −3 | Friction | ×0.90 |
+| < −3 | High Friction | ×0.80 |
+
+### System Changes
+
+Systems are free to change but carry a **5-turn cooldown** per category.
+Advanced systems are locked behind research — the UI always shows the
+specific research requirement.
+
+---
+
 ## Research System
 
 The full tech tree is browsable in the **Research** view (keyboard: `R`).
@@ -201,6 +275,17 @@ factions start near neutral (−10 to +10).
 
 - **Gift** — spend 500 credits per reputation point to improve standing
   (1–20 points per action).
+
+### System Compatibility
+
+The **Diplomacy** view shows a **System Compatibility** panel for each
+faction — how well the player's current colony configurations align with
+that faction's preferred social / economic / political worldview.  Each
+matching system category contributes +5 to a passive affinity score
+(−15 to +15) that modifies diplomatic effectiveness.
+
+NPC faction preferred systems are defined in `lore/faction_systems.json`
+and can be edited without touching any Python or JS code.
 
 Future hooks (quests, trade deals, missions) are designed to call
 `faction_system.modify_reputation()` to nudge relations up or down.
@@ -285,10 +370,12 @@ routes always win.
 |--------|------|-------------|
 | GET | `/api/colony/all` | Summary list of all owned colonies |
 | GET | `/api/colony/improvements` | Improvement catalogue with research unlock status |
-| GET | `/api/colony/{planet}` | Full tile grid + production for one colony |
+| GET | `/api/colony/{planet}` | Full tile grid + production + systems block |
 | POST | `/api/colony/{planet}/found` | Found a new colony |
 | POST | `/api/colony/{planet}/build` | Build improvement on a tile |
 | DELETE | `/api/colony/{planet}/build` | Demolish improvement (50% refund) |
+| GET | `/api/colony/{planet}/systems` | Current systems, coherence, options, faction affinity |
+| POST | `/api/colony/{planet}/systems` | Change one governing system (research + cooldown gated) |
 
 ### Research
 
@@ -303,8 +390,8 @@ routes always win.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/factions` | All factions + player reputation, sorted Allied→Enemy |
-| GET | `/api/faction/{name}` | Faction detail + available benefits + territory count |
+| GET | `/api/factions` | All factions + reputation + system_affinity score |
+| GET | `/api/faction/{name}` | Faction detail + benefits + system compatibility data |
 | POST | `/api/faction/{name}/action` | Diplomatic action (gift, etc.) |
 
 ### Trade
@@ -370,6 +457,7 @@ routes always win.
 | 3 — Colony System | Planet surface, build/demolish, production | ✅ Complete |
 | 4 — Research & Diplomacy | Tech tree, faction UI, energy lore, HUD bar | ✅ Complete |
 | 5 — Trade | Market UI, buy/sell flow in system panel | ✅ Complete |
+| 5b — Governing Systems | Social/economic/political systems per colony, coherence scoring, faction affinity, unique commodities | ✅ Complete |
 | 6 — Polish | Ether overlays, animations, win conditions, quest hooks | 🔲 Pending |
 
 ---
