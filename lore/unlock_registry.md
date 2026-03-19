@@ -1,0 +1,818 @@
+# Unlock Registry
+
+Generated from research.json (225 projects) and intersections.json (19 intersections).
+
+## Colony Buildings (230)
+
+- Abstract Systems Core
+- Adaptive Cognitive Systems
+- Adaptive Command Network
+- Adaptive Data Core
+- Adaptive Entity Design
+- Adaptive Habitats
+- Adaptive Logic Core
+- Adaptive Systems Core
+- Administrative Hub
+- Agent Simulation Hub
+- Alignment Core
+- Alignment Interface
+- Allocation Office
+- Analytical Revenue Streams
+- Anchor Grid
+- Attunement Chamber
+- Automata Engine
+- Autonomous Biosphere Core
+- Autonomous Civic Systems
+- Autonomous Data Core
+- Autonomous Research Node
+- Autonomous Ritual Core
+- Autonomous Semiotic Core
+- Axiom Forge
+- Axiom Selection Engine
+- Battlespace Core
+- Bio-Energy Nexus
+- Bio-Integrated Facilities
+- Bio-Material Lab
+- Causality Engine
+- Causality Engine Core
+- Causality Strike Core
+- Chrono-Structure Complex
+- Chronogenesis Core
+- Chronometric Lab
+- Closed-Loop Habitats
+- Cognitive Data Interface
+- Cognitive Ops Center
+- Coherence Nexus
+- Composite Foundry
+- Compressed Archives
+- Compression Engine
+- Consciousness Anchor
+- Consensus Engine
+- Construct Realization
+- Construction Drones
+- Constructive Proof Engine
+- Context Engine
+- Continuum Core
+- Continuum Engine
+- Convergence Core
+- Conversion Reactor
+- Conversion Reactors
+- Cross-Domain Lab
+- Cross-Reality Comms Hub
+- Data Core
+- Data Relay Hub
+- Data Verification Center
+- Decay Monitor
+- Detection Grid
+- Deterrence Command
+- Distributed Archive
+- Distributed Cognition Core
+- Doctrine Library
+- Drone Command Hub
+- Ecology Survey Lab
+- Emergence Core
+- Emergence Field Generator
+- Emergence Predictor
+- Emergent AI Core
+- Energy Ecosystem Core
+- Energy Lattice
+- Energy Registry
+- Entity Liaison Chamber
+- Ether Circuit Foundry
+- Ether Extractor
+- Ether Forge
+- Ether Weapon Lab
+- Ether-Driven Factories
+- Ether-Math Interface
+- Etheric Ecology Station
+- Evolution Engine
+- Evolution Forge
+- Evolution Lab
+- Evolution Reactor
+- Exotic Matter Lab
+- Fabrication Bay
+- Feedback Controller
+- Feedback Engine
+- Field Manipulation Core
+- Genesis Core
+- Governance Analytics
+- Governance Network
+- Harmonic Core
+- Harmony Engine
+- High-Efficiency Grid
+- Hybridization Facilities
+- Hyper-Algebra Lab
+- Hyper-Resilience Matrix
+- Identity Anchor
+- Identity Network Core
+- InfoOps Center
+- Information Field Generator
+- Integrated Identity Networks
+- Integrated Power Core
+- Intelligent Material Core
+- Intent Amplifier
+- Inter-Species Interface
+- Interface Gate
+- Interplanetary Bio-Network
+- Intervention Core
+- Inversion Chamber
+- Invocation Engine
+- Invocation Field Generator
+- Irregular Warfare Units
+- Joint Operations Command
+- Knowledge Archive
+- Layered Biosphere
+- Lifecycle Engine
+- Living Cities
+- Living Network Core
+- Manifold Generator
+- Mass Modulation Core
+- Materials Lab
+- Mathematics Institute
+- Matter Forge
+- Matter-Energy Converter
+- Meaning Field Generator
+- Mediation Center
+- Memetic Lab
+- Memetic Operations Center
+- Memory Material Core
+- Microfabrication Facility
+- Mind-State Registry
+- Multi-Layer Analyzer
+- Multi-Layer Command
+- Multi-Layer Governance Hub
+- Multi-Layer Habitat
+- Multi-Layer Infrastructure Hub
+- Multi-Reality Infrastructure
+- Multi-Species Council
+- Multi-Species Ethics Council
+- Nanoforge Complex
+- Neural Interface Lab
+- Niche Analysis Engine
+- Nonlinear Analysis Core
+- Noospheric Core
+- Ontological Field Generator
+- Ontological Habitat Core
+- Ontology Engine
+- Ontology Lab
+- Ontology Map Core
+- Orbital Ring Construction
+- Pattern Engine
+- Pattern Recognition Core
+- Perception Gate Network
+- Persistent System Hub
+- Phase Control Facility
+- Phase Energy Grid
+- Phase Infrastructure
+- Phase Material Facility
+- Phase Structure Complex
+- Phase-Aware Interface
+- Planetary Integration Grid
+- Pocket Habitat
+- Policy Engine
+- Predictive Analytics Core
+- Predictive Coordination
+- Predictive Data Engine
+- Predictive Policy Core
+- Probabilistic Logic Engine
+- Programmable Fabricator
+- Psych-Net Hub
+- Reality Anchor Facility
+- Reality Simulation Core
+- Reality Weave Engine
+- Reconfigurable Facilities
+- Recursive Core
+- Reflexive Core
+- Regenerative Infrastructure
+- Regenerative Material Plant
+- Representative Council
+- Research Node
+- Resonance Lab
+- Ritual Engine
+- Self-Design Core
+- Self-Optimizing Infrastructure
+- Self-Organization Engine
+- Semantic Registry
+- Semiotic Core
+- Semiotic Lab
+- Semiotic Reactor
+- Shared Habitat Design
+- Signal Relay Hub
+- Simulation Core
+- Simulation Engine
+- Space Forge
+- Spatial Compression Facilities
+- Spatial Mapping Lab
+- Spatial Network Hub
+- Spatial Reconfiguration Core
+- Spectrum Observatory
+- Stabilization Grid
+- Swarm Market Core
+- Symbiosis Lab
+- Symbol Processor
+- Symbolic Control Core
+- Symbolic Embassy
+- Symbolic Reactor Core
+- Synchronization Core
+- Synthesis Core
+- Systems Lab
+- Temporal Biosphere Core
+- Temporal Governance Hub
+- Temporal Work Zones
+- Time Buffer
+- Time Field Generator
+- Time Stability Monitoring
+- Timeline Mapper
+- Topological Data Hub
+- Topological Processor
+- Topology Core
+- Total War Nexus
+- Transfinite Processor
+- Transformation Core
+- Unified Energy Core
+- Universal Biosphere Core
+- Value Encoding Engine
+- War College
+- Zero-Point Reactor
+
+## Ship Modules (172)
+
+- Adaptive Battlefield Fields
+- Adaptive Control Systems
+- Adaptive Habitat Expansion
+- Adaptive Hull Systems
+- Adaptive Hull Weaving
+- Adaptive Shielding
+- Adaptive Signal Systems
+- Adaptive Targeting Algorithms
+- Adaptive Trade Routes
+- Advanced Chrono-Systems
+- Advanced Modeling Systems
+- Advanced Sensor Analysis
+- Advanced Sensor Suite
+- Advanced Strategic Systems
+- Advanced Weapon Materials
+- Analytical Computation Core
+- Analytical Subroutines
+- Auto-Repair Systems
+- Autonomous Biospheres
+- Autonomous Fleet Coordination
+- Autonomous Shipyards
+- Basic Autonomy Modules
+- Basic Combat Analytics
+- Basic Hull Assembly
+- Basic Invocation Routines
+- Bio-Linguistic Translators
+- Bioscan Array
+- Chrono-Relay
+- Chrono-Stabilized Hulls
+- Cognitive Indexing
+- Collective Processing Units
+- Combat Drone Bays
+- Command Resonance Array
+- Composition Scanner
+- Consciousness Scanner
+- Controlled Swarm Systems
+- Cross-Phase Hull Systems
+- Cross-Phase Systems
+- Cross-Space Transit
+- Cross-System Translation
+- Curvature Scanner
+- Data Relay Network
+- Defensive Topologies
+- Diplomatic Signal Arrays
+- Diplomatic Signal Systems
+- Direct Cognition Link
+- Distributed Control Systems
+- Drift Scanner
+- Dynamic Computation Systems
+- Ecological Relay Systems
+- Electronic Warfare Package
+- Embedded Space Modules
+- Energy Relay Systems
+- Environment-Tuned Hulls
+- Ether Capacitor
+- Ether Engine Core
+- Ether Shielding
+- Ether-Reinforced Hulls
+- Ether-Sensitive Instruments
+- Evolutionary Ship Systems
+- Existence Mapping Suite
+- Expanded Operational Range
+- Field-Based Communication
+- Field-Based Signal Systems
+- Flexible Computation Models
+- Fold Drive
+- Frequency-Modulated Shields
+- Glyph Matrix
+- Glyph-Tuned Power Systems
+- Hard-Light Constructs
+- High-Bandwidth Channels
+- Hybrid Analysis Suite
+- Hybrid Energy Systems
+- Hybrid System Integration
+- Independent Signal Networks
+- Independent Signal Systems
+- Inertia-Control Hulls
+- Instant Communication Links
+- Instant Transit Links
+- Integrated Combat Systems
+- Integrated Command Weave
+- Integrated Decision Systems
+- Integrity Scanner
+- Intelligent Retrieval Systems
+- Interdimensional Strike Systems
+- Layer Scanner
+- Learning Hull Systems
+- Living Hulls
+- Living Power Conduits
+- Long-Range Transmission Systems
+- Mass Fabricators
+- Modular Ship Frames
+- Multi-Agent Coordination
+- Multi-Band Sensors
+- Multi-Layer Armor Systems
+- Multi-Layer Signal Systems
+- Multi-Mode Power Core
+- Multi-Phase Habitat Systems
+- Multi-Phase Hulls
+- Navigation Grid
+- Networked Navigation Systems
+- Neuro-Interference Systems
+- Non-Invasive Scanners
+- Perception Cloak Generator
+- Phase Anchor
+- Phase-Coherent Hulls
+- Phase-Coupled Weapons
+- Phase-Sight Sensors
+- Phase-Spectrum Sensors
+- Phase-Stable Navigation
+- Phased Hull Systems
+- Planetary Engineering Platforms
+- Pre-Causal Sensors
+- Preconfigured Defense Grids
+- Probabilistic Targeting
+- Procedural Design Systems
+- Procedural Generation Systems
+- Rapid Material Deployment
+- Reality Mirror Systems
+- Reality-Coupled Systems
+- Reality-Linked Control Systems
+- Reconfigurable Transit Systems
+- Recursive Diagnostics
+- Recursive Ship Systems
+- Reinforced Hull Plating
+- Resonant Bioscanners
+- Resonant Shielding
+- Responsive Signal Arrays
+- Ritual Drone Systems
+- Self-Healing Hulls
+- Self-Improving Systems
+- Self-Modifying Networks
+- Self-Modifying Weapons
+- Self-Optimizing Fleets
+- Semiotic Control Systems
+- Sensitivity Control Systems
+- Signal Decomposition Tools
+- Signal Harmonizer
+- Signal Integrity Suite
+- Signal Interpretation Suite
+- Signal Override Systems
+- Spatial Compression Algorithms
+- Stability Field
+- Stabilized Multi-Domain Hulls
+- Stealth Systems
+- Strategic Weapons Systems
+- Structural Energy Systems
+- Substrate-Agnostic Interfaces
+- Summoning Gate
+- Swarm Assembly Units
+- Swarm Coordination
+- Swarm Formation Systems
+- Symbol Scanner
+- Symbolic Actuation Modules
+- Symbolic Actuation Systems
+- Symbolic Execution Systems
+- System-Level Coordination
+- Tactical Coordination Suite
+- Tactical Time Control
+- Targeted Colonization
+- Temporal Data Relay
+- Temporal Sensors
+- Temporal Shielding
+- Temporal Synchronizer
+- Temporal Weapon Systems
+- Terraforming Nexus
+- Time-Anchored Hulls
+- Timeline Analysis
+- Unified Transit Systems
+- Vacuum Energy Drive
+- Variable Density Hulls
+- World-Seeding Platforms
+
+## Abilities (216)
+
+- Absolute Communication
+- Absolute Invocation
+- Accelerated Adaptation
+- Adaptive Doctrine
+- Adaptive Ecosystem Management
+- Adaptive Messaging
+- Adaptive Navigation
+- Adaptive Resource Allocation
+- Adaptive Structures
+- Algorithmic Control
+- Ambush Protocols
+- Anticipatory Analysis
+- Anticipatory Models
+- Auto-Repair Structures
+- Autonomous Coordination
+- Autonomous Engineering
+- Autonomous Maintenance Systems
+- Autonomous Power Systems
+- Autonomous Targeting
+- Awareness Index
+- Boundary Control
+- Branch Prediction
+- Chaos Mapping
+- Coexistence Protocols
+- Cognitive Transfer Protocols
+- Collective Intelligence
+- Command Glyphs
+- Compact Transit Corridors
+- Computational Rituals
+- Conflict Minimization
+- Construct Realization
+- Contextual Logic Systems
+- Continuity Tracking
+- Continuous Computation
+- Continuous Improvement
+- Continuous Invocation
+- Coordinate Standardization
+- Coordinated Decision-Making
+- Crisis Adaptation Protocols
+- Cross-Domain Coordination
+- Cross-Format Translation
+- Cross-Layer Coordination
+- Cross-Phase Engagement
+- Cross-Phase Law Enforcement
+- Cross-Phase Transmission
+- Cross-Reality Structures
+- Cross-Species Units
+- Cross-Time Coordination
+- Custom Material Creation
+- Custom Reality Layers
+- Data Preservation
+- Data Prioritization
+- Deep Interpretation
+- Defensive Barriers
+- Direct Manifestation
+- Directed Adaptation
+- Directed Complexity
+- Dispute Arbitration
+- Distributed Decision Systems
+- Dynamic Regulations
+- Dynamic Tactics
+- Ecological Decision Systems
+- Efficiency Boost
+- Emergent Defense Systems
+- Emergent Identity Frameworks
+- Emergent Insight
+- Encoded Rite Library
+- Energy Classification Protocols
+- Energy Mapping
+- Energy Reconfiguration
+- Energy Resonance Control
+- Energy Routing Protocols
+- Energy-Based Fabrication
+- Energy-Linked Growth
+- Engagement Protocols
+- Entity Classification
+- Entity Classification Protocols
+- Environmental Control
+- Environmental Rewriting
+- Error Correction Protocols
+- Escalation Control
+- Ethical Decision Systems
+- Event Prediction
+- Event Replay
+- Existence Rewriting
+- Existential Legitimacy
+- Exploratory Algorithms
+- Fixed Reference Points
+- Focused Invocation
+- Formal Proof Systems
+- Foundational Creation
+- Free Temporal Navigation
+- Future-State Ecology Planning
+- Fuzzy Decision Systems
+- Generative Mathematics
+- Growth-Based Construction
+- Habitat Classification
+- Harmonic Tuning
+- Hidden Movement Systems
+- Hidden Pathways
+- High-Energy Constructs
+- High-Fidelity Communication
+- Hybrid Materials
+- Infinite-State Analysis
+- Influence Campaigns
+- Instant Materialization
+- Interdimensional Messaging
+- Inverted Storage
+- Invocation Glyphs
+- Knowledge Packets
+- Legitimacy Index
+- Long-Term Stability
+- Mass Reduction
+- Material Index
+- Meaning-Based Treaties
+- Mega-Structure Frameworks
+- Modular Construction
+- Morale Disruption
+- Multi-Dimensional Modeling
+- Multi-Entity Coordination
+- Multi-Level Awareness
+- Multi-Phase Structures
+- Multi-Time Policy Execution
+- Multi-Timeline Tracking
+- Mutualist Enhancements
+- Narrative Disruption
+- Network Optimization Systems
+- Ontological Modulation
+- Optimized Routing
+- Outcome Adjustment
+- Outcome Manipulation
+- Pathfinding Optimization
+- Pattern Recognition
+- Pattern Simulation
+- Permanent Enhancements
+- Phase Awareness
+- Phase-Adaptive Structures
+- Predictive Habitat Models
+- Predictive Intervention
+- Preemptive Adjustment
+- Preemptive Regulation
+- Preemptive Strike Protocol
+- Purpose-Driven Systems
+- Rapid Decompression
+- Rapid Retrofit
+- Reactive Defense Systems
+- Real-Time Pricing Systems
+- Real-Time Strategy Adjustment
+- Reality-Scale Navigation
+- Redundant Storage
+- Reflexive Research Methods
+- Regenerative Energy Flow
+- Resonance Detection
+- Resonance Logging
+- Resonance Weapons
+- Resonant Alloys
+- Resonant Calculation
+- Resonant Communication
+- Resonant Data Propagation
+- Role Adaptation
+- Rule Evolution
+- Rule Simulation
+- Seamless Navigation
+- Self-Correcting Models
+- Self-Directed Evolution
+- Self-Evolving Algorithms
+- Self-Evolving Language
+- Self-Governance Protocols
+- Self-Optimization
+- Self-Organizing Databases
+- Self-Regulating Networks
+- Semiotic Compiler
+- Sensory Disruption
+- Shape-Shifting Materials
+- Shared Awareness
+- Shared Cognition Field
+- Signal Disruption
+- Spatial Data Routing
+- Spatial Efficiency
+- Spatial Stability Field
+- Stability Regulation
+- Storage Dimensions
+- Structural Mapping
+- Structural Optimization
+- Structure Discovery
+- Substrate-Aware Storage
+- Supply Prioritization
+- Survival Optimization
+- Swarm Intelligence
+- Symbolic Actuation
+- Symbolic Calibration Protocols
+- System Genesis
+- Temporal Acceleration
+- Temporal Diagnostics
+- Temporal Energy Control
+- Thought-Driven Processing
+- Threat Classification
+- Time-Loop Growth Systems
+- Time-Loop Optimization
+- Time-Signal Exchange
+- Timeline Creation
+- Topological Mapping
+- Total Awareness
+- Total Energy Control
+- Total Insight
+- Total System Awareness
+- Total System Coordination
+- Total System Harmony
+- Unified Command
+- Unified Pattern Mapping
+- Unified Timekeeping
+- Universal Design Standards
+- Universal Encoding
+- Universal Translation
+- Variable Weight Systems
+- World-Harmonization Protocols
+
+## Units (16)
+
+- Adaptive Combat Units
+- Adaptive Terraforming Units
+- Autonomous Market Agents
+- Cloaked Terrain Units
+- Communication Relay Units
+- Cross-Time Coordination Units
+- Energy-Enhanced Lifeforms
+- Ether Adept
+- Ether-Bound Operators
+- Hybrid Lifeforms
+- Invisible Strike Units
+- Living Material Units
+- Multi-Function Units
+- Multi-Reality Construction Units
+- Psychological Warfare Units
+- Ritual Computation Units
+
+## Economic Systems (66)
+
+- Accelerated Build Times
+- Adaptive War Economy
+- Autonomous Civilization Seeds
+- Bio-Energy Trade Systems
+- Chrono-Harvest Systems
+- Complex System Forecasting
+- Cross-Layer Resource Flows
+- Cross-Space Logistics Systems
+- Cross-World Resource Exchange
+- Data Market
+- Distributed Trade Networks
+- Ecological Energy Economy
+- Efficient Data Storage
+- Efficient Data Transfer
+- Energy Efficiency Gains
+- Enhanced Output
+- Enhanced Research Output
+- Expanded Data Channels
+- Expanded Energy Supply
+- Foundational Infrastructure
+- Hidden Trade Routes
+- Identity-Based Trade Systems
+- Infinite Energy Potential
+- Interdisciplinary Research Grants
+- Interlayer Transit Networks
+- Interstellar Trade Coordination
+- Knowledge-Based Economy
+- Long-Term Archives
+- Mathematical Trade Constructs
+- Network Optimization
+- New Colony Templates
+- Observer-Specific Trade Routes
+- Optimized Resource Flow
+- Predictive Infrastructure
+- Predictive Market Systems
+- Reduced Administrative Costs
+- Reduced Consumption
+- Reduced Maintenance Costs
+- Research Efficiency Boost
+- Resilient Data Networks
+- Resilient Infrastructure
+- Resource Flexibility
+- Resource Independence
+- Resource-Driven Growth
+- Self-Optimizing Infrastructure
+- Semiotic Energy Markets
+- Shared Research Pools
+- Stability Optimization
+- Stability Protocols
+- Storage Optimization
+- Strategic Forecast Systems
+- Strategic Forecasting
+- Strategic Foresight Economy
+- Strategic Information Advantage
+- Strategic Planning Economy
+- Survival Optimization
+- Sustainable Infrastructure
+- Temporal Resource Networks
+- Time Economy
+- Time-Synced Administration
+- Trait Optimization Programs
+- Ultra-Precision Manufacturing
+- Ultra-Scale Modeling
+- Unified Data Economy
+- Universal Power Networks
+- War-State Mobilization
+
+## Political Systems (39)
+
+- Absolute Dominance Doctrine
+- Adaptive Governance Models
+- Anticipatory Governance Models
+- Basic Policy Frameworks
+- Chrono-Legislative Systems
+- Collective Decision Frameworks
+- Collective Resource Allocation
+- Cross-Species Rights
+- Custom Spatial Domains
+- Delegated Authority
+- Ecological Governance
+- Ethical Enforcement
+- Existential Legitimacy
+- Foundational System Design
+- Ideological Alignment Campaigns
+- Long-Term Control Zones
+- Mathematical Governance Systems
+- Meaning-Based Governance
+- Multi-Time Policy Systems
+- Perception Control Doctrine
+- Perceptual Mapping Doctrine
+- Philosophical Governance Systems
+- Policy Compliance
+- Recursive Governance Models
+- Reduced Central Control
+- Resonance Council
+- Resonant Authority
+- Responsive Governance
+- Risk-Adaptive Governance
+- Ritual Legitimacy
+- Safe Invocation Standards
+- Scientific Ethics Framework
+- Sentience Recognition Systems
+- Symbolic Legitimacy Systems
+- Temporal Sovereignty
+- Transcendent Authority
+- Unified Governance Model
+- Unified Knowledge Governance
+- Universal Rights Framework
+
+## Social Systems (26)
+
+- Absolute Integration
+- Adaptive Growth Policies
+- Civic Order
+- Civic Participation
+- Collective Alignment
+- Cooperative Governance
+- Cooperative Growth Systems
+- Cultural Alignment Policies
+- Cultural Alignment Systems
+- Cultural Cohesion
+- Cultural Integration
+- Cultural Power Alignment
+- Cultural Propagation Systems
+- Distortion-Aware Navigation
+- Dynamic Role Assignment
+- Fluid Social Structures
+- Harmony Mandate
+- Identity-Based Society Models
+- Multi-Form Identity Systems
+- Rapid Training Protocols
+- Role Fluidity Systems
+- Shared Identity Networks
+- Social Stability
+- Symbiotic Infrastructure
+- Unified Cultural Identity
+- Unified Cultural Systems
+
+## Diplomatic Systems (23)
+
+- Covert Operations Network
+- Cross-Species Integration Accords
+- Cultural Influence Networks
+- Diplomatic Expansion Networks
+- Diplomatic Instant Channels
+- Emergent Alliance Networks
+- Energy Accord Systems
+- Future-State Diplomacy
+- Information Trade Networks
+- Inter-Dimensional Treaties
+- Inter-Species Trust
+- Inter-Timeline Exchange
+- Interdomain Transit Accords
+- Interstellar Accord Networks
+- Interstellar Knowledge Exchange
+- Life-Integrated Trade Networks
+- Material Trade Networks
+- Pact Negotiation
+- Sacred Exchange Networks
+- Temporal Trade Agreements
+- Transcendent Exchange Networks
+- Universal Coexistence Protocols
+- Universal Negotiation Protocols
+
+---
+**Total unlocks: 788**

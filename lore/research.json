@@ -2166,5 +2166,793 @@
         "War-State Mobilization (economic)"
       ]
     }
+    ,
+    "Symbol Recognition Frameworks": {
+      "category": "Semiotics",
+      "description": "The systematic identification of symbols across languages, species, and signal systems. Meaning is treated as a detectable structure rather than a subjective interpretation.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": [],
+      "unlocks": [
+        "Semiotic Lab (colony)",
+        "Symbol Scanner (ship module)",
+        "Pattern Recognition (ability)"
+      ]
+    },
+    "Semantic Encoding Standards": {
+      "category": "Semiotics",
+      "description": "Meaning is formalized into consistent encoding schemes. Symbols, signals, and data structures become interoperable across systems and cultures.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": ["Symbol Recognition Frameworks"],
+      "unlocks": [
+        "Semantic Registry (colony)",
+        "Universal Encoding (ability)",
+        "Signal Harmonizer (ship module)"
+      ]
+    },
+    "Contextual Meaning Systems": {
+      "category": "Semiotics",
+      "description": "Meaning is understood as context-dependent rather than fixed. Systems track environmental, cultural, and temporal variables that influence interpretation.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Semantic Encoding Standards"],
+      "unlocks": [
+        "Context Engine (colony)",
+        "Adaptive Messaging (ability)",
+        "Signal Interpretation Suite (ship module)"
+      ]
+    },
+    "Multi-Layer Semiotic Analysis": {
+      "category": "Semiotics",
+      "description": "Symbols are analyzed across multiple layers—literal, cultural, energetic, and structural. Meaning becomes a composite of interacting dimensions.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Contextual Meaning Systems"],
+      "unlocks": [
+        "Multi-Layer Analyzer (colony)",
+        "Deep Interpretation (ability)",
+        "Signal Decomposition Tools (ship module)"
+      ]
+    },
+    "Semiotic Transmission Networks": {
+      "category": "Semiotics",
+      "description": "Meaning is transmitted efficiently across vast distances and diverse systems. Signals maintain integrity across noise, delay, and transformation.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Multi-Layer Semiotic Analysis"],
+      "unlocks": [
+        "Signal Relay Hub (colony)",
+        "High-Fidelity Communication (ability)",
+        "Long-Range Transmission Systems (ship module)"
+      ]
+    },
+    "Meaning Compression Protocols": {
+      "category": "Semiotics",
+      "description": "Complex ideas are encoded into minimal symbolic forms without loss of meaning. Entire knowledge systems can be transmitted efficiently.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Semiotic Transmission Networks"],
+      "unlocks": [
+        "Compression Engine (colony)",
+        "Knowledge Packets (ability)",
+        "Efficient Data Transfer (economic)"
+      ]
+    },
+    "Memetic Dynamics Modeling": {
+      "category": "Semiotics",
+      "description": "Ideas are treated as entities that propagate, mutate, and compete. Systems model and influence the spread of meaning across populations.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Meaning Compression Protocols"],
+      "unlocks": [
+        "Memetic Lab (colony)",
+        "Influence Campaigns (ability)",
+        "Cultural Propagation Systems (social)"
+      ]
+    },
+    "Symbolic-Operational Interfaces": {
+      "category": "Semiotics",
+      "description": "Symbols are directly linked to system operations. Meaning is no longer descriptive—it becomes executable within technical frameworks.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Memetic Dynamics Modeling"],
+      "unlocks": [
+        "Symbolic Control Core (colony)",
+        "Command Glyphs (ability)",
+        "Semiotic Control Systems (ship module)"
+      ]
+    },
+    "Cross-Species Meaning Alignment": {
+      "category": "Semiotics",
+      "description": "Meaning systems are harmonized across radically different forms of cognition. Shared understanding becomes possible despite incompatible perception models.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Symbolic-Operational Interfaces"],
+      "unlocks": [
+        "Alignment Interface (colony)",
+        "Universal Translation (ability)",
+        "Diplomatic Signal Systems (ship module)"
+      ]
+    },
+    "Semiotic Feedback Systems": {
+      "category": "Semiotics",
+      "description": "Meaning systems respond dynamically to interpretation. Signals adapt based on how they are received, creating feedback-driven communication loops.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Cross-Species Meaning Alignment"],
+      "unlocks": [
+        "Feedback Engine (colony)",
+        "Adaptive Messaging (ability)",
+        "Responsive Signal Arrays (ship module)"
+      ]
+    },
+    "Reality-Coupled Semiotics": {
+      "category": "Semiotics",
+      "description": "Symbolic structures are linked directly to physical and energetic systems. Meaning begins to produce measurable effects in reality.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Semiotic Feedback Systems"],
+      "unlocks": [
+        "Semiotic Reactor (colony)",
+        "Symbolic Actuation (ability)",
+        "Reality-Linked Control Systems (ship module)"
+      ]
+    },
+    "Autonomous Meaning Systems": {
+      "category": "Semiotics",
+      "description": "Semiotic systems generate, interpret, and evolve meaning independently. Communication ecosystems operate without direct oversight.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Reality-Coupled Semiotics"],
+      "unlocks": [
+        "Autonomous Semiotic Core (colony)",
+        "Self-Evolving Language (ability)",
+        "Independent Signal Networks (ship module)"
+      ]
+    },
+    "Semiotic Field Theory": {
+      "category": "Semiotics",
+      "description": "Meaning is understood as a field phenomenon, distributed across space, systems, and populations. Symbols interact through resonance rather than transmission alone.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Autonomous Meaning Systems"],
+      "unlocks": [
+        "Meaning Field Generator (colony)",
+        "Resonant Communication (ability)",
+        "Field-Based Signal Systems (ship module)"
+      ]
+    },
+    "Invoked Meaning Constructs": {
+      "category": "Semiotics",
+      "description": "Meaning is enacted rather than communicated. Symbolic constructs produce direct outcomes when properly formed and executed.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Semiotic Field Theory"],
+      "unlocks": [
+        "Invocation Glyphs (ability)",
+        "Construct Realization (colony)",
+        "Symbolic Execution Systems (ship module)"
+      ]
+    },
+    "Total Semiotic Integration": {
+      "category": "Semiotics",
+      "description": "All systems—technical, biological, and etheric—operate through unified meaning structures. Communication, control, and reality become aspects of a single semiotic process.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Invoked Meaning Constructs"],
+      "unlocks": [
+        "Semiotic Core (colony)",
+        "Absolute Communication (ability)",
+        "Unified Cultural Systems (social)",
+        "Meaning-Based Governance (political)"
+      ]
+    }
+    ,
+    "Information Substrate Models": {
+      "category": "Information",
+      "description": "Information is defined as a physical and energetic phenomenon embedded in substrates—matter, fields, and ether. Storage and transmission are grounded in the properties of the medium.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": [],
+      "unlocks": [
+        "Data Core (colony)",
+        "Substrate-Aware Storage (ability)",
+        "Signal Integrity Suite (ship module)"
+      ]
+    },
+    "Signal Detection and Integrity": {
+      "category": "Information",
+      "description": "Systems are built to detect, preserve, and validate information across noisy environments. Error, loss, and corruption become measurable and manageable.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": ["Information Substrate Models"],
+      "unlocks": [
+        "Integrity Scanner (ship module)",
+        "Error Correction Protocols (ability)",
+        "Data Verification Center (colony)"
+      ]
+    },
+    "Information Flow Networks": {
+      "category": "Information",
+      "description": "Information is routed through structured networks that optimize speed, reliability, and reach. Flow becomes as important as content.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Signal Detection and Integrity"],
+      "unlocks": [
+        "Data Relay Hub (colony)",
+        "Optimized Routing (ability)",
+        "High-Bandwidth Channels (ship module)"
+      ]
+    },
+    "Compression and Expansion Theory": {
+      "category": "Information",
+      "description": "Information is transformed between dense and expanded forms. Systems balance efficiency of transmission with accessibility of meaning.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Information Flow Networks"],
+      "unlocks": [
+        "Compression Engine (colony)",
+        "Rapid Decompression (ability)",
+        "Efficient Data Storage (economic)"
+      ]
+    },
+    "Information Decay Modeling": {
+      "category": "Information",
+      "description": "Information is treated as a perishable entity subject to entropy, distortion, and loss. Systems predict and mitigate decay across time and space.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Compression and Expansion Theory"],
+      "unlocks": [
+        "Decay Monitor (colony)",
+        "Data Preservation (ability)",
+        "Long-Term Archives (economic)"
+      ]
+    },
+    "Transformational Encoding Systems": {
+      "category": "Information",
+      "description": "Information is encoded to change form while preserving meaning. Systems enable translation across languages, formats, and substrates.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Information Decay Modeling"],
+      "unlocks": [
+        "Transformation Core (colony)",
+        "Cross-Format Translation (ability)",
+        "Adaptive Signal Systems (ship module)"
+      ]
+    },
+    "Distributed Information Persistence": {
+      "category": "Information",
+      "description": "Information is replicated across multiple nodes, ensuring survival despite local failure. Knowledge becomes resilient and decentralized.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Transformational Encoding Systems"],
+      "unlocks": [
+        "Distributed Archive (colony)",
+        "Redundant Storage (ability)",
+        "Resilient Data Networks (economic)"
+      ]
+    },
+    "Information Lifecycle Management": {
+      "category": "Information",
+      "description": "Information is tracked from creation through transformation to decay. Systems manage relevance, retention, and deletion dynamically.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Distributed Information Persistence"],
+      "unlocks": [
+        "Lifecycle Engine (colony)",
+        "Data Prioritization (ability)",
+        "Storage Optimization (economic)"
+      ]
+    },
+    "Adaptive Information Systems": {
+      "category": "Information",
+      "description": "Information systems respond to usage patterns and environmental conditions. Data structures evolve to improve accessibility and utility.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Information Lifecycle Management"],
+      "unlocks": [
+        "Adaptive Data Core (colony)",
+        "Self-Organizing Databases (ability)",
+        "Intelligent Retrieval Systems (ship module)"
+      ]
+    },
+    "Information as Resource": {
+      "category": "Information",
+      "description": "Information is formalized as an economic and strategic asset. Systems extract value from data through analysis, prediction, and exchange.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Adaptive Information Systems"],
+      "unlocks": [
+        "Data Market (economic)",
+        "Information Trade Networks (diplomatic)",
+        "Analytical Revenue Streams (colony)"
+      ]
+    },
+    "Information Field Dynamics": {
+      "category": "Information",
+      "description": "Information is modeled as a distributed field influencing systems across distance and scale. Patterns propagate through resonance rather than direct transmission.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Information as Resource"],
+      "unlocks": [
+        "Information Field Generator (colony)",
+        "Resonant Data Propagation (ability)",
+        "Field-Based Communication (ship module)"
+      ]
+    },
+    "Autonomous Information Ecosystems": {
+      "category": "Information",
+      "description": "Information systems generate, transform, and regulate themselves. Data flows become self-sustaining and self-correcting.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Information Field Dynamics"],
+      "unlocks": [
+        "Autonomous Data Core (colony)",
+        "Self-Regulating Networks (ability)",
+        "Independent Signal Systems (ship module)"
+      ]
+    },
+    "Information-Cognition Integration": {
+      "category": "Information",
+      "description": "Information and cognition converge. Systems process data as part of a continuous cognitive loop, blurring the boundary between knowledge and thought.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Autonomous Information Ecosystems"],
+      "unlocks": [
+        "Cognitive Data Interface (colony)",
+        "Thought-Driven Processing (ability)",
+        "Integrated Decision Systems (ship module)"
+      ]
+    },
+    "Pre-Propagation Information Models": {
+      "category": "Information",
+      "description": "Information is inferred before it fully propagates. Systems predict and utilize data patterns prior to their complete emergence.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Information-Cognition Integration"],
+      "unlocks": [
+        "Predictive Data Engine (colony)",
+        "Anticipatory Analysis (ability)",
+        "Strategic Information Advantage (economic)"
+      ]
+    },
+    "Total Information Continuum": {
+      "category": "Information",
+      "description": "All information—past, present, and potential—is unified within a continuous framework. Data, meaning, and propagation become aspects of a single system.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Pre-Propagation Information Models"],
+      "unlocks": [
+        "Continuum Core (colony)",
+        "Total Awareness (ability)",
+        "Unified Data Economy (economic)",
+        "Interstellar Knowledge Exchange (diplomatic)"
+      ]
+    }
+    ,
+    "Matter Classification Frameworks": {
+      "category": "Materiality",
+      "description": "A unified taxonomy of matter states—solid, fluid, plasma, and exotic phases. Classical materials are recontextualized alongside programmable and hybrid substrates.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": [],
+      "unlocks": [
+        "Materials Lab (colony)",
+        "Composition Scanner (ship module)",
+        "Material Index (ability)"
+      ]
+    },
+    "Microstructural Control Systems": {
+      "category": "Materiality",
+      "description": "Material properties are linked to internal structure at micro and nano scales. Strength, flexibility, and conductivity are engineered through precise arrangement.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": ["Matter Classification Frameworks"],
+      "unlocks": [
+        "Microfabrication Facility (colony)",
+        "Structural Optimization (ability)",
+        "Reinforced Hull Plating (ship module)"
+      ]
+    },
+    "Programmable Matter Platforms": {
+      "category": "Materiality",
+      "description": "Materials capable of changing form and function in response to input signals. Structure becomes dynamic rather than fixed.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Microstructural Control Systems"],
+      "unlocks": [
+        "Programmable Fabricator (colony)",
+        "Shape-Shifting Materials (ability)",
+        "Adaptive Hull Systems (ship module)"
+      ]
+    },
+    "Phase-State Engineering": {
+      "category": "Materiality",
+      "description": "Controlled transitions between phases of matter are achieved without loss of integrity. Materials shift between states to suit operational demands.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Programmable Matter Platforms"],
+      "unlocks": [
+        "Phase Control Facility (colony)",
+        "Phase-Adaptive Structures (ability)",
+        "Variable Density Hulls (ship module)"
+      ]
+    },
+    "Composite Material Synthesis": {
+      "category": "Materiality",
+      "description": "Multiple material types are combined into unified systems with emergent properties. Performance exceeds that of any individual component.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Phase-State Engineering"],
+      "unlocks": [
+        "Composite Foundry (colony)",
+        "Hybrid Materials (ability)",
+        "Multi-Layer Armor Systems (ship module)"
+      ]
+    },
+    "Ether-Infused Materials": {
+      "category": "Materiality",
+      "description": "Matter is bonded with etheric energy, producing materials with non-classical properties such as resonance sensitivity and enhanced durability.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Composite Material Synthesis"],
+      "unlocks": [
+        "Ether Forge (colony)",
+        "Resonant Alloys (ability)",
+        "Ether-Reinforced Hulls (ship module)"
+      ]
+    },
+    "Self-Healing Material Systems": {
+      "category": "Materiality",
+      "description": "Materials detect and repair damage autonomously. Structural integrity is maintained without external intervention.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Ether-Infused Materials"],
+      "unlocks": [
+        "Regenerative Material Plant (colony)",
+        "Auto-Repair Structures (ability)",
+        "Self-Healing Hulls (ship module)"
+      ]
+    },
+    "Density and Mass Modulation": {
+      "category": "Materiality",
+      "description": "Materials can alter their density and effective mass dynamically. This enables new forms of mobility, protection, and structural design.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Self-Healing Material Systems"],
+      "unlocks": [
+        "Mass Modulation Core (colony)",
+        "Variable Weight Systems (ability)",
+        "Inertia-Control Hulls (ship module)"
+      ]
+    },
+    "Matter-Energy Reconfiguration": {
+      "category": "Materiality",
+      "description": "Controlled conversion between matter and energy states. Materials can be deconstructed and reassembled through energetic processes.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Density and Mass Modulation"],
+      "unlocks": [
+        "Conversion Reactor (colony)",
+        "Energy-Based Fabrication (ability)",
+        "Rapid Material Deployment (ship module)"
+      ]
+    },
+    "Living Material Systems": {
+      "category": "Materiality",
+      "description": "Materials incorporate biological processes, enabling growth, adaptation, and environmental response. Structures behave as living systems.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Matter-Energy Reconfiguration"],
+      "unlocks": [
+        "Bio-Material Lab (colony)",
+        "Growth-Based Construction (ability)",
+        "Living Hulls (ship module)"
+      ]
+    },
+    "Multi-Phase Material Existence": {
+      "category": "Materiality",
+      "description": "Materials exist simultaneously across multiple physical or energetic phases. This enables overlapping structures and enhanced resilience.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Living Material Systems"],
+      "unlocks": [
+        "Phase Material Facility (colony)",
+        "Multi-Phase Structures (ability)",
+        "Cross-Phase Hull Systems (ship module)"
+      ]
+    },
+    "Material Memory and Adaptation": {
+      "category": "Materiality",
+      "description": "Materials store information about past states and adapt future behavior accordingly. Structural intelligence emerges from accumulated experience.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Multi-Phase Material Existence"],
+      "unlocks": [
+        "Memory Material Core (colony)",
+        "Adaptive Structures (ability)",
+        "Learning Hull Systems (ship module)"
+      ]
+    },
+    "Exotic Matter Synthesis": {
+      "category": "Materiality",
+      "description": "Previously theoretical forms of matter are stabilized and utilized. These materials exhibit properties not found in conventional physics.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Material Memory and Adaptation"],
+      "unlocks": [
+        "Exotic Matter Lab (colony)",
+        "High-Energy Constructs (ability)",
+        "Advanced Weapon Materials (ship module)"
+      ]
+    },
+    "Reality-Coupled Material Systems": {
+      "category": "Materiality",
+      "description": "Material properties are linked directly to underlying physical and energetic laws. Structures maintain stability across multiple layers of reality.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Exotic Matter Synthesis"],
+      "unlocks": [
+        "Reality Anchor Facility (colony)",
+        "Cross-Reality Structures (ability)",
+        "Stabilized Multi-Domain Hulls (ship module)"
+      ]
+    },
+    "Foundational Matter Design": {
+      "category": "Materiality",
+      "description": "Matter is no longer discovered but designed. Fundamental properties—mass, interaction, stability—are defined as parameters within engineered systems.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Reality-Coupled Material Systems"],
+      "unlocks": [
+        "Matter Forge (colony)",
+        "Custom Material Creation (ability)",
+        "Foundational Infrastructure (economic)",
+        "Material Trade Networks (diplomatic)"
+      ]
+    }
+    ,
+    "Rule-Based System Foundations": {
+      "category": "Emergence",
+      "description": "Complex behaviors are traced to simple underlying rules. Systems are designed where local interactions generate predictable global patterns.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": [],
+      "unlocks": [
+        "Systems Lab (colony)",
+        "Rule Simulation (ability)",
+        "Basic Autonomy Modules (ship module)"
+      ]
+    },
+    "Cellular Automata Modeling": {
+      "category": "Emergence",
+      "description": "Discrete rule systems are used to simulate growth, pattern formation, and self-organization. Simple rule sets demonstrate unexpected complexity.",
+      "difficulty": 1,
+      "research_cost": 0,
+      "research_time": 20,
+      "prerequisites": ["Rule-Based System Foundations"],
+      "unlocks": [
+        "Automata Engine (colony)",
+        "Pattern Simulation (ability)",
+        "Procedural Generation Systems (ship module)"
+      ]
+    },
+    "Feedback Loop Dynamics": {
+      "category": "Emergence",
+      "description": "Positive and negative feedback mechanisms are formalized as drivers of system stability and change. Systems begin to regulate themselves.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Cellular Automata Modeling"],
+      "unlocks": [
+        "Feedback Controller (colony)",
+        "Stability Regulation (ability)",
+        "Adaptive Control Systems (ship module)"
+      ]
+    },
+    "Nonlinear System Behavior": {
+      "category": "Emergence",
+      "description": "Systems are understood to produce disproportionate outputs from small inputs. Prediction becomes probabilistic as complexity increases.",
+      "difficulty": 2,
+      "research_cost": 0,
+      "research_time": 35,
+      "prerequisites": ["Feedback Loop Dynamics"],
+      "unlocks": [
+        "Nonlinear Analysis Core (colony)",
+        "Chaos Mapping (ability)",
+        "Sensitivity Control Systems (ship module)"
+      ]
+    },
+    "Self-Organizing Structures": {
+      "category": "Emergence",
+      "description": "Systems are designed to spontaneously organize without centralized control. Order emerges from local interactions and shared constraints.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Nonlinear System Behavior"],
+      "unlocks": [
+        "Self-Organization Engine (colony)",
+        "Autonomous Coordination (ability)",
+        "Swarm Formation Systems (ship module)"
+      ]
+    },
+    "Emergent Pattern Recognition": {
+      "category": "Emergence",
+      "description": "Systems detect and interpret patterns that arise from complex interactions. Insight shifts from rule definition to pattern discovery.",
+      "difficulty": 3,
+      "research_cost": 0,
+      "research_time": 50,
+      "prerequisites": ["Self-Organizing Structures"],
+      "unlocks": [
+        "Pattern Recognition Core (colony)",
+        "Emergent Insight (ability)",
+        "Advanced Sensor Analysis (ship module)"
+      ]
+    },
+    "Multi-Agent Interaction Models": {
+      "category": "Emergence",
+      "description": "Large numbers of independent agents interact to produce collective behavior. Coordination emerges without centralized planning.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Emergent Pattern Recognition"],
+      "unlocks": [
+        "Agent Simulation Hub (colony)",
+        "Swarm Intelligence (ability)",
+        "Distributed Control Systems (ship module)"
+      ]
+    },
+    "Adaptive Emergence Systems": {
+      "category": "Emergence",
+      "description": "Systems evolve their own rules in response to environmental conditions. Emergence becomes dynamic rather than fixed.",
+      "difficulty": 4,
+      "research_cost": 0,
+      "research_time": 70,
+      "prerequisites": ["Multi-Agent Interaction Models"],
+      "unlocks": [
+        "Adaptive Systems Core (colony)",
+        "Rule Evolution (ability)",
+        "Self-Modifying Networks (ship module)"
+      ]
+    },
+    "Cross-Domain Emergence": {
+      "category": "Emergence",
+      "description": "Emergent behaviors are studied across biological, mechanical, and energetic systems simultaneously. Patterns translate between domains.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Adaptive Emergence Systems"],
+      "unlocks": [
+        "Cross-Domain Lab (colony)",
+        "Unified Pattern Mapping (ability)",
+        "Hybrid System Integration (ship module)"
+      ]
+    },
+    "Emergent Intelligence Formation": {
+      "category": "Emergence",
+      "description": "Intelligence arises as a property of interacting systems rather than individual components. Cognition emerges from structure and interaction.",
+      "difficulty": 5,
+      "research_cost": 0,
+      "research_time": 95,
+      "prerequisites": ["Cross-Domain Emergence"],
+      "unlocks": [
+        "Emergent AI Core (colony)",
+        "Collective Intelligence (ability)",
+        "Autonomous Fleet Coordination (ship module)"
+      ]
+    },
+    "Self-Designing Systems": {
+      "category": "Emergence",
+      "description": "Systems generate and refine their own architectures. Design becomes an emergent process rather than an imposed one.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Emergent Intelligence Formation"],
+      "unlocks": [
+        "Self-Design Core (colony)",
+        "Autonomous Engineering (ability)",
+        "Evolutionary Ship Systems (ship module)"
+      ]
+    },
+    "Persistent Emergent Ecosystems": {
+      "category": "Emergence",
+      "description": "Emergent systems maintain stability over long durations. Complex structures endure despite changing conditions.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Self-Designing Systems"],
+      "unlocks": [
+        "Persistent System Hub (colony)",
+        "Long-Term Stability (ability)",
+        "Resilient Infrastructure (economic)"
+      ]
+    },
+    "Predictive Emergence Models": {
+      "category": "Emergence",
+      "description": "Systems anticipate emergent behavior before it fully manifests. Intervention becomes possible at the level of formation rather than outcome.",
+      "difficulty": 6,
+      "research_cost": 0,
+      "research_time": 125,
+      "prerequisites": ["Persistent Emergent Ecosystems"],
+      "unlocks": [
+        "Emergence Predictor (colony)",
+        "Preemptive Adjustment (ability)",
+        "Strategic Forecast Systems (economic)"
+      ]
+    },
+    "Controlled Emergence Fields": {
+      "category": "Emergence",
+      "description": "Environments are engineered to produce desired emergent outcomes. Systems guide complexity without dictating it directly.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Predictive Emergence Models"],
+      "unlocks": [
+        "Emergence Field Generator (colony)",
+        "Directed Complexity (ability)",
+        "Controlled Swarm Systems (ship module)"
+      ]
+    },
+    "Foundational Emergence Engineering": {
+      "category": "Emergence",
+      "description": "The principles of emergence are applied to create entirely new classes of systems. Complexity itself becomes a designed resource.",
+      "difficulty": 7,
+      "research_cost": 0,
+      "research_time": 160,
+      "prerequisites": ["Controlled Emergence Fields"],
+      "unlocks": [
+        "Emergence Core (colony)",
+        "System Genesis (ability)",
+        "Autonomous Civilization Seeds (economic)",
+        "Emergent Alliance Networks (diplomatic)"
+      ]
+    }
   }
 }

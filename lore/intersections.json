@@ -1,0 +1,270 @@
+{
+  "intersections": {
+    "Resonant Symbol Reactors": {
+      "domains": ["Energetics", "Semiotics"],
+      "requires": ["Dynamic Energy Field Manipulation", "Symbolic-Operational Interfaces"],
+      "description": "Symbolic structures are embedded into energy fields, allowing meaning itself to regulate and amplify energetic output. Energy systems respond to correct symbolic configuration rather than purely mechanical input.",
+      "gameplay_effect": "Energy production becomes dependent on symbolic configuration rather than fixed infrastructure.",
+      "unlocks": [
+        "Symbolic Reactor Core (colony)",
+        "Glyph-Tuned Power Systems (ship module)",
+        "Energy Resonance Control (ability)",
+        "Cultural Power Alignment (social)",
+        "Semiotic Energy Markets (economic)",
+        "Symbolic Calibration Protocols (ability)"
+      ]
+    },
+    "Observer-Dependent Terrain": {
+      "domains": ["Topologies", "Epistemology"],
+      "requires": ["Layered Spatial Domains", "Multi-Spectrum Epistemics"],
+      "description": "Spatial layers exist differently depending on the observer's sensory and cognitive configuration. Terrain is no longer fixed but revealed through perception.",
+      "gameplay_effect": "The map changes based on detection capabilities, revealing hidden routes and regions.",
+      "unlocks": [
+        "Perception Gate Network (colony)",
+        "Phase-Sight Sensors (ship module)",
+        "Hidden Pathways (ability)",
+        "Perceptual Mapping Doctrine (political)",
+        "Observer-Specific Trade Routes (economic)",
+        "Cloaked Terrain Units (unit)"
+      ]
+    },
+    "Predictive Causality Engine": {
+      "domains": ["Information", "Chronoscience"],
+      "requires": ["Information-Cognition Integration", "Causality Intervention Systems"],
+      "description": "Information patterns are propagated along temporal gradients, allowing systems to act on events before they fully occur.",
+      "gameplay_effect": "Players gain limited foresight, enabling preemptive strategic actions.",
+      "unlocks": [
+        "Causality Engine Core (colony)",
+        "Preemptive Strike Protocol (ability)",
+        "Temporal Data Relay (ship module)",
+        "Predictive Market Systems (economic)",
+        "Future-State Diplomacy (diplomatic)",
+        "Anticipatory Governance Models (political)"
+      ]
+    },
+    "Living Energy Grids": {
+      "domains": ["Ecology", "Energetics"],
+      "requires": ["Planetary Symbiosis Systems", "Multi-Spectrum Energy Integration"],
+      "description": "Energy systems are integrated into living ecosystems, allowing power generation and distribution through biological processes.",
+      "gameplay_effect": "Energy production becomes self-sustaining and adaptive to environmental conditions.",
+      "unlocks": [
+        "Bio-Energy Nexus (colony)",
+        "Living Power Conduits (ship module)",
+        "Regenerative Energy Flow (ability)",
+        "Ecological Energy Economy (economic)",
+        "Symbiotic Infrastructure (social)",
+        "Adaptive Resource Allocation (ability)"
+      ]
+    },
+    "Memetic Warfare Systems": {
+      "domains": ["Polemology", "Semiotics"],
+      "requires": ["Cognitive Warfare Systems", "Memetic Dynamics Modeling"],
+      "description": "Conflict is conducted through the manipulation of meaning itself. Ideas propagate as weapons, altering perception, morale, and decision-making.",
+      "gameplay_effect": "Warfare shifts toward influence and narrative control rather than direct confrontation.",
+      "unlocks": [
+        "Memetic Operations Center (colony)",
+        "Narrative Disruption (ability)",
+        "Signal Override Systems (ship module)",
+        "Ideological Alignment Campaigns (political)",
+        "Cultural Influence Networks (diplomatic)",
+        "Psychological Warfare Units (unit)"
+      ]
+    },
+    "Ontological Terraforming": {
+      "domains": ["Philosophy", "Ecology"],
+      "requires": ["Integrated Being Systems", "Self-Designing Biospheres"],
+      "description": "Ecosystems are shaped not only physically but ontologically, redefining what kinds of entities can exist within them.",
+      "gameplay_effect": "Planets can be transformed into entirely new forms of existence with unique rules.",
+      "unlocks": [
+        "Ontological Habitat Core (colony)",
+        "Existence Rewriting (ability)",
+        "Hybrid Lifeforms (unit)",
+        "Identity-Based Society Models (social)",
+        "Philosophical Governance Systems (political)",
+        "Cross-Species Integration Accords (diplomatic)"
+      ]
+    },
+    "Reality-Synchronized Infrastructure": {
+      "domains": ["Engineering", "Topologies"],
+      "requires": ["Phase-Shifted Construction", "Cross-Domain Spatial Synchronization"],
+      "description": "Infrastructure exists across multiple spatial layers simultaneously, maintaining coherence regardless of spatial distortion.",
+      "gameplay_effect": "Structures become immune to spatial disruption and gain multi-layer functionality.",
+      "unlocks": [
+        "Multi-Layer Infrastructure Hub (colony)",
+        "Phase-Coherent Hulls (ship module)",
+        "Spatial Stability Field (ability)",
+        "Interlayer Transit Networks (economic)",
+        "Multi-Reality Construction Units (unit)",
+        "Cross-Space Logistics Systems (economic)"
+      ]
+    },
+    "Cognitive Swarm Economies": {
+      "domains": ["Emergence", "Information"],
+      "requires": ["Emergent Intelligence Formation", "Information as Resource"],
+      "description": "Economic systems emerge from the interaction of countless agents, dynamically adjusting based on collective intelligence.",
+      "gameplay_effect": "Economy becomes self-optimizing and adaptive rather than centrally controlled.",
+      "unlocks": [
+        "Swarm Market Core (colony)",
+        "Distributed Trade Networks (economic)",
+        "Autonomous Market Agents (unit)",
+        "Real-Time Pricing Systems (ability)",
+        "Collective Resource Allocation (political)",
+        "Adaptive Trade Routes (ship module)"
+      ]
+    },
+    "Temporal Governance Networks": {
+      "domains": ["Governance", "Chronoscience"],
+      "requires": ["Cross-Reality Governance", "Cross-Layer Temporal Governance"],
+      "description": "Governance systems operate across multiple temporal states, coordinating decisions that affect past, present, and future simultaneously.",
+      "gameplay_effect": "Policies can influence outcomes across multiple turns retroactively or preemptively.",
+      "unlocks": [
+        "Temporal Governance Hub (colony)",
+        "Multi-Time Policy Execution (ability)",
+        "Chrono-Legislative Systems (political)",
+        "Cross-Time Coordination Units (unit)",
+        "Temporal Trade Agreements (diplomatic)",
+        "Time-Synced Administration (economic)"
+      ]
+    },
+    "Etheric Material Intelligence": {
+      "domains": ["Materiality", "Energetics"],
+      "requires": ["Ether-Infused Materials", "Persistent Energy Structures"],
+      "description": "Materials infused with energy fields gain reactive and adaptive intelligence, responding to environmental and operational conditions.",
+      "gameplay_effect": "Structures and ships become semi-autonomous and self-optimizing.",
+      "unlocks": [
+        "Intelligent Material Core (colony)",
+        "Adaptive Hull Systems (ship module)",
+        "Reactive Defense Systems (ability)",
+        "Self-Optimizing Infrastructure (economic)",
+        "Living Material Units (unit)",
+        "Autonomous Maintenance Systems (ability)"
+      ]
+    },
+    "Symbolic Diplomacy Frameworks": {
+      "domains": ["Semiotics", "Governance"],
+      "requires": ["Cross-Species Meaning Alignment", "Value Alignment Systems"],
+      "description": "Diplomatic systems are built on shared symbolic frameworks, allowing negotiation through meaning rather than language.",
+      "gameplay_effect": "Diplomacy becomes more stable and effective across diverse species.",
+      "unlocks": [
+        "Symbolic Embassy (colony)",
+        "Universal Negotiation Protocols (diplomatic)",
+        "Meaning-Based Treaties (ability)",
+        "Cultural Alignment Systems (social)",
+        "Diplomatic Signal Arrays (ship module)",
+        "Symbolic Legitimacy Systems (political)"
+      ]
+    },
+    "Emergent Warforms": {
+      "domains": ["Polemology", "Emergence"],
+      "requires": ["Self-Evolving Warfare Systems", "Self-Designing Systems"],
+      "description": "Combat units evolve dynamically during conflict, adapting their structure and tactics in response to opponents.",
+      "gameplay_effect": "Units improve and change mid-battle, making engagements unpredictable.",
+      "unlocks": [
+        "Evolution Forge (colony)",
+        "Adaptive Combat Units (unit)",
+        "Dynamic Tactics (ability)",
+        "Self-Modifying Weapons (ship module)",
+        "Emergent Defense Systems (ability)",
+        "Adaptive War Economy (economic)"
+      ]
+    },
+    "Information Topology Networks": {
+      "domains": ["Information", "Topologies"],
+      "requires": ["Information Field Dynamics", "Multi-Connected Space Networks"],
+      "description": "Information travels along topological pathways, bypassing conventional spatial constraints.",
+      "gameplay_effect": "Instant communication across distant locations becomes possible.",
+      "unlocks": [
+        "Topological Data Hub (colony)",
+        "Instant Communication Links (ship module)",
+        "Spatial Data Routing (ability)",
+        "Interstellar Trade Coordination (economic)",
+        "Diplomatic Instant Channels (diplomatic)",
+        "Network Optimization Systems (ability)"
+      ]
+    },
+    "Chrono-Ecological Systems": {
+      "domains": ["Ecology", "Chronoscience"],
+      "requires": ["Self-Designing Biospheres", "Recursive Time Systems"],
+      "description": "Ecosystems evolve across time loops, adapting based on past and future states simultaneously.",
+      "gameplay_effect": "Planets continuously improve themselves across turns.",
+      "unlocks": [
+        "Temporal Biosphere Core (colony)",
+        "Time-Loop Growth Systems (ability)",
+        "Adaptive Terraforming Units (unit)",
+        "Chrono-Harvest Systems (economic)",
+        "Future-State Ecology Planning (ability)",
+        "Temporal Resource Networks (economic)"
+      ]
+    },
+    "Perceptual Warfare Cloaking": {
+      "domains": ["Polemology", "Epistemology"],
+      "requires": ["Cognitive Warfare Systems", "Multi-Spectrum Epistemics"],
+      "description": "Units are hidden not by physical means but by manipulating perception. Enemies cannot detect what they cannot perceive.",
+      "gameplay_effect": "Stealth becomes perception-based rather than detection-based.",
+      "unlocks": [
+        "Perception Cloak Generator (ship module)",
+        "Invisible Strike Units (unit)",
+        "Sensory Disruption (ability)",
+        "Perception Control Doctrine (political)",
+        "Hidden Movement Systems (ability)",
+        "Covert Operations Network (diplomatic)"
+      ]
+    },
+    "Mathematical Invocation Systems": {
+      "domains": ["Mathematics", "Theurgy"],
+      "requires": ["Invoked Mathematics", "Symbolic-Computational Interfaces"],
+      "description": "Mathematical structures are enacted as rituals, producing direct effects through computation.",
+      "gameplay_effect": "Calculations can directly alter game systems and outcomes.",
+      "unlocks": [
+        "Invocation Engine (colony)",
+        "Computational Rituals (ability)",
+        "Symbolic Actuation Modules (ship module)",
+        "Mathematical Governance Systems (political)",
+        "Knowledge-Based Economy (economic)",
+        "Ritual Computation Units (unit)"
+      ]
+    },
+    "Emergent Identity Networks": {
+      "domains": ["Philosophy", "Emergence"],
+      "requires": ["Distributed Mind Systems", "Emergent Intelligence Formation"],
+      "description": "Identity arises dynamically from system interactions, allowing entities to shift roles and functions fluidly.",
+      "gameplay_effect": "Units and populations can change roles dynamically based on context.",
+      "unlocks": [
+        "Identity Network Core (colony)",
+        "Role Adaptation (ability)",
+        "Multi-Function Units (unit)",
+        "Fluid Social Structures (social)",
+        "Adaptive Governance Models (political)",
+        "Identity-Based Trade Systems (economic)"
+      ]
+    },
+    "Energy-Driven Evolution": {
+      "domains": ["Energetics", "Ecology"],
+      "requires": ["Multi-Spectrum Energy Integration", "Evolutionary Steering Mechanisms"],
+      "description": "Energy availability directly shapes evolutionary pathways, accelerating adaptation and diversification.",
+      "gameplay_effect": "Biological systems evolve faster based on energy input.",
+      "unlocks": [
+        "Evolution Reactor (colony)",
+        "Accelerated Adaptation (ability)",
+        "Energy-Enhanced Lifeforms (unit)",
+        "Resource-Driven Growth (economic)",
+        "Adaptive Ecosystem Management (ability)",
+        "Bio-Energy Trade Systems (economic)"
+      ]
+    },
+    "Cross-Reality Communication Systems": {
+      "domains": ["Semiotics", "Topologies"],
+      "requires": ["Semiotic Transmission Networks", "Intersecting Space Interfaces"],
+      "description": "Meaning propagates across intersecting spatial realities, enabling communication between otherwise disconnected systems through shared symbolic frameworks rather than physical signal.",
+      "gameplay_effect": "Players can communicate across isolated or hidden regions using meaning rather than signal.",
+      "unlocks": [
+        "Cross-Reality Comms Hub (colony)",
+        "Interdimensional Messaging (ability)",
+        "Multi-Layer Signal Systems (ship module)",
+        "Diplomatic Expansion Networks (diplomatic)",
+        "Hidden Trade Routes (economic)",
+        "Communication Relay Units (unit)"
+      ]
+    }
+  }
+}
