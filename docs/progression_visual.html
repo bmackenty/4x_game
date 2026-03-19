@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4X Game — Progression Map</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  /* ── Design tokens (Alpha Centauri palette) ─────────────────────────── */
+  :root {
+    --bg:          #0a0f1e;
+    --bg2:         #0d1428;
+    --bg3:         #111c35;
+    --border:      #1e3a5f;
+    --teal:        #00d4aa;
+    --cyan:        #00b8d9;
+    --gold:        #f4c430;
+    --purple:      #a855f7;
+    --green:       #22c55e;
+    --orange:      #f97316;
+    --red:         #ef4444;
+    --muted:       #6b7280;
+    --text:        #e2e8f0;
+    --text-dim:    #94a3b8;
+
+    /* Empire index colours */
+    --spi:  #ef4444;   /* red   — military */
+    --rei:  #f97316;   /* orange — resources */
+    --kii:  #00b8d9;   /* cyan  — knowledge */
+    --eci:  #22c55e;   /* green — economy */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Courier New", Courier, monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--teal);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-bottom: 2.5rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+    margin: 2.5rem 0 1rem;
+  }
+  h3 {
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 1.5rem 0 0.6rem;
+  }
+
+  /* ── Legend ─────────────────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.78rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Mermaid containers ──────────────────────────────────────────────── */
+  .mermaid-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+  .mermaid { display: flex; justify-content: center; }
+
+  /* ── Card grids ──────────────────────────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+  }
+  .card .name { font-weight: bold; color: var(--text); margin-bottom: 0.2rem; }
+  .card .gate { color: var(--muted); font-size: 0.7rem; }
+  .card .output { color: var(--gold); font-size: 0.7rem; margin-top: 0.15rem; }
+  .card .terrain { color: var(--text-dim); font-size: 0.68rem; }
+
+  .card--spi { border-left-color: var(--spi); }
+  .card--rei { border-left-color: var(--rei); }
+  .card--kii { border-left-color: var(--kii); }
+  .card--eci { border-left-color: var(--eci); }
+  .card--multi { border-left-color: var(--purple); }
+
+  /* ── System tables ───────────────────────────────────────────────────── */
+  .sys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .sys-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.75rem;
+  }
+  .sys-card .sys-name { font-weight: bold; color: var(--teal); margin-bottom: 0.25rem; }
+  .sys-card .sys-req  { color: var(--muted); font-size: 0.68rem; margin-bottom: 0.2rem; }
+  .sys-card .sys-mod  { color: var(--gold); }
+  .sys-card .sys-good { color: var(--green); }
+  .sys-card .sys-bad  { color: var(--red); }
+  .sys-card .sys-comm { color: var(--cyan); font-size: 0.68rem; margin-top: 0.2rem; }
+
+  /* ── Stat cards ──────────────────────────────────────────────────────── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--purple);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+  }
+  .stat-card .stat-abbr { font-weight: bold; color: var(--gold); font-size: 1rem; }
+  .stat-card .stat-name { color: var(--text-dim); font-size: 0.68rem; }
+  .stat-card .stat-feeds { color: var(--cyan); margin-top: 0.3rem; font-size: 0.7rem; }
+
+  /* ── Crew table ──────────────────────────────────────────────────────── */
+  .crew-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .crew-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+  }
+  .crew-card .crew-name  { font-weight: bold; color: var(--text); }
+  .crew-card .crew-rar   { font-size: 0.65rem; border-radius: 2px; padding: 0 4px; }
+  .rare     { background: var(--purple); color: white; }
+  .uncommon { background: #1d4ed8; color: white; }
+  .common   { background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+  .legendary { background: var(--gold); color: black; }
+  .crew-card .crew-bonus { color: var(--gold); margin-top: 0.25rem; }
+  .crew-card .crew-sal   { color: var(--muted); font-size: 0.68rem; margin-top: 0.1rem; }
+
+  /* ── Reverse lookup ──────────────────────────────────────────────────── */
+  .lookup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .lookup-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    font-size: 0.75rem;
+  }
+  .lookup-card .goal { font-weight: bold; color: var(--gold); margin-bottom: 0.4rem; font-size: 0.8rem; }
+  .lookup-card ol { padding-left: 1.2rem; }
+  .lookup-card li { margin-bottom: 0.15rem; color: var(--text-dim); }
+  .lookup-card li strong { color: var(--teal); }
+
+  /* ── Index summary boxes ─────────────────────────────────────────────── */
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .index-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.9rem 1rem;
+    font-size: 0.75rem;
+  }
+  .index-card .idx-label { font-weight: bold; font-size: 1.1rem; margin-bottom: 0.1rem; }
+  .index-card .idx-full  { color: var(--text-dim); font-size: 0.7rem; margin-bottom: 0.5rem; }
+  .index-card .idx-components { color: var(--text); }
+  .index-card .idx-components li { list-style: none; padding: 0.1rem 0; }
+  .index-card .idx-components li::before { content: "◆ "; }
+
+  .idx-spi .idx-label { color: var(--spi); }
+  .idx-rei .idx-label { color: var(--rei); }
+  .idx-kii .idx-label { color: var(--kii); }
+  .idx-eci .idx-label { color: var(--eci); }
+  .idx-spi { border-left: 3px solid var(--spi); }
+  .idx-rei { border-left: 3px solid var(--rei); }
+  .idx-kii { border-left: 3px solid var(--kii); }
+  .idx-eci { border-left: 3px solid var(--eci); }
+
+  /* ── Faction rep table ───────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.73rem;
+    margin-bottom: 1rem;
+  }
+  th {
+    background: var(--bg3);
+    color: var(--teal);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-weight: bold;
+    letter-spacing: 0.05em;
+  }
+  td {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    vertical-align: top;
+  }
+  tr:hover td { background: var(--bg3); }
+  .rep-allied   { color: var(--green); font-weight: bold; }
+  .rep-friendly { color: var(--teal); }
+  .rep-cordial  { color: var(--cyan); }
+  .rep-neutral  { color: var(--muted); }
+  .rep-hostile  { color: var(--red); }
+
+  /* ── Nav bar ─────────────────────────────────────────────────────────── */
+  .nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+  }
+  .nav a {
+    color: var(--teal);
+    text-decoration: none;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: background 0.15s;
+  }
+  .nav a:hover { background: var(--bg3); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>4X Game — Progression Map</h1>
+<p class="subtitle">Visual reference: choices → bonuses → outcomes. Open in browser.</p>
+
+<!-- ── Navigation ──────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <a href="#cascade">Main Cascade</a>
+  <a href="#stats">Stats</a>
+  <a href="#research">Research Gates</a>
+  <a href="#buildings">Buildings</a>
+  <a href="#systems">Colony Systems</a>
+  <a href="#factions">Faction Rep</a>
+  <a href="#crew">Crew Pipeline</a>
+  <a href="#indices">Empire Indices</a>
+  <a href="#lookup">Reverse Lookup</a>
+</nav>
+
+<!-- ── Legend ──────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <span style="color:var(--text-dim);font-size:0.78rem">Empire index:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--spi)"></div> SPI — Military</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--rei)"></div> REI — Resources</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--kii)"></div> KII — Knowledge</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--eci)"></div> ECI — Economy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Multi-index</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="cascade">① Main Progression Cascade</h2>
+<div class="mermaid-wrap">
+<div class="mermaid">
+flowchart TD
+    CC["⬡ CHARACTER CREATION"]:::root
+
+    CC --> SP["Species\nTerran: +1k cr · +5 rep all · +10% research"]:::choice
+    CC --> CL["Class (11 options)\nStarting ship · credits · skill bonuses"]:::choice
+    CC --> BG["Background (20 options)\n+1 or +2 to core stats"]:::choice
+    CC --> SA["Stat Allocation\n30 points across 7 stats (max 100)"]:::choice
+
+    SA --> RES["⬡ RESEARCH\nRP/turn = stats + buildings + profession + faction"]:::hub
+
+    RES --> RG["Research Gates\nUnlocks buildings, systems, extended abilities"]:::gate
+    RG  --> CB["Colony Buildings (39)\nProduce minerals/food/research/ether/credits"]:::output
+    RG  --> CS["Colony Systems\nEcon · Political · Social\nMult up to +75% research stacked"]:::output
+    RG  --> EX["Extended Unlocks\nAbilities · Ship modules · Crew roles · Diplomacy"]:::output
+
+    CB  --> IDX["⬡ EMPIRE INDICES\nSPI · REI · KII · ECI"]:::hub
+    CS  --> IDX
+
+    CL  --> SH["Ship\nHull/engine/components\nset base 49 attributes"]:::output
+    SH  --> CR["Crew\nlevel × morale multiplier\non each attribute"]:::output
+    CR  --> NAV["Navigation\nFuel cost · Jump range\nFog-of-war radius"]:::output
+    CR  --> CMB["Combat\nDPS · Shield · Evasion"]:::output
+
+    FR["⬡ FACTION REP\n−100 → +100 per faction"]:::hub
+    CL  --> FR
+    BG  --> FR
+    CS  --> FR
+    FR  --> TD["Trade discounts\nup to −30%"]:::output
+    FR  --> RB["Research bonus\nup to +50% speed"]:::output
+    FR  --> FSPI["SPI faction bonus\n+4 / +12 / +25"]:::output
+    FR  --> SHF["Faction-locked\nship components"]:::output
+
+    classDef root    fill:#0d1428,stroke:#00d4aa,color:#00d4aa,font-weight:bold
+    classDef hub     fill:#111c35,stroke:#f4c430,color:#f4c430,font-weight:bold
+    classDef choice  fill:#111c35,stroke:#a855f7,color:#e2e8f0
+    classDef gate    fill:#111c35,stroke:#00b8d9,color:#00b8d9
+    classDef output  fill:#0d1428,stroke:#1e3a5f,color:#94a3b8
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="stats">② Core Stats → Derived Metrics</h2>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-abbr">INT</div>
+    <div class="stat-name">Intellect</div>
+    <div class="stat-feeds">→ RP/turn bonus<br>→ Processing Speed (INT+KIN)<br>→ Innovation Quotient (INT+SYN)<br>→ Adaptation Index</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">AEF</div>
+    <div class="stat-name">Aetheric Affinity</div>
+    <div class="stat-feeds">→ Etheric Capacity (AEF×8 + COH×4)<br>→ Etheric Stability (AEF+COH)<br>→ REI energy sub-score (AEF/5)<br>→ Ether abilities</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">INF</div>
+    <div class="stat-name">Influence</div>
+    <div class="stat-feeds">→ Social Engineering (INF+SYN)<br>→ Diplomatic relations modifier<br>→ Faction rep gain rate<br>→ Negotiation skill</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">VIT</div>
+    <div class="stat-name">Vitality</div>
+    <div class="stat-feeds">→ Health (VIT×10 + COH×5)<br>→ Resilience Index (VIT+COH)<br>→ Crew durability<br>→ Colony resilience</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">COH</div>
+    <div class="stat-name">Coherence</div>
+    <div class="stat-feeds">→ Health (COH×5 component)<br>→ Etheric Stability (AEF+COH)<br>→ Adaptation Index<br>→ Colony coherence multiplier</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">KIN</div>
+    <div class="stat-name">Kinetics</div>
+    <div class="stat-feeds">→ Processing Speed (INT+KIN)<br>→ REI extraction aptitude (KIN/8)<br>→ Combat initiative<br>→ Evasion</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-abbr">SYN</div>
+    <div class="stat-name">Synthesis</div>
+    <div class="stat-feeds">→ Innovation Quotient (INT+SYN)<br>→ Social Engineering (INF+SYN)<br>→ Adaptation Index<br>→ Alien system compatibility</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="research">③ Research Gates</h2>
+<p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:1rem">
+  Every row = one research project you must complete before the listed content becomes available.
+</p>
+
+<div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+    subgraph TIER1["No prerequisites needed"]
+        direction TB
+        R1["Advanced Research"]
+        R2["Advanced Etheric Weaving"]
+        R3["Cloaking Technology"]
+        R4["Plasma Energy Dynamics"]
+        R5["Mining Automation"]
+        R6["Bio-Engineering"]
+        R7["Xenogenetics"]
+    end
+
+    subgraph TIERM["Mid-tier (require earlier research)"]
+        direction TB
+        R8["Cognitive Enhancement Systems"]
+        R9["Quantum Temporal Dynamics"]
+        R10["Null Space Exploration"]
+        R11["Bio-Digital Symbiosis"]
+        R12["Collective Metaconsciousness Networks"]
+        R13["Predictive Logic Crystals"]
+        R14["Primordial Ether Research"]
+        R15["Causal Integrity Theory"]
+        R16["Trans-Phasic Genetics"]
+    end
+
+    subgraph TIERH["High-tier (many prerequisites)"]
+        direction TB
+        R17["Sentient Architecture"]
+        R18["Symbiotic Existential Anchors"]
+    end
+
+    R1  --> B1["Research Node\n(3 research/turn)"]
+    R2  --> B2["Ether Conduit · Etheric Purifier\nCrystal Resonance Array"]
+    R3  --> B3["Defense Array"]
+    R4  --> B4["Solar Harvester\nAnti-Orbital Battery · Geothermal Tap"]
+    R5  --> B5["Deep Core Drill · Munitions Factory\nOre Processor · Industrial Fabricator"]
+    R6  --> B6["Bio-Synthesis Lab · Atmospheric Processor\nAgri-Industrial Complex"]
+    R7  --> B7["Xenobiology Station · Xenolinguistics Center"]
+    R8  --> B8["Neural Institute · Command Citadel\nPsych-Net Hub"]
+    R8  --> S1["Algorithmic Legitimacy (pol)\nvia Predictive Logic Crystals"]
+    R9  --> B9["Quantum Relay\nDeep Space Observatory"]
+    R9  --> S2["Time Economy (econ)\nTemporal Layer Governance (pol)"]
+    R10 --> B10["Void Anchor\nPlanetary Shield Generator"]
+    R11 --> S3["Memory Economy (econ)\nMemory-Pooled Identity (soc)"]
+    R12 --> S4["Consciousness-Labor (econ)\nConsciousness Swarm (pol)\nDistributed Selfhood (soc)"]
+    R13 --> S5["Algorithmic Legitimacy (pol)"]
+    R14 --> S6["Oracle-Mediated Governance (pol)"]
+    R15 --> S7["Probability Economy (econ)"]
+    R16 --> S8["Rotating Embodiment (soc)"]
+    R17 --> B11["Synthetic Mind Core (10 research)\nOrbital Drydock (18 fleet)"]
+    R18 --> S9["Future social systems"]
+
+    style TIER1 fill:#0d1428,stroke:#1e3a5f,color:#00b8d9
+    style TIERM fill:#0d1428,stroke:#1e3a5f,color:#f4c430
+    style TIERH fill:#0d1428,stroke:#1e3a5f,color:#a855f7
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="buildings">④ Colony Buildings by Empire Index</h2>
+<p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.5rem">
+  Upgrade multipliers: Tier 1 = 1.0× · Tier 2 = 1.5× · Tier 3 = 2.2×
+</p>
+
+<h3 style="color:var(--spi)">SPI — Strategic Power (Military)</h3>
+<div class="card-grid">
+  <div class="card card--spi">
+    <div class="name">Orbital Drydock</div>
+    <div class="gate">🔒 Sentient Architecture</div>
+    <div class="output">fleet_points +18 · cost 25,000</div>
+    <div class="terrain">any terrain</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Shipyard</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">fleet_points +6 × ore bonus · cost 12,000</div>
+    <div class="terrain">coastal ×1.2 / best</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Command Citadel</div>
+    <div class="gate">🔒 Cognitive Enhancement Systems</div>
+    <div class="output">defense +3, fleet_points +5 · cost 20,000</div>
+    <div class="terrain">mountains ×1.3</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Planetary Shield Generator</div>
+    <div class="gate">🔒 Null Space Exploration</div>
+    <div class="output">defense +5 · cost 18,000</div>
+    <div class="terrain">mountains ×1.2</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Anti-Orbital Battery</div>
+    <div class="gate">🔒 Plasma Energy Dynamics</div>
+    <div class="output">defense +4 · cost 14,000</div>
+    <div class="terrain">mountains/volcanic/tundra only</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Munitions Factory</div>
+    <div class="gate">🔒 Mining Automation</div>
+    <div class="output">fleet_points +4, refined_ore +2 · cost 10,000</div>
+    <div class="terrain">plains ×1.2</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Ore Processor</div>
+    <div class="gate">🔒 Mining Automation</div>
+    <div class="output">refined_ore +4 (boosts Shipyard up to +100%) · cost 8,000</div>
+    <div class="terrain">mountains ×1.5</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Defense Array</div>
+    <div class="gate">🔒 Cloaking Technology</div>
+    <div class="output">defense +2 · cost 5,000</div>
+    <div class="terrain">mountains ×1.3</div>
+  </div>
+  <div class="card card--spi">
+    <div class="name">Ground Forces Barracks</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">defense +1, fleet_points +2 · cost 6,000</div>
+    <div class="terrain">plains ×1.2</div>
+  </div>
+</div>
+
+<h3 style="color:var(--rei)">REI — Resource Extraction</h3>
+<div class="card-grid">
+  <div class="card card--rei">
+    <div class="name">Deep Core Drill</div>
+    <div class="gate">🔒 Mining Automation</div>
+    <div class="output">minerals +8, food −1 · cost 9,000</div>
+    <div class="terrain">mountains ONLY · mountains ×1.0</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Crystal Resonance Array</div>
+    <div class="gate">🔒 Advanced Etheric Weaving</div>
+    <div class="output">ether +6, research +2 · cost 12,000</div>
+    <div class="terrain">crystal ONLY · crystal ×2.0</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Void Anchor</div>
+    <div class="gate">🔒 Null Space Exploration</div>
+    <div class="output">ether +5 · cost 15,000</div>
+    <div class="terrain">void ONLY</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Geothermal Tap</div>
+    <div class="gate">🔒 Plasma Energy Dynamics</div>
+    <div class="output">ether +4, minerals +2 · cost 7,000</div>
+    <div class="terrain">geothermal/volcanic ONLY · geo ×1.8</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Ether Conduit</div>
+    <div class="gate">🔒 Advanced Etheric Weaving</div>
+    <div class="output">ether +2 · cost 4,000</div>
+    <div class="terrain">crystal ×1.6, void ×1.4</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Etheric Purifier</div>
+    <div class="gate">🔒 Advanced Etheric Weaving</div>
+    <div class="output">ether +2 · cost 5,500</div>
+    <div class="terrain">volcanic/geothermal ONLY</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Tidal Energy Plant</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">ether +2, credits +2 · cost 4,500</div>
+    <div class="terrain">coastal/ocean ONLY · coastal ×1.5</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Mineral Extractor</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">minerals +3 · cost 2,000</div>
+    <div class="terrain">mountains ×1.5, volcanic ×1.2</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Solar Harvester</div>
+    <div class="gate">🔒 Plasma Energy Dynamics</div>
+    <div class="output">minerals +2, credits +1 · cost 3,000</div>
+    <div class="terrain">any</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Jungle Harvester</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">food +5, ether +1 · cost 3,500</div>
+    <div class="terrain">forest ONLY · forest ×1.6</div>
+  </div>
+  <div class="card card--rei">
+    <div class="name">Atmospheric Processor</div>
+    <div class="gate">🔒 Bio-Engineering</div>
+    <div class="output">food +3, minerals +1 · cost 5,000</div>
+    <div class="terrain">tundra/desert/volcanic ONLY</div>
+  </div>
+</div>
+
+<h3 style="color:var(--kii)">KII — Knowledge &amp; Innovation</h3>
+<div class="card-grid">
+  <div class="card card--kii">
+    <div class="name">Synthetic Mind Core</div>
+    <div class="gate">🔒 Sentient Architecture</div>
+    <div class="output">research +10 · cost 22,000</div>
+    <div class="terrain">crystal ×1.4, void ×1.2</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Deep Space Observatory</div>
+    <div class="gate">🔒 Quantum Temporal Dynamics</div>
+    <div class="output">research +6 · cost 9,000</div>
+    <div class="terrain">mountains/tundra/desert ONLY · mtn ×1.4</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Neural Institute</div>
+    <div class="gate">🔒 Cognitive Enhancement Systems</div>
+    <div class="output">research +5, ether +1 · cost 8,000</div>
+    <div class="terrain">any</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Academy of Sciences</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">research +4 · cost 5,000</div>
+    <div class="terrain">coastal ×1.2</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Psych-Net Hub</div>
+    <div class="gate">🔒 Cognitive Enhancement Systems</div>
+    <div class="output">research +4, ether +2 · cost 11,000</div>
+    <div class="terrain">crystal ×1.3</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Xenobiology Station</div>
+    <div class="gate">🔒 Xenogenetics</div>
+    <div class="output">research +4 · cost 12,000</div>
+    <div class="terrain">forest ×1.2</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Quantum Relay</div>
+    <div class="gate">🔒 Quantum Temporal Dynamics</div>
+    <div class="output">research +3 · cost 10,000</div>
+    <div class="terrain">crystal ×1.4</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Research Node</div>
+    <div class="gate">🔒 Advanced Research</div>
+    <div class="output">research +3 · cost 3,500</div>
+    <div class="terrain">crystal ×1.2</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Xenolinguistics Center</div>
+    <div class="gate">🔒 Xenogenetics</div>
+    <div class="output">research +3, credits +3 · cost 7,500</div>
+    <div class="terrain">plains/coastal/forest ×1.1</div>
+  </div>
+  <div class="card card--kii">
+    <div class="name">Bio-Synthesis Lab</div>
+    <div class="gate">🔒 Bio-Engineering</div>
+    <div class="output">food +3, research +2 · cost 7,000</div>
+    <div class="terrain">forest ×1.3</div>
+  </div>
+</div>
+
+<h3 style="color:var(--eci)">ECI — Economic Capability</h3>
+<div class="card-grid">
+  <div class="card card--eci">
+    <div class="name">Interstellar Bank</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">credits +20 · cost 16,000</div>
+    <div class="terrain">coastal ×1.3</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Spaceport Hub</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">credits +12 · cost 8,500 · enables market</div>
+    <div class="terrain">plains ×1.3, coastal ×1.2</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Trade Nexus</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">credits +8 · cost 6,000 · enables market</div>
+    <div class="terrain">coastal ×1.25</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Luxury Habitat Complex</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">food +3, credits +5 · cost 5,500 · +0.8% pop growth</div>
+    <div class="terrain">plains/coastal/forest ×1.2–1.3</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Industrial Fabricator</div>
+    <div class="gate">🔒 Mining Automation</div>
+    <div class="output">credits +6, minerals +2 · cost 6,500</div>
+    <div class="terrain">plains ×1.2</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Population Hub</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">food +2, credits +3 · cost 4,500 · +1.5% pop growth</div>
+    <div class="terrain">plains/coastal ×1.2 (harsh terrain excluded)</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Biofarm Complex</div>
+    <div class="gate">✓ no gate</div>
+    <div class="output">food +4, credits +1 · cost 1,800 · +0.5% pop growth</div>
+    <div class="terrain">plains/forest ×1.4</div>
+  </div>
+  <div class="card card--eci">
+    <div class="name">Agri-Industrial Complex</div>
+    <div class="gate">🔒 Bio-Engineering</div>
+    <div class="output">food +6, minerals +3 · cost 9,500</div>
+    <div class="terrain">plains ×1.4</div>
+  </div>
+</div>
+
+<p style="color:var(--muted);font-size:0.72rem;margin-top:-0.5rem;margin-bottom:1rem">
+  Population income: 75 credits per 10,000 colonists/turn. Pop growth capped at 8%/turn.
+</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="systems">⑤ Colony Systems</h2>
+<p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.5rem">
+  Each colony picks one from each category. <strong style="color:var(--gold)">5-turn cooldown</strong> per category after a change.
+  Combined stack modifier example (max research): Memory Economy +25% · Consciousness Swarm +30% · Memory-Pooled Identity +20% = <strong style="color:var(--teal)">+75% research</strong>.
+</p>
+
+<h3>Economic Systems</h3>
+<div class="sys-grid">
+  <div class="sys-card">
+    <div class="sys-name">Energy-State Economy</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">minerals +15%, credits +10%</div>
+    <div class="sys-bad">research −5%</div>
+    <div class="sys-comm">→ Energy Credits ×2/turn</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Ritualized Exchange</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">pop_growth +15%, faction_rep_gain +10%</div>
+    <div class="sys-comm">→ Ritual Tokens ×3/turn</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Consciousness-Labor Economy</div>
+    <div class="sys-req">🔒 Collective Metaconsciousness Networks</div>
+    <div class="sys-good">research +20%, fleet_points +10%</div>
+    <div class="sys-comm">→ Cognitive Cycles ×2/turn</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Memory Economy</div>
+    <div class="sys-req">🔒 Bio-Digital Symbiosis</div>
+    <div class="sys-good">research +25%, pop_growth +10%</div>
+    <div class="sys-comm">→ Archived Experience ×2/turn</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Time Economy</div>
+    <div class="sys-req">🔒 Quantum Temporal Dynamics</div>
+    <div class="sys-good">all_production +8%</div>
+    <div class="sys-comm">→ Temporal Slices ×1/turn</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Probability Economy</div>
+    <div class="sys-req">🔒 Causal Integrity Theory</div>
+    <div class="sys-good">credits +20%</div>
+    <div class="sys-comm">→ Probability Futures ×1/turn</div>
+  </div>
+</div>
+
+<h3>Political Systems</h3>
+<div class="sys-grid">
+  <div class="sys-card">
+    <div class="sys-name">Consensus Field Governance</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">faction_rep_gain +10%, stability +15</div>
+    <div class="sys-bad">all_production −5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Distributed Micro-Sovereignty</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">trade_volume +20%, all_production +5%</div>
+    <div class="sys-bad">faction_rep_gain −5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Algorithmic Legitimacy</div>
+    <div class="sys-req">🔒 Predictive Logic Crystals</div>
+    <div class="sys-good">all_production +15%, research +10%</div>
+    <div class="sys-bad">pop_growth −5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Oracle-Mediated Governance</div>
+    <div class="sys-req">🔒 Primordial Ether Research</div>
+    <div class="sys-good">research +20%, all_production +5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Temporal Layer Governance</div>
+    <div class="sys-req">🔒 Quantum Temporal Dynamics</div>
+    <div class="sys-good">research +15%, all_production +10%</div>
+    <div class="sys-bad">stability −10</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Consciousness Swarm Deliberation</div>
+    <div class="sys-req">🔒 Collective Metaconsciousness Networks</div>
+    <div class="sys-good">research +30%, all_production +15%</div>
+    <div class="sys-bad">pop_growth −10%</div>
+  </div>
+</div>
+
+<h3>Social Systems</h3>
+<div class="sys-grid">
+  <div class="sys-card">
+    <div class="sys-name">Resonance-Based Cohesion</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">fleet_points +10%, stability +10, pop_growth +5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Narrative-Bound Societies</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">faction_rep_gain +15%, pop_growth +10%, stability +15</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Symbiotic Social Networks</div>
+    <div class="sys-req">No research required</div>
+    <div class="sys-good">pop_growth +20%, food +10%, all_production +5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Memory-Pooled Identity</div>
+    <div class="sys-req">🔒 Bio-Digital Symbiosis</div>
+    <div class="sys-good">research +20%, stability +20, pop_growth +5%</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Distributed Selfhood</div>
+    <div class="sys-req">🔒 Collective Metaconsciousness Networks</div>
+    <div class="sys-good">trade_volume +15%, all_production +10%</div>
+    <div class="sys-bad">stability −5</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-name">Rotating Embodiment Systems</div>
+    <div class="sys-req">🔒 Trans-Phasic Genetics</div>
+    <div class="sys-good">all_diplomacy +5%, all_production +5%</div>
+    <div class="sys-bad">stability −10</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="factions">⑥ Faction Reputation Cascade</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Reputation</th>
+      <th>Status</th>
+      <th>Trade</th>
+      <th>Research</th>
+      <th>Repair</th>
+      <th>Refuel</th>
+      <th>Shipyard</th>
+      <th>Other</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="rep-hostile">&lt; −75</td><td class="rep-hostile">Enemy</td><td>blocked</td><td>blocked</td><td>blocked</td><td>blocked</td><td>blocked</td><td>Hostile encounters</td></tr>
+    <tr><td class="rep-hostile">−75 to −50</td><td class="rep-hostile">Hostile</td><td>blocked</td><td>blocked</td><td>limited</td><td>limited</td><td>limited</td><td>—</td></tr>
+    <tr><td class="rep-hostile">−50 to −25</td><td>Unfriendly</td><td>guarded</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td class="rep-neutral">−25 to +25</td><td class="rep-neutral">Neutral</td><td>—</td><td>—</td><td>−10%</td><td>−5%</td><td>—</td><td>—</td></tr>
+    <tr><td class="rep-cordial">+25 to +50</td><td class="rep-cordial">Cordial</td><td>−5%</td><td>+10%</td><td>−10%</td><td>−10%</td><td>—</td><td>Station access</td></tr>
+    <tr><td class="rep-friendly">+50 to +75</td><td class="rep-friendly">Friendly</td><td>−15%</td><td>+25%</td><td>−25%</td><td>−15%</td><td>−15%</td><td>Ship modifications</td></tr>
+    <tr><td class="rep-allied">+75+</td><td class="rep-allied">Allied</td><td>−30%</td><td>+50%</td><td>−40%</td><td>−40%</td><td>−40%</td><td>Colony support · SPI bonus · faction-locked components</td></tr>
+  </tbody>
+</table>
+
+<p style="color:var(--text-dim);font-size:0.73rem;margin-bottom:0.75rem">
+  <strong style="color:var(--gold)">Earning reputation:</strong>
+  Home faction starts at +80 (Allied) · Species bonus +5 all factions ·
+  Diplomatic gifts: 500 cr per point, max +20/action ·
+  Colony system alignment: −15 to +15 per turn ·
+  Ritualized Exchange economy: +10% to all rep gains ·
+  Narrative-Bound social: +15% · Consensus Field political: +10%
+</p>
+
+<table>
+  <thead>
+    <tr><th>Faction</th><th>Focus</th><th>Best Allied benefit</th></tr>
+  </thead>
+  <tbody>
+    <tr><td style="color:var(--cyan)">The Veritas Covenant</td><td>Research</td><td>+50% research speed; joint research projects</td></tr>
+    <tr><td style="color:var(--cyan)">The Scholara Nexus</td><td>Research</td><td>Skill enhancement; educational training</td></tr>
+    <tr><td style="color:var(--green)">Stellar Nexus Guild</td><td>Trade</td><td>−30% trade prices; exclusive trade routes</td></tr>
+    <tr><td style="color:var(--green)">Harmonic Vitality Consortium</td><td>Health/Culture</td><td>Genetic optimization; bio-enhancement</td></tr>
+    <tr><td style="color:var(--orange)">The Gearwrights Guild</td><td>Industry</td><td>Custom machinery; master-crafted equipment; SPI bonus</td></tr>
+    <tr><td style="color:var(--orange)">The Icaron Collective</td><td>Technology</td><td>AI assistance; neural integration; SPI bonus</td></tr>
+    <tr><td style="color:var(--orange)">The Quantum Artificers Guild</td><td>Technology</td><td>Quantum devices; reality stabilizers; SPI bonus</td></tr>
+    <tr><td style="color:var(--purple)">The Gaian Enclave</td><td>Mysticism/Ecology</td><td>Terraforming; ecological restoration</td></tr>
+    <tr><td style="color:var(--purple)">The Harmonic Resonance Collective</td><td>Mysticism</td><td>Harmonic weapons &amp; shields</td></tr>
+    <tr><td style="color:var(--teal)">The Provocateurs' Guild</td><td>Culture</td><td>Social transformation; art inspiration</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="crew">⑦ Crew Bonus Pipeline</h2>
+
+<div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+    FORMULA["effective_bonus =\nbase × level_mult × morale_mult\n\nlevel_mult  = 1.0 + (level−1)×0.055\n               1.0× at L1 → 1.5× at L10\nmorale_mult = 0.75 + morale/100×0.25\n               0.75× at 0% → 1.25× at 150%"]:::info
+
+    MO["Medical Officer\ncrew_morale +15"]:::morale
+    VM["Void Mystic\ncrew_morale +10"]:::morale
+    XB["Xeno-Biologist\ncrew_morale +8"]:::morale
+    MO --> MM["morale_multiplier\n(scales ALL crew bonuses)"]:::key
+    VM --> MM
+    XB --> MM
+
+    ENG["Engineer\nengine_efficiency +8\npower_efficiency +6"]:::common
+    CE["Chief Engineer ★\nengine_efficiency +15\npower_efficiency +12\nsystem_reliability +10"]:::rare
+    PIL["Pilot\nmaneuverability +12\nengine_output +8"]:::uncommon
+    NAV["Navigator\nftl_jump_capacity +10\ndetection_range +5"]:::common
+    SS["Sensor Specialist\ndetection_range +12\nsignal_processing +8"]:::common
+
+    ENG --> FUEL["Fuel cost\nreduction"]:::out
+    CE  --> FUEL
+    PIL --> FUEL
+    NAV --> RANGE["Jump range\nFog-of-war"]:::out
+    SS  --> RANGE
+
+    WO["Weapons Officer\nweapon_output +10\ntargeting_accuracy +8"]:::uncommon
+    ST["Shield Technician\nshield_strength +10\nshield_recharge +8"]:::uncommon
+    WO --> COMBAT["Combat\nDPS / Shield"]:::out
+    ST --> COMBAT
+
+    EH["Etheric Harmonizer ★\netheric_sensitivity +15\netheric_stability +12"]:::rare
+    VM2["Void Mystic ★★\netheric_sensitivity +20\nanomaly_detection +18"]:::legendary
+    EH --> ETHER["Etheric\nweapons / abilities"]:::out
+    VM2 --> ETHER
+
+    SA2["Systems Analyst\ncomputing_power +15\nsystem_reliability +8"]:::uncommon
+    QM["Quartermaster\nmass_efficiency +10\ncargo_security +8"]:::common
+    SA2 --> INTEL["Computing\n/ cargo"]:::out
+    QM  --> INTEL
+
+    classDef info     fill:#0d1428,stroke:#1e3a5f,color:#94a3b8,font-size:11px
+    classDef key      fill:#111c35,stroke:#f4c430,color:#f4c430,font-weight:bold
+    classDef morale   fill:#111c35,stroke:#22c55e,color:#22c55e
+    classDef common   fill:#111c35,stroke:#1e3a5f,color:#94a3b8
+    classDef uncommon fill:#111c35,stroke:#1d4ed8,color:#93c5fd
+    classDef rare     fill:#111c35,stroke:#a855f7,color:#d8b4fe
+    classDef legendary fill:#111c35,stroke:#f4c430,color:#f4c430
+    classDef out      fill:#0d1428,stroke:#1e3a5f,color:#6b7280
+</div>
+</div>
+
+<div class="crew-grid">
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Engineer</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">engine_efficiency +8, power_efficiency +6</div>
+    <div class="crew-sal">200 cr/turn · Industrial / Mining / Trading</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Navigator</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">ftl_jump_capacity +10, detection_range +5</div>
+    <div class="crew-sal">250 cr/turn · Trading / Research / Frontier</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Sensor Specialist</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">detection_range +12, signal_processing +8</div>
+    <div class="crew-sal">220 cr/turn · Research / Military / Trading</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Medical Officer</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">crew_morale +15, crew_efficiency +8</div>
+    <div class="crew-sal">280 cr/turn · Trading / Industrial / Research</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Quartermaster</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">mass_efficiency +10, cargo_security +8</div>
+    <div class="crew-sal">240 cr/turn · Trading / Industrial</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Communications Officer</span>
+      <span class="crew-rar common">common</span>
+    </div>
+    <div class="crew-bonus">signal_strength +10, signal_processing +8</div>
+    <div class="crew-sal">230 cr/turn · Trading / Frontier</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Weapons Officer</span>
+      <span class="crew-rar uncommon">uncommon</span>
+    </div>
+    <div class="crew-bonus">weapon_output +10, targeting_accuracy +8</div>
+    <div class="crew-sal">300 cr/turn · Military / Frontier</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Shield Technician</span>
+      <span class="crew-rar uncommon">uncommon</span>
+    </div>
+    <div class="crew-bonus">shield_strength +10, shield_recharge +8</div>
+    <div class="crew-sal">280 cr/turn · Military / Trading</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Pilot</span>
+      <span class="crew-rar uncommon">uncommon</span>
+    </div>
+    <div class="crew-bonus">maneuverability +12, engine_output +8</div>
+    <div class="crew-sal">320 cr/turn · Military / Frontier / Trading</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Systems Analyst</span>
+      <span class="crew-rar uncommon">uncommon</span>
+    </div>
+    <div class="crew-bonus">computing_power +15, system_reliability +8</div>
+    <div class="crew-sal">340 cr/turn · Research / Trading</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Etheric Harmonizer</span>
+      <span class="crew-rar rare">rare</span>
+    </div>
+    <div class="crew-bonus">etheric_sensitivity +15, etheric_stability +12</div>
+    <div class="crew-sal">450 cr/turn · Research / Ancient Site</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Chief Engineer</span>
+      <span class="crew-rar rare">rare</span>
+    </div>
+    <div class="crew-bonus">engine_efficiency +15, power_efficiency +12, system_reliability +10</div>
+    <div class="crew-sal">500 cr/turn · Industrial / Research</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Xeno-Biologist</span>
+      <span class="crew-rar rare">rare</span>
+    </div>
+    <div class="crew-bonus">bioscience_capacity +18, crew_morale +8</div>
+    <div class="crew-sal">420 cr/turn · Research Station</div>
+  </div>
+  <div class="crew-card">
+    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">
+      <span class="crew-name">Void Mystic</span>
+      <span class="crew-rar legendary">legendary</span>
+    </div>
+    <div class="crew-bonus">etheric_sensitivity +20, anomaly_detection +18, crew_morale +10</div>
+    <div class="crew-sal">800 cr/turn · Ancient Site only</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="indices">⑧ Empire Indices — What Feeds Them</h2>
+
+<div class="index-grid">
+  <div class="index-card idx-spi">
+    <div class="idx-label">SPI</div>
+    <div class="idx-full">Strategic Power Index</div>
+    <ul class="idx-components">
+      <li>active_ship.combat_rating + fleet_pool/1,000</li>
+      <li>Sum of "defense" production (all colonies)</li>
+      <li>character_military_skill × 2</li>
+      <li>Military research progress / 100</li>
+      <li>Faction bonus: Allied Industry/Tech → +4/+12/+25</li>
+    </ul>
+  </div>
+  <div class="index-card idx-rei">
+    <div class="idx-label">REI</div>
+    <div class="idx-full">Resource Extraction Index</div>
+    <ul class="idx-components">
+      <li>minerals×8 + refined_ore×6 + visited_systems×2</li>
+      <li>ether×10 + AEF_stat/5</li>
+      <li>active_ships×12 + visited_systems×3</li>
+      <li>KIN/8 + SYN/10 + COH/12 (extraction aptitude)</li>
+      <li>AEF/6 + visited_systems (prospecting)</li>
+      <li>profession_level/10</li>
+    </ul>
+  </div>
+  <div class="index-card idx-kii">
+    <div class="idx-label">KII</div>
+    <div class="idx-full">Knowledge &amp; Innovation Index</div>
+    <ul class="idx-components">
+      <li>research_output × 2 (all colony production)</li>
+      <li>ether_yield (all colony ether)</li>
+      <li>research buildings × 5 (count)</li>
+      <li>Researcher / Scholar profession bonus</li>
+    </ul>
+  </div>
+  <div class="index-card idx-eci">
+    <div class="idx-label">ECI</div>
+    <div class="idx-full">Economic Capability Index</div>
+    <ul class="idx-components">
+      <li>credits_per_turn × 0.5 (production + pop tax)</li>
+      <li>trade_volume (goods bought/sold via market)</li>
+      <li>food_surplus (production − consumption)</li>
+      <li>Colony economic/political system modifiers</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2 id="lookup">⑨ Reverse Lookup — "How do I get X?"</h2>
+
+<div class="lookup-grid">
+
+  <div class="lookup-card">
+    <div class="goal">↑ RP / turn (research output)</div>
+    <ol>
+      <li><strong>INT stat</strong> → character RP bonus</li>
+      <li><strong>Scientist class</strong> → +25% research_speed</li>
+      <li><strong>Buildings (free):</strong> Academy of Sciences (+4)</li>
+      <li><strong>Buildings (gated):</strong> Synthetic Mind Core +10, Observatory +6, Neural Institute +5, Psych-Net Hub +4, Xenobiology +4, Academy +4, Quantum Relay +3, Research Node +3</li>
+      <li><strong>Planet:</strong> Crystal World (crystal terrain × research)</li>
+      <li><strong>Economic:</strong> Memory Economy +25%, Consciousness-Labor +20%</li>
+      <li><strong>Political:</strong> Consciousness Swarm +30%, Oracle-Mediated +20%</li>
+      <li><strong>Social:</strong> Memory-Pooled +20%, Distributed Selfhood +10%</li>
+      <li><strong>Faction:</strong> Allied Veritas Covenant → +50% speed</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Credits / turn</div>
+    <ol>
+      <li><strong>Buildings:</strong> Interstellar Bank +20, Spaceport Hub +12, Trade Nexus +8, Luxury Habitat +5, Fabricator +6</li>
+      <li><strong>Terrain:</strong> Coastal tiles → credit ×1.2 modifier</li>
+      <li><strong>Population:</strong> More colonists → 75 cr per 10k/turn</li>
+      <li><strong>Economic:</strong> Probability Economy +20%, Energy-State +10%</li>
+      <li><strong>Political:</strong> Distributed Sovereignty +5% all_production</li>
+      <li><strong>Faction:</strong> Allied Stellar Nexus → −30% trade prices</li>
+      <li><strong>Class:</strong> Merchant Captain trade_discount +10%</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Fleet Points / SPI</div>
+    <ol>
+      <li><strong>Buildings:</strong> Orbital Drydock +18, Shipyard +6×ore, Command Citadel +5, Munitions Factory +4, Barracks +2</li>
+      <li><strong>Fleet chain:</strong> Ore Processor → refined_ore → Shipyard ×(1+ore×0.05), cap +100%</li>
+      <li><strong>Economic:</strong> Consciousness-Labor +10% fleet_points</li>
+      <li><strong>Social:</strong> Resonance-Based Cohesion +10% fleet_points</li>
+      <li><strong>Faction:</strong> Allied with Industry/Tech faction → SPI +25</li>
+      <li><strong>Class:</strong> Military Commander +25% combat_effectiveness</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Ether output</div>
+    <ol>
+      <li><strong>Buildings:</strong> Crystal Resonance Array +6 (crystal), Void Anchor +5 (void), Geothermal Tap +4 (geo/volcanic), Neural Institute +1, Psych-Net Hub +2, Tidal Plant +2 (coastal)</li>
+      <li><strong>Terrain:</strong> Void ×2.0, Crystal ×1.5, Geothermal ×1.3</li>
+      <li><strong>Planet type:</strong> Crystal World or Lava World</li>
+      <li><strong>Stat:</strong> High AEF → REI energy sub-score</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Ship combat power</div>
+    <ol>
+      <li><strong>Crew:</strong> Weapons Officer +10 weapon_output, Pilot +12 maneuver, Shield Technician +10 shield, Chief Engineer +15 engine_eff</li>
+      <li><strong>Crew leveling:</strong> L10 = 1.5× all bonuses</li>
+      <li><strong>Crew morale:</strong> Medical Officer +15 morale → all bonuses ×1.25</li>
+      <li><strong>Station upgrades:</strong> Weapon/shield/engine components</li>
+      <li><strong>Class:</strong> Military Commander +25% combat_effectiveness</li>
+      <li><strong>Faction:</strong> Allied unlocks faction-locked hull/engine components</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Fuel efficiency / range</div>
+    <ol>
+      <li><strong>Crew:</strong> Engineer +8 engine_efficiency, Chief Engineer +15, Pilot +8 engine_output</li>
+      <li><strong>Components:</strong> High engine_efficiency base value on hull/engine</li>
+      <li><strong>Class:</strong> Explorer +15% fuel_efficiency</li>
+      <li><strong>Avoid:</strong> Dangerous regions (+50% fuel), heavy cargo</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Faction reputation</div>
+    <ol>
+      <li><strong>Gifts:</strong> 500 cr per point, max +20/action</li>
+      <li><strong>Colony systems:</strong> Match systems to faction preferences (up to +15/turn)</li>
+      <li><strong>Economic:</strong> Ritualized Exchange +10% to all rep gains</li>
+      <li><strong>Social:</strong> Narrative-Bound +15% rep gains</li>
+      <li><strong>Political:</strong> Consensus Field +10% rep gains</li>
+      <li><strong>Stat:</strong> High INF → Social Engineering → diplomatic effectiveness</li>
+      <li><strong>Class:</strong> Diplomat +30% diplomatic_relations</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">↑ Population growth</div>
+    <ol>
+      <li><strong>Food buildings:</strong> Biofarm Complex, Jungle Harvester, Bio-Synthesis Lab, Agri-Industrial Complex, Atmospheric Processor</li>
+      <li><strong>Pop buildings:</strong> Population Hub +1.5%/each, Luxury Habitat +0.8%/each</li>
+      <li><strong>Economic:</strong> Ritualized Exchange +15%, Memory Economy +10%</li>
+      <li><strong>Social:</strong> Symbiotic Networks +20%, Narrative-Bound +10%, Memory-Pooled +5%</li>
+      <li><strong>Cap:</strong> Max 8% growth per turn</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">Unlock: Ether buildings</div>
+    <ol>
+      <li>Complete <strong>Advanced Etheric Weaving</strong> → Ether Conduit, Etheric Purifier, Crystal Resonance Array</li>
+      <li>Complete <strong>Null Space Exploration</strong> → Void Anchor</li>
+      <li>Complete <strong>Plasma Energy Dynamics</strong> → Geothermal Tap</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">Unlock: Best research buildings</div>
+    <ol>
+      <li><strong>Synthetic Mind Core (+10):</strong> Sentient Architecture</li>
+      <li><strong>Deep Space Observatory (+6):</strong> Quantum Temporal Dynamics</li>
+      <li><strong>Neural Institute (+5):</strong> Cognitive Enhancement Systems</li>
+      <li><strong>Psych-Net Hub (+4):</strong> Cognitive Enhancement Systems</li>
+      <li><strong>Xenobiology Station (+4):</strong> Xenogenetics</li>
+      <li><strong>Academy of Sciences (+4):</strong> Free from turn 1</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">Unlock: Best fleet buildings</div>
+    <ol>
+      <li><strong>Orbital Drydock (+18):</strong> Sentient Architecture</li>
+      <li><strong>Shipyard (+6 × ore):</strong> Free from turn 1</li>
+      <li><strong>Command Citadel (+5 fleet, +3 def):</strong> Cognitive Enhancement Systems</li>
+      <li><strong>Ore Processor (amplifier):</strong> Mining Automation</li>
+    </ol>
+  </div>
+
+  <div class="lookup-card">
+    <div class="goal">Unlock: High-research colony systems</div>
+    <ol>
+      <li><strong>Memory Economy (+25% research):</strong> Bio-Digital Symbiosis</li>
+      <li><strong>Consciousness Swarm (+30% research):</strong> Collective Metaconsciousness Networks</li>
+      <li><strong>Memory-Pooled Identity (+20% research, +20 stability):</strong> Bio-Digital Symbiosis</li>
+      <li><strong>Oracle-Mediated (+20% research):</strong> Primordial Ether Research</li>
+    </ol>
+  </div>
+
+</div>
+
+<hr class="divider">
+<p style="color:var(--muted);font-size:0.7rem;text-align:center">
+  Source: backend/colony.py · backend/colony_systems.py · crew.py · factions.py · characters.py · ship_attributes.py
+</p>
+
+<script>
+  // Initialize Mermaid with dark theme matching the AC palette
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      background:        '#0a0f1e',
+      primaryColor:      '#111c35',
+      primaryTextColor:  '#e2e8f0',
+      primaryBorderColor:'#1e3a5f',
+      lineColor:         '#1e3a5f',
+      secondaryColor:    '#0d1428',
+      tertiaryColor:     '#0d1428',
+      edgeLabelBackground: '#0d1428',
+      fontFamily:        'Courier New, monospace',
+      fontSize:          '12px',
+    },
+    flowchart: {
+      curve: 'basis',
+      htmlLabels: true,
+    }
+  });
+</script>
+</body>
+</html>
