@@ -209,6 +209,14 @@
   transition: width var(--transition-base);
 }
 
+/* Research widget hover state — shown when a project is active and it acts as a link */
+.hud__research[style*="cursor: pointer"]:hover .hud__research-label,
+.hud__research[style*="cursor:pointer"]:hover .hud__research-label {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* HUD view navigation buttons */
 .hud__nav {
   display: flex;

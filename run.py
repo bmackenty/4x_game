@@ -2,7 +2,7 @@
 run.py — Single-command launcher for the 4X game.
 
 Usage:
-    python run.py
+    python3 run.py
 
 What it does:
     1. Starts the FastAPI backend (uvicorn) on localhost:8765

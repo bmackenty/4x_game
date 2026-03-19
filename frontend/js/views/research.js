@@ -101,7 +101,7 @@ const CATEGORY_COLORS = {
 
 export const researchView = {
 
-    async mount() {
+    async mount(context = {}) {
         const container = document.getElementById("view-research");
         if (!container) return;
 
@@ -113,9 +113,20 @@ export const researchView = {
         // Wire filter controls
         _attachFilterListeners();
 
-        // Render initial list
+        // If navigated here via the HUD research bar, auto-select the active project
+        if (context.selectActive && _tree?.active_research) {
+            _selectedNode = _tree.nodes.find(n => n.active) || null;
+        }
+
+        // Render initial list (selected card gets highlight via _buildNodeCard)
         _renderNodeList();
         _renderRightPanel();
+
+        // Scroll the selected card into view when auto-selecting
+        if (_selectedNode) {
+            const card = document.querySelector(`.research-node-card[data-name="${CSS.escape(_selectedNode.name)}"]`);
+            if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
     },
 
     unmount() {

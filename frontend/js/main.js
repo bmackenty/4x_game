@@ -169,22 +169,46 @@ function updateHud(gs) {
   // Action pips
   renderActionPips(t.actions_remaining, t.max_actions);
 
-  // Research bar
+  // Research bar — clickable link to R&D view when a project is active
+  const researchEl   = document.getElementById("hud-research");
+  const researchNode = document.getElementById("hud-research-name");
+  const researchFill = document.getElementById("hud-research-fill");
+
   if (r.active) {
-    const researchNode = document.getElementById("hud-research-name");
-    const researchFill = document.getElementById("hud-research-fill");
     if (researchNode) researchNode.textContent = r.active;
 
-    // Compute percentage from active research data (Phase 4 will add total_time)
-    // For now show indeterminate progress using turn count
+    // Compute percentage complete
     const pct = r.total_time
       ? Math.min(100, Math.round((r.progress / r.total_time) * 100))
       : 0;
     if (researchFill) researchFill.style.width = `${pct}%`;
+
+    // Make the research widget a clickable link to the R&D view.
+    // Store the handler reference on the element so we can remove it later
+    // and avoid stacking duplicate listeners across poll cycles.
+    if (researchEl && !researchEl._researchClickHandler) {
+      researchEl.style.cursor = "pointer";
+      researchEl.title        = `${r.active} — click to open R&D`;
+      researchEl._researchClickHandler = () => {
+        // Pass selectActive so the R&D view auto-selects the current project
+        if (state.gameInitialized) switchView("research", { selectActive: true });
+      };
+      researchEl.addEventListener("click", researchEl._researchClickHandler);
+    } else if (researchEl) {
+      // Update the title in case the active project name changed
+      researchEl.title = `${r.active} — click to open R&D`;
+    }
   } else {
-    setText("hud-research-name", "No research");
-    const researchFill = document.getElementById("hud-research-fill");
+    if (researchNode) researchNode.textContent = "No research";
     if (researchFill) researchFill.style.width = "0%";
+
+    // Remove the click handler when no research is active
+    if (researchEl && researchEl._researchClickHandler) {
+      researchEl.removeEventListener("click", researchEl._researchClickHandler);
+      researchEl._researchClickHandler = null;
+      researchEl.style.cursor = "";
+      researchEl.title        = "Active research";
+    }
   }
 
   // Composite power indices (SPI / REI / KII / ECI) — delegated to hud.js
