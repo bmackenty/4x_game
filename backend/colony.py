@@ -38,6 +38,24 @@ from .colony_systems import (
 _IMPROVEMENTS_PATH = pathlib.Path(__file__).parent.parent / "lore" / "colony_improvements.json"
 IMPROVEMENTS: dict[str, dict] = json.loads(_IMPROVEMENTS_PATH.read_text(encoding="utf-8"))["improvements"]
 
+# ---------------------------------------------------------------------------
+# Building → research category map — derived from lore/research.json
+# ---------------------------------------------------------------------------
+# Maps building name → research category so the catalogue endpoint can
+# group improvements by domain without embedding category in each building def.
+
+_RESEARCH_PATH = pathlib.Path(__file__).parent.parent / "lore" / "research.json"
+_research_data = json.loads(_RESEARCH_PATH.read_text(encoding="utf-8"))
+
+# Walk every research project; any unlock ending with "(colony)" is a building.
+_BUILDING_CATEGORY: dict[str, str] = {}
+for _proj_name, _proj in _research_data["research"].items():
+    _cat = _proj.get("category", "Unknown")
+    for _unlock in _proj.get("unlocks", []):
+        if "(colony)" in _unlock:
+            _bname = _unlock.replace(" (colony)", "").strip()
+            _BUILDING_CATEGORY[_bname] = _cat
+
 
 # ---------------------------------------------------------------------------
 # Terrain data — loaded from lore/terrain.json
@@ -808,12 +826,16 @@ class ColonyManager:
         for name, data in IMPROVEMENTS.items():
             required = data["unlock_required"]
             unlocked = (required is None) or (required in completed_research)
+            # Category comes from the research project that unlocks this building.
+            # Free baseline buildings (unlock_required=None) get "Baseline".
+            category = _BUILDING_CATEGORY.get(name, "Baseline" if required is None else "Unknown")
             catalogue.append({
                 "name":         name,
                 "cost":         data["cost"],
                 "description":  data["description"],
                 "unlock_required": required,
                 "unlocked":     unlocked,
+                "category":     category,
                 "base_production": data["base_production"],
                 "terrain_bonus":   data["terrain_bonus"],
                 "terrain_restriction": data["terrain_restriction"],

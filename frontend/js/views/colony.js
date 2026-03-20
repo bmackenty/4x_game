@@ -386,8 +386,9 @@ function _renderTilePanel(tile) {
 /**
  * Open the improvement build modal for a tile.
  *
- * Displays all 15 improvements with their costs, research gates, and terrain
- * bonuses.  Locked improvements are shown greyed-out.
+ * Shows a wide two-column panel: category sidebar on the left, scrollable
+ * card grid on the right.  A search box and Available/All toggle let the
+ * player quickly find what they want among 200+ buildings.
  *
  * @param {object} tile - The tile the player wants to build on.
  */
@@ -397,87 +398,196 @@ function _showBuildMenu(tile) {
         return;
     }
 
-    // Build improvement rows — two groups: unlocked, then locked
-    const makeRow = (imp) => {
-        const locked  = !imp.unlocked;
-        const bonusTerrain = imp.terrain_bonus[tile.terrain];
-        const hasTerrain   = bonusTerrain !== undefined;
-        const bonusText    = hasTerrain
-            ? `<span class="terrain-bonus">${bonusTerrain > 1 ? "+" : ""}${Math.round((bonusTerrain - 1) * 100)}% on ${tile.terrain}</span>`
+    // ── Collect all unique categories in display order ──────────────────────
+    // "Baseline" always first; the rest are sorted alphabetically.
+    const allCats = [...new Set(_catalogue.map(i => i.category || "Unknown"))];
+    allCats.sort((a, b) => {
+        if (a === "Baseline") return -1;
+        if (b === "Baseline") return 1;
+        return a.localeCompare(b);
+    });
+
+    // ── Initial filter state ─────────────────────────────────────────────────
+    let _activeCat   = "All";
+    let _showAll     = false;   // false = Available only (unlocked + compatible terrain)
+    let _searchQuery = "";
+
+    // ── Helper: is an improvement buildable on this tile? ───────────────────
+    const isRestricted = (imp) =>
+        imp.terrain_restriction.length > 0 &&
+        !imp.terrain_restriction.includes(tile.terrain);
+
+    // ── Render one building card ─────────────────────────────────────────────
+    const makeCard = (imp) => {
+        const locked      = !imp.unlocked;
+        const restricted  = isRestricted(imp);
+        const disabled    = locked || restricted;
+
+        // Terrain bonus badge for this tile's terrain
+        const bonus = imp.terrain_bonus[tile.terrain];
+        const bonusBadge = bonus !== undefined
+            ? `<span class="bcard__terrain-badge bcard__terrain-badge--${bonus >= 1.3 ? "high" : "low"}">
+                   ${bonus > 1 ? "+" : ""}${Math.round((bonus - 1) * 100)}% ${tile.terrain}
+               </span>`
             : "";
 
-        const prodText = Object.entries(imp.base_production)
-            .map(([k, v]) => `+${v} ${k}`)
-            .join(", ");
+        // Production summary
+        const prodPills = Object.entries(imp.base_production)
+            .map(([k, v]) => `<span class="bcard__prod-pill bcard__prod-pill--${k}">+${v} ${k}</span>`)
+            .join("");
 
-        const lockMsg = locked
-            ? `<span class="locked-label">Requires: ${imp.unlock_required}</span>`
-            : `<span class="cost-label">${imp.cost.toLocaleString()} cr</span>`;
-
-        const restriction = imp.terrain_restriction.length
-            ? `<span class="terrain-restriction">(${imp.terrain_restriction.join(", ")} only)</span>`
+        // Terrain restriction notice
+        const restrictNote = imp.terrain_restriction.length
+            ? `<div class="bcard__restrict">${imp.terrain_restriction.join(" / ")} only</div>`
             : "";
 
-        const isRestricted = imp.terrain_restriction.length > 0
-            && !imp.terrain_restriction.includes(tile.terrain);
+        // Lock / cost line
+        const statusLine = locked
+            ? `<div class="bcard__lock">🔒 ${imp.unlock_required}</div>`
+            : restricted
+                ? `<div class="bcard__lock bcard__lock--terrain">Wrong terrain</div>`
+                : `<div class="bcard__cost">${imp.cost.toLocaleString()} cr</div>`;
 
-        const rowClass = [
-            "build-row",
-            locked ? "build-row--locked" : "",
-            isRestricted ? "build-row--restricted" : "",
+        // Category pill
+        const catPill = `<span class="bcard__cat">${imp.category || ""}</span>`;
+
+        const cardClass = [
+            "bcard",
+            locked      ? "bcard--locked"      : "",
+            restricted  ? "bcard--restricted"  : "",
         ].filter(Boolean).join(" ");
 
-        const disabled = locked || isRestricted;
-
         return `
-            <div class="${rowClass}" data-improvement="${imp.name}" data-disabled="${disabled}">
-                <div class="build-row__header">
-                    <span class="build-row__name">${imp.name}</span>
-                    ${lockMsg}
+            <div class="${cardClass}"
+                 data-improvement="${imp.name}"
+                 data-disabled="${disabled}"
+                 title="${imp.description}">
+                <div class="bcard__head">
+                    <span class="bcard__name">${imp.name}</span>
+                    ${bonusBadge}
                 </div>
-                <div class="build-row__detail">
-                    <span class="build-row__prod">${prodText}</span>
-                    ${bonusText}
-                    ${restriction}
+                <div class="bcard__prod">${prodPills}</div>
+                ${restrictNote}
+                <div class="bcard__foot">
+                    ${catPill}
+                    ${statusLine}
                 </div>
-                <div class="build-row__desc">${imp.description}</div>
+                <div class="bcard__desc">${imp.description}</div>
             </div>
         `;
     };
 
-    const unlocked = _catalogue.filter(i => i.unlocked);
-    const locked   = _catalogue.filter(i => !i.unlocked);
+    // ── Render category sidebar tabs ─────────────────────────────────────────
+    const makeSidebar = (activeCat) => {
+        const countFor = (cat) => {
+            const items = cat === "All" ? _catalogue : _catalogue.filter(i => i.category === cat);
+            return _showAll ? items.length : items.filter(i => i.unlocked && !isRestricted(i)).length;
+        };
+        const tabs = ["All", ...allCats].map(cat => {
+            const n = countFor(cat);
+            return `<button class="bpanel__tab${cat === activeCat ? " bpanel__tab--active" : ""}"
+                            data-cat="${cat}">
+                        ${cat} <span class="bpanel__tab-count">${n}</span>
+                    </button>`;
+        });
+        return tabs.join("");
+    };
 
+    // ── Render the card grid based on current filter state ───────────────────
+    const renderCards = () => {
+        let items = _activeCat === "All"
+            ? _catalogue
+            : _catalogue.filter(i => i.category === _activeCat);
+
+        if (!_showAll) {
+            items = items.filter(i => i.unlocked && !isRestricted(i));
+        }
+
+        if (_searchQuery) {
+            const q = _searchQuery.toLowerCase();
+            items = items.filter(i =>
+                i.name.toLowerCase().includes(q) ||
+                (i.description || "").toLowerCase().includes(q) ||
+                Object.keys(i.base_production).some(k => k.includes(q))
+            );
+        }
+
+        const grid = document.getElementById("bpanel-grid");
+        if (!grid) return;
+
+        if (!items.length) {
+            grid.innerHTML = `<div class="bpanel__empty">No buildings match the current filter.</div>`;
+            return;
+        }
+        grid.innerHTML = items.map(makeCard).join("");
+
+        // Wire click on buildable cards
+        grid.querySelectorAll(".bcard[data-disabled='false']").forEach(card => {
+            card.addEventListener("click", () => {
+                const impName = card.dataset.improvement;
+                closeModal();
+                _doBuild(tile, impName);
+            });
+        });
+    };
+
+    // ── Full panel re-render (sidebar + grid) ────────────────────────────────
+    const rerenderSidebar = () => {
+        const sidebar = document.getElementById("bpanel-sidebar");
+        if (!sidebar) return;
+        sidebar.innerHTML = makeSidebar(_activeCat);
+        sidebar.querySelectorAll(".bpanel__tab").forEach(btn => {
+            btn.addEventListener("click", () => {
+                _activeCat = btn.dataset.cat;
+                rerenderSidebar();
+                renderCards();
+            });
+        });
+    };
+
+    // ── Initial HTML ─────────────────────────────────────────────────────────
     const bodyHtml = `
-        <div class="build-menu">
-            <p class="build-menu__context">
-                Building on: <strong>${tile.terrain}</strong> tile at (${tile.q}, ${tile.r})
-            </p>
-            <div class="build-menu__list">
-                ${unlocked.map(makeRow).join("")}
-                ${locked.length
-                    ? `<div class="build-section-divider">Locked</div>${locked.map(makeRow).join("")}`
-                    : ""}
+        <div class="bpanel">
+            <div class="bpanel__toolbar">
+                <input  id="bpanel-search"
+                        class="bpanel__search"
+                        type="text"
+                        placeholder="Search buildings…"
+                        value="" />
+                <label class="bpanel__toggle">
+                    <input id="bpanel-showall" type="checkbox" ${_showAll ? "checked" : ""} />
+                    Show locked &amp; incompatible
+                </label>
+                <span class="bpanel__context">
+                    Tile: <strong>${tile.terrain}</strong> (${tile.q}, ${tile.r})
+                </span>
+            </div>
+            <div class="bpanel__body">
+                <nav id="bpanel-sidebar" class="bpanel__sidebar">
+                    ${makeSidebar(_activeCat)}
+                </nav>
+                <div id="bpanel-grid" class="bpanel__grid"></div>
             </div>
         </div>
     `;
 
     showModal("Build Improvement", bodyHtml, [
-        {
-            label: "Cancel",
-            className: "btn--secondary",
-            onClick: () => closeModal(),
-        },
-    ]);
+        { label: "Cancel", className: "btn--secondary", onClick: () => closeModal() },
+    ], { wide: true });
 
-    // Wire click handlers on unlocked, non-restricted rows
-    document.querySelectorAll(".build-row[data-disabled='false']").forEach(row => {
-        row.style.cursor = "pointer";
-        row.addEventListener("click", () => {
-            const impName = row.dataset.improvement;
-            closeModal();
-            _doBuild(tile, impName);
-        });
+    // ── Wire toolbar after modal is in the DOM ───────────────────────────────
+    rerenderSidebar();
+    renderCards();
+
+    document.getElementById("bpanel-search").addEventListener("input", (e) => {
+        _searchQuery = e.target.value.trim();
+        renderCards();
+    });
+
+    document.getElementById("bpanel-showall").addEventListener("change", (e) => {
+        _showAll = e.target.checked;
+        rerenderSidebar();
+        renderCards();
     });
 }
 

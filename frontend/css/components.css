@@ -3849,3 +3849,276 @@
   text-align: center;
   font-size: 0.9em;
 }
+
+
+/* ===========================================================================
+   BUILD PANEL — category-tabbed, searchable improvement picker
+   =========================================================================== */
+
+/* Outer wrapper — fills the modal body */
+.bpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 70vh;
+  min-height: 400px;
+  overflow: hidden;
+}
+
+/* ── Toolbar (search + toggle + context) ── */
+.bpanel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.bpanel__search {
+  flex: 1;
+  min-width: 140px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: 4px 8px;
+}
+.bpanel__search:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+}
+.bpanel__search::placeholder { color: var(--text-muted); }
+
+.bpanel__toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bpanel__toggle input { cursor: pointer; accent-color: var(--accent-teal); }
+
+.bpanel__context {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.bpanel__context strong { color: var(--text-secondary); }
+
+/* ── Body: sidebar + grid ── */
+.bpanel__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Category sidebar ── */
+.bpanel__sidebar {
+  width: 160px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: var(--sp-2) 0;
+}
+
+.bpanel__tab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  padding: 5px 10px 5px 9px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bpanel__tab:hover {
+  background: var(--bg-hover, rgba(255,255,255,0.05));
+  color: var(--text-secondary);
+}
+.bpanel__tab--active {
+  border-left-color: var(--accent-teal);
+  color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.08);
+}
+
+.bpanel__tab-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+.bpanel__tab--active .bpanel__tab-count {
+  background: rgba(0, 212, 170, 0.18);
+  color: var(--accent-teal);
+}
+
+/* ── Card grid ── */
+.bpanel__grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-3);
+  align-content: start;
+}
+
+.bpanel__empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--sp-6) 0;
+}
+
+/* ── Building card ── */
+.bcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--sp-3);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.bcard:not(.bcard--locked):not(.bcard--restricted):hover {
+  border-color: var(--accent-teal);
+  background: rgba(0, 212, 170, 0.05);
+}
+.bcard--locked {
+  opacity: 0.55;
+  cursor: default;
+}
+.bcard--restricted {
+  opacity: 0.45;
+  cursor: default;
+  border-style: dashed;
+}
+
+/* Card header: name + terrain badge */
+.bcard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.bcard__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+/* Terrain bonus badge */
+.bcard__terrain-badge {
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bcard__terrain-badge--high {
+  background: rgba(0, 212, 170, 0.2);
+  color: var(--accent-teal);
+}
+.bcard__terrain-badge--low {
+  background: rgba(255, 200, 80, 0.15);
+  color: #ffd060;
+}
+
+/* Production pills row */
+.bcard__prod {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.bcard__prod-pill {
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+/* Resource-specific tints */
+.bcard__prod-pill--minerals  { background: rgba(150, 110, 60, 0.25); color: #d4a060; }
+.bcard__prod-pill--food      { background: rgba(80, 180, 80, 0.2);   color: #80d480; }
+.bcard__prod-pill--research  { background: rgba(80, 140, 220, 0.2);  color: #80b0f0; }
+.bcard__prod-pill--credits   { background: rgba(220, 200, 60, 0.2);  color: #e0d060; }
+.bcard__prod-pill--ether     { background: rgba(180, 80, 220, 0.2);  color: #c080e0; }
+.bcard__prod-pill--fleet_points { background: rgba(220, 80, 80, 0.2); color: #e08080; }
+
+/* Terrain restriction notice */
+.bcard__restrict {
+  font-size: 10px;
+  color: #d4a060;
+  font-style: italic;
+}
+
+/* Card footer: category pill + cost/lock */
+.bcard__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: auto;
+}
+.bcard__cat {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.bcard__cost {
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bcard__lock {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.bcard__lock--terrain { color: #d4a060; }
+
+/* Short description shown at the bottom of each card */
+.bcard__desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
