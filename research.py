@@ -9,6 +9,7 @@ so all existing callers (game.py, backend/main.py, etc.) are unaffected.
 
 import json
 import pathlib
+import re
 
 # ---------------------------------------------------------------------------
 # Load raw data from lore/research.json
@@ -38,7 +39,34 @@ RESEARCH_PATH_CATEGORIES: dict = _data.get("path_categories", {})
 # Used for UI display and as feature gates in future systems.
 # ---------------------------------------------------------------------------
 
-EXTENDED_UNLOCKS: dict = _data.get("extended_unlocks", {})
+_SUFFIX_TO_CAT = {
+    "ability":      "abilities",
+    "abilities":    "abilities",
+    "ship module":  "ship",
+    "ship":         "ship",
+    "colony":       "colony",
+    "economic":     "economic",
+    "political":    "political",
+    "social":       "social",
+    "diplomatic":   "diplomacy",
+    "diplomacy":    "diplomacy",
+    "unit":         "unit",
+    "crew":         "crew",
+    "security":     "security",
+}
+
+EXTENDED_UNLOCKS: dict = {}
+for _node_name, _node in all_research.items():
+    _buckets: dict = {}
+    for _unlock_str in _node.get("unlocks", []):
+        _m = re.search(r'\(([^)]+)\)\s*$', _unlock_str)
+        if _m:
+            _cat = _SUFFIX_TO_CAT.get(_m.group(1).lower())
+            if _cat:
+                _uid = _unlock_str[:_m.start()].strip()
+                _buckets.setdefault(_cat, []).append(_uid)
+    if _buckets:
+        EXTENDED_UNLOCKS[_node_name] = _buckets
 
 # ---------------------------------------------------------------------------
 # Research categories: maps full category name → dict of research entries.
