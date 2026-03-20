@@ -296,11 +296,8 @@ async function handleEndTurn() {
       notify("TURN", "The game has ended. Final score coming in Phase 6.");
     }
 
-    // Show scripted events modal first, then GNN on dismiss
-    const showGnn = () => {
-      if (result.gnn_summary) _showGnnModal(result.gnn_summary);
-    };
-    _showEventsModal(result.events ?? [], showGnn);
+    // Show GNN broadcast on turn end
+    if (result.gnn_summary) _showGnnModal(result.gnn_summary);
   } catch (err) {
     notify("ERROR", err.message);
   } finally {
