@@ -68,7 +68,7 @@ function render(container) {
 function buildHtml() {
   if (!_attrs) return "";
 
-  const { ship_name, ship_class, fuel, max_fuel, jump_range, max_cargo } = _attrs;
+  const { ship_name, ship_class, fuel, max_fuel, jump_range, scan_range, max_cargo } = _attrs;
   const fuelPct = max_fuel > 0 ? Math.round((fuel / max_fuel) * 100) : 0;
 
   return `
@@ -91,6 +91,10 @@ function buildHtml() {
           <div class="ship-stat">
             <span class="ship-stat__label">JUMP</span>
             <span class="ship-stat__value ship-stat__value--solo">${jump_range} u</span>
+          </div>
+          <div class="ship-stat">
+            <span class="ship-stat__label">SENSORS</span>
+            <span class="ship-stat__value ship-stat__value--solo">${scan_range ?? "—"} u</span>
           </div>
           <div class="ship-stat">
             <span class="ship-stat__label">CARGO</span>

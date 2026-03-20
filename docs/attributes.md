@@ -79,7 +79,7 @@ research, equipment, upgrades, and station services.
 | `fuel_efficiency` | % modifier | Reduces fuel consumed per jump |
 | `cargo_capacity` | units | Total cargo hold volume |
 | `hull_integrity` | HP | Effective health; modified by armour research |
-| `sensor_range` | hex radius | Detection radius on galaxy map |
+| `sensor_range` | galaxy units | Detection radius on galaxy map. Formula: `20 + detection_range × 0.5 + etheric_sensitivity × 0.25`. Default attributes give 40 u; theoretical max 95 u. |
 | `drive_efficiency` | % modifier | Affects propulsion and jump speed |
 | `combat_rating` | score | Ship combat effectiveness |
 

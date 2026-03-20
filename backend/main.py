@@ -89,28 +89,62 @@ deep_space_manager: Optional[DeepSpaceManager] = None
 _discovered_systems: set[str] = set()
 _discovery_seeded: bool = False
 
-# Base scan range in 3D galaxy units (galaxy is 500×500×200).
-# Will scale with scanner component tech in future.
-_BASE_SCAN_RANGE: float = 40.0
-
-# Sensor component → scan range bonus (additive, in galaxy units)
-_SENSOR_RANGE: dict[str, float] = {
-    "Oracle Crown Array":       0.0,   # starter — base range only
-    "Meridian Pulse Scanner":  10.0,
-    "Helios Resonance Array":  20.0,
-    "Void Lens Array":         35.0,
-    "Quantum Echo Suite":      55.0,
-}
+# Scan range formula (galaxy is 500×500×200 units):
+#   scan_range = 20 + detection_range * 0.5 + etheric_sensitivity * 0.25
+#
+# At attribute defaults (detection=30, etheric=20): 20 + 15 + 5 = 40 units
+# At theoretical max  (both at 100):                20 + 50 + 25 = 95 units
+#
+# Both attributes are modified by components, research, faction, and INT stat,
+# so every investment layer produces a felt, measurable change in galaxy visibility.
+_SCAN_RANGE_BASE        = 20.0
+_SCAN_DETECTION_FACTOR  = 0.5
+_SCAN_ETHERIC_FACTOR    = 0.25
 
 
 def _effective_scan_range() -> float:
-    """Return the ship's effective scan range in galaxy units."""
+    """Return the ship's effective scan range in galaxy units.
+
+    Reads the fully-stacked sensor attribute profile (components + research +
+    faction + character stats) so every modifier source flows through to the
+    fog-of-war calculation.  Falls back to the formula's default-attribute
+    result (40 units) if no game state is available.
+    """
     try:
-        sensors = game.navigation.current_ship.components.get("sensors", [])
-        bonus = max((_SENSOR_RANGE.get(s, 0.0) for s in sensors), default=0.0)
-        return _BASE_SCAN_RANGE + bonus
+        from ship_builder import compute_ship_profile
+        from ship_bonus_rules import (
+            calculate_research_bonuses,
+            calculate_faction_bonuses,
+            calculate_character_stat_bonuses,
+        )
+
+        ship = game.navigation.current_ship
+        profile = compute_ship_profile(getattr(ship, "components", {}) or {})
+
+        # Layer research, faction, and character-stat bonuses (same stack as /api/ship/attributes)
+        completed_research = getattr(game, "completed_research", None) or []
+        faction_name       = _get_player_faction(game)
+        char_stats         = getattr(game, "character_stats", None) or {}
+
+        for bonus_dict in (
+            calculate_research_bonuses(completed_research),
+            calculate_faction_bonuses(faction_name),
+            calculate_character_stat_bonuses(char_stats),
+        ):
+            for attr_id, bonus in bonus_dict.items():
+                if attr_id in profile:
+                    profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
+
+        detection = profile.get("detection_range",     30.0)
+        etheric   = profile.get("etheric_sensitivity", 20.0)
+        return round(
+            _SCAN_RANGE_BASE
+            + detection * _SCAN_DETECTION_FACTOR
+            + etheric   * _SCAN_ETHERIC_FACTOR,
+            1,
+        )
     except Exception:
-        return _BASE_SCAN_RANGE
+        return _SCAN_RANGE_BASE + 30.0 * _SCAN_DETECTION_FACTOR + 20.0 * _SCAN_ETHERIC_FACTOR  # 40.0
 
 
 def _seed_discovery() -> None:
@@ -954,6 +988,19 @@ async def new_game(request: NewGameRequest):
     if not success:
         raise HTTPException(status_code=400, detail="Failed to initialise game character.")
 
+    # Apply early-life stat bonuses (from lore/backgrounds.json) on top of the player's
+    # point-buy allocation.  apply_background_bonuses returns a new dict; we write it
+    # back onto the game object so saves and stat reads pick it up.
+    from backgrounds import apply_background_bonuses
+    game.character_stats = apply_background_bonuses(
+        game.character_stats or {}, request.background
+    )
+
+    # Apply credit bonus/penalty from the early-life pathway.
+    bg_credit = lore_backgrounds.get(request.background, {}).get("credit_bonus", 0)
+    if bg_credit:
+        game.credits = max(0, game.credits + bg_credit)
+
     # Assign the class's starting ship(s) to the player's fleet, then activate the first one.
     # initialize_new_game() doesn't do this — the old UIs each handled ship assignment
     # separately.  We replicate that pattern here without modifying game.py.
@@ -1077,6 +1124,12 @@ async def end_turn():
         _rt = all_research.get(game.active_research, {}).get("research_time", 1)
         if game.research_progress >= _rt:
             game.complete_research()
+
+    # Re-apply the full bonus stack so any research completed this turn
+    # immediately updates max_cargo, max_fuel, jump_range, and scan_range.
+    _ship = getattr(game.navigation, "current_ship", None) if game.navigation else None
+    if _ship and getattr(_ship, "attribute_profile", None):
+        apply_all_bonuses_to_ship(_ship, game)
 
     # Snapshot credits BEFORE colony income so the ledger can show the delta.
     credits_before = game.credits
@@ -1989,6 +2042,7 @@ async def get_ship_status():
         "fuel":        ship.fuel,
         "max_fuel":    ship.max_fuel,
         "jump_range":  ship.jump_range,
+        "scan_range":  _effective_scan_range(),
         "cargo_used":  sum(ship.cargo.values()) if ship.cargo else 0,
         "max_cargo":   ship.max_cargo,
         "cargo":       dict(ship.cargo) if ship.cargo else {},
@@ -2063,6 +2117,7 @@ async def get_ship_attributes():
         "fuel":        ship.fuel,
         "max_fuel":    ship.max_fuel,
         "jump_range":  ship.jump_range,
+        "scan_range":  _effective_scan_range(),
         "max_cargo":   ship.max_cargo,
         "components":  getattr(ship, "components", {}),
         "categories":  categories,
