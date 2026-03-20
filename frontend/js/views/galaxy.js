@@ -104,6 +104,9 @@ let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-proje
 let zStats        = null;    // { mean, std, min, max } computed from systemsData z values
 let activeZFilter = "all";   // "all"|"high"|"above"|"plane"|"below"|"deep"
 
+// Sensor ring toggle — persists while this view is mounted
+let showScanRing  = false;
+
 // View transform
 let viewState = { panX: 0, panY: 0, zoom: 1.0, selectedSystemName: null, selectedStationName: null };
 
@@ -153,6 +156,13 @@ function _buildZFilterBar() {
     <div class="z-filter-bar" id="z-filter-bar">
       <span class="z-filter-bar__label">GALACTIC PLANE</span>
       ${btns}
+      <button
+        class="z-filter-btn${showScanRing ? " z-filter-btn--active" : ""}"
+        id="btn-scan-ring"
+        title="Toggle sensor range ring"
+        style="margin-left:auto">
+        ◎ SENSORS
+      </button>
     </div>
   `;
 }
@@ -196,6 +206,14 @@ export const galaxyView = {
     canvas.insertAdjacentHTML("beforebegin", _buildZFilterBar());
     const filterBarEl = document.getElementById("z-filter-bar");
     filterBarEl.addEventListener("click", e => {
+      // Sensor ring toggle
+      if (e.target.closest("#btn-scan-ring")) {
+        showScanRing = !showScanRing;
+        e.target.closest("#btn-scan-ring").classList.toggle("z-filter-btn--active", showScanRing);
+        isDirty = true;
+        return;
+      }
+
       const btn = e.target.closest("[data-zband]");
       if (!btn) return;
       activeZFilter = btn.dataset.zband;
@@ -271,9 +289,12 @@ export const galaxyView = {
       inputControls.detach();
       inputControls = null;
     }
-    // Remove the galactic plane filter bar
+    // Remove the galactic plane filter bar (includes the sensor ring toggle)
     const filterBar = document.getElementById("z-filter-bar");
     if (filterBar) filterBar.remove();
+
+    // Reset overlay toggles so re-mounting starts clean
+    showScanRing = false;
 
     // Hide the right panel
     hideRightPanel();
@@ -294,16 +315,21 @@ function startRenderLoop(canvas) {
       // state.gameState.ship.coordinates is [x, y, z] (Python tuple → JSON array).
       const shipCoords  = state.gameState?.ship?.coordinates;
       const shipHex     = shipCoordsToHex(shipCoords);
-      // Jump range ring: convert game units → hex pixel units
+
+      // Jump + sensor range rings: convert game units → canvas pixel units.
       // GALAXY_SCALE = 12.5 game units per hex, GALAXY_HEX_SIZE = 22 px per hex
-      const jumpRange   = state.gameState?.ship?.jump_range ?? 0;
-      const jumpRangePx = jumpRange * (GALAXY_HEX_SIZE / GALAXY_SCALE);
+      const PX_PER_UNIT = GALAXY_HEX_SIZE / GALAXY_SCALE;
+      const jumpRange    = state.gameState?.ship?.jump_range  ?? 0;
+      const scanRange    = state.gameState?.ship?.scan_range  ?? 0;
+      const jumpRangePx  = jumpRange * PX_PER_UNIT;
+      const scanRangePx  = scanRange * PX_PER_UNIT;
 
       renderGalaxyMap(
         canvas,
         systemsData,
-        { ...viewState, shipHex, jumpRangePx, stations: stationsData, npcShips: npcShipsData,
-          deepSpaceObjects: dsoData, zStats, activeZFilter },
+        { ...viewState, shipHex, jumpRangePx, scanRangePx, scanRangeUnits: scanRange,
+          showScanRing, stations: stationsData, npcShips: npcShipsData,
+          deepSpaceObjects: dsoData, zStats, activeZFilter, zoom: viewState.zoom },
         FACTION_COLORS
       );
     }

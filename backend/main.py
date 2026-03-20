@@ -817,10 +817,13 @@ def _build_state_snapshot() -> dict:
 
     turn_info = game.get_turn_info()
 
-    # Ship info — gracefully absent before the player has a ship
+    # Ship info — gracefully absent before the player has a ship.
+    # Augment the engine dict with scan_range (not returned by game.py directly).
     ship_info = None
     try:
         ship_info = game.get_active_ship_info()
+        if ship_info:
+            ship_info["scan_range"] = _effective_scan_range()
     except Exception:
         pass
 

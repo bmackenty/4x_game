@@ -642,6 +642,33 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     const { q: sq, r: sr } = viewState.shipHex;
     const { x: spx, y: spy } = axialToPixel(sq, sr, size);
 
+    // Sensor range ring — solid teal-blue circle showing current scan radius.
+    // Only drawn when viewState.showScanRing is true (player-toggled).
+    if (viewState.showScanRing && viewState.scanRangePx && viewState.scanRangePx > 0) {
+      ctx.save();
+      // Subtle filled area so the scanned zone reads as a region, not just a line
+      ctx.beginPath();
+      ctx.arc(spx, spy, viewState.scanRangePx, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(80, 180, 255, 0.04)";
+      ctx.fill();
+      // Dot-dash border — visually distinct from the jump range ring
+      ctx.beginPath();
+      ctx.arc(spx, spy, viewState.scanRangePx, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(80, 180, 255, 0.55)";
+      ctx.lineWidth = 1.0;
+      ctx.setLineDash([2, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Label: "SENSORS  40 u" rendered at the top of the ring
+      const labelY = spy - viewState.scanRangePx - 6;
+      ctx.fillStyle = "rgba(80, 180, 255, 0.70)";
+      ctx.font = `${Math.max(8, Math.floor(9 * viewState.zoom ?? 1))}px "Courier New", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(`SENSORS  ${viewState.scanRangeUnits ?? ""} u`, spx, labelY);
+      ctx.restore();
+    }
+
     // Jump range ring — faint dashed circle showing maximum jump distance
     if (viewState.jumpRangePx && viewState.jumpRangePx > 0) {
       ctx.save();
