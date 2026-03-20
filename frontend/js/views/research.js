@@ -46,49 +46,64 @@ let _statusFilter = "all";
 
 
 // ---------------------------------------------------------------------------
-// Category display order (matches research.py category names)
+// Category display order (matches research.json category names)
 // ---------------------------------------------------------------------------
 const CATEGORY_ORDER = [
     "All",
-    "Scholar",
-    "Mystic",
-    "Engineering",
-    "Nature",
-    "Diplomacy",
-    "Mathematics",
-    "Energetics",
-    "Topologies",
     "Chronoscience",
-    "Consciousness / Ontology / Symbiosis",
+    "Ecology",
+    "Emergence",
+    "Energetics",
+    "Engineering",
+    "Epistemology",
+    "Governance",
+    "Information",
+    "Materiality",
+    "Mathematics",
+    "Philosophy",
+    "Polemology",
+    "Semiotics",
+    "Theurgy",
+    "Topologies",
 ];
 
 /** Short display labels for each category (keeps filter tabs compact) */
 const CATEGORY_SHORT = {
-    "All":                                    "All",
-    "Scholar":                                "Scholar",
-    "Mystic":                                 "Mystic",
-    "Engineering":                            "Engineering",
-    "Nature":                                 "Nature",
-    "Diplomacy":                              "Diplomacy",
-    "Mathematics":                            "Math",
-    "Energetics":                             "Energetics",
-    "Topologies":                             "Topologies",
-    "Chronoscience":                          "Chronoscience",
-    "Consciousness / Ontology / Symbiosis":   "Consciousness",
+    "All":           "All",
+    "Chronoscience": "Chrono",
+    "Ecology":       "Ecology",
+    "Emergence":     "Emerge",
+    "Energetics":    "Energetics",
+    "Engineering":   "Engineering",
+    "Epistemology":  "Epistemo",
+    "Governance":    "Govern",
+    "Information":   "Info",
+    "Materiality":   "Matter",
+    "Mathematics":   "Math",
+    "Philosophy":    "Philos",
+    "Polemology":    "Polemo",
+    "Semiotics":     "Semiotic",
+    "Theurgy":       "Theurgy",
+    "Topologies":    "Topo",
 };
 
 /** Category accent colours for card left-border */
 const CATEGORY_COLORS = {
-    "Scholar":                                "var(--accent-gold)",
-    "Mystic":                                 "var(--accent-purple)",
-    "Engineering":                            "var(--accent-teal)",
-    "Nature":                                 "var(--accent-green)",
-    "Diplomacy":                              "var(--accent-cyan)",
-    "Mathematics":                            "var(--accent-orange)",
-    "Energetics":                             "var(--accent-red)",
-    "Topologies":                             "var(--accent-cyan)",
-    "Chronoscience":                          "var(--accent-gold)",
-    "Consciousness / Ontology / Symbiosis":   "var(--accent-purple)",
+    "Chronoscience": "var(--accent-gold)",
+    "Ecology":       "var(--accent-green)",
+    "Emergence":     "var(--accent-orange)",
+    "Energetics":    "var(--accent-red)",
+    "Engineering":   "var(--accent-teal)",
+    "Epistemology":  "var(--accent-gold)",
+    "Governance":    "var(--accent-cyan)",
+    "Information":   "var(--accent-teal)",
+    "Materiality":   "var(--accent-orange)",
+    "Mathematics":   "var(--accent-purple)",
+    "Philosophy":    "var(--accent-purple)",
+    "Polemology":    "var(--accent-red)",
+    "Semiotics":     "var(--accent-cyan)",
+    "Theurgy":       "var(--accent-purple)",
+    "Topologies":    "var(--accent-orange)",
 };
 
 
