@@ -9,17 +9,7 @@
     "technology": "Masters of Etheric technology and cybernetic augmentation",
     "homeworld": "Earth (Sol System)",
     "alliance_status": "Founding member of Celestial Alliance",
-    "population": "~50 billion across 200+ systems",
-    "special_traits": [
-      "Adaptability",
-      "Technological Innovation",
-      "Diplomatic Skills"
-    ],
-    "starting_bonuses": {
-      "credits": 1000,
-      "reputation": 5,
-      "technology_research": 0.1
-    }
+    "population": "~50 billion across 200+ systems"
   },
   "Silvan": {
     "playable": false,
@@ -31,13 +21,7 @@
     "technology": "Bio-organic technology and living architecture",
     "homeworld": "Verdant Prime",
     "alliance_status": "Allied member",
-    "population": "~15 billion across forest worlds",
-    "special_traits": [
-      "Ecosystem Integration",
-      "Long-term Planning",
-      "Natural Healing"
-    ],
-    "diplomacy_modifier": 0.1
+    "population": "~15 billion across forest worlds"
   },
   "Auroran": {
     "playable": false,
@@ -49,13 +33,7 @@
     "technology": "Energy manipulation and field-based construction",
     "homeworld": "Aurora Nexus",
     "alliance_status": "Allied member",
-    "population": "~5 billion energy signatures",
-    "special_traits": [
-      "Energy Manipulation",
-      "Instant Communication",
-      "Phase Shifting"
-    ],
-    "diplomacy_modifier": 0.05
+    "population": "~5 billion energy signatures"
   },
   "Zentari": {
     "playable": false,
@@ -67,13 +45,7 @@
     "technology": "Fluid-state technology and adaptive materials",
     "homeworld": "Aquatica Major",
     "alliance_status": "Allied member",
-    "population": "~25 billion across water worlds",
-    "special_traits": [
-      "Adaptive Physiology",
-      "Shape-shifting",
-      "Environmental Mastery"
-    ],
-    "diplomacy_modifier": 0.15
+    "population": "~25 billion across water worlds"
   },
   "Gaian": {
     "playable": false,
@@ -85,13 +57,7 @@
     "technology": "Crystal-based technology and geological engineering",
     "homeworld": "Lithos Prime",
     "alliance_status": "Allied member",
-    "population": "~8 billion across rocky worlds",
-    "special_traits": [
-      "Geological Mastery",
-      "Ancient Knowledge",
-      "Crystal Technology"
-    ],
-    "diplomacy_modifier": -0.05
+    "population": "~8 billion across rocky worlds"
   },
   "Luminaut": {
     "playable": false,
@@ -103,13 +69,7 @@
     "technology": "Photonic technology and light-based construction",
     "homeworld": "Luminous Core",
     "alliance_status": "Allied member",
-    "population": "~12 billion light signatures",
-    "special_traits": [
-      "Light Manipulation",
-      "Holographic Memory",
-      "Artistic Expression"
-    ],
-    "diplomacy_modifier": 0.1
+    "population": "~12 billion light signatures"
   },
   "Synthetix": {
     "playable": false,
@@ -121,13 +81,7 @@
     "technology": "Advanced cybernetics and artificial intelligence",
     "homeworld": "Synthetic Prime",
     "alliance_status": "Allied member",
-    "population": "~30 billion artificial consciousnesses",
-    "special_traits": [
-      "Perfect Memory",
-      "Logical Analysis",
-      "Technological Mastery"
-    ],
-    "diplomacy_modifier": 0.0
+    "population": "~30 billion artificial consciousnesses"
   },
   "Mycelioid": {
     "playable": false,
@@ -139,13 +93,7 @@
     "technology": "Biological network technology and spore-based communication",
     "homeworld": "Mycelium Prime",
     "alliance_status": "Allied member",
-    "population": "~20 billion network nodes",
-    "special_traits": [
-      "Network Consciousness",
-      "Spore Communication",
-      "Biological Networks"
-    ],
-    "diplomacy_modifier": 0.05
+    "population": "~20 billion network nodes"
   },
   "Chronaut": {
     "playable": false,
@@ -157,13 +105,7 @@
     "technology": "Temporal technology and time-based manipulation",
     "homeworld": "Chronos Nexus",
     "alliance_status": "Neutral observer",
-    "population": "Unknown (temporal existence)",
-    "special_traits": [
-      "Temporal Awareness",
-      "Future Knowledge",
-      "Time Manipulation"
-    ],
-    "diplomacy_modifier": 0.0
+    "population": "Unknown (temporal existence)"
   },
   "Umbraxian": {
     "playable": false,
@@ -175,13 +117,7 @@
     "technology": "Dark matter technology and stealth systems",
     "homeworld": "Umbra Prime",
     "alliance_status": "Neutral",
-    "population": "~3 billion shadow entities",
-    "special_traits": [
-      "Stealth Mastery",
-      "Shadow Manipulation",
-      "Secretive Operations"
-    ],
-    "diplomacy_modifier": -0.1
+    "population": "~3 billion shadow entities"
   },
   "Eternal": {
     "playable": false,
@@ -193,13 +129,7 @@
     "technology": "Ancient technology and longevity systems",
     "homeworld": "Eternity's Gate",
     "alliance_status": "Wise councilors",
-    "population": "~1 billion eternal beings",
-    "special_traits": [
-      "Immortality",
-      "Ancient Wisdom",
-      "Long-term Perspective"
-    ],
-    "diplomacy_modifier": 0.2
+    "population": "~1 billion eternal beings"
   },
   "Xha'reth": {
     "playable": false,
@@ -211,13 +141,7 @@
     "technology": "Etheric technology and reality manipulation",
     "homeworld": "Etheric Nexus",
     "alliance_status": "Advanced ally",
-    "population": "~7 billion etheric entities",
-    "special_traits": [
-      "Ether Mastery",
-      "Reality Manipulation",
-      "Advanced Technology"
-    ],
-    "diplomacy_modifier": 0.25
+    "population": "~7 billion etheric entities"
   },
   "Denebian": {
     "playable": false,
@@ -229,13 +153,7 @@
     "technology": "Healing technology and peaceful applications",
     "homeworld": "Deneb Prime (destroyed)",
     "alliance_status": "Refugee member",
-    "population": "~18 billion refugees",
-    "special_traits": [
-      "Pacifism",
-      "Healing Abilities",
-      "Conflict Resolution"
-    ],
-    "diplomacy_modifier": 0.3
+    "population": "~18 billion refugees"
   },
   "Zyxera": {
     "playable": false,
@@ -247,12 +165,6 @@
     "technology": "Resonance technology and frequency manipulation",
     "homeworld": "Harmony Prime",
     "alliance_status": "Allied member",
-    "population": "~14 billion resonant entities",
-    "special_traits": [
-      "Resonance Mastery",
-      "Universal Harmony",
-      "Frequency Manipulation"
-    ],
-    "diplomacy_modifier": 0.15
+    "population": "~14 billion resonant entities"
   }
 }

@@ -24,7 +24,7 @@ point-buy; modified by species, background, class, equipment, and abilities.
 | `INF` | Influence | Social power, persuasion, faction standing effects |
 | `SYN` | Synergy | Interfacing with technology, crew, and symbiotic systems |
 
-**Modifier sources:** species origin, background history, class path,
+**Modifier sources:** species origin, early life, class path,
 equipment, abilities, research completions.
 
 ---
@@ -193,7 +193,7 @@ convention:
 
 | Attribute Group | Defined / Modified In |
 |-----------------|----------------------|
-| Character stats (VIT–SYN) | `lore/backgrounds.json`, `lore/classes.json`, `lore/species.json` |
+| Character stats (VIT–SYN) | `lore/backgrounds.json` (early life pathways), `lore/classes.json`, `lore/species.json` |
 | Colony production | `backend/colony.py`, `backend/colony_systems.py` |
 | Research output | `backend/main.py` (RP breakdown), `lore/research.json` |
 | Ship attributes | `backend/main.py` (ship endpoints), research `extended_unlocks` |

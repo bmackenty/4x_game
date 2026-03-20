@@ -16,7 +16,6 @@ let _onGameStarted = null;
 // ---------------------------------------------------------------------------
 const form = {
   name:             "",
-  character_class:  "",
   background:       "",
   species:          "",
   faction:          "",
@@ -45,11 +44,10 @@ function pointsRemaining() {
 const SETUP_TABS = [
   { id: "designation",    label: "Commander Designation",       stepNum: 1 },
   { id: "species",        label: "Species Origin",              stepNum: 2 },
-  { id: "command-path",   label: "Command Path",                stepNum: 3 },
-  { id: "background",     label: "Background History",          stepNum: 4 },
-  { id: "specialization", label: "Professional Specialization", stepNum: 5 },
-  { id: "faction",        label: "Faction Allegiance",          stepNum: 6, optional: true },
-  { id: "attributes",     label: "Attribute Allocation",        stepNum: 7 },
+  { id: "background",     label: "Early Life",                  stepNum: 3 },
+  { id: "specialization", label: "Professional Specialization", stepNum: 4 },
+  { id: "faction",        label: "Faction Allegiance",          stepNum: 5, optional: true },
+  { id: "attributes",     label: "Attribute Allocation",        stepNum: 6 },
   { id: "equipment",      label: "Equipment",                   reserved: true },
   { id: "cybernetics",    label: "Cybernetics",                 reserved: true },
 ];
@@ -143,35 +141,25 @@ function buildSetupHtml(opts) {
       `,
     },
     {
-      id: "command-path",
-      html: `
-        <div class="setup-panel__title">COMMAND PATH</div>
-        <p class="setup-panel__desc">Your command class defines your core abilities and starting resources.</p>
-        ${buildCardGrid(opts.classes, "class", c => ({
-          name:     c.name,
-          category: `Starting credits: ⬡ ${c.starting_credits.toLocaleString()}`,
-          desc:     c.description,
-          extra:    c.skills.map(sk =>
-            `<span class="trait-tag">${sk}</span>`).join(""),
-        }))}
-      `,
-    },
-    {
       id: "background",
       html: `
-        <div class="setup-panel__title">BACKGROUND HISTORY</div>
-        <p class="setup-panel__desc">Your history before taking command. Grants traits and may adjust starting credits.</p>
-        ${buildCardGrid(opts.backgrounds, "background", b => ({
-          name:     b.name,
-          category: b.credit_bonus > 0
-            ? `⬡ +${b.credit_bonus.toLocaleString()} credits`
-            : b.credit_bonus < 0
-              ? `⬡ ${b.credit_bonus.toLocaleString()} credits`
-              : "No credit bonus",
-          desc:     b.description,
-          extra:    (b.traits || []).map(t =>
-            `<span class="trait-tag">${t}</span>`).join(""),
-        }))}
+        <div class="setup-panel__title">EARLY LIFE</div>
+        <p class="setup-panel__desc">The developmental pathway that shaped your mind before you took command. Each pathway reflects a distinct relationship to knowledge, systems, and time — and grants stat bonuses, traits, and a unique talent.</p>
+        ${buildCardGrid(opts.backgrounds, "background", b => {
+          // Build stat bonus summary string (e.g. "SYN +1  COH +1")
+          const statLine = Object.entries(b.stat_bonuses || {})
+            .map(([k, v]) => `${k} +${v}`).join("  ·  ");
+          // Category shows credits if non-zero, otherwise the stat line
+          const category = b.credit_bonus !== 0
+            ? `⬡ ${b.credit_bonus > 0 ? "+" : ""}${b.credit_bonus.toLocaleString()} credits${statLine ? "  ·  " + statLine : ""}`
+            : statLine || "";
+          const traitTags = (b.traits || []).map(t =>
+            `<span class="trait-tag">${t}</span>`).join("");
+          const talentLine = b.talent
+            ? `<div style="margin-top:var(--sp-2);font-size:var(--font-size-xs);color:var(--text-dim);font-style:italic">${escapeHtml(b.talent)}</div>`
+            : "";
+          return { name: b.name, category, desc: b.description, extra: traitTags + talentLine };
+        })}
       `,
     },
     {
@@ -416,12 +404,11 @@ function attachEventListeners(container) {
     card.classList.add("choice-card--selected");
 
     if (type === "species")     { form.species           = value; updateStepLabel(2, value); clearPanelError(container, "species"); }
-    if (type === "class")       { form.character_class   = value; updateStepLabel(3, value); clearPanelError(container, "command-path"); }
-    if (type === "background")  { form.background        = value; updateStepLabel(4, value); clearPanelError(container, "background"); }
-    if (type === "profession")  { form.profession        = value; updateStepLabel(5, value); }
+    if (type === "background")  { form.background        = value; updateStepLabel(3, value); clearPanelError(container, "background"); }
+    if (type === "profession")  { form.profession        = value; updateStepLabel(4, value); }
     if (type === "faction") {
       form.faction = value === "(None — Neutral Start)" ? "" : value;
-      updateStepLabel(6, value === "(None — Neutral Start)" ? "None" : value);
+      updateStepLabel(5, value === "(None — Neutral Start)" ? "None" : value);
     }
   });
 
@@ -506,7 +493,6 @@ function refreshPointsDisplay(container) {
 
 function resetForm(container) {
   form.name            = "";
-  form.character_class = "";
   form.background      = "";
   form.species         = "";
   form.faction         = "";
@@ -594,10 +580,9 @@ async function handleSubmit(container) {
 
   // Check required fields in order — navigate to the first incomplete one
   const required = [
-    { test: !form.name,            tab: "designation",  msg: "Commander name is required." },
-    { test: !form.species,         tab: "species",      msg: "A species selection is required." },
-    { test: !form.character_class, tab: "command-path", msg: "A command path selection is required." },
-    { test: !form.background,      tab: "background",   msg: "A background selection is required." },
+    { test: !form.name,       tab: "designation", msg: "Commander name is required." },
+    { test: !form.species,    tab: "species",     msg: "A species selection is required." },
+    { test: !form.background, tab: "background",  msg: "A background selection is required." },
   ];
 
   for (const r of required) {
@@ -623,7 +608,6 @@ async function handleSubmit(container) {
   try {
     const result = await newGame({
       name:             form.name,
-      character_class:  form.character_class,
       background:       form.background,
       species:          form.species,
       faction:          form.faction,

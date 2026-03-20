@@ -123,8 +123,7 @@ The loop closely follows Alpha Centauri:
 |--------|---------|
 | Commander Designation | Free-text name |
 | Species Origin | 14 alien species with distinct biology and cognitive frameworks |
-| Command Path | 11 classes (Explorer, Engineer, Diplomat, Trader, …) |
-| Background History | 18+ narrative backgrounds, each with stat boosts and talents |
+| Early Life | 18+ narrative backgrounds, each with stat boosts and talents |
 | Professional Specialization | Research path and role specialization |
 | Faction Allegiance | Align with one of the galaxy's 30+ major powers (starts Allied) |
 | Attribute Allocation | 7 attributes (VIT, KIN, INT, AEF, COH, INF, SYN) — point-buy |

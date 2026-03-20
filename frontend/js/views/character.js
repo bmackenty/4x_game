@@ -68,8 +68,7 @@ function _attachTabHandlers(container) {
 const TABS = [
   { id: "designation",    label: "Commander Designation" },
   { id: "species",        label: "Species Origin" },
-  { id: "command-path",   label: "Command Path" },
-  { id: "background",     label: "Background History" },
+  { id: "background",     label: "Early Life" },
   { id: "specialization", label: "Professional Specialization" },
   { id: "faction",        label: "Faction Allegiance" },
   { id: "attributes",     label: "Attribute Allocation" },
@@ -88,7 +87,6 @@ function _buildSheet(s) {
   const panelContent = [
     { id: "designation",    html: _buildDesignationPanel(s) },
     { id: "species",        html: _buildSpeciesPanel(s) },
-    { id: "command-path",   html: _buildClassSection(s) },
     { id: "background",     html: _buildBackgroundSection(s) },
     { id: "specialization", html: _buildProfessionSection(s) },
     { id: "faction",        html: _buildFactionPanel(s) },
@@ -321,9 +319,15 @@ function _buildBackgroundSection(s) {
 
   return `
     <section class="char-section">
-      <div class="char-section__title">BACKGROUND HISTORY — ${esc(s.background)}</div>
+      <div class="char-section__title">EARLY LIFE — ${esc(s.background)}</div>
       <p class="char-section__desc">${esc(s.background_description)}</p>
       ${traitChips ? `<div class="char-traits">${traitChips}</div>` : ""}
+      ${s.background_talent ? `
+        <div style="margin-top:var(--sp-4);padding:var(--sp-3);background:var(--bg-secondary);
+                    border-left:2px solid var(--accent-teal);font-size:var(--font-size-xs)">
+          <span style="color:var(--accent-teal);letter-spacing:0.06em;text-transform:uppercase">Talent</span>
+          <span style="color:var(--text-dim);margin-left:var(--sp-2)">${esc(s.background_talent)}</span>
+        </div>` : ""}
     </section>
   `;
 }

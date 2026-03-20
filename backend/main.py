@@ -45,6 +45,7 @@ from characters import (
     BASE_STAT_VALUE,
     POINT_BUY_POINTS,
 )
+from backgrounds import backgrounds as lore_backgrounds   # lore/backgrounds.json — rich early-life data
 from professions import PROFESSIONS, PROFESSION_CATEGORIES_ORDERED, ProfessionSystem
 from species import get_playable_species
 from factions import factions                                  # module-level dict
@@ -190,7 +191,7 @@ async def no_cache_static(request: Request, call_next):
 class NewGameRequest(BaseModel):
     """Character-creation payload sent when the player starts a new game."""
     name: str
-    character_class: str
+    character_class: str = "Explorer"
     background: str
     species: str
     faction: str = ""
@@ -1207,14 +1208,18 @@ async def get_game_options():
         for name, data in character_classes.items()
     ]
 
+    # Use lore_backgrounds (lore/backgrounds.json) — the rich early-life pathway data.
+    # The engine's character_backgrounds dict is a legacy stub; the lore file is authoritative.
     backgrounds_list = [
         {
-            "name": name,
-            "description": data["description"],
+            "name":         name,
+            "description":  data["description"],
             "credit_bonus": data.get("credit_bonus", 0),
-            "traits": data.get("traits", []),
+            "traits":       data.get("traits", []),
+            "talent":       data.get("talent", ""),
+            "stat_bonuses": data.get("stat_bonuses", {}),
         }
-        for name, data in character_backgrounds.items()
+        for name, data in lore_backgrounds.items()
     ]
 
     species_list = [
@@ -3361,7 +3366,7 @@ async def get_character_sheet():
         raise HTTPException(status_code=400, detail="No game in progress.")
 
     from characters import (
-        character_classes, character_backgrounds,
+        character_classes,
         STAT_NAMES, STAT_DESCRIPTIONS, DERIVED_METRIC_INFO,
         calculate_derived_attributes,
     )
@@ -3370,7 +3375,8 @@ async def get_character_sheet():
     derived      = calculate_derived_attributes(raw_stats) if raw_stats else {}
 
     class_data   = character_classes.get(game.character_class, {})
-    bg_data      = character_backgrounds.get(game.character_background, {})
+    # Read background data from lore_backgrounds (lore/backgrounds.json) — the rich source
+    bg_data      = lore_backgrounds.get(game.character_background, {})
     species_data = get_playable_species().get(game.character_species, {})
 
     # Format bonuses as human-readable strings (e.g. "trade_discount" → "Trade Discount: +10%")
@@ -3386,8 +3392,9 @@ async def get_character_sheet():
         "name":             game.player_name,
         "character_class":  game.character_class,
         "class_description": class_data.get("description", ""),
-        "background":       game.character_background,
+        "background":             game.character_background,
         "background_description": bg_data.get("description", ""),
+        "background_talent":      bg_data.get("talent", ""),
         "species":             game.character_species,
         "species_description": species_data.get("description", ""),
         "species_biology":     species_data.get("biology", ""),
