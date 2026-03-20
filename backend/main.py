@@ -147,6 +147,47 @@ def _effective_scan_range() -> float:
         return _SCAN_RANGE_BASE + 30.0 * _SCAN_DETECTION_FACTOR + 20.0 * _SCAN_ETHERIC_FACTOR  # 40.0
 
 
+def _effective_fuel_efficiency() -> float:
+    """Return the ship's current fuel efficiency multiplier (0.5–1.5).
+
+    Mirrors the formula in navigation.calculate_fuel_consumption():
+        multiplier = 1.0 − ((engine_efficiency − 30) / 100)
+        clamped to [0.5, 1.5]
+
+    Values below 1.0 mean cheaper jumps; above 1.0 mean more expensive.
+    At the default engine_efficiency of 30 the multiplier is exactly 1.0.
+    """
+    try:
+        from ship_builder import compute_ship_profile
+        from ship_bonus_rules import (
+            calculate_research_bonuses,
+            calculate_faction_bonuses,
+            calculate_character_stat_bonuses,
+        )
+
+        ship    = game.navigation.current_ship
+        profile = compute_ship_profile(getattr(ship, "components", {}) or {})
+
+        completed_research = getattr(game, "completed_research", None) or []
+        faction_name       = _get_player_faction(game)
+        char_stats         = getattr(game, "character_stats", None) or {}
+
+        for bonus_dict in (
+            calculate_research_bonuses(completed_research),
+            calculate_faction_bonuses(faction_name),
+            calculate_character_stat_bonuses(char_stats),
+        ):
+            for attr_id, bonus in bonus_dict.items():
+                if attr_id in profile:
+                    profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
+
+        engine_efficiency = profile.get("engine_efficiency", 30.0)
+        multiplier = 1.0 - ((engine_efficiency - 30.0) / 100.0)
+        return round(max(0.5, min(1.5, multiplier)), 3)
+    except Exception:
+        return 1.0  # baseline fallback
+
+
 def _seed_discovery() -> None:
     """Pre-populate _discovered_systems from visited systems (called once after load)."""
     global _discovery_seeded
