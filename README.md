@@ -12,7 +12,7 @@ relationships.
 ## Quick Start
 
 ```bash
-pip install fastapi "uvicorn[standard]"
+pip install fastapi "uvicorn[standard]" watchfiles
 python run.py
 ```
 
@@ -63,10 +63,10 @@ The game engine lives entirely in the project-root Python modules and is
 │       │   └── hex-input.js    # Pan, zoom, click on hex canvas
 │       ├── views/
 │       │   ├── setup.js        # Character creation (multi-step form)
-│       │   ├── galaxy.js       # Galaxy map: systems, jump, system detail + market panel
+│       │   ├── galaxy.js       # Galaxy map: systems, jump, always-open right panel
 │       │   ├── colony.js       # Planet surface: hex tiles, build/demolish,
 │       │   │                   #   SYSTEMS tab (social / economic / political config)
-│       │   ├── research.js     # Tech tree browser and research queue
+│       │   ├── research.js     # Tech tree browser — 10 category tabs
 │       │   └── diplomacy.js    # Faction reputation, diplomatic actions,
 │       │                       #   system compatibility panel
 │       └── ui/
@@ -75,6 +75,7 @@ The game engine lives entirely in the project-root Python modules and is
 │           └── notifications.js    # Toast notification queue
 │
 ├── lore/
+│   ├── research.json       # 150-node tech tree across 10 research categories
 │   ├── energies.json       # 50 energy types with descriptions, stats, and category
 │   └── faction_systems.json  # Preferred social / economic / political system for
 │                             #   each of the 32 NPC factions (editable data file)
@@ -120,11 +121,13 @@ The loop closely follows Alpha Centauri:
 
 | Choice | Options |
 |--------|---------|
-| Class | 11 classes (Explorer, Engineer, Diplomat, Trader, …) |
-| Background | 18+ narrative backgrounds, each with stat boosts and talents |
-| Species | 14 alien species with distinct biology and cognitive frameworks |
-| Faction | Align with one of the galaxy's 30+ major powers (starts Allied) |
-| Stats | 7 attributes (VIT, KIN, INT, AEF, COH, INF, SYN) — point-buy |
+| Commander Designation | Free-text name |
+| Species Origin | 14 alien species with distinct biology and cognitive frameworks |
+| Command Path | 11 classes (Explorer, Engineer, Diplomat, Trader, …) |
+| Background History | 18+ narrative backgrounds, each with stat boosts and talents |
+| Professional Specialization | Research path and role specialization |
+| Faction Allegiance | Align with one of the galaxy's 30+ major powers (starts Allied) |
+| Attribute Allocation | 7 attributes (VIT, KIN, INT, AEF, COH, INF, SYN) — point-buy |
 
 ---
 
@@ -157,14 +160,14 @@ always has the same layout across saves.
 | Biofarm Complex | 1,800 | — | +4 food, +1 credit |
 | Trade Nexus | 6,000 | — | +8 credits |
 | Population Hub | 4,500 | — | +2 food, +3 credits |
-| Solar Harvester | 3,000 | Plasma Energy Dynamics | +2 minerals, +1 credit |
+| Solar Harvester | 3,000 | Plasma Physics | +2 minerals, +1 credit |
 | Research Node | 3,500 | Advanced Research | +3 research |
-| Ether Conduit | 4,000 | Advanced Etheric Weaving | +2 ether |
+| Ether Conduit | 4,000 | Ether Energy Channeling | +2 ether |
 | Defense Array | 5,000 | Cloaking Technology | +2 defense |
-| Etheric Purifier | 5,500 | Advanced Etheric Weaving | +2 ether |
+| Etheric Purifier | 5,500 | Etheric Tidal Harvesting | +2 ether |
 | Bio-Synthesis Lab | 7,000 | Bio-Engineering | +3 food, +2 research |
 | Neural Institute | 8,000 | Cognitive Enhancement Systems | +5 research, +1 ether |
-| Deep Core Drill | 9,000 | Mining Automation | +8 minerals (mountains only) |
+| Deep Core Drill | 9,000 | Deep-Core Planetary Engineering | +8 minerals (mountains only) |
 | Quantum Relay | 10,000 | Quantum Temporal Dynamics | +3 research |
 | Xenobiology Station | 12,000 | Xenogenetics | +4 research |
 | Void Anchor | 15,000 | Null Space Exploration | +5 ether (void rifts only) |
@@ -237,7 +240,8 @@ specific research requirement.
 ## Research System
 
 The full tech tree is browsable in the **Research** view (keyboard: `R`).
-Technologies are organised into prerequisite chains; each node shows:
+150 technologies are organised into 10 thematic categories with prerequisite
+chains; each node shows:
 
 - Turn cost to complete
 - Prerequisites (greyed out if not yet researched)
@@ -246,6 +250,21 @@ Technologies are organised into prerequisite chains; each node shows:
 
 The active research project is displayed in the HUD bar at all times.
 Only one technology can be researched at a time; cancellation is free.
+
+### Research Categories
+
+| Category | Core Question |
+|----------|---------------|
+| **Scholar** | What can be known? |
+| **Mystic** | What lies beyond the material, and how do living beings intersect with energy? |
+| **Engineering** | What can be built — or mechanically grown? |
+| **Nature** | What is "natural"? |
+| **Diplomacy** | How can we best live together? |
+| **Mathematics** | Is mathematics discovered, constructed, or invoked? |
+| **Energetics** | What forms of energy exist, and how do they interact? |
+| **Topologies** | What kinds of space exist, and how do they intersect? |
+| **Chronoscience** | What is time, and how can it be shaped? |
+| **Consciousness / Ontology / Symbiosis** | What is a mind, what is a being, and how do systems co-exist? |
 
 ---
 
@@ -286,9 +305,6 @@ matching system category contributes +5 to a passive affinity score
 
 NPC faction preferred systems are defined in `lore/faction_systems.json`
 and can be edited without touching any Python or JS code.
-
-Future hooks (quests, trade deals, missions) are designed to call
-`faction_system.modify_reputation()` to nudge relations up or down.
 
 ### Zone Benefits
 
@@ -453,9 +469,9 @@ routes always win.
 | Phase | Contents | Status |
 |-------|----------|--------|
 | 1 — Foundation | FastAPI app, character creation, CSS framework | ✅ Complete |
-| 2 — Galaxy Map | Hex map, system panel, ship navigation | ✅ Complete |
+| 2 — Galaxy Map | Hex map, system panel, ship navigation, always-open sidebar | ✅ Complete |
 | 3 — Colony System | Planet surface, build/demolish, production | ✅ Complete |
-| 4 — Research & Diplomacy | Tech tree, faction UI, energy lore, HUD bar | ✅ Complete |
+| 4 — Research & Diplomacy | 150-node tech tree (10 categories), faction UI, energy lore, HUD bar | ✅ Complete |
 | 5 — Trade | Market UI, buy/sell flow in system panel | ✅ Complete |
 | 5b — Governing Systems | Social/economic/political systems per colony, coherence scoring, faction affinity, unique commodities | ✅ Complete |
 | 6 — Polish | Ether overlays, animations, win conditions, quest hooks | 🔲 Pending |
@@ -468,6 +484,7 @@ routes always win.
 Python 3.10+
 fastapi
 uvicorn[standard]
+watchfiles
 ```
 
 No other Python dependencies.  The frontend uses no npm packages — just
