@@ -1,0 +1,17 @@
+{
+  "upgrade_cost_fractions":           [0.60, 0.90],
+  "upgrade_production_multipliers":   [1.0, 1.5, 2.2],
+  "max_improvement_level":            2,
+
+  "population_income_per_10k":        75,
+  "pop_base_growth_rate":             0.01,
+  "pop_food_growth_per_unit":         0.004,
+  "pop_hub_growth_bonus":             0.015,
+  "pop_luxury_growth_bonus":          0.008,
+  "pop_biofarm_growth_bonus":         0.005,
+  "pop_max_growth_rate":              0.08,
+
+  "ore_fleet_bonus_per_unit":         0.05,
+  "ore_fleet_bonus_cap":              2.0,
+  "fleet_pool_max":                   99999
+}

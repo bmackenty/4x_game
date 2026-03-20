@@ -19,7 +19,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Etheric Observation Protocol"],
+      "prerequisites": [
+        "Etheric Observation Protocol"
+      ],
       "unlocks": [
         "Knowledge Archive (colony)",
         "Data Relay Network (ship module)",
@@ -32,7 +34,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Distributed Record Architecture"],
+      "prerequisites": [
+        "Distributed Record Architecture"
+      ],
       "unlocks": [
         "Pattern Engine (colony)",
         "Analytical Subroutines (ship module)",
@@ -45,7 +49,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Pattern Extraction Heuristics"],
+      "prerequisites": [
+        "Pattern Extraction Heuristics"
+      ],
       "unlocks": [
         "Non-Invasive Scanners (ship module)",
         "Reflexive Research Methods (ability)",
@@ -58,7 +64,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Observer-Effect Modeling"],
+      "prerequisites": [
+        "Observer-Effect Modeling"
+      ],
       "unlocks": [
         "Spectrum Observatory (colony)",
         "Phase-Spectrum Sensors (ship module)",
@@ -71,7 +79,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Multi-Spectrum Epistemics"],
+      "prerequisites": [
+        "Multi-Spectrum Epistemics"
+      ],
       "unlocks": [
         "Predictive Analytics Core (colony)",
         "Probabilistic Targeting (ship module)",
@@ -80,11 +90,13 @@
     },
     "Cross-Domain Synthesis Engines": {
       "category": "Epistemology",
-      "description": "Independent knowledge systems—biological, mechanical, etheric—are integrated into unified models. Insight emerges from intersection, not isolation.",
+      "description": "Independent knowledge systems\u2014biological, mechanical, etheric\u2014are integrated into unified models. Insight emerges from intersection, not isolation.",
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Probabilistic Truth Frameworks"],
+      "prerequisites": [
+        "Probabilistic Truth Frameworks"
+      ],
       "unlocks": [
         "Synthesis Core (colony)",
         "Hybrid Analysis Suite (ship module)",
@@ -97,7 +109,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Cross-Domain Synthesis Engines"],
+      "prerequisites": [
+        "Cross-Domain Synthesis Engines"
+      ],
       "unlocks": [
         "Autonomous Research Node (colony)",
         "Recursive Diagnostics (ship module)",
@@ -110,11 +124,14 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Self-Validating Knowledge Systems"],
+      "prerequisites": [
+        "Self-Validating Knowledge Systems"
+      ],
       "unlocks": [
         "Neural Interface Lab (colony)",
         "Direct Cognition Link (ship module)",
-        "Enhanced Research Output (economic)"
+        "Enhanced Research Output (economic)",
+        "Neural Institute (colony)"
       ]
     },
     "Collective Epistemic Networks": {
@@ -123,7 +140,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Cognitive Augmentation Interfaces"],
+      "prerequisites": [
+        "Cognitive Augmentation Interfaces"
+      ],
       "unlocks": [
         "Psych-Net Hub (colony)",
         "Shared Cognition Field (ability)",
@@ -136,7 +155,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Collective Epistemic Networks"],
+      "prerequisites": [
+        "Collective Epistemic Networks"
+      ],
       "unlocks": [
         "Ontology Engine (colony)",
         "Existence Mapping Suite (ship module)",
@@ -145,11 +166,13 @@
     },
     "Reality-Consistent Modeling": {
       "category": "Epistemology",
-      "description": "Models no longer approximate reality—they operate within it. Simulations and real systems converge, allowing direct testing within controlled ontological layers.",
+      "description": "Models no longer approximate reality\u2014they operate within it. Simulations and real systems converge, allowing direct testing within controlled ontological layers.",
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Ontological Mapping Systems"],
+      "prerequisites": [
+        "Ontological Mapping Systems"
+      ],
       "unlocks": [
         "Simulation Core (colony)",
         "Reality Mirror Systems (ship module)",
@@ -162,7 +185,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Reality-Consistent Modeling"],
+      "prerequisites": [
+        "Reality-Consistent Modeling"
+      ],
       "unlocks": [
         "Knowledge Packets (ability)",
         "Compressed Archives (colony)",
@@ -175,7 +200,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Knowledge Compression Theory"],
+      "prerequisites": [
+        "Knowledge Compression Theory"
+      ],
       "unlocks": [
         "Pre-Causal Sensors (ship module)",
         "Anticipatory Models (ability)",
@@ -184,19 +211,20 @@
     },
     "Epistemic Convergence Field": {
       "category": "Epistemology",
-      "description": "The boundary between knowing and being collapses. Knowledge is no longer acquired—it is entered. Systems, minds, and realities synchronize into a unified field of awareness.",
+      "description": "The boundary between knowing and being collapses. Knowledge is no longer acquired\u2014it is entered. Systems, minds, and realities synchronize into a unified field of awareness.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Pre-Causal Inference Systems"],
+      "prerequisites": [
+        "Pre-Causal Inference Systems"
+      ],
       "unlocks": [
         "Noospheric Core (colony)",
         "Total Insight (ability)",
         "Unified Knowledge Governance (political)",
         "Transcendent Exchange Networks (diplomatic)"
       ]
-    }
-    ,
+    },
     "Etheric Sensitivity Training": {
       "category": "Theurgy",
       "description": "The disciplined cultivation of perception beyond instrumentation. Practitioners learn to sense etheric gradients, harmonics, and disturbances directly, forming the human foundation of all theurgic practice.",
@@ -216,7 +244,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Etheric Sensitivity Training"],
+      "prerequisites": [
+        "Etheric Sensitivity Training"
+      ],
       "unlocks": [
         "Ritual Engine (colony)",
         "Encoded Rite Library (ability)",
@@ -229,7 +259,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Ritual Encoding Systems"],
+      "prerequisites": [
+        "Ritual Encoding Systems"
+      ],
       "unlocks": [
         "Symbol Processor (colony)",
         "Semiotic Compiler (ability)",
@@ -242,11 +274,15 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Symbolic-Computational Interfaces"],
+      "prerequisites": [
+        "Symbolic-Computational Interfaces"
+      ],
       "unlocks": [
         "Ether Circuit Foundry (colony)",
         "Resonant Shielding (ship module)",
-        "Energy Routing Protocols (ability)"
+        "Energy Routing Protocols (ability)",
+        "Ether Conduit (colony)",
+        "Etheric Purifier (colony)"
       ]
     },
     "Intent Amplification Frameworks": {
@@ -255,7 +291,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Etheric Circuitry Design"],
+      "prerequisites": [
+        "Etheric Circuitry Design"
+      ],
       "unlocks": [
         "Intent Amplifier (colony)",
         "Focused Invocation (ability)",
@@ -268,7 +306,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Intent Amplification Frameworks"],
+      "prerequisites": [
+        "Intent Amplification Frameworks"
+      ],
       "unlocks": [
         "Entity Liaison Chamber (colony)",
         "Summoning Gate (ship module)",
@@ -281,11 +321,14 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Entity Interface Protocols"],
+      "prerequisites": [
+        "Entity Interface Protocols"
+      ],
       "unlocks": [
         "Stabilization Grid (colony)",
         "Phase Anchor (ship module)",
-        "Safe Invocation Standards (political)"
+        "Safe Invocation Standards (political)",
+        "Crystal Resonance Array (colony)"
       ]
     },
     "Synthetic Ritual Systems": {
@@ -294,7 +337,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Resonance Stabilization Fields"],
+      "prerequisites": [
+        "Resonance Stabilization Fields"
+      ],
       "unlocks": [
         "Autonomous Ritual Core (colony)",
         "Continuous Invocation (ability)",
@@ -307,7 +352,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Synthetic Ritual Systems"],
+      "prerequisites": [
+        "Synthetic Ritual Systems"
+      ],
       "unlocks": [
         "Ether-Bound Operators (unit)",
         "Direct Manifestation (ability)",
@@ -320,7 +367,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Consciousness-Ether Binding"],
+      "prerequisites": [
+        "Consciousness-Ether Binding"
+      ],
       "unlocks": [
         "Ether Forge (colony)",
         "Instant Materialization (ability)",
@@ -333,7 +382,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Transmaterial Fabrication"],
+      "prerequisites": [
+        "Transmaterial Fabrication"
+      ],
       "unlocks": [
         "Resonance Council (political)",
         "Ritual Legitimacy (political)",
@@ -342,11 +393,13 @@
     },
     "Multi-Entity Coherence Systems": {
       "category": "Theurgy",
-      "description": "Multiple entities—biological, artificial, and etheric—are coordinated within shared operational frameworks. Complex systems operate through negotiated coexistence.",
+      "description": "Multiple entities\u2014biological, artificial, and etheric\u2014are coordinated within shared operational frameworks. Complex systems operate through negotiated coexistence.",
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Theurgic Governance Models"],
+      "prerequisites": [
+        "Theurgic Governance Models"
+      ],
       "unlocks": [
         "Coherence Nexus (colony)",
         "Multi-Entity Coordination (ability)",
@@ -359,7 +412,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Multi-Entity Coherence Systems"],
+      "prerequisites": [
+        "Multi-Entity Coherence Systems"
+      ],
       "unlocks": [
         "Reality Weave Engine (colony)",
         "Environmental Rewriting (ability)",
@@ -372,7 +427,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Reality Weaving Protocols"],
+      "prerequisites": [
+        "Reality Weaving Protocols"
+      ],
       "unlocks": [
         "Invocation Field Generator (colony)",
         "Permanent Enhancements (ability)",
@@ -385,15 +442,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Persistent Invocation Fields"],
+      "prerequisites": [
+        "Persistent Invocation Fields"
+      ],
       "unlocks": [
         "Convergence Core (colony)",
         "Absolute Invocation (ability)",
         "Transcendent Authority (political)",
         "Sacred Exchange Networks (diplomatic)"
       ]
-    }
-    ,
+    },
     "Adaptive Fabrication Systems": {
       "category": "Engineering",
       "description": "Fabrication platforms capable of producing complex structures from programmable matter. Designs can be iterated rapidly, allowing colonies to respond dynamically to changing needs.",
@@ -404,7 +462,8 @@
       "unlocks": [
         "Fabrication Bay (colony)",
         "Modular Construction (ability)",
-        "Basic Hull Assembly (ship module)"
+        "Basic Hull Assembly (ship module)",
+        "Industrial Fabricator (colony)"
       ]
     },
     "Self-Repairing Materials": {
@@ -413,7 +472,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Adaptive Fabrication Systems"],
+      "prerequisites": [
+        "Adaptive Fabrication Systems"
+      ],
       "unlocks": [
         "Regenerative Infrastructure (colony)",
         "Auto-Repair Systems (ship module)",
@@ -426,11 +487,14 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Self-Repairing Materials"],
+      "prerequisites": [
+        "Self-Repairing Materials"
+      ],
       "unlocks": [
         "Modular Ship Frames (ship module)",
         "Reconfigurable Facilities (colony)",
-        "Rapid Retrofit (ability)"
+        "Rapid Retrofit (ability)",
+        "Ore Processor (colony)"
       ]
     },
     "Bio-Mechanical Integration": {
@@ -439,7 +503,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Modular Systems Architecture"],
+      "prerequisites": [
+        "Modular Systems Architecture"
+      ],
       "unlocks": [
         "Bio-Integrated Facilities (colony)",
         "Living Hulls (ship module)",
@@ -452,20 +518,25 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Bio-Mechanical Integration"],
+      "prerequisites": [
+        "Bio-Mechanical Integration"
+      ],
       "unlocks": [
         "Construction Drones (colony)",
         "Autonomous Shipyards (ship module)",
-        "Accelerated Build Times (economic)"
+        "Accelerated Build Times (economic)",
+        "Deep Core Drill (colony)"
       ]
     },
     "Environmental Adaptation Engineering": {
       "category": "Engineering",
-      "description": "Structures dynamically adjust to environmental conditions—gravity, atmosphere, radiation, and etheric fields—ensuring optimal performance across diverse worlds.",
+      "description": "Structures dynamically adjust to environmental conditions\u2014gravity, atmosphere, radiation, and etheric fields\u2014ensuring optimal performance across diverse worlds.",
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Autonomous Construction Systems"],
+      "prerequisites": [
+        "Autonomous Construction Systems"
+      ],
       "unlocks": [
         "Adaptive Habitats (colony)",
         "Environment-Tuned Hulls (ship module)",
@@ -478,7 +549,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Environmental Adaptation Engineering"],
+      "prerequisites": [
+        "Environmental Adaptation Engineering"
+      ],
       "unlocks": [
         "Ether Engine Core (ship module)",
         "Ether-Driven Factories (colony)",
@@ -491,7 +564,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Ether-Integrated Machinery"],
+      "prerequisites": [
+        "Ether-Integrated Machinery"
+      ],
       "unlocks": [
         "Self-Optimizing Infrastructure (colony)",
         "Recursive Ship Systems (ship module)",
@@ -504,7 +579,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Recursive Design Systems"],
+      "prerequisites": [
+        "Recursive Design Systems"
+      ],
       "unlocks": [
         "Nanoforge Complex (colony)",
         "Swarm Assembly Units (ship module)",
@@ -517,11 +594,14 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Micro-Scale Fabrication Swarms"],
+      "prerequisites": [
+        "Micro-Scale Fabrication Swarms"
+      ],
       "unlocks": [
         "Orbital Ring Construction (colony)",
         "Mega-Structure Frameworks (ability)",
-        "Planetary Engineering Platforms (ship module)"
+        "Planetary Engineering Platforms (ship module)",
+        "Orbital Drydock (colony)"
       ]
     },
     "Energy-Matter Conversion Systems": {
@@ -530,7 +610,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Macro-Scale Structural Engineering"],
+      "prerequisites": [
+        "Macro-Scale Structural Engineering"
+      ],
       "unlocks": [
         "Conversion Reactors (colony)",
         "Mass Fabricators (ship module)",
@@ -543,7 +625,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Energy-Matter Conversion Systems"],
+      "prerequisites": [
+        "Energy-Matter Conversion Systems"
+      ],
       "unlocks": [
         "Phase Infrastructure (colony)",
         "Phased Hull Systems (ship module)",
@@ -552,11 +636,13 @@
     },
     "Living System Engineering": {
       "category": "Engineering",
-      "description": "Entire engineered systems behave as living organisms—growing, adapting, and evolving over time in response to internal and external stimuli.",
+      "description": "Entire engineered systems behave as living organisms\u2014growing, adapting, and evolving over time in response to internal and external stimuli.",
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Phase-Shifted Construction"],
+      "prerequisites": [
+        "Phase-Shifted Construction"
+      ],
       "unlocks": [
         "Living Cities (colony)",
         "Evolutionary Ship Systems (ship module)",
@@ -569,7 +655,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Living System Engineering"],
+      "prerequisites": [
+        "Living System Engineering"
+      ],
       "unlocks": [
         "Multi-Reality Infrastructure (colony)",
         "Cross-Phase Systems (ship module)",
@@ -582,15 +670,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Reality-Constrained Design"],
+      "prerequisites": [
+        "Reality-Constrained Design"
+      ],
       "unlocks": [
         "Genesis Core (colony)",
         "World-Seeding Platforms (ship module)",
         "Foundational Creation (ability)",
         "New Colony Templates (economic)"
       ]
-    }
-    ,
+    },
     "Baseline Ecosystem Mapping": {
       "category": "Ecology",
       "description": "The systematic identification of living systems across environments. Early models describe energy flow, species interaction, and environmental constraints within known biological frameworks.",
@@ -610,7 +699,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Baseline Ecosystem Mapping"],
+      "prerequisites": [
+        "Baseline Ecosystem Mapping"
+      ],
       "unlocks": [
         "Niche Analysis Engine (colony)",
         "Predictive Habitat Models (ability)",
@@ -623,11 +714,14 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Adaptive Niche Modeling"],
+      "prerequisites": [
+        "Adaptive Niche Modeling"
+      ],
       "unlocks": [
         "Symbiosis Lab (colony)",
         "Cooperative Growth Systems (social)",
-        "Mutualist Enhancements (ability)"
+        "Mutualist Enhancements (ability)",
+        "Bio-Synthesis Lab (colony)"
       ]
     },
     "Bio-Etheric Exchange Systems": {
@@ -636,7 +730,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Symbiotic Network Theory"],
+      "prerequisites": [
+        "Symbiotic Network Theory"
+      ],
       "unlocks": [
         "Etheric Ecology Station (colony)",
         "Resonant Bioscanners (ship module)",
@@ -649,24 +745,31 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Bio-Etheric Exchange Systems"],
+      "prerequisites": [
+        "Bio-Etheric Exchange Systems"
+      ],
       "unlocks": [
         "Closed-Loop Habitats (colony)",
         "Autonomous Biospheres (ship module)",
-        "Stability Protocols (economic)"
+        "Stability Protocols (economic)",
+        "Atmospheric Processor (colony)"
       ]
     },
     "Cross-Species Communication Frameworks": {
       "category": "Ecology",
-      "description": "Communication channels between species—biological, synthetic, and hybrid—are established. Coordination replaces competition as a dominant ecological force.",
+      "description": "Communication channels between species\u2014biological, synthetic, and hybrid\u2014are established. Coordination replaces competition as a dominant ecological force.",
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Self-Regulating Ecosystem Design"],
+      "prerequisites": [
+        "Self-Regulating Ecosystem Design"
+      ],
       "unlocks": [
         "Inter-Species Interface (colony)",
         "Bio-Linguistic Translators (ship module)",
-        "Cooperative Governance (social)"
+        "Cooperative Governance (social)",
+        "Xenobiology Station (colony)",
+        "Xenolinguistics Center (colony)"
       ]
     },
     "Evolutionary Steering Mechanisms": {
@@ -675,20 +778,25 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Cross-Species Communication Frameworks"],
+      "prerequisites": [
+        "Cross-Species Communication Frameworks"
+      ],
       "unlocks": [
         "Evolution Lab (colony)",
         "Directed Adaptation (ability)",
-        "Trait Optimization Programs (economic)"
+        "Trait Optimization Programs (economic)",
+        "Agri-Industrial Complex (colony)"
       ]
     },
     "Multi-Layer Ecosystem Integration": {
       "category": "Ecology",
-      "description": "Ecosystems are expanded to operate across multiple layers of reality—material, energetic, and phase-shifted domains—interacting as a unified system.",
+      "description": "Ecosystems are expanded to operate across multiple layers of reality\u2014material, energetic, and phase-shifted domains\u2014interacting as a unified system.",
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Evolutionary Steering Mechanisms"],
+      "prerequisites": [
+        "Evolutionary Steering Mechanisms"
+      ],
       "unlocks": [
         "Layered Biosphere (colony)",
         "Multi-Phase Habitat Systems (ship module)",
@@ -701,7 +809,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Multi-Layer Ecosystem Integration"],
+      "prerequisites": [
+        "Multi-Layer Ecosystem Integration"
+      ],
       "unlocks": [
         "Living Network Core (colony)",
         "Ecological Decision Systems (ability)",
@@ -714,7 +824,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Emergent Intelligence Ecologies"],
+      "prerequisites": [
+        "Emergent Intelligence Ecologies"
+      ],
       "unlocks": [
         "Planetary Integration Grid (colony)",
         "World-Harmonization Protocols (ability)",
@@ -727,7 +839,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Planetary Symbiosis Systems"],
+      "prerequisites": [
+        "Planetary Symbiosis Systems"
+      ],
       "unlocks": [
         "Shared Identity Networks (social)",
         "Cross-Species Units (ability)",
@@ -736,11 +850,13 @@
     },
     "Resilient Hyper-Ecosystems": {
       "category": "Ecology",
-      "description": "Ecosystems are designed to withstand extreme disruptions—cosmic, temporal, or energetic—while maintaining function and continuity.",
+      "description": "Ecosystems are designed to withstand extreme disruptions\u2014cosmic, temporal, or energetic\u2014while maintaining function and continuity.",
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Trans-Species Identity Frameworks"],
+      "prerequisites": [
+        "Trans-Species Identity Frameworks"
+      ],
       "unlocks": [
         "Hyper-Resilience Matrix (colony)",
         "Crisis Adaptation Protocols (ability)",
@@ -753,7 +869,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Resilient Hyper-Ecosystems"],
+      "prerequisites": [
+        "Resilient Hyper-Ecosystems"
+      ],
       "unlocks": [
         "Autonomous Biosphere Core (colony)",
         "Self-Directed Evolution (ability)",
@@ -766,7 +884,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Self-Designing Biospheres"],
+      "prerequisites": [
+        "Self-Designing Biospheres"
+      ],
       "unlocks": [
         "Interplanetary Bio-Network (colony)",
         "Cross-World Resource Exchange (economic)",
@@ -779,15 +899,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Interplanetary Ecological Networks"],
+      "prerequisites": [
+        "Interplanetary Ecological Networks"
+      ],
       "unlocks": [
         "Universal Biosphere Core (colony)",
         "Total System Harmony (ability)",
         "Ecological Governance (political)",
         "Life-Integrated Trade Networks (diplomatic)"
       ]
-    }
-    ,
+    },
     "Foundational Governance Charters": {
       "category": "Governance",
       "description": "The codification of shared rules, roles, and responsibilities within a colony. Governance emerges as a structured agreement rather than ad hoc authority.",
@@ -807,7 +928,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Foundational Governance Charters"],
+      "prerequisites": [
+        "Foundational Governance Charters"
+      ],
       "unlocks": [
         "Allocation Office (colony)",
         "Optimized Resource Flow (economic)",
@@ -820,7 +943,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Resource Allocation Protocols"],
+      "prerequisites": [
+        "Resource Allocation Protocols"
+      ],
       "unlocks": [
         "Representative Council (colony)",
         "Delegated Authority (political)",
@@ -833,7 +958,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Representation Models"],
+      "prerequisites": [
+        "Representation Models"
+      ],
       "unlocks": [
         "Mediation Center (colony)",
         "Dispute Arbitration (ability)",
@@ -842,11 +969,13 @@
     },
     "Legitimacy Frameworks": {
       "category": "Governance",
-      "description": "Governance is grounded in recognized sources of authority—performance, tradition, consensus, or other metrics. Legitimacy becomes a system property.",
+      "description": "Governance is grounded in recognized sources of authority\u2014performance, tradition, consensus, or other metrics. Legitimacy becomes a system property.",
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Conflict Resolution Systems"],
+      "prerequisites": [
+        "Conflict Resolution Systems"
+      ],
       "unlocks": [
         "Legitimacy Index (ability)",
         "Governance Analytics (colony)",
@@ -859,7 +988,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Legitimacy Frameworks"],
+      "prerequisites": [
+        "Legitimacy Frameworks"
+      ],
       "unlocks": [
         "Policy Engine (colony)",
         "Dynamic Regulations (ability)",
@@ -872,7 +1003,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Adaptive Policy Systems"],
+      "prerequisites": [
+        "Adaptive Policy Systems"
+      ],
       "unlocks": [
         "Multi-Species Council (colony)",
         "Cross-Species Rights (political)",
@@ -885,7 +1018,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Multi-Species Governance Structures"],
+      "prerequisites": [
+        "Multi-Species Governance Structures"
+      ],
       "unlocks": [
         "Governance Network (colony)",
         "Distributed Decision Systems (ability)",
@@ -898,7 +1033,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Distributed Authority Networks"],
+      "prerequisites": [
+        "Distributed Authority Networks"
+      ],
       "unlocks": [
         "Predictive Policy Core (colony)",
         "Preemptive Regulation (ability)",
@@ -911,7 +1048,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Predictive Governance Models"],
+      "prerequisites": [
+        "Predictive Governance Models"
+      ],
       "unlocks": [
         "Consensus Engine (colony)",
         "Coordinated Decision-Making (ability)",
@@ -924,7 +1063,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Consensus Engineering"],
+      "prerequisites": [
+        "Consensus Engineering"
+      ],
       "unlocks": [
         "Alignment Core (colony)",
         "Ethical Enforcement (political)",
@@ -937,7 +1078,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Value Alignment Systems"],
+      "prerequisites": [
+        "Value Alignment Systems"
+      ],
       "unlocks": [
         "Multi-Layer Governance Hub (colony)",
         "Cross-Phase Law Enforcement (ability)",
@@ -950,7 +1093,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Cross-Reality Governance"],
+      "prerequisites": [
+        "Cross-Reality Governance"
+      ],
       "unlocks": [
         "Autonomous Civic Systems (colony)",
         "Self-Governance Protocols (ability)",
@@ -963,7 +1108,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Self-Regulating Societies"],
+      "prerequisites": [
+        "Self-Regulating Societies"
+      ],
       "unlocks": [
         "Resonant Authority (political)",
         "Existential Legitimacy (ability)",
@@ -972,19 +1119,20 @@
     },
     "Harmonic Civilization Framework": {
       "category": "Governance",
-      "description": "All systems—social, political, economic, and ecological—are integrated into a coherent whole. Conflict is minimized through alignment rather than control.",
+      "description": "All systems\u2014social, political, economic, and ecological\u2014are integrated into a coherent whole. Conflict is minimized through alignment rather than control.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Legitimacy Through Being"],
+      "prerequisites": [
+        "Legitimacy Through Being"
+      ],
       "unlocks": [
         "Harmonic Core (colony)",
         "Total System Coordination (ability)",
         "Unified Governance Model (political)",
         "Interstellar Accord Networks (diplomatic)"
       ]
-    }
-    ,
+    },
     "Formal Systems Consolidation": {
       "category": "Mathematics",
       "description": "The unification of legacy mathematical frameworks into a coherent, extensible system. Classical mathematics is not discarded, but stabilized as a baseline for further expansion.",
@@ -1004,7 +1152,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Formal Systems Consolidation"],
+      "prerequisites": [
+        "Formal Systems Consolidation"
+      ],
       "unlocks": [
         "Probabilistic Logic Engine (colony)",
         "Fuzzy Decision Systems (ability)",
@@ -1017,7 +1167,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Non-Deterministic Logic Structures"],
+      "prerequisites": [
+        "Non-Deterministic Logic Structures"
+      ],
       "unlocks": [
         "Hyper-Algebra Lab (colony)",
         "Multi-Dimensional Modeling (ability)",
@@ -1030,7 +1182,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Higher-Dimensional Algebra"],
+      "prerequisites": [
+        "Higher-Dimensional Algebra"
+      ],
       "unlocks": [
         "Topological Processor (colony)",
         "Continuous Computation (ability)",
@@ -1043,7 +1197,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Topological Computation"],
+      "prerequisites": [
+        "Topological Computation"
+      ],
       "unlocks": [
         "Abstract Systems Core (colony)",
         "Structural Mapping (ability)",
@@ -1056,7 +1212,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Category-Theoretic Unification"],
+      "prerequisites": [
+        "Category-Theoretic Unification"
+      ],
       "unlocks": [
         "Simulation Engine (colony)",
         "Exploratory Algorithms (ability)",
@@ -1069,7 +1227,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Computational Irreducibility Models"],
+      "prerequisites": [
+        "Computational Irreducibility Models"
+      ],
       "unlocks": [
         "Constructive Proof Engine (colony)",
         "Generative Mathematics (ability)",
@@ -1078,11 +1238,13 @@
     },
     "Inverse Mathematics Systems": {
       "category": "Mathematics",
-      "description": "Mathematical inquiry reverses direction—determining which axioms are required for specific results. Foundations become modular and context-sensitive.",
+      "description": "Mathematical inquiry reverses direction\u2014determining which axioms are required for specific results. Foundations become modular and context-sensitive.",
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Constructive Mathematics Frameworks"],
+      "prerequisites": [
+        "Constructive Mathematics Frameworks"
+      ],
       "unlocks": [
         "Axiom Selection Engine (colony)",
         "Contextual Logic Systems (ability)",
@@ -1095,7 +1257,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Inverse Mathematics Systems"],
+      "prerequisites": [
+        "Inverse Mathematics Systems"
+      ],
       "unlocks": [
         "Ontology Map Core (colony)",
         "Structure Discovery (ability)",
@@ -1108,7 +1272,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Mathematical Ontology Mapping"],
+      "prerequisites": [
+        "Mathematical Ontology Mapping"
+      ],
       "unlocks": [
         "Reality Simulation Core (colony)",
         "Algorithmic Control (ability)",
@@ -1121,7 +1287,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Algorithmic Reality Models"],
+      "prerequisites": [
+        "Algorithmic Reality Models"
+      ],
       "unlocks": [
         "Adaptive Logic Core (colony)",
         "Self-Evolving Algorithms (ability)",
@@ -1134,7 +1302,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Self-Modifying Formal Systems"],
+      "prerequisites": [
+        "Self-Modifying Formal Systems"
+      ],
       "unlocks": [
         "Transfinite Processor (colony)",
         "Infinite-State Analysis (ability)",
@@ -1143,11 +1313,13 @@
     },
     "Ether-Mathematical Correspondence": {
       "category": "Mathematics",
-      "description": "Mathematical structures are found to correspond directly with etheric phenomena. Equations do not merely describe reality—they interact with it.",
+      "description": "Mathematical structures are found to correspond directly with etheric phenomena. Equations do not merely describe reality\u2014they interact with it.",
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Transfinite Computation Theory"],
+      "prerequisites": [
+        "Transfinite Computation Theory"
+      ],
       "unlocks": [
         "Ether-Math Interface (colony)",
         "Resonant Calculation (ability)",
@@ -1160,7 +1332,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Ether-Mathematical Correspondence"],
+      "prerequisites": [
+        "Ether-Mathematical Correspondence"
+      ],
       "unlocks": [
         "Invocation Engine (colony)",
         "Construct Realization (ability)",
@@ -1173,15 +1347,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Invoked Mathematics"],
+      "prerequisites": [
+        "Invoked Mathematics"
+      ],
       "unlocks": [
         "Axiom Forge (colony)",
         "Custom Reality Layers (ability)",
         "Foundational System Design (political)",
         "Mathematical Trade Constructs (economic)"
       ]
-    }
-    ,
+    },
     "Unified Energy Taxonomy": {
       "category": "Energetics",
       "description": "A comprehensive classification of known and newly detected energy forms. Classical energies are recontextualized alongside etheric, dark, and resonance-based phenomena.",
@@ -1201,7 +1376,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Unified Energy Taxonomy"],
+      "prerequisites": [
+        "Unified Energy Taxonomy"
+      ],
       "unlocks": [
         "Detection Grid (colony)",
         "Advanced Sensor Suite (ship module)",
@@ -1214,7 +1391,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Energy Detection Arrays"],
+      "prerequisites": [
+        "Energy Detection Arrays"
+      ],
       "unlocks": [
         "Resonance Lab (colony)",
         "Harmonic Tuning (ability)",
@@ -1227,20 +1406,25 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Resonance Interaction Models"],
+      "prerequisites": [
+        "Resonance Interaction Models"
+      ],
       "unlocks": [
         "High-Efficiency Grid (colony)",
         "Energy Relay Systems (ship module)",
-        "Reduced Consumption (economic)"
+        "Reduced Consumption (economic)",
+        "Solar Harvester (colony)"
       ]
     },
     "Cross-Domain Energy Conversion": {
       "category": "Energetics",
-      "description": "Different forms of energy—thermal, kinetic, electromagnetic, and etheric—can be converted seamlessly between one another. Energy becomes a universal resource.",
+      "description": "Different forms of energy\u2014thermal, kinetic, electromagnetic, and etheric\u2014can be converted seamlessly between one another. Energy becomes a universal resource.",
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Energy Transfer Efficiency Systems"],
+      "prerequisites": [
+        "Energy Transfer Efficiency Systems"
+      ],
       "unlocks": [
         "Conversion Reactor (colony)",
         "Multi-Mode Power Core (ship module)",
@@ -1253,11 +1437,14 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Cross-Domain Energy Conversion"],
+      "prerequisites": [
+        "Cross-Domain Energy Conversion"
+      ],
       "unlocks": [
         "Ether Extractor (colony)",
         "Ether Capacitor (ship module)",
-        "Expanded Energy Supply (economic)"
+        "Expanded Energy Supply (economic)",
+        "Geothermal Tap (colony)"
       ]
     },
     "Dynamic Energy Field Manipulation": {
@@ -1266,7 +1453,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Etheric Energy Harnessing"],
+      "prerequisites": [
+        "Etheric Energy Harnessing"
+      ],
       "unlocks": [
         "Field Manipulation Core (colony)",
         "Adaptive Shielding (ship module)",
@@ -1279,7 +1468,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Dynamic Energy Field Manipulation"],
+      "prerequisites": [
+        "Dynamic Energy Field Manipulation"
+      ],
       "unlocks": [
         "Matter-Energy Converter (colony)",
         "Structural Energy Systems (ship module)",
@@ -1292,7 +1483,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Energy-Matter Coupling"],
+      "prerequisites": [
+        "Energy-Matter Coupling"
+      ],
       "unlocks": [
         "Energy Lattice (colony)",
         "Hard-Light Constructs (ship module)",
@@ -1305,7 +1498,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Persistent Energy Structures"],
+      "prerequisites": [
+        "Persistent Energy Structures"
+      ],
       "unlocks": [
         "Integrated Power Core (colony)",
         "Hybrid Energy Systems (ship module)",
@@ -1318,7 +1513,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Multi-Spectrum Energy Integration"],
+      "prerequisites": [
+        "Multi-Spectrum Energy Integration"
+      ],
       "unlocks": [
         "Zero-Point Reactor (colony)",
         "Vacuum Energy Drive (ship module)",
@@ -1331,7 +1528,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Zero-Point and Vacuum Energy Access"],
+      "prerequisites": [
+        "Zero-Point and Vacuum Energy Access"
+      ],
       "unlocks": [
         "Phase Energy Grid (colony)",
         "Phase-Coupled Weapons (ship module)",
@@ -1344,7 +1543,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Phase-Shifted Energy Systems"],
+      "prerequisites": [
+        "Phase-Shifted Energy Systems"
+      ],
       "unlocks": [
         "Energy Ecosystem Core (colony)",
         "Autonomous Power Systems (ability)",
@@ -1357,7 +1558,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Self-Sustaining Energy Ecosystems"],
+      "prerequisites": [
+        "Self-Sustaining Energy Ecosystems"
+      ],
       "unlocks": [
         "Causality Engine (colony)",
         "Temporal Energy Control (ability)",
@@ -1370,15 +1573,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Energetic Causality Manipulation"],
+      "prerequisites": [
+        "Energetic Causality Manipulation"
+      ],
       "unlocks": [
         "Unified Energy Core (colony)",
         "Total Energy Control (ability)",
         "Universal Power Networks (economic)",
         "Energy Accord Systems (diplomatic)"
       ]
-    }
-    ,
+    },
     "Spatial Frame Calibration": {
       "category": "Topologies",
       "description": "The redefinition of space as a measurable, parameterized construct rather than a fixed backdrop. Local coordinate systems are standardized across environments and reference frames.",
@@ -1398,7 +1602,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Spatial Frame Calibration"],
+      "prerequisites": [
+        "Spatial Frame Calibration"
+      ],
       "unlocks": [
         "Curvature Scanner (ship module)",
         "Topological Mapping (ability)",
@@ -1411,7 +1617,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Non-Euclidean Survey Methods"],
+      "prerequisites": [
+        "Non-Euclidean Survey Methods"
+      ],
       "unlocks": [
         "Topology Core (colony)",
         "Pathfinding Optimization (ability)",
@@ -1424,7 +1632,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Topological Mapping Engines"],
+      "prerequisites": [
+        "Topological Mapping Engines"
+      ],
       "unlocks": [
         "Fold Drive (ship module)",
         "Compact Transit Corridors (ability)",
@@ -1437,7 +1647,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Folded Space Models"],
+      "prerequisites": [
+        "Folded Space Models"
+      ],
       "unlocks": [
         "Layer Scanner (ship module)",
         "Multi-Layer Habitat (colony)",
@@ -1450,7 +1662,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Layered Spatial Domains"],
+      "prerequisites": [
+        "Layered Spatial Domains"
+      ],
       "unlocks": [
         "Interface Gate (colony)",
         "Cross-Space Transit (ship module)",
@@ -1463,7 +1677,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Intersecting Space Interfaces"],
+      "prerequisites": [
+        "Intersecting Space Interfaces"
+      ],
       "unlocks": [
         "Pocket Habitat (colony)",
         "Storage Dimensions (ability)",
@@ -1476,11 +1692,14 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Pocket Dimension Engineering"],
+      "prerequisites": [
+        "Pocket Dimension Engineering"
+      ],
       "unlocks": [
         "Anchor Grid (colony)",
         "Stability Field (ship module)",
-        "Fixed Reference Points (ability)"
+        "Fixed Reference Points (ability)",
+        "Void Anchor (colony)"
       ]
     },
     "Dynamic Spatial Reconfiguration": {
@@ -1489,7 +1708,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Topological Anchoring Systems"],
+      "prerequisites": [
+        "Topological Anchoring Systems"
+      ],
       "unlocks": [
         "Spatial Reconfiguration Core (colony)",
         "Adaptive Navigation (ability)",
@@ -1502,7 +1723,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Dynamic Spatial Reconfiguration"],
+      "prerequisites": [
+        "Dynamic Spatial Reconfiguration"
+      ],
       "unlocks": [
         "Spatial Network Hub (colony)",
         "Instant Transit Links (ship module)",
@@ -1515,7 +1738,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Multi-Connected Space Networks"],
+      "prerequisites": [
+        "Multi-Connected Space Networks"
+      ],
       "unlocks": [
         "Phase Structure Complex (colony)",
         "Multi-Phase Hulls (ship module)",
@@ -1528,7 +1753,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Phase-Coexistent Structures"],
+      "prerequisites": [
+        "Phase-Coexistent Structures"
+      ],
       "unlocks": [
         "Inversion Chamber (colony)",
         "Inverted Storage (ability)",
@@ -1541,7 +1768,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Topological Inversion Systems"],
+      "prerequisites": [
+        "Topological Inversion Systems"
+      ],
       "unlocks": [
         "Synchronization Core (colony)",
         "Cross-Layer Coordination (ability)",
@@ -1554,7 +1783,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Cross-Domain Spatial Synchronization"],
+      "prerequisites": [
+        "Cross-Domain Spatial Synchronization"
+      ],
       "unlocks": [
         "Manifold Generator (colony)",
         "Seamless Navigation (ability)",
@@ -1567,15 +1798,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Continuous Spatial Manifolds"],
+      "prerequisites": [
+        "Continuous Spatial Manifolds"
+      ],
       "unlocks": [
         "Space Forge (colony)",
         "Reality-Scale Navigation (ability)",
         "Custom Spatial Domains (political)",
         "Interdomain Transit Accords (diplomatic)"
       ]
-    }
-    ,
+    },
     "Temporal Reference Standardization": {
       "category": "Chronoscience",
       "description": "Time is no longer assumed to be uniform. Colonies establish synchronized reference frames that account for relativistic drift, etheric variance, and local temporal distortion.",
@@ -1595,7 +1827,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Temporal Reference Standardization"],
+      "prerequisites": [
+        "Temporal Reference Standardization"
+      ],
       "unlocks": [
         "Drift Scanner (ship module)",
         "Temporal Diagnostics (ability)",
@@ -1608,7 +1842,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Temporal Drift Detection"],
+      "prerequisites": [
+        "Temporal Drift Detection"
+      ],
       "unlocks": [
         "Causality Engine (colony)",
         "Event Prediction (ability)",
@@ -1621,7 +1857,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Causal Chain Modeling"],
+      "prerequisites": [
+        "Causal Chain Modeling"
+      ],
       "unlocks": [
         "Time Buffer (colony)",
         "Event Replay (ability)",
@@ -1634,11 +1872,14 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Temporal Buffering Systems"],
+      "prerequisites": [
+        "Temporal Buffering Systems"
+      ],
       "unlocks": [
         "Phase-Aware Interface (colony)",
         "Multi-Timeline Tracking (ability)",
-        "Temporal Sensors (ship module)"
+        "Temporal Sensors (ship module)",
+        "Deep Space Observatory (colony)"
       ]
     },
     "Temporal Field Manipulation": {
@@ -1647,7 +1888,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Multi-Phase Time Perception"],
+      "prerequisites": [
+        "Multi-Phase Time Perception"
+      ],
       "unlocks": [
         "Time Field Generator (colony)",
         "Temporal Acceleration (ability)",
@@ -1660,7 +1903,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Temporal Field Manipulation"],
+      "prerequisites": [
+        "Temporal Field Manipulation"
+      ],
       "unlocks": [
         "Timeline Mapper (colony)",
         "Branch Prediction (ability)",
@@ -1673,11 +1918,14 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Parallel Timeline Mapping"],
+      "prerequisites": [
+        "Parallel Timeline Mapping"
+      ],
       "unlocks": [
         "Chrono-Relay (ship module)",
         "Time-Signal Exchange (ability)",
-        "Predictive Coordination (colony)"
+        "Predictive Coordination (colony)",
+        "Quantum Relay (colony)"
       ]
     },
     "Causality Intervention Systems": {
@@ -1686,7 +1934,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Temporal Communication Channels"],
+      "prerequisites": [
+        "Temporal Communication Channels"
+      ],
       "unlocks": [
         "Intervention Core (colony)",
         "Outcome Adjustment (ability)",
@@ -1699,7 +1949,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Causality Intervention Systems"],
+      "prerequisites": [
+        "Causality Intervention Systems"
+      ],
       "unlocks": [
         "Time Economy (economic)",
         "Temporal Work Zones (colony)",
@@ -1712,7 +1964,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Temporal Resource Extraction"],
+      "prerequisites": [
+        "Temporal Resource Extraction"
+      ],
       "unlocks": [
         "Chrono-Structure Complex (colony)",
         "Time-Anchored Hulls (ship module)",
@@ -1725,7 +1979,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Persistent Temporal Structures"],
+      "prerequisites": [
+        "Persistent Temporal Structures"
+      ],
       "unlocks": [
         "Temporal Governance Hub (colony)",
         "Multi-Time Policy Systems (political)",
@@ -1738,7 +1994,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Cross-Layer Temporal Governance"],
+      "prerequisites": [
+        "Cross-Layer Temporal Governance"
+      ],
       "unlocks": [
         "Recursive Core (colony)",
         "Time-Loop Optimization (ability)",
@@ -1751,7 +2009,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Recursive Time Systems"],
+      "prerequisites": [
+        "Recursive Time Systems"
+      ],
       "unlocks": [
         "Continuum Engine (colony)",
         "Free Temporal Navigation (ability)",
@@ -1764,15 +2024,16 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Temporal Continuum Engineering"],
+      "prerequisites": [
+        "Temporal Continuum Engineering"
+      ],
       "unlocks": [
         "Chronogenesis Core (colony)",
         "Timeline Creation (ability)",
         "Temporal Sovereignty (political)",
         "Inter-Timeline Exchange (diplomatic)"
       ]
-    }
-    ,
+    },
     "Foundational Ontology Frameworks": {
       "category": "Philosophy",
       "description": "The formal classification of entities, processes, and systems. Distinctions between object, agent, and environment are defined to support coherent reasoning across domains.",
@@ -1792,7 +2053,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Foundational Ontology Frameworks"],
+      "prerequisites": [
+        "Foundational Ontology Frameworks"
+      ],
       "unlocks": [
         "Cognitive Transfer Protocols (ability)",
         "Substrate-Agnostic Interfaces (ship module)",
@@ -1805,7 +2068,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Mind-Body Abstraction Models"],
+      "prerequisites": [
+        "Mind-Body Abstraction Models"
+      ],
       "unlocks": [
         "Identity Anchor (colony)",
         "Continuity Tracking (ability)",
@@ -1814,11 +2079,13 @@
     },
     "Multi-Agent Coexistence Models": {
       "category": "Philosophy",
-      "description": "Frameworks for understanding how independent agents—biological, artificial, and hybrid—share space, resources, and decision-making structures.",
+      "description": "Frameworks for understanding how independent agents\u2014biological, artificial, and hybrid\u2014share space, resources, and decision-making structures.",
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Identity Persistence Theory"],
+      "prerequisites": [
+        "Identity Persistence Theory"
+      ],
       "unlocks": [
         "Coexistence Protocols (ability)",
         "Multi-Agent Coordination (ship module)",
@@ -1831,7 +2098,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Multi-Agent Coexistence Models"],
+      "prerequisites": [
+        "Multi-Agent Coexistence Models"
+      ],
       "unlocks": [
         "Value Encoding Engine (colony)",
         "Ethical Decision Systems (ability)",
@@ -1844,7 +2113,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Value System Formalization"],
+      "prerequisites": [
+        "Value System Formalization"
+      ],
       "unlocks": [
         "Consciousness Scanner (ship module)",
         "Awareness Index (ability)",
@@ -1857,7 +2128,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Consciousness Gradient Mapping"],
+      "prerequisites": [
+        "Consciousness Gradient Mapping"
+      ],
       "unlocks": [
         "Emergent Identity Frameworks (ability)",
         "Dynamic Role Assignment (social)",
@@ -1870,7 +2143,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Emergent Selfhood Theory"],
+      "prerequisites": [
+        "Emergent Selfhood Theory"
+      ],
       "unlocks": [
         "Distributed Cognition Core (colony)",
         "Shared Awareness (ability)",
@@ -1883,7 +2158,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Distributed Mind Systems"],
+      "prerequisites": [
+        "Distributed Mind Systems"
+      ],
       "unlocks": [
         "Multi-Species Ethics Council (colony)",
         "Universal Rights Framework (political)",
@@ -1892,11 +2169,13 @@
     },
     "Ontological Flexibility": {
       "category": "Philosophy",
-      "description": "Entities can shift between categories—object, agent, system—depending on context. Existence becomes fluid rather than fixed.",
+      "description": "Entities can shift between categories\u2014object, agent, system\u2014depending on context. Existence becomes fluid rather than fixed.",
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Cross-Species Moral Systems"],
+      "prerequisites": [
+        "Cross-Species Moral Systems"
+      ],
       "unlocks": [
         "Ontological Modulation (ability)",
         "Role Fluidity Systems (social)",
@@ -1909,7 +2188,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Ontological Flexibility"],
+      "prerequisites": [
+        "Ontological Flexibility"
+      ],
       "unlocks": [
         "Reflexive Core (colony)",
         "Self-Optimization (ability)",
@@ -1922,7 +2203,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Self-Referential Systems Theory"],
+      "prerequisites": [
+        "Self-Referential Systems Theory"
+      ],
       "unlocks": [
         "Harmony Engine (colony)",
         "Conflict Minimization (ability)",
@@ -1935,7 +2218,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Coexistence Optimization Frameworks"],
+      "prerequisites": [
+        "Coexistence Optimization Frameworks"
+      ],
       "unlocks": [
         "Integrated Identity Networks (colony)",
         "Multi-Level Awareness (ability)",
@@ -1948,7 +2233,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Integrated Being Systems"],
+      "prerequisites": [
+        "Integrated Being Systems"
+      ],
       "unlocks": [
         "Alignment Core (colony)",
         "Purpose-Driven Systems (ability)",
@@ -1961,18 +2248,19 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Existential Alignment Theory"],
+      "prerequisites": [
+        "Existential Alignment Theory"
+      ],
       "unlocks": [
         "Ontological Field Generator (colony)",
         "Total System Awareness (ability)",
         "Universal Coexistence Protocols (diplomatic)",
         "Absolute Integration (social)"
       ]
-    }
-    ,
+    },
     "Conflict Taxonomy Framework": {
       "category": "Polemology",
-      "description": "Conflict is classified across domains—material, informational, cognitive, and etheric. Distinctions between competition, coercion, and annihilation are formalized to guide doctrine.",
+      "description": "Conflict is classified across domains\u2014material, informational, cognitive, and etheric. Distinctions between competition, coercion, and annihilation are formalized to guide doctrine.",
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
@@ -1989,11 +2277,15 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Conflict Taxonomy Framework"],
+      "prerequisites": [
+        "Conflict Taxonomy Framework"
+      ],
       "unlocks": [
         "Doctrine Library (colony)",
         "Engagement Protocols (ability)",
-        "Tactical Coordination Suite (ship module)"
+        "Tactical Coordination Suite (ship module)",
+        "Defense Array (colony)",
+        "Munitions Factory (colony)"
       ]
     },
     "Information Warfare Models": {
@@ -2002,7 +2294,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Engagement Doctrine Systems"],
+      "prerequisites": [
+        "Engagement Doctrine Systems"
+      ],
       "unlocks": [
         "InfoOps Center (colony)",
         "Signal Disruption (ability)",
@@ -2015,7 +2309,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Information Warfare Models"],
+      "prerequisites": [
+        "Information Warfare Models"
+      ],
       "unlocks": [
         "Irregular Warfare Units (colony)",
         "Ambush Protocols (ability)",
@@ -2028,11 +2324,14 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Asymmetric Strategy Theory"],
+      "prerequisites": [
+        "Asymmetric Strategy Theory"
+      ],
       "unlocks": [
         "Joint Operations Command (colony)",
         "Cross-Domain Coordination (ability)",
-        "Integrated Combat Systems (ship module)"
+        "Integrated Combat Systems (ship module)",
+        "Planetary Shield Generator (colony)"
       ]
     },
     "Autonomous Combat Systems": {
@@ -2041,7 +2340,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Multi-Domain Operations"],
+      "prerequisites": [
+        "Multi-Domain Operations"
+      ],
       "unlocks": [
         "Drone Command Hub (colony)",
         "Autonomous Targeting (ability)",
@@ -2054,11 +2355,14 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Autonomous Combat Systems"],
+      "prerequisites": [
+        "Autonomous Combat Systems"
+      ],
       "unlocks": [
         "Adaptive Command Network (colony)",
         "Real-Time Strategy Adjustment (ability)",
-        "Self-Optimizing Fleets (ship module)"
+        "Self-Optimizing Fleets (ship module)",
+        "Command Citadel (colony)"
       ]
     },
     "Cognitive Warfare Systems": {
@@ -2067,7 +2371,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Adaptive Tactical Networks"],
+      "prerequisites": [
+        "Adaptive Tactical Networks"
+      ],
       "unlocks": [
         "Cognitive Ops Center (colony)",
         "Morale Disruption (ability)",
@@ -2080,11 +2386,14 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Cognitive Warfare Systems"],
+      "prerequisites": [
+        "Cognitive Warfare Systems"
+      ],
       "unlocks": [
         "Ether Weapon Lab (colony)",
         "Resonance Weapons (ability)",
-        "Ether Shielding (ship module)"
+        "Ether Shielding (ship module)",
+        "Anti-Orbital Battery (colony)"
       ]
     },
     "Strategic Deterrence Frameworks": {
@@ -2093,7 +2402,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Etheric Combat Integration"],
+      "prerequisites": [
+        "Etheric Combat Integration"
+      ],
       "unlocks": [
         "Deterrence Command (colony)",
         "Escalation Control (ability)",
@@ -2106,7 +2417,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Strategic Deterrence Frameworks"],
+      "prerequisites": [
+        "Strategic Deterrence Frameworks"
+      ],
       "unlocks": [
         "Battlespace Core (colony)",
         "Environmental Control (ability)",
@@ -2119,7 +2432,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Persistent Battlespace Engineering"],
+      "prerequisites": [
+        "Persistent Battlespace Engineering"
+      ],
       "unlocks": [
         "Multi-Layer Command (colony)",
         "Cross-Phase Engagement (ability)",
@@ -2132,7 +2447,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Cross-Reality Conflict Operations"],
+      "prerequisites": [
+        "Cross-Reality Conflict Operations"
+      ],
       "unlocks": [
         "Evolution Engine (colony)",
         "Adaptive Doctrine (ability)",
@@ -2145,7 +2462,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Self-Evolving Warfare Systems"],
+      "prerequisites": [
+        "Self-Evolving Warfare Systems"
+      ],
       "unlocks": [
         "Causality Strike Core (colony)",
         "Outcome Manipulation (ability)",
@@ -2154,19 +2473,20 @@
     },
     "Total Conflict Integration": {
       "category": "Polemology",
-      "description": "All domains—material, cognitive, etheric, temporal—are unified into a single operational framework. Conflict becomes a system-level phenomenon rather than isolated engagements.",
+      "description": "All domains\u2014material, cognitive, etheric, temporal\u2014are unified into a single operational framework. Conflict becomes a system-level phenomenon rather than isolated engagements.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Causality Disruption Tactics"],
+      "prerequisites": [
+        "Causality Disruption Tactics"
+      ],
       "unlocks": [
         "Total War Nexus (colony)",
         "Unified Command (ability)",
         "Absolute Dominance Doctrine (political)",
         "War-State Mobilization (economic)"
       ]
-    }
-    ,
+    },
     "Symbol Recognition Frameworks": {
       "category": "Semiotics",
       "description": "The systematic identification of symbols across languages, species, and signal systems. Meaning is treated as a detectable structure rather than a subjective interpretation.",
@@ -2186,7 +2506,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Symbol Recognition Frameworks"],
+      "prerequisites": [
+        "Symbol Recognition Frameworks"
+      ],
       "unlocks": [
         "Semantic Registry (colony)",
         "Universal Encoding (ability)",
@@ -2199,7 +2521,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Semantic Encoding Standards"],
+      "prerequisites": [
+        "Semantic Encoding Standards"
+      ],
       "unlocks": [
         "Context Engine (colony)",
         "Adaptive Messaging (ability)",
@@ -2208,11 +2532,13 @@
     },
     "Multi-Layer Semiotic Analysis": {
       "category": "Semiotics",
-      "description": "Symbols are analyzed across multiple layers—literal, cultural, energetic, and structural. Meaning becomes a composite of interacting dimensions.",
+      "description": "Symbols are analyzed across multiple layers\u2014literal, cultural, energetic, and structural. Meaning becomes a composite of interacting dimensions.",
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Contextual Meaning Systems"],
+      "prerequisites": [
+        "Contextual Meaning Systems"
+      ],
       "unlocks": [
         "Multi-Layer Analyzer (colony)",
         "Deep Interpretation (ability)",
@@ -2225,7 +2551,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Multi-Layer Semiotic Analysis"],
+      "prerequisites": [
+        "Multi-Layer Semiotic Analysis"
+      ],
       "unlocks": [
         "Signal Relay Hub (colony)",
         "High-Fidelity Communication (ability)",
@@ -2238,7 +2566,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Semiotic Transmission Networks"],
+      "prerequisites": [
+        "Semiotic Transmission Networks"
+      ],
       "unlocks": [
         "Compression Engine (colony)",
         "Knowledge Packets (ability)",
@@ -2251,7 +2581,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Meaning Compression Protocols"],
+      "prerequisites": [
+        "Meaning Compression Protocols"
+      ],
       "unlocks": [
         "Memetic Lab (colony)",
         "Influence Campaigns (ability)",
@@ -2260,11 +2592,13 @@
     },
     "Symbolic-Operational Interfaces": {
       "category": "Semiotics",
-      "description": "Symbols are directly linked to system operations. Meaning is no longer descriptive—it becomes executable within technical frameworks.",
+      "description": "Symbols are directly linked to system operations. Meaning is no longer descriptive\u2014it becomes executable within technical frameworks.",
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Memetic Dynamics Modeling"],
+      "prerequisites": [
+        "Memetic Dynamics Modeling"
+      ],
       "unlocks": [
         "Symbolic Control Core (colony)",
         "Command Glyphs (ability)",
@@ -2277,7 +2611,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Symbolic-Operational Interfaces"],
+      "prerequisites": [
+        "Symbolic-Operational Interfaces"
+      ],
       "unlocks": [
         "Alignment Interface (colony)",
         "Universal Translation (ability)",
@@ -2290,7 +2626,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Cross-Species Meaning Alignment"],
+      "prerequisites": [
+        "Cross-Species Meaning Alignment"
+      ],
       "unlocks": [
         "Feedback Engine (colony)",
         "Adaptive Messaging (ability)",
@@ -2303,7 +2641,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Semiotic Feedback Systems"],
+      "prerequisites": [
+        "Semiotic Feedback Systems"
+      ],
       "unlocks": [
         "Semiotic Reactor (colony)",
         "Symbolic Actuation (ability)",
@@ -2316,7 +2656,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Reality-Coupled Semiotics"],
+      "prerequisites": [
+        "Reality-Coupled Semiotics"
+      ],
       "unlocks": [
         "Autonomous Semiotic Core (colony)",
         "Self-Evolving Language (ability)",
@@ -2329,7 +2671,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Autonomous Meaning Systems"],
+      "prerequisites": [
+        "Autonomous Meaning Systems"
+      ],
       "unlocks": [
         "Meaning Field Generator (colony)",
         "Resonant Communication (ability)",
@@ -2342,7 +2686,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Semiotic Field Theory"],
+      "prerequisites": [
+        "Semiotic Field Theory"
+      ],
       "unlocks": [
         "Invocation Glyphs (ability)",
         "Construct Realization (colony)",
@@ -2351,22 +2697,23 @@
     },
     "Total Semiotic Integration": {
       "category": "Semiotics",
-      "description": "All systems—technical, biological, and etheric—operate through unified meaning structures. Communication, control, and reality become aspects of a single semiotic process.",
+      "description": "All systems\u2014technical, biological, and etheric\u2014operate through unified meaning structures. Communication, control, and reality become aspects of a single semiotic process.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Invoked Meaning Constructs"],
+      "prerequisites": [
+        "Invoked Meaning Constructs"
+      ],
       "unlocks": [
         "Semiotic Core (colony)",
         "Absolute Communication (ability)",
         "Unified Cultural Systems (social)",
         "Meaning-Based Governance (political)"
       ]
-    }
-    ,
+    },
     "Information Substrate Models": {
       "category": "Information",
-      "description": "Information is defined as a physical and energetic phenomenon embedded in substrates—matter, fields, and ether. Storage and transmission are grounded in the properties of the medium.",
+      "description": "Information is defined as a physical and energetic phenomenon embedded in substrates\u2014matter, fields, and ether. Storage and transmission are grounded in the properties of the medium.",
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
@@ -2383,7 +2730,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Information Substrate Models"],
+      "prerequisites": [
+        "Information Substrate Models"
+      ],
       "unlocks": [
         "Integrity Scanner (ship module)",
         "Error Correction Protocols (ability)",
@@ -2396,7 +2745,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Signal Detection and Integrity"],
+      "prerequisites": [
+        "Signal Detection and Integrity"
+      ],
       "unlocks": [
         "Data Relay Hub (colony)",
         "Optimized Routing (ability)",
@@ -2409,7 +2760,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Information Flow Networks"],
+      "prerequisites": [
+        "Information Flow Networks"
+      ],
       "unlocks": [
         "Compression Engine (colony)",
         "Rapid Decompression (ability)",
@@ -2422,7 +2775,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Compression and Expansion Theory"],
+      "prerequisites": [
+        "Compression and Expansion Theory"
+      ],
       "unlocks": [
         "Decay Monitor (colony)",
         "Data Preservation (ability)",
@@ -2435,7 +2790,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Information Decay Modeling"],
+      "prerequisites": [
+        "Information Decay Modeling"
+      ],
       "unlocks": [
         "Transformation Core (colony)",
         "Cross-Format Translation (ability)",
@@ -2448,7 +2805,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Transformational Encoding Systems"],
+      "prerequisites": [
+        "Transformational Encoding Systems"
+      ],
       "unlocks": [
         "Distributed Archive (colony)",
         "Redundant Storage (ability)",
@@ -2461,7 +2820,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Distributed Information Persistence"],
+      "prerequisites": [
+        "Distributed Information Persistence"
+      ],
       "unlocks": [
         "Lifecycle Engine (colony)",
         "Data Prioritization (ability)",
@@ -2474,7 +2835,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Information Lifecycle Management"],
+      "prerequisites": [
+        "Information Lifecycle Management"
+      ],
       "unlocks": [
         "Adaptive Data Core (colony)",
         "Self-Organizing Databases (ability)",
@@ -2487,7 +2850,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Adaptive Information Systems"],
+      "prerequisites": [
+        "Adaptive Information Systems"
+      ],
       "unlocks": [
         "Data Market (economic)",
         "Information Trade Networks (diplomatic)",
@@ -2500,7 +2865,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Information as Resource"],
+      "prerequisites": [
+        "Information as Resource"
+      ],
       "unlocks": [
         "Information Field Generator (colony)",
         "Resonant Data Propagation (ability)",
@@ -2513,7 +2880,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Information Field Dynamics"],
+      "prerequisites": [
+        "Information Field Dynamics"
+      ],
       "unlocks": [
         "Autonomous Data Core (colony)",
         "Self-Regulating Networks (ability)",
@@ -2526,7 +2895,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Autonomous Information Ecosystems"],
+      "prerequisites": [
+        "Autonomous Information Ecosystems"
+      ],
       "unlocks": [
         "Cognitive Data Interface (colony)",
         "Thought-Driven Processing (ability)",
@@ -2539,7 +2910,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Information-Cognition Integration"],
+      "prerequisites": [
+        "Information-Cognition Integration"
+      ],
       "unlocks": [
         "Predictive Data Engine (colony)",
         "Anticipatory Analysis (ability)",
@@ -2548,22 +2921,23 @@
     },
     "Total Information Continuum": {
       "category": "Information",
-      "description": "All information—past, present, and potential—is unified within a continuous framework. Data, meaning, and propagation become aspects of a single system.",
+      "description": "All information\u2014past, present, and potential\u2014is unified within a continuous framework. Data, meaning, and propagation become aspects of a single system.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Pre-Propagation Information Models"],
+      "prerequisites": [
+        "Pre-Propagation Information Models"
+      ],
       "unlocks": [
         "Continuum Core (colony)",
         "Total Awareness (ability)",
         "Unified Data Economy (economic)",
         "Interstellar Knowledge Exchange (diplomatic)"
       ]
-    }
-    ,
+    },
     "Matter Classification Frameworks": {
       "category": "Materiality",
-      "description": "A unified taxonomy of matter states—solid, fluid, plasma, and exotic phases. Classical materials are recontextualized alongside programmable and hybrid substrates.",
+      "description": "A unified taxonomy of matter states\u2014solid, fluid, plasma, and exotic phases. Classical materials are recontextualized alongside programmable and hybrid substrates.",
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
@@ -2580,7 +2954,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Matter Classification Frameworks"],
+      "prerequisites": [
+        "Matter Classification Frameworks"
+      ],
       "unlocks": [
         "Microfabrication Facility (colony)",
         "Structural Optimization (ability)",
@@ -2593,7 +2969,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Microstructural Control Systems"],
+      "prerequisites": [
+        "Microstructural Control Systems"
+      ],
       "unlocks": [
         "Programmable Fabricator (colony)",
         "Shape-Shifting Materials (ability)",
@@ -2606,7 +2984,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Programmable Matter Platforms"],
+      "prerequisites": [
+        "Programmable Matter Platforms"
+      ],
       "unlocks": [
         "Phase Control Facility (colony)",
         "Phase-Adaptive Structures (ability)",
@@ -2619,7 +2999,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Phase-State Engineering"],
+      "prerequisites": [
+        "Phase-State Engineering"
+      ],
       "unlocks": [
         "Composite Foundry (colony)",
         "Hybrid Materials (ability)",
@@ -2632,7 +3014,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Composite Material Synthesis"],
+      "prerequisites": [
+        "Composite Material Synthesis"
+      ],
       "unlocks": [
         "Ether Forge (colony)",
         "Resonant Alloys (ability)",
@@ -2645,7 +3029,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Ether-Infused Materials"],
+      "prerequisites": [
+        "Ether-Infused Materials"
+      ],
       "unlocks": [
         "Regenerative Material Plant (colony)",
         "Auto-Repair Structures (ability)",
@@ -2658,7 +3044,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Self-Healing Material Systems"],
+      "prerequisites": [
+        "Self-Healing Material Systems"
+      ],
       "unlocks": [
         "Mass Modulation Core (colony)",
         "Variable Weight Systems (ability)",
@@ -2671,7 +3059,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Density and Mass Modulation"],
+      "prerequisites": [
+        "Density and Mass Modulation"
+      ],
       "unlocks": [
         "Conversion Reactor (colony)",
         "Energy-Based Fabrication (ability)",
@@ -2684,7 +3074,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Matter-Energy Reconfiguration"],
+      "prerequisites": [
+        "Matter-Energy Reconfiguration"
+      ],
       "unlocks": [
         "Bio-Material Lab (colony)",
         "Growth-Based Construction (ability)",
@@ -2697,7 +3089,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Living Material Systems"],
+      "prerequisites": [
+        "Living Material Systems"
+      ],
       "unlocks": [
         "Phase Material Facility (colony)",
         "Multi-Phase Structures (ability)",
@@ -2710,7 +3104,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Multi-Phase Material Existence"],
+      "prerequisites": [
+        "Multi-Phase Material Existence"
+      ],
       "unlocks": [
         "Memory Material Core (colony)",
         "Adaptive Structures (ability)",
@@ -2723,7 +3119,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Material Memory and Adaptation"],
+      "prerequisites": [
+        "Material Memory and Adaptation"
+      ],
       "unlocks": [
         "Exotic Matter Lab (colony)",
         "High-Energy Constructs (ability)",
@@ -2736,7 +3134,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Exotic Matter Synthesis"],
+      "prerequisites": [
+        "Exotic Matter Synthesis"
+      ],
       "unlocks": [
         "Reality Anchor Facility (colony)",
         "Cross-Reality Structures (ability)",
@@ -2745,19 +3145,20 @@
     },
     "Foundational Matter Design": {
       "category": "Materiality",
-      "description": "Matter is no longer discovered but designed. Fundamental properties—mass, interaction, stability—are defined as parameters within engineered systems.",
+      "description": "Matter is no longer discovered but designed. Fundamental properties\u2014mass, interaction, stability\u2014are defined as parameters within engineered systems.",
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Reality-Coupled Material Systems"],
+      "prerequisites": [
+        "Reality-Coupled Material Systems"
+      ],
       "unlocks": [
         "Matter Forge (colony)",
         "Custom Material Creation (ability)",
         "Foundational Infrastructure (economic)",
         "Material Trade Networks (diplomatic)"
       ]
-    }
-    ,
+    },
     "Rule-Based System Foundations": {
       "category": "Emergence",
       "description": "Complex behaviors are traced to simple underlying rules. Systems are designed where local interactions generate predictable global patterns.",
@@ -2777,7 +3178,9 @@
       "difficulty": 1,
       "research_cost": 0,
       "research_time": 20,
-      "prerequisites": ["Rule-Based System Foundations"],
+      "prerequisites": [
+        "Rule-Based System Foundations"
+      ],
       "unlocks": [
         "Automata Engine (colony)",
         "Pattern Simulation (ability)",
@@ -2790,7 +3193,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Cellular Automata Modeling"],
+      "prerequisites": [
+        "Cellular Automata Modeling"
+      ],
       "unlocks": [
         "Feedback Controller (colony)",
         "Stability Regulation (ability)",
@@ -2803,7 +3208,9 @@
       "difficulty": 2,
       "research_cost": 0,
       "research_time": 35,
-      "prerequisites": ["Feedback Loop Dynamics"],
+      "prerequisites": [
+        "Feedback Loop Dynamics"
+      ],
       "unlocks": [
         "Nonlinear Analysis Core (colony)",
         "Chaos Mapping (ability)",
@@ -2816,7 +3223,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Nonlinear System Behavior"],
+      "prerequisites": [
+        "Nonlinear System Behavior"
+      ],
       "unlocks": [
         "Self-Organization Engine (colony)",
         "Autonomous Coordination (ability)",
@@ -2829,7 +3238,9 @@
       "difficulty": 3,
       "research_cost": 0,
       "research_time": 50,
-      "prerequisites": ["Self-Organizing Structures"],
+      "prerequisites": [
+        "Self-Organizing Structures"
+      ],
       "unlocks": [
         "Pattern Recognition Core (colony)",
         "Emergent Insight (ability)",
@@ -2842,7 +3253,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Emergent Pattern Recognition"],
+      "prerequisites": [
+        "Emergent Pattern Recognition"
+      ],
       "unlocks": [
         "Agent Simulation Hub (colony)",
         "Swarm Intelligence (ability)",
@@ -2855,7 +3268,9 @@
       "difficulty": 4,
       "research_cost": 0,
       "research_time": 70,
-      "prerequisites": ["Multi-Agent Interaction Models"],
+      "prerequisites": [
+        "Multi-Agent Interaction Models"
+      ],
       "unlocks": [
         "Adaptive Systems Core (colony)",
         "Rule Evolution (ability)",
@@ -2868,7 +3283,9 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Adaptive Emergence Systems"],
+      "prerequisites": [
+        "Adaptive Emergence Systems"
+      ],
       "unlocks": [
         "Cross-Domain Lab (colony)",
         "Unified Pattern Mapping (ability)",
@@ -2881,11 +3298,14 @@
       "difficulty": 5,
       "research_cost": 0,
       "research_time": 95,
-      "prerequisites": ["Cross-Domain Emergence"],
+      "prerequisites": [
+        "Cross-Domain Emergence"
+      ],
       "unlocks": [
         "Emergent AI Core (colony)",
         "Collective Intelligence (ability)",
-        "Autonomous Fleet Coordination (ship module)"
+        "Autonomous Fleet Coordination (ship module)",
+        "Synthetic Mind Core (colony)"
       ]
     },
     "Self-Designing Systems": {
@@ -2894,7 +3314,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Emergent Intelligence Formation"],
+      "prerequisites": [
+        "Emergent Intelligence Formation"
+      ],
       "unlocks": [
         "Self-Design Core (colony)",
         "Autonomous Engineering (ability)",
@@ -2907,7 +3329,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Self-Designing Systems"],
+      "prerequisites": [
+        "Self-Designing Systems"
+      ],
       "unlocks": [
         "Persistent System Hub (colony)",
         "Long-Term Stability (ability)",
@@ -2920,7 +3344,9 @@
       "difficulty": 6,
       "research_cost": 0,
       "research_time": 125,
-      "prerequisites": ["Persistent Emergent Ecosystems"],
+      "prerequisites": [
+        "Persistent Emergent Ecosystems"
+      ],
       "unlocks": [
         "Emergence Predictor (colony)",
         "Preemptive Adjustment (ability)",
@@ -2933,7 +3359,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Predictive Emergence Models"],
+      "prerequisites": [
+        "Predictive Emergence Models"
+      ],
       "unlocks": [
         "Emergence Field Generator (colony)",
         "Directed Complexity (ability)",
@@ -2946,7 +3374,9 @@
       "difficulty": 7,
       "research_cost": 0,
       "research_time": 160,
-      "prerequisites": ["Controlled Emergence Fields"],
+      "prerequisites": [
+        "Controlled Emergence Fields"
+      ],
       "unlocks": [
         "Emergence Core (colony)",
         "System Genesis (ability)",

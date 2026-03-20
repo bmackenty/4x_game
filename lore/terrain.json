@@ -1,0 +1,41 @@
+{
+  "terrain_modifiers": {
+    "plains":     {"food": 1.2, "minerals": 0.9, "ether": 1.0},
+    "forest":     {"food": 1.3, "research": 1.1, "ether": 1.1},
+    "ocean":      {"food": 0.8, "minerals": 0.5, "ether": 0.9},
+    "mountains":  {"minerals": 1.4, "food": 0.7, "ether": 1.0},
+    "tundra":     {"minerals": 1.1, "food": 0.5, "ether": 0.8},
+    "volcanic":   {"minerals": 1.3, "food": 0.0, "ether": 1.2},
+    "crystal":    {"ether": 1.5, "research": 1.2, "minerals": 1.1},
+    "void":       {"ether": 2.0, "food": 0.0, "minerals": 0.0},
+    "desert":     {"minerals": 1.0, "food": 0.4, "ether": 0.9},
+    "coastal":    {"food": 1.1, "credits": 1.2, "minerals": 0.9},
+    "geothermal": {"minerals": 1.2, "ether": 1.3, "food": 0.8}
+  },
+
+  "planet_terrain_distributions": {
+    "Garden World":       [["plains", 40], ["forest", 30], ["ocean", 20], ["mountains", 10]],
+    "Terrestrial Planet": [["plains", 30], ["mountains", 25], ["desert", 25], ["ocean", 20]],
+    "Ocean World":        [["ocean", 60], ["coastal", 20], ["mountains", 20]],
+    "Crystal World":      [["crystal", 30], ["mountains", 30], ["void", 20], ["plains", 20]],
+    "Jungle World":       [["forest", 50], ["ocean", 20], ["mountains", 15], ["plains", 15]],
+    "Lava World":         [["volcanic", 40], ["mountains", 30], ["geothermal", 30]],
+    "Frozen World":       [["tundra", 40], ["ocean", 30], ["mountains", 20], ["geothermal", 10]],
+    "Desert Planet":      [["desert", 50], ["mountains", 30], ["plains", 20]],
+    "Industrial World":   [["plains", 35], ["mountains", 25], ["desert", 20], ["ocean", 20]],
+    "default":            [["plains", 40], ["mountains", 20], ["desert", 20], ["ocean", 20]]
+  },
+
+  "planet_grid_radius": {
+    "Garden World":       6,
+    "Terrestrial Planet": 5,
+    "Ocean World":        6,
+    "Crystal World":      5,
+    "Jungle World":       6,
+    "Lava World":         4,
+    "Frozen World":       4,
+    "Desert Planet":      4,
+    "Industrial World":   5,
+    "default":            5
+  }
+}

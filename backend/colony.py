@@ -40,74 +40,20 @@ IMPROVEMENTS: dict[str, dict] = json.loads(_IMPROVEMENTS_PATH.read_text(encoding
 
 
 # ---------------------------------------------------------------------------
-# Terrain definitions
+# Terrain data — loaded from lore/terrain.json
 # ---------------------------------------------------------------------------
 
-# Terrain types and their base resource modifiers.
-# These multiply the improvement's base_production values.
-TERRAIN_MODIFIERS: dict[str, dict] = {
-    "plains":     {"food": 1.2, "minerals": 0.9, "ether": 1.0},
-    "forest":     {"food": 1.3, "research": 1.1, "ether": 1.1},
-    "ocean":      {"food": 0.8, "minerals": 0.5, "ether": 0.9},
-    "mountains":  {"minerals": 1.4, "food": 0.7, "ether": 1.0},
-    "tundra":     {"minerals": 1.1, "food": 0.5, "ether": 0.8},
-    "volcanic":   {"minerals": 1.3, "food": 0.0, "ether": 1.2},
-    "crystal":    {"ether": 1.5, "research": 1.2, "minerals": 1.1},
-    "void":       {"ether": 2.0, "food": 0.0, "minerals": 0.0},
-    "desert":     {"minerals": 1.0, "food": 0.4, "ether": 0.9},
-    "coastal":    {"food": 1.1, "credits": 1.2, "minerals": 0.9},
-    "geothermal": {"minerals": 1.2, "ether": 1.3, "food": 0.8},
-}
+_TERRAIN_PATH = pathlib.Path(__file__).parent.parent / "lore" / "terrain.json"
+_terrain_data = json.loads(_TERRAIN_PATH.read_text(encoding="utf-8"))
 
-# Terrain distribution probabilities per planet type.
-# Each list is [(terrain_name, weight), ...].
-PLANET_TERRAIN_DISTRIBUTIONS: dict[str, list] = {
-    "Garden World": [
-        ("plains", 40), ("forest", 30), ("ocean", 20), ("mountains", 10),
-    ],
-    "Terrestrial Planet": [
-        ("plains", 30), ("mountains", 25), ("desert", 25), ("ocean", 20),
-    ],
-    "Ocean World": [
-        ("ocean", 60), ("coastal", 20), ("mountains", 20),
-    ],
-    "Crystal World": [
-        ("crystal", 30), ("mountains", 30), ("void", 20), ("plains", 20),
-    ],
-    "Jungle World": [
-        ("forest", 50), ("ocean", 20), ("mountains", 15), ("plains", 15),
-    ],
-    "Lava World": [
-        ("volcanic", 40), ("mountains", 30), ("geothermal", 30),
-    ],
-    "Frozen World": [
-        ("tundra", 40), ("ocean", 30), ("mountains", 20), ("geothermal", 10),
-    ],
-    "Desert Planet": [
-        ("desert", 50), ("mountains", 30), ("plains", 20),
-    ],
-    "Industrial World": [
-        ("plains", 35), ("mountains", 25), ("desert", 20), ("ocean", 20),
-    ],
-    # Fallback for unknown planet types
-    "default": [
-        ("plains", 40), ("mountains", 20), ("desert", 20), ("ocean", 20),
-    ],
-}
+# Terrain types and their base resource modifiers.
+TERRAIN_MODIFIERS: dict[str, dict] = _terrain_data["terrain_modifiers"]
+
+# Weighted terrain distribution per planet type: [[terrain, weight], ...]
+PLANET_TERRAIN_DISTRIBUTIONS: dict[str, list] = _terrain_data["planet_terrain_distributions"]
 
 # Hex grid radius per planet type — smaller grids for harsh worlds.
-PLANET_GRID_RADIUS: dict[str, int] = {
-    "Garden World":       6,
-    "Terrestrial Planet": 5,
-    "Ocean World":        6,
-    "Crystal World":      5,
-    "Jungle World":       6,
-    "Lava World":         4,
-    "Frozen World":       4,
-    "Desert Planet":      4,
-    "Industrial World":   5,
-    "default":            5,
-}
+PLANET_GRID_RADIUS: dict[str, int] = _terrain_data["planet_grid_radius"]
 
 
 # ---------------------------------------------------------------------------
@@ -126,50 +72,31 @@ class HexTile:
     is_claimed: bool = True             # False for tiles outside colonised radius
 
 
-# Upgrade cost is this fraction of the base build cost, per level.
-# Level 0→1 costs 60% of base; level 1→2 costs 90% of base.
-_UPGRADE_COST_FRACTIONS = [0.60, 0.90]
-
-# Production multiplier by level: level 0 = 1.0×, level 1 = 1.5×, level 2 = 2.2×
-_UPGRADE_PRODUCTION_MULTIPLIERS = [1.0, 1.5, 2.2]
-
-# Maximum upgrade level (0-indexed, so max = 2 means three tiers total)
-MAX_IMPROVEMENT_LEVEL = 2
-
-# Credits generated per 10,000 colonists each turn — the population tax base.
-POPULATION_INCOME_PER_10K = 75
-
 # ---------------------------------------------------------------------------
-# Population growth constants
+# Game balance constants — loaded from lore/game_config.json
 # ---------------------------------------------------------------------------
 
-# Base growth rate applied to every colony every turn (1%).
-POP_BASE_GROWTH_RATE    = 0.01
+_CONFIG_PATH = pathlib.Path(__file__).parent.parent / "lore" / "game_config.json"
+_cfg = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
 
-# Additional growth per unit of food produced per turn.
-# A Biofarm on plains yields ~4.8 food → roughly +1.9% extra growth.
-POP_FOOD_GROWTH_PER_UNIT = 0.004
+# Upgrade cost fractions and production multipliers per tier.
+_UPGRADE_COST_FRACTIONS          = _cfg["upgrade_cost_fractions"]
+_UPGRADE_PRODUCTION_MULTIPLIERS  = _cfg["upgrade_production_multipliers"]
+MAX_IMPROVEMENT_LEVEL            = _cfg["max_improvement_level"]
 
-# Flat growth bonus per Population Hub present on the colony.
-# These buildings explicitly exist to grow the population cap.
-POP_HUB_GROWTH_BONUS    = 0.015
-
-# Flat growth bonus per Luxury Habitat Complex (attracts affluent settlers).
-POP_LUXURY_GROWTH_BONUS = 0.008
-
-# Flat growth bonus per Biofarm Complex (additional food → more settlers).
-POP_BIOFARM_GROWTH_BONUS = 0.005
-
-# Growth is clamped to this ceiling to prevent runaway compounding.
-POP_MAX_GROWTH_RATE     = 0.08  # 8 % per turn maximum
+# Population constants.
+POPULATION_INCOME_PER_10K  = _cfg["population_income_per_10k"]
+POP_BASE_GROWTH_RATE       = _cfg["pop_base_growth_rate"]
+POP_FOOD_GROWTH_PER_UNIT   = _cfg["pop_food_growth_per_unit"]
+POP_HUB_GROWTH_BONUS       = _cfg["pop_hub_growth_bonus"]
+POP_LUXURY_GROWTH_BONUS    = _cfg["pop_luxury_growth_bonus"]
+POP_BIOFARM_GROWTH_BONUS   = _cfg["pop_biofarm_growth_bonus"]
+POP_MAX_GROWTH_RATE        = _cfg["pop_max_growth_rate"]
 
 # Fleet pool production chain constants.
-# Each unit of refined_ore per turn adds ORE_FLEET_BONUS_PER_UNIT to the
-# shipyard output multiplier (capped at ORE_FLEET_BONUS_CAP above 1.0).
-# Example: 10 refined_ore → +50% fleet_points from all Shipyards.
-ORE_FLEET_BONUS_PER_UNIT = 0.05   # 5% per refined_ore/turn
-ORE_FLEET_BONUS_CAP      = 2.0    # max 200% bonus (3× base output)
-FLEET_POOL_MAX           = 99_999  # hard cap — unlikely to be reached in play
+ORE_FLEET_BONUS_PER_UNIT   = _cfg["ore_fleet_bonus_per_unit"]
+ORE_FLEET_BONUS_CAP        = _cfg["ore_fleet_bonus_cap"]
+FLEET_POOL_MAX             = _cfg["fleet_pool_max"]
 
 
 @dataclass
