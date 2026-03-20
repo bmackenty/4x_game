@@ -864,7 +864,8 @@ def _build_state_snapshot() -> dict:
     try:
         ship_info = game.get_active_ship_info()
         if ship_info:
-            ship_info["scan_range"] = _effective_scan_range()
+            ship_info["scan_range"]      = _effective_scan_range()
+            ship_info["fuel_efficiency"] = _effective_fuel_efficiency()
     except Exception:
         pass
 
@@ -2086,7 +2087,8 @@ async def get_ship_status():
         "fuel":        ship.fuel,
         "max_fuel":    ship.max_fuel,
         "jump_range":  ship.jump_range,
-        "scan_range":  _effective_scan_range(),
+        "scan_range":       _effective_scan_range(),
+        "fuel_efficiency":  _effective_fuel_efficiency(),
         "cargo_used":  sum(ship.cargo.values()) if ship.cargo else 0,
         "max_cargo":   ship.max_cargo,
         "cargo":       dict(ship.cargo) if ship.cargo else {},

@@ -68,7 +68,13 @@ function render(container) {
 function buildHtml() {
   if (!_attrs) return "";
 
-  const { ship_name, ship_class, fuel, max_fuel, jump_range, scan_range, max_cargo } = _attrs;
+  const { ship_name, ship_class, fuel, max_fuel, jump_range, scan_range, fuel_efficiency, max_cargo } = _attrs;
+  // Display efficiency as a signed percentage relative to baseline (1.0 = ±0%)
+  const effPct     = fuel_efficiency != null ? Math.round((1.0 - fuel_efficiency) * 100) : null;
+  const effLabel   = effPct == null  ? "—"
+                   : effPct  >  0    ? `−${effPct}%`   // better than baseline: cheaper jumps
+                   : effPct  <  0    ? `+${-effPct}%`  // worse than baseline: costlier jumps
+                   :                   "±0%";           // exactly at baseline
   const fuelPct = max_fuel > 0 ? Math.round((fuel / max_fuel) * 100) : 0;
 
   return `
@@ -95,6 +101,10 @@ function buildHtml() {
           <div class="ship-stat">
             <span class="ship-stat__label">SENSORS</span>
             <span class="ship-stat__value ship-stat__value--solo">${scan_range ?? "—"} u</span>
+          </div>
+          <div class="ship-stat" title="Fuel cost per jump relative to baseline. Negative = cheaper.">
+            <span class="ship-stat__label">EFFICIENCY</span>
+            <span class="ship-stat__value ship-stat__value--solo">${effLabel}</span>
           </div>
           <div class="ship-stat">
             <span class="ship-stat__label">CARGO</span>
