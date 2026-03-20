@@ -866,6 +866,15 @@ def _build_state_snapshot() -> dict:
         if ship_info:
             ship_info["scan_range"]      = _effective_scan_range()
             ship_info["fuel_efficiency"] = _effective_fuel_efficiency()
+            # Hull damage info for the HUD / polling loop
+            _s = game.navigation.current_ship if game.navigation else None
+            _hull_base = round(
+                (getattr(_s, "attribute_profile", None) or {}).get("hull_integrity", 30.0), 1
+            ) if _s else 30.0
+            _hull_dmg  = round(getattr(game, "ship_hull_damage", 0.0), 2)
+            ship_info["hull_damage"]              = _hull_dmg
+            ship_info["hull_integrity_base"]      = _hull_base
+            ship_info["hull_integrity_effective"] = round(max(1.0, _hull_base - _hull_dmg), 1)
     except Exception:
         pass
 
@@ -1078,6 +1087,9 @@ async def new_game(request: NewGameRequest):
         ship.max_fuel = max(ship.max_fuel, 500)
         ship.fuel     = ship.max_fuel
 
+    # Initialise hull damage counter — starts pristine on every new game.
+    game.ship_hull_damage = 0.0
+
     # Initialise NPC infrastructure — bots and stations are generated fresh each game.
     _init_bot_manager(game)
     _init_station_manager(game)
@@ -1176,6 +1188,43 @@ async def end_turn():
     if _ship and getattr(_ship, "attribute_profile", None):
         apply_all_bonuses_to_ship(_ship, game)
 
+    # ── Hull degradation & auto-repair ──────────────────────────────────────
+    # 1. Small random chance of hull wear from deep-space hazards each turn.
+    # 2. Crew/captain passively repairs a small amount based on VIT + SYN.
+    # Both are computed on the current damage value so they can net to zero
+    # (pristine hull stays pristine).
+    import random as _rnd
+    _hull_events: list = []
+    _hull_dmg_before = getattr(game, "ship_hull_damage", 0.0)
+    _hull_dmg        = _hull_dmg_before
+
+    # 5% chance of space-hazard wear: 0.5–2.0 integrity points
+    if _rnd.random() < 0.05:
+        _wear = round(_rnd.uniform(0.5, 2.0), 1)
+        _hull_dmg = round(_hull_dmg + _wear, 2)
+        _hull_events.append({
+            "channel": "HULL",
+            "message": f"Space hazard encountered: hull took {_wear:.1f} damage.",
+        })
+
+    # Per-turn auto-repair (always runs; no-op if hull is pristine)
+    if _hull_dmg > 0:
+        _repair_rate = _hull_auto_repair_rate(getattr(game, "character_stats", None) or {})
+        _repaired    = round(min(_hull_dmg, _repair_rate), 2)
+        _hull_dmg    = round(_hull_dmg - _repaired, 2)
+        _hull_events.append({
+            "channel": "HULL",
+            "message": f"Crew auto-repair: +{_repaired:.1f} hull integrity restored.",
+        })
+
+    # Commit hull damage and re-derive ship stats if anything changed
+    game.ship_hull_damage = _hull_dmg
+    if _hull_dmg != _hull_dmg_before and _ship and getattr(_ship, "attribute_profile", None):
+        apply_all_bonuses_to_ship(_ship, game)
+
+    events.extend(_hull_events)
+    # ────────────────────────────────────────────────────────────────────────
+
     # Snapshot credits BEFORE colony income so the ledger can show the delta.
     credits_before = game.credits
 
@@ -1265,6 +1314,10 @@ async def load_game(request: LoadRequest):
         deep_space_manager.deserialize(_ds_saved)
     else:
         _init_deep_space(game)
+
+    # Hull damage is not persisted by save_game.py; reset to pristine on load.
+    # (Save persistence for hull damage is a future improvement.)
+    game.ship_hull_damage = 0.0
 
     # Re-apply the full bonus stack (research/faction/character) on top of the
     # component profile that save_game restores via calculate_stats_from_components().
@@ -1826,6 +1879,47 @@ async def buy_station_upgrade(station_name: str, request: StationUpgradeRequest)
     }
 
 
+@app.post("/api/station/{station_name}/repair")
+async def repair_ship_at_station(station_name: str):
+    """
+    Fully repair the player's ship hull at a station.
+
+    Any station can provide basic hull repairs.  Cost scales with accumulated
+    hull damage: 500 credits per integrity point restored.  Nothing to pay if
+    the hull is already pristine.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    ship = game.navigation.current_ship if game.navigation else None
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    hull_dmg = round(getattr(game, "ship_hull_damage", 0.0), 2)
+    if hull_dmg <= 0:
+        return {"success": False, "message": "Hull is undamaged — no repair needed."}
+
+    cost = int(hull_dmg * 500)
+    if game.credits < cost:
+        return {
+            "success": False,
+            "message": f"Insufficient credits. Repair costs {cost:,} cr (you have {game.credits:,} cr).",
+        }
+
+    # Perform the repair: clear all hull damage and re-derive ship stats
+    game.credits          -= cost
+    game.ship_hull_damage  = 0.0
+    apply_all_bonuses_to_ship(ship, game)
+
+    return {
+        "success":       True,
+        "message":       f"Hull fully repaired (+{hull_dmg:.1f} integrity restored).",
+        "credits_spent": cost,
+        "hull_restored": hull_dmg,
+        "credits":       game.credits,
+    }
+
+
 # ===========================================================================
 # Ship bonus helper — applies research/faction/character bonuses to the ship
 # ===========================================================================
@@ -1864,6 +1958,19 @@ def _colony_system_affinity_for_faction(faction_name: str) -> int:
     return round(sum(scores) / len(scores))
 
 
+def _hull_auto_repair_rate(char_stats: dict) -> float:
+    """Return per-turn hull auto-repair amount based on captain VIT and SYN stats.
+
+    Formula: 0.5 + (VIT - 30) * 0.03 + (SYN - 30) * 0.02
+    At default stats (both 30): 0.5 per turn.
+    At high stats (both 100): 0.5 + 2.1 + 1.4 = 4.0 per turn.
+    Minimum: 0.1 (clamped).
+    """
+    vit = char_stats.get("VIT", 30)
+    syn = char_stats.get("SYN", 30)
+    return max(0.1, round(0.5 + (vit - 30) * 0.03 + (syn - 30) * 0.02, 2))
+
+
 def apply_all_bonuses_to_ship(ship, g) -> None:
     """
     Layer research, faction, and character-stat bonuses on top of the
@@ -1871,6 +1978,11 @@ def apply_all_bonuses_to_ship(ship, g) -> None:
     ``ship.attribute_profile``, then re-derive the legacy engine properties
     (max_cargo, max_fuel, jump_range, scan_range) so real gameplay reflects
     the full bonus stack.
+
+    Hull degradation is also applied here: ``g.ship_hull_damage`` (a float that
+    grows as the ship takes damage) is subtracted from the base hull_integrity
+    before deriving health, cargo, and jump_range.  The profile value is NOT
+    modified — it still reflects the undamaged base so repairs are meaningful.
 
     Call this immediately after any ``ship.calculate_stats_from_components()``
     invocation so the two steps always stay in sync.
@@ -1904,23 +2016,34 @@ def apply_all_bonuses_to_ship(ship, g) -> None:
     # Re-derive legacy engine properties using the same formulas as
     # navigation.Ship.calculate_stats_from_components() so the engine's
     # actual gameplay values stay in sync with the full bonus stack.
-    hull_integrity     = profile.get("hull_integrity",              30.0)
-    mass_efficiency    = profile.get("mass_efficiency",             30.0)
-    energy_storage     = profile.get("energy_storage",              30.0)
-    engine_efficiency  = profile.get("engine_efficiency",           30.0)
-    engine_output      = profile.get("engine_output",               30.0)
-    ftl_capacity       = profile.get("ftl_jump_capacity",           30.0)
-    detection_range    = profile.get("detection_range",             30.0)
-    etheric_sensitivity = profile.get("etheric_sensitivity",        20.0)
+    hull_integrity      = profile.get("hull_integrity",              30.0)
+    mass_efficiency     = profile.get("mass_efficiency",             30.0)
+    energy_storage      = profile.get("energy_storage",              30.0)
+    engine_efficiency   = profile.get("engine_efficiency",           30.0)
+    engine_output       = profile.get("engine_output",               30.0)
+    ftl_capacity        = profile.get("ftl_jump_capacity",           30.0)
+    detection_range     = profile.get("detection_range",             30.0)
+    etheric_sensitivity = profile.get("etheric_sensitivity",         20.0)
 
-    ship.health    = max(100, int(hull_integrity * 10))
-    ship.max_cargo = max(30,  int(mass_efficiency * 3 + hull_integrity))
+    # Hull degradation: accumulated damage reduces the effective hull value.
+    # This lowers health, max_cargo, and jump_range — not a hard cap, but a
+    # progressively worsening penalty until the ship is repaired.
+    hull_damage      = getattr(g, "ship_hull_damage", 0.0)
+    effective_hull   = max(1.0, hull_integrity - hull_damage)
+    # Fraction of hull remaining (1.0 = pristine, approaching 0 = severely damaged)
+    hull_fraction    = effective_hull / hull_integrity if hull_integrity > 0 else 1.0
+
+    ship.health    = max(50, int(effective_hull * 10))
+    ship.max_cargo = max(20, int(mass_efficiency * 3 + effective_hull))
 
     fuel_capacity  = max(80,  int(energy_storage * 3 + engine_efficiency * 2.5))
     ship.max_fuel  = fuel_capacity
     ship.fuel      = min(ship.fuel, ship.max_fuel)
 
-    ship.jump_range = max(5,   int(ftl_capacity / 2 + engine_output / 6))
+    # Jump range is penalised by hull damage: up to 30% cut at zero effective hull.
+    # Full range is restored when hull_fraction == 1.0.
+    base_jump       = max(5, int(ftl_capacity / 2 + engine_output / 6))
+    ship.jump_range = max(3, int(base_jump * (0.7 + 0.3 * hull_fraction)))
     ship.scan_range = max(5.0, detection_range / 3.0 + etheric_sensitivity / 6.0)
 
 
@@ -1976,6 +2099,15 @@ async def ship_jump(request: JumpRequest):
             "system_at_destination": None,
             "deep_space_object":    None,
         }
+
+    # 10% chance of minor hull stress from jump radiation / micro-debris.
+    # Applies on every successful jump; harder jumps to distant stars feel riskier.
+    import random as _rnd_jump
+    if _rnd_jump.random() < 0.10:
+        _jump_wear = round(_rnd_jump.uniform(1.0, 3.0), 1)
+        game.ship_hull_damage = round(getattr(game, "ship_hull_damage", 0.0) + _jump_wear, 2)
+        apply_all_bonuses_to_ship(ship, game)
+        message += f"  [Hull stress: −{_jump_wear:.1f} integrity]"
 
     # Determine if there is a star system at the destination
     dest_system = nav.galaxy.get_system_at(*target)
@@ -2080,6 +2212,13 @@ async def get_ship_status():
     if not ship:
         return {"ship": None}
 
+    # Hull integrity figures: base (undamaged), accumulated damage, effective (base - damage)
+    _hull_base = round(
+        (getattr(ship, "attribute_profile", None) or {}).get("hull_integrity", 30.0), 1
+    )
+    _hull_dmg  = round(getattr(game, "ship_hull_damage", 0.0), 2)
+    _hull_eff  = round(max(1.0, _hull_base - _hull_dmg), 1)
+
     return {
         "name":        ship.name,
         "ship_class":  ship.ship_class,
@@ -2087,11 +2226,14 @@ async def get_ship_status():
         "fuel":        ship.fuel,
         "max_fuel":    ship.max_fuel,
         "jump_range":  ship.jump_range,
-        "scan_range":       _effective_scan_range(),
-        "fuel_efficiency":  _effective_fuel_efficiency(),
+        "scan_range":           _effective_scan_range(),
+        "fuel_efficiency":      _effective_fuel_efficiency(),
         "cargo_used":  sum(ship.cargo.values()) if ship.cargo else 0,
         "max_cargo":   ship.max_cargo,
         "cargo":       dict(ship.cargo) if ship.cargo else {},
+        "hull_damage":              _hull_dmg,
+        "hull_integrity_base":      _hull_base,
+        "hull_integrity_effective": _hull_eff,
     }
 
 
@@ -2157,6 +2299,11 @@ async def get_ship_attributes():
             })
         categories.append({"id": cat["id"], "name": cat["name"], "attributes": attrs})
 
+    # Hull integrity: base from profile, accumulated damage, and effective (base - damage)
+    _hull_base = round(profile.get("hull_integrity", 30.0), 1)
+    _hull_dmg  = round(getattr(game, "ship_hull_damage", 0.0), 2)
+    _hull_eff  = round(max(1.0, _hull_base - _hull_dmg), 1)
+
     return {
         "ship_name":   ship.name,
         "ship_class":  ship.ship_class,
@@ -2164,7 +2311,11 @@ async def get_ship_attributes():
         "max_fuel":    ship.max_fuel,
         "jump_range":  ship.jump_range,
         "scan_range":  _effective_scan_range(),
+        "fuel_efficiency": _effective_fuel_efficiency(),
         "max_cargo":   ship.max_cargo,
+        "hull_damage":              _hull_dmg,
+        "hull_integrity_base":      _hull_base,
+        "hull_integrity_effective": _hull_eff,
         "components":  getattr(ship, "components", {}),
         "categories":  categories,
     }

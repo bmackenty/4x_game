@@ -68,7 +68,11 @@ function render(container) {
 function buildHtml() {
   if (!_attrs) return "";
 
-  const { ship_name, ship_class, fuel, max_fuel, jump_range, scan_range, fuel_efficiency, max_cargo } = _attrs;
+  const {
+    ship_name, ship_class, fuel, max_fuel, jump_range, scan_range, fuel_efficiency, max_cargo,
+    hull_damage, hull_integrity_base, hull_integrity_effective,
+  } = _attrs;
+
   // Display efficiency as a signed percentage relative to baseline (1.0 = ±0%)
   const effPct     = fuel_efficiency != null ? Math.round((1.0 - fuel_efficiency) * 100) : null;
   const effLabel   = effPct == null  ? "—"
@@ -76,6 +80,14 @@ function buildHtml() {
                    : effPct  <  0    ? `+${-effPct}%`  // worse than baseline: costlier jumps
                    :                   "±0%";           // exactly at baseline
   const fuelPct = max_fuel > 0 ? Math.round((fuel / max_fuel) * 100) : 0;
+
+  // Hull integrity bar: effective / base, colour shifts from green → amber → red as damage grows
+  const hullBase  = hull_integrity_base      ?? 30;
+  const hullEff   = hull_integrity_effective ?? hullBase;
+  const hullPct   = hullBase > 0 ? Math.round((hullEff / hullBase) * 100) : 100;
+  const hullLabel = `${hullEff}/${hullBase}`;
+  // bar colour modifier: high (green) → warn (amber) → crit (red)
+  const hullMod   = hullPct >= 80 ? "" : hullPct >= 50 ? " ship-stat__bar--warn" : " ship-stat__bar--crit";
 
   return `
     <div class="ship-view">
@@ -93,6 +105,13 @@ function buildHtml() {
               <div class="ship-stat__bar" style="width:${fuelPct}%"></div>
             </div>
             <span class="ship-stat__value">${fuel}/${max_fuel}</span>
+          </div>
+          <div class="ship-stat" title="Hull integrity: current / base. Degrades from jump stress and hazards; auto-repairs each turn or fully at any station.">
+            <span class="ship-stat__label">HULL</span>
+            <div class="ship-stat__bar-wrap">
+              <div class="ship-stat__bar${hullMod}" style="width:${hullPct}%"></div>
+            </div>
+            <span class="ship-stat__value">${hullLabel}</span>
           </div>
           <div class="ship-stat">
             <span class="ship-stat__label">JUMP</span>

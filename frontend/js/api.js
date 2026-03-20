@@ -432,6 +432,11 @@ export function buyStationUpgrade(stationName, category, upgradeName) {
   });
 }
 
+/** Repair the player's ship hull at a station (costs 500 cr per integrity point). */
+export function repairShipAtStation(stationName) {
+  return post(`/api/station/${encodeURIComponent(stationName)}/repair`, {});
+}
+
 
 // ===========================================================================
 // Lore  (Phase 4)

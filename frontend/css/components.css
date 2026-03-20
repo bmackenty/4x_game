@@ -1655,6 +1655,9 @@
 .ship-stat__label { font-size: var(--font-size-xs); color: var(--text-dim); letter-spacing: 0.1em; min-width: 36px; }
 .ship-stat__bar-wrap { width: 80px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
 .ship-stat__bar  { height: 100%; background: var(--accent-teal); border-radius: 3px; transition: width 0.3s; }
+/* Hull integrity damage colour states */
+.ship-stat__bar--warn { background: #e6a817; }   /* amber — 50–79 % hull remaining */
+.ship-stat__bar--crit { background: #d94040; }   /* red   — below 50 % hull remaining */
 .ship-stat__value { font-size: var(--font-size-sm); color: var(--text-primary); }
 .ship-stat__value--solo { color: var(--accent-cyan); }
 

@@ -17,7 +17,7 @@ import { state }              from "../state.js";
 import { getGalaxyMap, getSystem, jumpToCoords,
          getMarket, buyGoods, sellGoods,
          getSystemPresence,
-         getStation, getStationUpgrades, buyStationUpgrade,
+         getStation, getStationUpgrades, buyStationUpgrade, repairShipAtStation,
          getNpcShips,
          harvestDeepSpace, foundDeepSpaceOutpost } from "../api.js";
 import { notify }             from "../ui/notifications.js";
@@ -833,6 +833,13 @@ function _buildStationPanelHtml(station, detail, upgrades) {
         ⬡ OPEN MARKET
       </button>` : ""}
 
+      <!-- Repair hull button — always available at any station when player is here -->
+      ${playerHere ? `
+      <button class="btn btn--secondary btn-station-repair" style="width:100%;margin-bottom:var(--sp-3)"
+              title="Fully restore hull integrity. Cost: 500 cr per damage point.">
+        ▲ REPAIR HULL  <span class="muted" style="font-size:10px">(500 cr / pt)</span>
+      </button>` : ""}
+
       <!-- Upgrade section -->
       ${upgradeSection}
     </div>
@@ -849,6 +856,21 @@ function _wireStationButtons(content, station, detail, upgrades) {
         _openMarketModal(station.name, market);
       } catch (err) {
         notify("ERROR", err.message || "Could not load market.");
+      }
+    });
+
+  // Hull repair button
+  content.querySelector(".btn-station-repair")
+    ?.addEventListener("click", async () => {
+      try {
+        const result = await repairShipAtStation(station.name);
+        if (result.success) {
+          notify("HULL", result.message);
+        } else {
+          notify("WARN", result.message);
+        }
+      } catch (err) {
+        notify("ERROR", err.message || "Repair failed.");
       }
     });
 
