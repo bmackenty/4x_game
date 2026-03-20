@@ -30,7 +30,7 @@ all_research: dict = _data["research"]
 # (e.g. "Quantum" → "Quantum and Transdimensional")
 # ---------------------------------------------------------------------------
 
-RESEARCH_PATH_CATEGORIES: dict = _data["path_categories"]
+RESEARCH_PATH_CATEGORIES: dict = _data.get("path_categories", {})
 
 # ---------------------------------------------------------------------------
 # Extended gameplay unlock IDs
@@ -38,7 +38,7 @@ RESEARCH_PATH_CATEGORIES: dict = _data["path_categories"]
 # Used for UI display and as feature gates in future systems.
 # ---------------------------------------------------------------------------
 
-EXTENDED_UNLOCKS: dict = _data["extended_unlocks"]
+EXTENDED_UNLOCKS: dict = _data.get("extended_unlocks", {})
 
 # ---------------------------------------------------------------------------
 # Research categories: maps full category name → dict of research entries.
