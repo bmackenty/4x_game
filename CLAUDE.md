@@ -34,6 +34,11 @@ Python FastAPI backend (port 8765)  ←→  Vanilla JS ES6 modules (no bundler)
 
 ### Key Architectural Rules
 
+- docs/attributes.md  is the single source of truth for every attribute in the game that can be nudged up or down by any system: character creation, species origin, backgrounds, research, colony systems, equipment, or abilities. When adding a new modifier source, consult this document first. When adding a new attribute, add it here first.
+
+- lore/research.json and lore/intersections.json are the single source of truth for all research nodes, their categories, costs, and effects. When adding a new research node, add it here first.
+
+
 - **Game logic never goes in `backend/` or `frontend/`** — the backend only calls engine methods and serializes results.
 - **All `fetch()` calls live in `api.js`** — views import named functions from it.
 - **Colony state is saved** via `game.colony_state = colony_manager.serialize()` before calling `save_game.save_game()` — the save module itself is untouched.
