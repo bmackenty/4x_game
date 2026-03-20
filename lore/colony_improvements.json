@@ -532,6 +532,20 @@
       },
       "terrain_restriction": []
     },
+    "Chronometric Lab": {
+      "cost": 4000,
+      "unlock_required": "Temporal Reference Standardization",
+      "description": "A precision timekeeping and temporal-drift analysis facility. Synchronising local chronology with galactic reference frames accelerates research across all disciplines.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
     "Orbital Drydock": {
       "cost": 25000,
       "unlock_required": "Macro-Scale Structural Engineering",
@@ -541,6 +555,3250 @@
       },
       "terrain_bonus": {},
       "terrain_restriction": []
+    },
+    "Abstract Systems Core": {
+      "cost": 10000,
+      "unlock_required": "Category-Theoretic Unification",
+      "description": "A mathematical facility derived from mathematical structures are unified through relationships between systems, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Cognitive Systems": {
+      "cost": 16000,
+      "unlock_required": "Emergent Selfhood Theory",
+      "description": "A philosophical facility derived from identity is understood as an emergent property of, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Command Network": {
+      "cost": 16000,
+      "unlock_required": "Adaptive Tactical Networks",
+      "description": "A militarized facility derived from tactical systems dynamically adjust to battlefield conditions in, producing 7 defense per turn.",
+      "base_production": {
+        "defense": 7,
+        "fleet_points": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Data Core": {
+      "cost": 25000,
+      "unlock_required": "Adaptive Information Systems",
+      "description": "A information-processing facility derived from information systems respond to usage patterns and environmental, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Entity Design": {
+      "cost": 25000,
+      "unlock_required": "Ontological Flexibility",
+      "description": "A philosophical facility derived from entities can shift between categories\u2014object, agent, system\u2014depending on, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Habitats": {
+      "cost": 10000,
+      "unlock_required": "Environmental Adaptation Engineering",
+      "description": "A precision-engineered facility derived from structures dynamically adjust to environmental conditions\u2014gravity, atmosphere, radiation, producing 5 food per turn.",
+      "base_production": {
+        "food": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Logic Core": {
+      "cost": 40000,
+      "unlock_required": "Self-Modifying Formal Systems",
+      "description": "A mathematical facility derived from mathematical systems gain the ability to modify their, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Adaptive Systems Core": {
+      "cost": 16000,
+      "unlock_required": "Adaptive Emergence Systems",
+      "description": "A emergent facility derived from systems evolve their own rules in response to, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Administrative Hub": {
+      "cost": 3000,
+      "unlock_required": "Foundational Governance Charters",
+      "description": "A administrative facility derived from the codification of shared rules, roles, and responsibilities, producing 3 credits per turn.",
+      "base_production": {
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Agent Simulation Hub": {
+      "cost": 16000,
+      "unlock_required": "Multi-Agent Interaction Models",
+      "description": "A emergent facility derived from large numbers of independent agents interact to produce, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Alignment Core": {
+      "cost": 70000,
+      "unlock_required": "Existential Alignment Theory",
+      "description": "A philosophical facility derived from systems align with deeper principles governing existence. purpose, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16,
+        "stability": 20
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Alignment Interface": {
+      "cost": 25000,
+      "unlock_required": "Cross-Species Meaning Alignment",
+      "description": "A semiotic facility derived from meaning systems are harmonized across radically different forms, producing 9 credits per turn.",
+      "base_production": {
+        "credits": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Allocation Office": {
+      "cost": 3000,
+      "unlock_required": "Resource Allocation Protocols",
+      "description": "A administrative facility derived from formal systems for distributing resources across populations and, producing 3 credits per turn.",
+      "base_production": {
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Analytical Revenue Streams": {
+      "cost": 25000,
+      "unlock_required": "Information as Resource",
+      "description": "A information-processing facility derived from information is formalized as an economic and strategic, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Anchor Grid": {
+      "cost": 16000,
+      "unlock_required": "Topological Anchoring Systems",
+      "description": "A topological facility derived from structures and locations are stabilized within complex or, producing 7 ether per turn.",
+      "base_production": {
+        "ether": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Attunement Chamber": {
+      "cost": 3000,
+      "unlock_required": "Etheric Sensitivity Training",
+      "description": "A theurgic facility derived from the disciplined cultivation of perception beyond instrumentation. practitioners, producing 3 ether per turn.",
+      "base_production": {
+        "ether": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Automata Engine": {
+      "cost": 3000,
+      "unlock_required": "Cellular Automata Modeling",
+      "description": "A emergent facility derived from discrete rule systems are used to simulate growth, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Autonomous Biosphere Core": {
+      "cost": 40000,
+      "unlock_required": "Self-Designing Biospheres",
+      "description": "A ecological facility derived from ecosystems gain the capacity to redesign themselves in, producing 12 food per turn.",
+      "base_production": {
+        "food": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": [
+        "plains",
+        "forest",
+        "coastal"
+      ]
+    },
+    "Autonomous Civic Systems": {
+      "cost": 40000,
+      "unlock_required": "Self-Regulating Societies",
+      "description": "A administrative facility derived from societies internalize governance mechanisms. populations self-organize in accordance, producing 12 credits per turn.",
+      "base_production": {
+        "credits": 12,
+        "stability": 15
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Autonomous Data Core": {
+      "cost": 40000,
+      "unlock_required": "Autonomous Information Ecosystems",
+      "description": "A information-processing facility derived from information systems generate, transform, and regulate themselves. data, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Autonomous Research Node": {
+      "cost": 16000,
+      "unlock_required": "Self-Validating Knowledge Systems",
+      "description": "A epistemological facility derived from knowledge systems begin to test, refine, and correct, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Autonomous Ritual Core": {
+      "cost": 16000,
+      "unlock_required": "Synthetic Ritual Systems",
+      "description": "A theurgic facility derived from autonomous systems are capable of performing rituals without, producing 7 ether per turn.",
+      "base_production": {
+        "ether": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Autonomous Semiotic Core": {
+      "cost": 40000,
+      "unlock_required": "Autonomous Meaning Systems",
+      "description": "A semiotic facility derived from semiotic systems generate, interpret, and evolve meaning independently, producing 12 credits per turn.",
+      "base_production": {
+        "credits": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Axiom Forge": {
+      "cost": 70000,
+      "unlock_required": "Axiomatic Reality Engineering",
+      "description": "A mathematical facility derived from entire systems of reality are defined through chosen, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Axiom Selection Engine": {
+      "cost": 16000,
+      "unlock_required": "Inverse Mathematics Systems",
+      "description": "A mathematical facility derived from mathematical inquiry reverses direction\u2014determining which axioms are required, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Battlespace Core": {
+      "cost": 40000,
+      "unlock_required": "Persistent Battlespace Engineering",
+      "description": "A militarized facility derived from battlefields are pre-shaped and maintained as ongoing systems, producing 12 defense per turn.",
+      "base_production": {
+        "defense": 12,
+        "fleet_points": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Bio-Energy Nexus": {
+      "cost": 50000,
+      "unlock_required": "Living Energy Grids",
+      "description": "A advanced facility derived from energy systems are integrated into living ecosystems, allowing, producing 10 ether per turn.",
+      "base_production": {
+        "ether": 10,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Bio-Integrated Facilities": {
+      "cost": 6000,
+      "unlock_required": "Bio-Mechanical Integration",
+      "description": "A precision-engineered facility derived from biological systems are incorporated into engineered structures. living, producing 4 minerals per turn.",
+      "base_production": {
+        "minerals": 4,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Bio-Material Lab": {
+      "cost": 25000,
+      "unlock_required": "Living Material Systems",
+      "description": "A material-science facility derived from materials incorporate biological processes, enabling growth, adaptation, and, producing 9 minerals per turn.",
+      "base_production": {
+        "minerals": 9
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Causality Engine": {
+      "cost": 6000,
+      "unlock_required": "Causal Chain Modeling",
+      "description": "A temporal facility derived from events are mapped as structured chains of cause, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Causality Engine Core": {
+      "cost": 50000,
+      "unlock_required": "Predictive Causality Engine",
+      "description": "A advanced facility derived from information patterns are propagated along temporal gradients, allowing, producing 10 minerals per turn.",
+      "base_production": {
+        "minerals": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Causality Strike Core": {
+      "cost": 70000,
+      "unlock_required": "Causality Disruption Tactics",
+      "description": "A militarized facility derived from attacks target the causal structure of events, altering, producing 16 defense per turn.",
+      "base_production": {
+        "defense": 16,
+        "fleet_points": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Chrono-Structure Complex": {
+      "cost": 40000,
+      "unlock_required": "Persistent Temporal Structures",
+      "description": "A temporal facility derived from stable constructs are maintained across time, existing simultaneously, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Chronogenesis Core": {
+      "cost": 70000,
+      "unlock_required": "Foundational Chronogenesis",
+      "description": "A temporal facility derived from the creation and definition of new temporal frameworks, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Closed-Loop Habitats": {
+      "cost": 10000,
+      "unlock_required": "Self-Regulating Ecosystem Design",
+      "description": "A ecological facility derived from ecosystems are engineered to maintain balance autonomously. feedback, producing 5 food per turn.",
+      "base_production": {
+        "food": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Cognitive Data Interface": {
+      "cost": 40000,
+      "unlock_required": "Information-Cognition Integration",
+      "description": "A information-processing facility derived from information and cognition converge. systems process data as, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Cognitive Ops Center": {
+      "cost": 16000,
+      "unlock_required": "Cognitive Warfare Systems",
+      "description": "A militarized facility derived from direct influence over perception, morale, and decision-making of, producing 7 defense per turn.",
+      "base_production": {
+        "defense": 7,
+        "fleet_points": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Coherence Nexus": {
+      "cost": 40000,
+      "unlock_required": "Multi-Entity Coherence Systems",
+      "description": "A theurgic facility derived from multiple entities\u2014biological, artificial, and etheric\u2014are coordinated within shared, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Composite Foundry": {
+      "cost": 10000,
+      "unlock_required": "Composite Material Synthesis",
+      "description": "A material-science facility derived from multiple material types are combined into unified systems, producing 5 minerals per turn.",
+      "base_production": {
+        "minerals": 5
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Compressed Archives": {
+      "cost": 40000,
+      "unlock_required": "Knowledge Compression Theory",
+      "description": "A epistemological facility derived from vast bodies of knowledge are condensed into minimal, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Compression Engine": {
+      "cost": 6000,
+      "unlock_required": "Compression and Expansion Theory",
+      "description": "A information-processing facility derived from information is transformed between dense and expanded forms, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Consciousness Anchor": {
+      "cost": 25000,
+      "unlock_required": "Consciousness-Ether Binding",
+      "description": "A theurgic facility derived from direct coupling of consciousness to etheric structures. minds, producing 9 ether per turn.",
+      "base_production": {
+        "ether": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Consensus Engine": {
+      "cost": 25000,
+      "unlock_required": "Consensus Engineering",
+      "description": "A administrative facility derived from agreement is no longer left to chance. systems, producing 9 credits per turn.",
+      "base_production": {
+        "credits": 9,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Construct Realization": {
+      "cost": 70000,
+      "unlock_required": "Invoked Meaning Constructs",
+      "description": "A semiotic facility derived from meaning is enacted rather than communicated. symbolic constructs, producing 16 credits per turn.",
+      "base_production": {
+        "credits": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Construction Drones": {
+      "cost": 10000,
+      "unlock_required": "Autonomous Construction Systems",
+      "description": "A precision-engineered facility derived from construction processes are delegated to self-directed systems capable, producing 5 minerals per turn.",
+      "base_production": {
+        "minerals": 5,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Constructive Proof Engine": {
+      "cost": 16000,
+      "unlock_required": "Constructive Mathematics Frameworks",
+      "description": "A mathematical facility derived from mathematical objects are treated as constructions rather than, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Context Engine": {
+      "cost": 6000,
+      "unlock_required": "Contextual Meaning Systems",
+      "description": "A semiotic facility derived from meaning is understood as context-dependent rather than fixed, producing 4 credits per turn.",
+      "base_production": {
+        "credits": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Continuum Core": {
+      "cost": 70000,
+      "unlock_required": "Total Information Continuum",
+      "description": "A information-processing facility derived from all information\u2014past, present, and potential\u2014is unified within a, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Continuum Engine": {
+      "cost": 70000,
+      "unlock_required": "Temporal Continuum Engineering",
+      "description": "A temporal facility derived from the structure of time itself is reshaped. boundaries, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Convergence Core": {
+      "cost": 70000,
+      "unlock_required": "Divine-Technical Convergence",
+      "description": "A theurgic facility derived from the distinction between the spiritual and the technical, producing 16 ether per turn.",
+      "base_production": {
+        "ether": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Conversion Reactor": {
+      "cost": 25000,
+      "unlock_required": "Matter-Energy Reconfiguration",
+      "description": "A material-science facility derived from controlled conversion between matter and energy states. materials, producing 10 ether per turn.",
+      "base_production": {
+        "ether": 10,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Conversion Reactors": {
+      "cost": 40000,
+      "unlock_required": "Energy-Matter Conversion Systems",
+      "description": "A precision-engineered facility derived from matter and energy become interchangeable resources within engineered, producing 13 ether per turn.",
+      "base_production": {
+        "ether": 13,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Cross-Domain Lab": {
+      "cost": 25000,
+      "unlock_required": "Cross-Domain Emergence",
+      "description": "A emergent facility derived from emergent behaviors are studied across biological, mechanical, and, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Cross-Reality Comms Hub": {
+      "cost": 50000,
+      "unlock_required": "Cross-Reality Communication Systems",
+      "description": "A advanced facility derived from meaning propagates across intersecting spatial realities, enabling communication, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Data Core": {
+      "cost": 3000,
+      "unlock_required": "Information Substrate Models",
+      "description": "A information-processing facility derived from information is defined as a physical and energetic, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Data Relay Hub": {
+      "cost": 6000,
+      "unlock_required": "Information Flow Networks",
+      "description": "A information-processing facility derived from information is routed through structured networks that optimize, producing 4 credits per turn.",
+      "base_production": {
+        "credits": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Data Verification Center": {
+      "cost": 3000,
+      "unlock_required": "Signal Detection and Integrity",
+      "description": "A information-processing facility derived from systems are built to detect, preserve, and validate, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Decay Monitor": {
+      "cost": 10000,
+      "unlock_required": "Information Decay Modeling",
+      "description": "A information-processing facility derived from information is treated as a perishable entity subject, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Detection Grid": {
+      "cost": 3000,
+      "unlock_required": "Energy Detection Arrays",
+      "description": "A energetic facility derived from instrumentation expands to detect subtle and previously invisible, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Deterrence Command": {
+      "cost": 25000,
+      "unlock_required": "Strategic Deterrence Frameworks",
+      "description": "A militarized facility derived from conflict is shaped by the credible threat of, producing 9 defense per turn.",
+      "base_production": {
+        "defense": 9,
+        "fleet_points": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Distributed Archive": {
+      "cost": 16000,
+      "unlock_required": "Distributed Information Persistence",
+      "description": "A information-processing facility derived from information is replicated across multiple nodes, ensuring survival, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Distributed Cognition Core": {
+      "cost": 16000,
+      "unlock_required": "Distributed Mind Systems",
+      "description": "A philosophical facility derived from minds are distributed across networks of entities and, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Doctrine Library": {
+      "cost": 3000,
+      "unlock_required": "Engagement Doctrine Systems",
+      "description": "A militarized facility derived from standardized rules of engagement are established for varied, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Drone Command Hub": {
+      "cost": 10000,
+      "unlock_required": "Autonomous Combat Systems",
+      "description": "A militarized facility derived from decision-making is delegated to autonomous agents operating within, producing 5 defense per turn.",
+      "base_production": {
+        "defense": 5,
+        "fleet_points": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ecology Survey Lab": {
+      "cost": 3000,
+      "unlock_required": "Baseline Ecosystem Mapping",
+      "description": "A ecological facility derived from the systematic identification of living systems across environments, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Emergence Core": {
+      "cost": 70000,
+      "unlock_required": "Foundational Emergence Engineering",
+      "description": "A emergent facility derived from the principles of emergence are applied to create, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Emergence Field Generator": {
+      "cost": 70000,
+      "unlock_required": "Controlled Emergence Fields",
+      "description": "A emergent facility derived from environments are engineered to produce desired emergent outcomes, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Emergence Predictor": {
+      "cost": 40000,
+      "unlock_required": "Predictive Emergence Models",
+      "description": "A emergent facility derived from systems anticipate emergent behavior before it fully manifests, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Emergent AI Core": {
+      "cost": 25000,
+      "unlock_required": "Emergent Intelligence Formation",
+      "description": "A emergent facility derived from intelligence arises as a property of interacting systems, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Energy Ecosystem Core": {
+      "cost": 40000,
+      "unlock_required": "Self-Sustaining Energy Ecosystems",
+      "description": "A energetic facility derived from energy systems operate as closed, regenerative loops. production, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Energy Lattice": {
+      "cost": 25000,
+      "unlock_required": "Persistent Energy Structures",
+      "description": "A energetic facility derived from energy is stabilized into long-lasting forms that behave, producing 9 ether per turn.",
+      "base_production": {
+        "ether": 9
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Energy Registry": {
+      "cost": 3000,
+      "unlock_required": "Unified Energy Taxonomy",
+      "description": "A energetic facility derived from a comprehensive classification of known and newly detected, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Entity Liaison Chamber": {
+      "cost": 10000,
+      "unlock_required": "Entity Interface Protocols",
+      "description": "A theurgic facility derived from structured methods for interacting with non-material intelligences. entities, producing 5 ether per turn.",
+      "base_production": {
+        "ether": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ether Circuit Foundry": {
+      "cost": 6000,
+      "unlock_required": "Etheric Circuitry Design",
+      "description": "A theurgic facility derived from ether is stabilized into repeatable pathways, forming circuits, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ether Extractor": {
+      "cost": 10000,
+      "unlock_required": "Etheric Energy Harnessing",
+      "description": "A energetic facility derived from etheric fields are captured and stabilized as a, producing 5 ether per turn.",
+      "base_production": {
+        "ether": 5
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ether Forge": {
+      "cost": 10000,
+      "unlock_required": "Ether-Infused Materials",
+      "description": "A material-science facility derived from matter is bonded with etheric energy, producing materials, producing 5 minerals per turn.",
+      "base_production": {
+        "minerals": 5,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ether Weapon Lab": {
+      "cost": 25000,
+      "unlock_required": "Etheric Combat Integration",
+      "description": "A militarized facility derived from etheric energies are weaponized and integrated into combat, producing 9 defense per turn.",
+      "base_production": {
+        "defense": 9,
+        "fleet_points": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ether-Driven Factories": {
+      "cost": 16000,
+      "unlock_required": "Ether-Integrated Machinery",
+      "description": "A precision-engineered facility derived from mechanical systems are enhanced through etheric energy integration, producing 7 minerals per turn.",
+      "base_production": {
+        "minerals": 7,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ether-Math Interface": {
+      "cost": 40000,
+      "unlock_required": "Ether-Mathematical Correspondence",
+      "description": "A mathematical facility derived from mathematical structures are found to correspond directly with, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Etheric Ecology Station": {
+      "cost": 6000,
+      "unlock_required": "Bio-Etheric Exchange Systems",
+      "description": "A ecological facility derived from living systems are observed to exchange not only, producing 4 food per turn.",
+      "base_production": {
+        "food": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Evolution Engine": {
+      "cost": 40000,
+      "unlock_required": "Self-Evolving Warfare Systems",
+      "description": "A militarized facility derived from combat systems redesign themselves in response to adversaries, producing 12 defense per turn.",
+      "base_production": {
+        "defense": 12,
+        "fleet_points": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Evolution Forge": {
+      "cost": 50000,
+      "unlock_required": "Emergent Warforms",
+      "description": "A advanced facility derived from combat units evolve dynamically during conflict, adapting their, producing 10 minerals per turn.",
+      "base_production": {
+        "minerals": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Evolution Lab": {
+      "cost": 16000,
+      "unlock_required": "Evolutionary Steering Mechanisms",
+      "description": "A ecological facility derived from evolution is no longer left to chance. selective, producing 7 food per turn.",
+      "base_production": {
+        "food": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Evolution Reactor": {
+      "cost": 50000,
+      "unlock_required": "Energy-Driven Evolution",
+      "description": "A advanced facility derived from energy availability directly shapes evolutionary pathways, accelerating adaptation, producing 11 ether per turn.",
+      "base_production": {
+        "ether": 11,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Exotic Matter Lab": {
+      "cost": 40000,
+      "unlock_required": "Exotic Matter Synthesis",
+      "description": "A material-science facility derived from previously theoretical forms of matter are stabilized and, producing 12 minerals per turn.",
+      "base_production": {
+        "minerals": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Fabrication Bay": {
+      "cost": 3000,
+      "unlock_required": "Adaptive Fabrication Systems",
+      "description": "A precision-engineered facility derived from fabrication platforms capable of producing complex structures from, producing 3 minerals per turn.",
+      "base_production": {
+        "minerals": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Feedback Controller": {
+      "cost": 6000,
+      "unlock_required": "Feedback Loop Dynamics",
+      "description": "A emergent facility derived from positive and negative feedback mechanisms are formalized as, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Feedback Engine": {
+      "cost": 25000,
+      "unlock_required": "Semiotic Feedback Systems",
+      "description": "A semiotic facility derived from meaning systems respond dynamically to interpretation. signals adapt, producing 9 credits per turn.",
+      "base_production": {
+        "credits": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Field Manipulation Core": {
+      "cost": 16000,
+      "unlock_required": "Dynamic Energy Field Manipulation",
+      "description": "A energetic facility derived from energy fields can be shaped, redirected, and reconfigured, producing 7 ether per turn.",
+      "base_production": {
+        "ether": 7
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Genesis Core": {
+      "cost": 70000,
+      "unlock_required": "Genesis Engineering",
+      "description": "A precision-engineered facility derived from the creation of entirely new systems of existence, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Governance Analytics": {
+      "cost": 10000,
+      "unlock_required": "Legitimacy Frameworks",
+      "description": "A administrative facility derived from governance is grounded in recognized sources of authority\u2014performance, producing 5 credits per turn.",
+      "base_production": {
+        "credits": 5,
+        "stability": 5
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Governance Network": {
+      "cost": 16000,
+      "unlock_required": "Distributed Authority Networks",
+      "description": "A administrative facility derived from authority is decentralized across interconnected nodes. decision-making occurs, producing 7 credits per turn.",
+      "base_production": {
+        "credits": 7,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Harmonic Core": {
+      "cost": 70000,
+      "unlock_required": "Harmonic Civilization Framework",
+      "description": "A administrative facility derived from all systems\u2014social, political, economic, and ecological\u2014are integrated into, producing 16 credits per turn.",
+      "base_production": {
+        "credits": 16,
+        "stability": 20
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Harmony Engine": {
+      "cost": 40000,
+      "unlock_required": "Coexistence Optimization Frameworks",
+      "description": "A philosophical facility derived from systems are designed to maximize compatibility and minimize, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "stability": 15
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "High-Efficiency Grid": {
+      "cost": 6000,
+      "unlock_required": "Energy Transfer Efficiency Systems",
+      "description": "A energetic facility derived from lossless or near-lossless transfer of energy across systems, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Hybridization Facilities": {
+      "cost": 40000,
+      "unlock_required": "Trans-Species Identity Frameworks",
+      "description": "A ecological facility derived from boundaries between species begin to dissolve. organisms participate, producing 12 food per turn.",
+      "base_production": {
+        "food": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Hyper-Algebra Lab": {
+      "cost": 6000,
+      "unlock_required": "Higher-Dimensional Algebra",
+      "description": "A mathematical facility derived from algebraic systems are generalized to operate across multiple, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Hyper-Resilience Matrix": {
+      "cost": 40000,
+      "unlock_required": "Resilient Hyper-Ecosystems",
+      "description": "A ecological facility derived from ecosystems are designed to withstand extreme disruptions\u2014cosmic, temporal, producing 12 food per turn.",
+      "base_production": {
+        "food": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Identity Anchor": {
+      "cost": 6000,
+      "unlock_required": "Identity Persistence Theory",
+      "description": "A philosophical facility derived from the conditions under which identity remains continuous are, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4,
+        "stability": 5
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Identity Network Core": {
+      "cost": 50000,
+      "unlock_required": "Emergent Identity Networks",
+      "description": "A advanced facility derived from identity arises dynamically from system interactions, allowing entities, producing 10 minerals per turn.",
+      "base_production": {
+        "minerals": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "InfoOps Center": {
+      "cost": 6000,
+      "unlock_required": "Information Warfare Models",
+      "description": "A militarized facility derived from conflict expands into data, narrative, and perception. control, producing 4 defense per turn.",
+      "base_production": {
+        "defense": 4,
+        "fleet_points": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Information Field Generator": {
+      "cost": 40000,
+      "unlock_required": "Information Field Dynamics",
+      "description": "A information-processing facility derived from information is modeled as a distributed field influencing, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Integrated Identity Networks": {
+      "cost": 40000,
+      "unlock_required": "Integrated Being Systems",
+      "description": "A philosophical facility derived from boundaries between individuals and systems dissolve. entities exist, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "stability": 15
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Integrated Power Core": {
+      "cost": 25000,
+      "unlock_required": "Multi-Spectrum Energy Integration",
+      "description": "A energetic facility derived from multiple energy types are combined into unified systems, producing 10 ether per turn.",
+      "base_production": {
+        "ether": 10,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Intelligent Material Core": {
+      "cost": 50000,
+      "unlock_required": "Etheric Material Intelligence",
+      "description": "A advanced facility derived from materials infused with energy fields gain reactive and, producing 10 minerals per turn.",
+      "base_production": {
+        "minerals": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Intent Amplifier": {
+      "cost": 10000,
+      "unlock_required": "Intent Amplification Frameworks",
+      "description": "A theurgic facility derived from directed intention is captured, amplified, and stabilized through, producing 5 ether per turn.",
+      "base_production": {
+        "ether": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Inter-Species Interface": {
+      "cost": 10000,
+      "unlock_required": "Cross-Species Communication Frameworks",
+      "description": "A ecological facility derived from communication channels between species\u2014biological, synthetic, and hybrid\u2014are established, producing 5 food per turn.",
+      "base_production": {
+        "food": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Interface Gate": {
+      "cost": 10000,
+      "unlock_required": "Intersecting Space Interfaces",
+      "description": "A topological facility derived from controlled interfaces are created where different spatial domains, producing 5 ether per turn.",
+      "base_production": {
+        "ether": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Interplanetary Bio-Network": {
+      "cost": 70000,
+      "unlock_required": "Interplanetary Ecological Networks",
+      "description": "A ecological facility derived from multiple planetary ecosystems are linked into a larger, producing 16 food per turn.",
+      "base_production": {
+        "food": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Intervention Core": {
+      "cost": 25000,
+      "unlock_required": "Causality Intervention Systems",
+      "description": "A temporal facility derived from targeted modifications to causal chains allow limited alteration, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Inversion Chamber": {
+      "cost": 40000,
+      "unlock_required": "Topological Inversion Systems",
+      "description": "A topological facility derived from spatial relationships can be inverted, placing interiors outside, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Invocation Engine": {
+      "cost": 50000,
+      "unlock_required": "Mathematical Invocation Systems",
+      "description": "A advanced facility derived from mathematical structures are enacted as rituals, producing direct, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Invocation Field Generator": {
+      "cost": 70000,
+      "unlock_required": "Persistent Invocation Fields",
+      "description": "A theurgic facility derived from theurgic effects are sustained indefinitely without continuous input, producing 16 ether per turn.",
+      "base_production": {
+        "ether": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Irregular Warfare Units": {
+      "cost": 6000,
+      "unlock_required": "Asymmetric Strategy Theory",
+      "description": "A militarized facility derived from smaller or weaker forces exploit structural imbalances to, producing 4 defense per turn.",
+      "base_production": {
+        "defense": 4,
+        "fleet_points": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Joint Operations Command": {
+      "cost": 10000,
+      "unlock_required": "Multi-Domain Operations",
+      "description": "A militarized facility derived from coordinated action across physical, informational, cognitive, and etheric, producing 5 defense per turn.",
+      "base_production": {
+        "defense": 5,
+        "fleet_points": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Knowledge Archive": {
+      "cost": 3000,
+      "unlock_required": "Distributed Record Architecture",
+      "description": "A epistemological facility derived from knowledge is no longer stored locally. observations are, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Layered Biosphere": {
+      "cost": 16000,
+      "unlock_required": "Multi-Layer Ecosystem Integration",
+      "description": "A ecological facility derived from ecosystems are expanded to operate across multiple layers, producing 7 food per turn.",
+      "base_production": {
+        "food": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": [
+        "plains",
+        "forest",
+        "coastal"
+      ]
+    },
+    "Lifecycle Engine": {
+      "cost": 16000,
+      "unlock_required": "Information Lifecycle Management",
+      "description": "A information-processing facility derived from information is tracked from creation through transformation to, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Living Cities": {
+      "cost": 40000,
+      "unlock_required": "Living System Engineering",
+      "description": "A precision-engineered facility derived from entire engineered systems behave as living organisms\u2014growing, adapting, producing 12 minerals per turn.",
+      "base_production": {
+        "minerals": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Living Network Core": {
+      "cost": 25000,
+      "unlock_required": "Emergent Intelligence Ecologies",
+      "description": "A ecological facility derived from ecosystems themselves begin to exhibit collective intelligence. decision-making, producing 9 food per turn.",
+      "base_production": {
+        "food": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Manifold Generator": {
+      "cost": 70000,
+      "unlock_required": "Continuous Spatial Manifolds",
+      "description": "A topological facility derived from discrete spatial regions are merged into continuous manifolds, producing 16 ether per turn.",
+      "base_production": {
+        "ether": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Mass Modulation Core": {
+      "cost": 16000,
+      "unlock_required": "Density and Mass Modulation",
+      "description": "A material-science facility derived from materials can alter their density and effective mass, producing 7 minerals per turn.",
+      "base_production": {
+        "minerals": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Materials Lab": {
+      "cost": 3000,
+      "unlock_required": "Matter Classification Frameworks",
+      "description": "A material-science facility derived from a unified taxonomy of matter states\u2014solid, fluid, plasma, producing 3 minerals per turn.",
+      "base_production": {
+        "minerals": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Mathematics Institute": {
+      "cost": 3000,
+      "unlock_required": "Formal Systems Consolidation",
+      "description": "A mathematical facility derived from the unification of legacy mathematical frameworks into a, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Matter Forge": {
+      "cost": 70000,
+      "unlock_required": "Foundational Matter Design",
+      "description": "A material-science facility derived from matter is no longer discovered but designed. fundamental, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Matter-Energy Converter": {
+      "cost": 16000,
+      "unlock_required": "Energy-Matter Coupling",
+      "description": "A energetic facility derived from energy and matter are treated as interchangeable states, producing 7 ether per turn.",
+      "base_production": {
+        "ether": 7
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Meaning Field Generator": {
+      "cost": 40000,
+      "unlock_required": "Semiotic Field Theory",
+      "description": "A semiotic facility derived from meaning is understood as a field phenomenon, distributed, producing 12 credits per turn.",
+      "base_production": {
+        "credits": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Mediation Center": {
+      "cost": 6000,
+      "unlock_required": "Conflict Resolution Systems",
+      "description": "A administrative facility derived from institutionalized mechanisms for resolving disputes within and between, producing 4 credits per turn.",
+      "base_production": {
+        "credits": 4,
+        "stability": 5
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Memetic Lab": {
+      "cost": 16000,
+      "unlock_required": "Memetic Dynamics Modeling",
+      "description": "A semiotic facility derived from ideas are treated as entities that propagate, mutate, producing 7 credits per turn.",
+      "base_production": {
+        "credits": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Memetic Operations Center": {
+      "cost": 50000,
+      "unlock_required": "Memetic Warfare Systems",
+      "description": "A advanced facility derived from conflict is conducted through the manipulation of meaning, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Memory Material Core": {
+      "cost": 40000,
+      "unlock_required": "Material Memory and Adaptation",
+      "description": "A material-science facility derived from materials store information about past states and adapt, producing 12 minerals per turn.",
+      "base_production": {
+        "minerals": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Microfabrication Facility": {
+      "cost": 3000,
+      "unlock_required": "Microstructural Control Systems",
+      "description": "A material-science facility derived from material properties are linked to internal structure at, producing 3 minerals per turn.",
+      "base_production": {
+        "minerals": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Mind-State Registry": {
+      "cost": 3000,
+      "unlock_required": "Mind-Body Abstraction Models",
+      "description": "A philosophical facility derived from the separation of cognition from physical substrate is, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Layer Analyzer": {
+      "cost": 6000,
+      "unlock_required": "Multi-Layer Semiotic Analysis",
+      "description": "A semiotic facility derived from symbols are analyzed across multiple layers\u2014literal, cultural, energetic, producing 4 credits per turn.",
+      "base_production": {
+        "credits": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Layer Command": {
+      "cost": 40000,
+      "unlock_required": "Cross-Reality Conflict Operations",
+      "description": "A militarized facility derived from conflict extends across spatial, temporal, and energetic layers, producing 12 defense per turn.",
+      "base_production": {
+        "defense": 12,
+        "fleet_points": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Layer Governance Hub": {
+      "cost": 40000,
+      "unlock_required": "Cross-Reality Governance",
+      "description": "A administrative facility derived from governance extends across multiple spatial, temporal, or energetic, producing 12 credits per turn.",
+      "base_production": {
+        "credits": 12,
+        "stability": 15
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Layer Habitat": {
+      "cost": 10000,
+      "unlock_required": "Layered Spatial Domains",
+      "description": "A topological facility derived from multiple spatial layers are identified as coexisting within, producing 5 food per turn.",
+      "base_production": {
+        "food": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Layer Infrastructure Hub": {
+      "cost": 50000,
+      "unlock_required": "Reality-Synchronized Infrastructure",
+      "description": "A advanced facility derived from infrastructure exists across multiple spatial layers simultaneously, maintaining, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Reality Infrastructure": {
+      "cost": 70000,
+      "unlock_required": "Reality-Constrained Design",
+      "description": "A precision-engineered facility derived from engineering operates at the limits of physical and, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Species Council": {
+      "cost": 16000,
+      "unlock_required": "Multi-Species Governance Structures",
+      "description": "A administrative facility derived from governance expands to include multiple species with differing, producing 7 credits per turn.",
+      "base_production": {
+        "credits": 7,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Multi-Species Ethics Council": {
+      "cost": 25000,
+      "unlock_required": "Cross-Species Moral Systems",
+      "description": "A philosophical facility derived from ethical systems are extended to encompass radically different, producing 9 credits per turn.",
+      "base_production": {
+        "credits": 9,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Nanoforge Complex": {
+      "cost": 25000,
+      "unlock_required": "Micro-Scale Fabrication Swarms",
+      "description": "A precision-engineered facility derived from vast swarms of micro-constructors operate in parallel, enabling, producing 9 minerals per turn.",
+      "base_production": {
+        "minerals": 9,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Neural Interface Lab": {
+      "cost": 25000,
+      "unlock_required": "Cognitive Augmentation Interfaces",
+      "description": "A epistemological facility derived from the boundary between researcher and system dissolves. minds, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Niche Analysis Engine": {
+      "cost": 3000,
+      "unlock_required": "Adaptive Niche Modeling",
+      "description": "A ecological facility derived from species are understood not as fixed entities, but, producing 3 food per turn.",
+      "base_production": {
+        "food": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Nonlinear Analysis Core": {
+      "cost": 6000,
+      "unlock_required": "Nonlinear System Behavior",
+      "description": "A emergent facility derived from systems are understood to produce disproportionate outputs from, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Noospheric Core": {
+      "cost": 70000,
+      "unlock_required": "Epistemic Convergence Field",
+      "description": "A epistemological facility derived from the boundary between knowing and being collapses. knowledge, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ontological Field Generator": {
+      "cost": 70000,
+      "unlock_required": "Unified Ontological Field",
+      "description": "A philosophical facility derived from all distinctions between mind, system, and environment are, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16,
+        "stability": 20
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ontological Habitat Core": {
+      "cost": 50000,
+      "unlock_required": "Ontological Terraforming",
+      "description": "A advanced facility derived from ecosystems are shaped not only physically but ontologically, producing 10 food per turn.",
+      "base_production": {
+        "food": 10,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ontology Engine": {
+      "cost": 40000,
+      "unlock_required": "Ontological Mapping Systems",
+      "description": "A epistemological facility derived from the classification of existence itself. entities, energies, and, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Ontology Lab": {
+      "cost": 3000,
+      "unlock_required": "Foundational Ontology Frameworks",
+      "description": "A philosophical facility derived from the formal classification of entities, processes, and systems, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ontology Map Core": {
+      "cost": 25000,
+      "unlock_required": "Mathematical Ontology Mapping",
+      "description": "A mathematical facility derived from the space of all possible mathematical structures is, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Orbital Ring Construction": {
+      "cost": 25000,
+      "unlock_required": "Macro-Scale Structural Engineering",
+      "description": "A precision-engineered facility derived from engineering expands to planetary and orbital scales. entire, producing 9 minerals per turn.",
+      "base_production": {
+        "minerals": 9,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Pattern Engine": {
+      "cost": 6000,
+      "unlock_required": "Pattern Extraction Heuristics",
+      "description": "A epistemological facility derived from early-stage systems for identifying repeatable structures within massive, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Pattern Recognition Core": {
+      "cost": 10000,
+      "unlock_required": "Emergent Pattern Recognition",
+      "description": "A emergent facility derived from systems detect and interpret patterns that arise from, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Perception Gate Network": {
+      "cost": 50000,
+      "unlock_required": "Observer-Dependent Terrain",
+      "description": "A advanced facility derived from spatial layers exist differently depending on the observer's, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Persistent System Hub": {
+      "cost": 40000,
+      "unlock_required": "Persistent Emergent Ecosystems",
+      "description": "A emergent facility derived from emergent systems maintain stability over long durations. complex, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Phase Control Facility": {
+      "cost": 6000,
+      "unlock_required": "Phase-State Engineering",
+      "description": "A material-science facility derived from controlled transitions between phases of matter are achieved, producing 4 minerals per turn.",
+      "base_production": {
+        "minerals": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Phase Energy Grid": {
+      "cost": 40000,
+      "unlock_required": "Phase-Shifted Energy Systems",
+      "description": "A energetic facility derived from energy is stored and transmitted across different spatial, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Phase Infrastructure": {
+      "cost": 40000,
+      "unlock_required": "Phase-Shifted Construction",
+      "description": "A precision-engineered facility derived from structures are built partially outside conventional space, existing, producing 12 minerals per turn.",
+      "base_production": {
+        "minerals": 12,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Phase Material Facility": {
+      "cost": 40000,
+      "unlock_required": "Multi-Phase Material Existence",
+      "description": "A material-science facility derived from materials exist simultaneously across multiple physical or energetic, producing 12 minerals per turn.",
+      "base_production": {
+        "minerals": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Phase Structure Complex": {
+      "cost": 40000,
+      "unlock_required": "Phase-Coexistent Structures",
+      "description": "A topological facility derived from structures are engineered to exist simultaneously across multiple, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Phase-Aware Interface": {
+      "cost": 10000,
+      "unlock_required": "Multi-Phase Time Perception",
+      "description": "A temporal facility derived from time is experienced and processed across multiple phases, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Planetary Integration Grid": {
+      "cost": 25000,
+      "unlock_required": "Planetary Symbiosis Systems",
+      "description": "A ecological facility derived from entire planets function as integrated living systems. atmosphere, producing 9 food per turn.",
+      "base_production": {
+        "food": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Pocket Habitat": {
+      "cost": 16000,
+      "unlock_required": "Pocket Dimension Engineering",
+      "description": "A topological facility derived from self-contained spatial regions are constructed and maintained. these, producing 7 food per turn.",
+      "base_production": {
+        "food": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Policy Engine": {
+      "cost": 10000,
+      "unlock_required": "Adaptive Policy Systems",
+      "description": "A administrative facility derived from policies evolve dynamically in response to changing conditions, producing 5 credits per turn.",
+      "base_production": {
+        "credits": 5,
+        "stability": 5
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Predictive Analytics Core": {
+      "cost": 10000,
+      "unlock_required": "Probabilistic Truth Frameworks",
+      "description": "A epistemological facility derived from certainty is abandoned in favor of probability distributions, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Predictive Coordination": {
+      "cost": 16000,
+      "unlock_required": "Temporal Communication Channels",
+      "description": "A temporal facility derived from information is transmitted across time-adjacent states. communication becomes, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Predictive Data Engine": {
+      "cost": 70000,
+      "unlock_required": "Pre-Propagation Information Models",
+      "description": "A information-processing facility derived from information is inferred before it fully propagates. systems, producing 16 research points per turn.",
+      "base_production": {
+        "research": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Predictive Policy Core": {
+      "cost": 25000,
+      "unlock_required": "Predictive Governance Models",
+      "description": "A administrative facility derived from governance systems incorporate predictive analytics to anticipate challenges, producing 9 credits per turn.",
+      "base_production": {
+        "credits": 9,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Probabilistic Logic Engine": {
+      "cost": 3000,
+      "unlock_required": "Non-Deterministic Logic Structures",
+      "description": "A mathematical facility derived from logical systems are extended to handle uncertainty, contradiction, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Programmable Fabricator": {
+      "cost": 6000,
+      "unlock_required": "Programmable Matter Platforms",
+      "description": "A material-science facility derived from materials capable of changing form and function in, producing 4 minerals per turn.",
+      "base_production": {
+        "minerals": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Reality Anchor Facility": {
+      "cost": 70000,
+      "unlock_required": "Reality-Coupled Material Systems",
+      "description": "A material-science facility derived from material properties are linked directly to underlying physical, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Reality Simulation Core": {
+      "cost": 25000,
+      "unlock_required": "Algorithmic Reality Models",
+      "description": "A mathematical facility derived from reality is modeled as a computational process. physical, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Reality Weave Engine": {
+      "cost": 40000,
+      "unlock_required": "Reality Weaving Protocols",
+      "description": "A theurgic facility derived from local reality conditions are modified through coordinated symbolic, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Reconfigurable Facilities": {
+      "cost": 6000,
+      "unlock_required": "Modular Systems Architecture",
+      "description": "A precision-engineered facility derived from complex systems are decomposed into interchangeable modules. components, producing 4 minerals per turn.",
+      "base_production": {
+        "minerals": 4,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Recursive Core": {
+      "cost": 40000,
+      "unlock_required": "Recursive Time Systems",
+      "description": "A temporal facility derived from systems interact with their own past and future, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Reflexive Core": {
+      "cost": 40000,
+      "unlock_required": "Self-Referential Systems Theory",
+      "description": "A philosophical facility derived from systems capable of modeling and modifying themselves are, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12,
+        "stability": 15
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Regenerative Infrastructure": {
+      "cost": 3000,
+      "unlock_required": "Self-Repairing Materials",
+      "description": "A precision-engineered facility derived from materials are engineered to detect damage and initiate, producing 3 minerals per turn.",
+      "base_production": {
+        "minerals": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Regenerative Material Plant": {
+      "cost": 16000,
+      "unlock_required": "Self-Healing Material Systems",
+      "description": "A material-science facility derived from materials detect and repair damage autonomously. structural integrity, producing 7 minerals per turn.",
+      "base_production": {
+        "minerals": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.3,
+        "geothermal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Representative Council": {
+      "cost": 6000,
+      "unlock_required": "Representation Models",
+      "description": "A administrative facility derived from populations are organized into representative structures, allowing diverse, producing 4 credits per turn.",
+      "base_production": {
+        "credits": 4,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Resonance Lab": {
+      "cost": 6000,
+      "unlock_required": "Resonance Interaction Models",
+      "description": "A energetic facility derived from energy forms are understood not as isolated quantities, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Ritual Engine": {
+      "cost": 3000,
+      "unlock_required": "Ritual Encoding Systems",
+      "description": "A theurgic facility derived from reproducible sequences of action, symbol, and intent are, producing 3 ether per turn.",
+      "base_production": {
+        "ether": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Self-Design Core": {
+      "cost": 40000,
+      "unlock_required": "Self-Designing Systems",
+      "description": "A emergent facility derived from systems generate and refine their own architectures. design, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Self-Optimizing Infrastructure": {
+      "cost": 16000,
+      "unlock_required": "Recursive Design Systems",
+      "description": "A precision-engineered facility derived from engineering systems capable of redesigning themselves. structures and, producing 7 minerals per turn.",
+      "base_production": {
+        "minerals": 7,
+        "credits": 2
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Self-Organization Engine": {
+      "cost": 10000,
+      "unlock_required": "Self-Organizing Structures",
+      "description": "A emergent facility derived from systems are designed to spontaneously organize without centralized, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Semantic Registry": {
+      "cost": 3000,
+      "unlock_required": "Semantic Encoding Standards",
+      "description": "A semiotic facility derived from meaning is formalized into consistent encoding schemes. symbols, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Semiotic Core": {
+      "cost": 70000,
+      "unlock_required": "Total Semiotic Integration",
+      "description": "A semiotic facility derived from all systems\u2014technical, biological, and etheric\u2014operate through unified meaning, producing 16 credits per turn.",
+      "base_production": {
+        "credits": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Semiotic Lab": {
+      "cost": 3000,
+      "unlock_required": "Symbol Recognition Frameworks",
+      "description": "A semiotic facility derived from the systematic identification of symbols across languages, species, producing 3 credits per turn.",
+      "base_production": {
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Semiotic Reactor": {
+      "cost": 40000,
+      "unlock_required": "Reality-Coupled Semiotics",
+      "description": "A semiotic facility derived from symbolic structures are linked directly to physical and, producing 13 ether per turn.",
+      "base_production": {
+        "ether": 13,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Shared Habitat Design": {
+      "cost": 6000,
+      "unlock_required": "Multi-Agent Coexistence Models",
+      "description": "A philosophical facility derived from frameworks for understanding how independent agents\u2014biological, artificial, and, producing 4 food per turn.",
+      "base_production": {
+        "food": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Signal Relay Hub": {
+      "cost": 10000,
+      "unlock_required": "Semiotic Transmission Networks",
+      "description": "A semiotic facility derived from meaning is transmitted efficiently across vast distances and, producing 5 credits per turn.",
+      "base_production": {
+        "credits": 5,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Simulation Core": {
+      "cost": 40000,
+      "unlock_required": "Reality-Consistent Modeling",
+      "description": "A epistemological facility derived from models no longer approximate reality\u2014they operate within it, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Simulation Engine": {
+      "cost": 10000,
+      "unlock_required": "Computational Irreducibility Models",
+      "description": "A mathematical facility derived from recognition that certain systems cannot be simplified without, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Space Forge": {
+      "cost": 70000,
+      "unlock_required": "Foundational Space Rewriting",
+      "description": "A topological facility derived from the underlying rules governing space are modified. entire, producing 16 minerals per turn.",
+      "base_production": {
+        "minerals": 16,
+        "credits": 4
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Spatial Compression Facilities": {
+      "cost": 6000,
+      "unlock_required": "Folded Space Models",
+      "description": "A topological facility derived from spatial regions are modeled as foldable structures, allowing, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Spatial Mapping Lab": {
+      "cost": 3000,
+      "unlock_required": "Spatial Frame Calibration",
+      "description": "A topological facility derived from the redefinition of space as a measurable, parameterized, producing 3 ether per turn.",
+      "base_production": {
+        "ether": 3
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Spatial Network Hub": {
+      "cost": 25000,
+      "unlock_required": "Multi-Connected Space Networks",
+      "description": "A topological facility derived from multiple locations are linked through persistent topological connections, producing 9 ether per turn.",
+      "base_production": {
+        "ether": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Spatial Reconfiguration Core": {
+      "cost": 25000,
+      "unlock_required": "Dynamic Spatial Reconfiguration",
+      "description": "A topological facility derived from space itself can be reshaped in real time, producing 9 ether per turn.",
+      "base_production": {
+        "ether": 9,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Spectrum Observatory": {
+      "cost": 10000,
+      "unlock_required": "Multi-Spectrum Epistemics",
+      "description": "A epistemological facility derived from knowledge expands beyond the visible and measurable into, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Stabilization Grid": {
+      "cost": 16000,
+      "unlock_required": "Resonance Stabilization Fields",
+      "description": "A theurgic facility derived from etheric and spiritual phenomena are stabilized against drift, producing 7 ether per turn.",
+      "base_production": {
+        "ether": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Swarm Market Core": {
+      "cost": 50000,
+      "unlock_required": "Cognitive Swarm Economies",
+      "description": "A advanced facility derived from economic systems emerge from the interaction of countless, producing 10 credits per turn.",
+      "base_production": {
+        "credits": 10,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Symbiosis Lab": {
+      "cost": 6000,
+      "unlock_required": "Symbiotic Network Theory",
+      "description": "A ecological facility derived from life is reconceived as a network of interdependent, producing 4 food per turn.",
+      "base_production": {
+        "food": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Symbol Processor": {
+      "cost": 6000,
+      "unlock_required": "Symbolic-Computational Interfaces",
+      "description": "A theurgic facility derived from symbol systems are mapped directly onto computational substrates, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "crystal": 1.6,
+        "void": 1.4,
+        "geothermal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Symbolic Control Core": {
+      "cost": 16000,
+      "unlock_required": "Symbolic-Operational Interfaces",
+      "description": "A semiotic facility derived from symbols are directly linked to system operations. meaning, producing 7 credits per turn.",
+      "base_production": {
+        "credits": 7,
+        "research": 2
+      },
+      "terrain_bonus": {
+        "coastal": 1.3,
+        "plains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Symbolic Embassy": {
+      "cost": 50000,
+      "unlock_required": "Symbolic Diplomacy Frameworks",
+      "description": "A advanced facility derived from diplomatic systems are built on shared symbolic frameworks, producing 10 credits per turn.",
+      "base_production": {
+        "credits": 10,
+        "stability": 10
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Symbolic Reactor Core": {
+      "cost": 50000,
+      "unlock_required": "Resonant Symbol Reactors",
+      "description": "A advanced facility derived from symbolic structures are embedded into energy fields, allowing, producing 11 ether per turn.",
+      "base_production": {
+        "ether": 11,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Synchronization Core": {
+      "cost": 40000,
+      "unlock_required": "Cross-Domain Spatial Synchronization",
+      "description": "A topological facility derived from different spatial domains are synchronized to operate coherently, producing 12 ether per turn.",
+      "base_production": {
+        "ether": 12,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Synthesis Core": {
+      "cost": 16000,
+      "unlock_required": "Cross-Domain Synthesis Engines",
+      "description": "A epistemological facility derived from independent knowledge systems\u2014biological, mechanical, etheric\u2014are integrated into unified, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "crystal": 1.3,
+        "plains": 1.1,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Systems Lab": {
+      "cost": 3000,
+      "unlock_required": "Rule-Based System Foundations",
+      "description": "A emergent facility derived from complex behaviors are traced to simple underlying rules, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Temporal Biosphere Core": {
+      "cost": 50000,
+      "unlock_required": "Chrono-Ecological Systems",
+      "description": "A advanced facility derived from ecosystems evolve across time loops, adapting based on, producing 10 food per turn.",
+      "base_production": {
+        "food": 10,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": [
+        "plains",
+        "forest",
+        "coastal"
+      ]
+    },
+    "Temporal Governance Hub": {
+      "cost": 50000,
+      "unlock_required": "Temporal Governance Networks",
+      "description": "A advanced facility derived from governance systems operate across multiple temporal states, coordinating, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Temporal Work Zones": {
+      "cost": 25000,
+      "unlock_required": "Temporal Resource Extraction",
+      "description": "A temporal facility derived from time differentials are treated as a resource. systems, producing 9 research points per turn.",
+      "base_production": {
+        "research": 9
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Time Buffer": {
+      "cost": 6000,
+      "unlock_required": "Temporal Buffering Systems",
+      "description": "A temporal facility derived from short-term storage of temporal states becomes possible. systems, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Time Field Generator": {
+      "cost": 10000,
+      "unlock_required": "Temporal Field Manipulation",
+      "description": "A temporal facility derived from localized control over the rate and direction of, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Time Stability Monitoring": {
+      "cost": 3000,
+      "unlock_required": "Temporal Drift Detection",
+      "description": "A temporal facility derived from systems are developed to detect subtle inconsistencies in, producing 3 research points per turn.",
+      "base_production": {
+        "research": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Timeline Mapper": {
+      "cost": 16000,
+      "unlock_required": "Parallel Timeline Mapping",
+      "description": "A temporal facility derived from multiple potential timelines are identified and analyzed. systems, producing 7 research points per turn.",
+      "base_production": {
+        "research": 7
+      },
+      "terrain_bonus": {
+        "mountains": 1.3,
+        "tundra": 1.2,
+        "desert": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Topological Data Hub": {
+      "cost": 50000,
+      "unlock_required": "Information Topology Networks",
+      "description": "A advanced facility derived from information travels along topological pathways, bypassing conventional spatial, producing 10 research points per turn.",
+      "base_production": {
+        "research": 10,
+        "credits": 3
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Topological Processor": {
+      "cost": 6000,
+      "unlock_required": "Topological Computation",
+      "description": "A mathematical facility derived from computation is performed through the manipulation of topological, producing 4 research points per turn.",
+      "base_production": {
+        "research": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Topology Core": {
+      "cost": 6000,
+      "unlock_required": "Topological Mapping Engines",
+      "description": "A topological facility derived from space is mapped in terms of connectivity and, producing 4 ether per turn.",
+      "base_production": {
+        "ether": 4,
+        "research": 1
+      },
+      "terrain_bonus": {
+        "void": 1.5,
+        "crystal": 1.4,
+        "mountains": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Total War Nexus": {
+      "cost": 70000,
+      "unlock_required": "Total Conflict Integration",
+      "description": "A militarized facility derived from all domains\u2014material, cognitive, etheric, temporal\u2014are unified into a, producing 16 defense per turn.",
+      "base_production": {
+        "defense": 16,
+        "fleet_points": 4
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Transfinite Processor": {
+      "cost": 40000,
+      "unlock_required": "Transfinite Computation Theory",
+      "description": "A mathematical facility derived from computation extends beyond finite processes into transfinite operations, producing 12 research points per turn.",
+      "base_production": {
+        "research": 12
+      },
+      "terrain_bonus": {
+        "mountains": 1.2,
+        "tundra": 1.1,
+        "desert": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Transformation Core": {
+      "cost": 10000,
+      "unlock_required": "Transformational Encoding Systems",
+      "description": "A information-processing facility derived from information is encoded to change form while preserving, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5,
+        "credits": 1
+      },
+      "terrain_bonus": {
+        "plains": 1.2,
+        "coastal": 1.2,
+        "crystal": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Unified Energy Core": {
+      "cost": 70000,
+      "unlock_required": "Fundamental Energy Unification",
+      "description": "A energetic facility derived from all energy forms are understood as expressions of, producing 16 ether per turn.",
+      "base_production": {
+        "ether": 16
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "Universal Biosphere Core": {
+      "cost": 70000,
+      "unlock_required": "Universal Ecology Framework",
+      "description": "A ecological facility derived from living systems, energy systems, and environments are unified, producing 16 food per turn.",
+      "base_production": {
+        "food": 16,
+        "research": 4
+      },
+      "terrain_bonus": {
+        "forest": 1.4,
+        "plains": 1.3,
+        "coastal": 1.2
+      },
+      "terrain_restriction": [
+        "plains",
+        "forest",
+        "coastal"
+      ]
+    },
+    "Value Encoding Engine": {
+      "cost": 10000,
+      "unlock_required": "Value System Formalization",
+      "description": "A philosophical facility derived from ethical, cultural, and operational values are encoded into, producing 5 research points per turn.",
+      "base_production": {
+        "research": 5,
+        "stability": 5
+      },
+      "terrain_bonus": {
+        "forest": 1.3,
+        "mountains": 1.2
+      },
+      "terrain_restriction": []
+    },
+    "War College": {
+      "cost": 3000,
+      "unlock_required": "Conflict Taxonomy Framework",
+      "description": "A militarized facility derived from conflict is classified across domains\u2014material, informational, cognitive, and, producing 3 defense per turn.",
+      "base_production": {
+        "defense": 3
+      },
+      "terrain_bonus": {
+        "mountains": 1.4,
+        "volcanic": 1.2,
+        "tundra": 1.1
+      },
+      "terrain_restriction": []
+    },
+    "Zero-Point Reactor": {
+      "cost": 40000,
+      "unlock_required": "Zero-Point and Vacuum Energy Access",
+      "description": "A energetic facility derived from energy is extracted from the underlying fabric of, producing 13 ether per turn.",
+      "base_production": {
+        "ether": 13,
+        "research": 3
+      },
+      "terrain_bonus": {
+        "crystal": 1.5,
+        "geothermal": 1.3,
+        "volcanic": 1.2
+      },
+      "terrain_restriction": [
+        "void",
+        "crystal"
+      ]
     }
   }
 }
