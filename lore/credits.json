@@ -1,0 +1,10 @@
+{
+  "title": "CREDITS",
+  "version": "v0.1 — Early Access",
+  "entries": [
+    { "role": "GAME DESIGN & DEVELOPMENT", "name": "Bill MacKenty" },
+    { "role": "ENGINE",                    "name": "Python · FastAPI · Vanilla JS ES6" },
+    { "role": "AESTHETIC INSPIRATION",     "name": "Sid Meier's Alpha Centauri" },
+    { "role": "UNIVERSE and LORE",                  "name": "Year 7019 https://7019.org." }
+  ]
+}

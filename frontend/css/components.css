@@ -1,6 +1,6 @@
 /*
   components.css — Reusable UI components: buttons, cards, badges,
-  toasts, form inputs, and the setup/character-creation grid.
+  toasts, form inputs, setup/character-creation grid, and title screen.
 
   All visual design follows the Alpha Centauri aesthetic defined in main.css.
 */
@@ -4124,4 +4124,328 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+
+
+/* ===========================================================================
+   TITLE SCREEN
+   =========================================================================== */
+
+.title-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--sp-8);
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle scanline vignette */
+.title-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%,
+      rgba(0, 212, 170, 0.04) 0%,
+      transparent 70%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 0, 0, 0.07) 3px,
+      rgba(0, 0, 0, 0.07) 4px
+    );
+  pointer-events: none;
+}
+
+.title-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+  position: relative;
+  z-index: 1;
+}
+
+/* ASCII logo */
+.title-logo {
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 1.6vw, 20px);
+  line-height: 1.25;
+  color: var(--accent-teal);
+  text-shadow:
+    0 0 12px rgba(0, 212, 170, 0.6),
+    0 0 28px rgba(0, 212, 170, 0.25);
+  margin: 0;
+  white-space: pre;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.title-game-name {
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 2vw, 22px);
+  letter-spacing: 0.55em;
+  color: var(--text-bright);
+  text-transform: uppercase;
+  margin-top: calc(-1 * var(--sp-2));
+}
+
+.title-tagline {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Menu */
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.title-link {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-primary);
+  padding: var(--sp-2) var(--sp-6);
+  border: 1px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+              background var(--transition-fast), text-shadow var(--transition-fast);
+  min-width: 240px;
+  text-align: center;
+}
+
+.title-link:hover {
+  color: var(--accent-teal);
+  border-color: rgba(0, 212, 170, 0.3);
+  background: rgba(0, 212, 170, 0.05);
+  text-shadow: 0 0 10px rgba(0, 212, 170, 0.4);
+}
+
+.title-link--primary {
+  color: var(--accent-teal);
+  border-color: rgba(0, 212, 170, 0.4);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+.title-link--primary:hover {
+  background: rgba(0, 212, 170, 0.14);
+  border-color: rgba(0, 212, 170, 0.7);
+  text-shadow: 0 0 14px rgba(0, 212, 170, 0.6);
+}
+
+.title-link--dim {
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+}
+
+.title-link--dim:hover {
+  color: var(--text-primary);
+}
+
+/* Footer */
+.title-footer {
+  position: absolute;
+  bottom: var(--sp-6);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+
+/* ===========================================================================
+   INTRODUCTION MODAL
+   =========================================================================== */
+
+.intro-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.intro-subtitle {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-teal);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 var(--sp-2);
+  text-align: center;
+}
+
+.intro-section__heading {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-base);
+  color: var(--text-bright);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 var(--sp-3);
+  border-bottom: 1px solid var(--border-accent);
+  padding-bottom: var(--sp-2);
+}
+
+.intro-section__text {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+
+/* ===========================================================================
+   SAVE / LOAD MODAL
+   =========================================================================== */
+
+.save-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.save-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.save-row:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-accent);
+}
+
+.save-row__name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-bright);
+  letter-spacing: 0.05em;
+}
+
+.save-row__meta {
+  display: flex;
+  gap: var(--sp-4);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+}
+
+.save-row__turn {
+  color: var(--accent-teal);
+}
+
+
+/* ===========================================================================
+   CREDITS MODAL
+   =========================================================================== */
+
+.credits-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-4) 0;
+}
+
+.credits-block {
+  text-align: center;
+}
+
+.credits-role {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-1);
+}
+
+.credits-name {
+  font-size: var(--font-size-base);
+  color: var(--text-bright);
+}
+
+.credits-version {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  margin-top: var(--sp-4);
+}
+
+
+/* ===========================================================================
+   IN-GAME MENU MODAL
+   =========================================================================== */
+
+.game-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-8);
+  align-items: stretch;
+}
+
+.game-menu__btn {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: var(--sp-3) var(--sp-6);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              color var(--transition-fast);
+  text-align: center;
+}
+
+.game-menu__btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-accent);
+  color: var(--accent-teal);
+}
+
+.game-menu__btn--danger {
+  color: var(--text-dim);
+  border-color: var(--border-dim);
+}
+
+.game-menu__btn--danger:hover {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+  background: rgba(204, 51, 51, 0.08);
+}
+
+/* HUD menu button */
+.hud__menu-btn {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.1em;
+  padding: var(--sp-1) var(--sp-3);
+  opacity: 0.7;
+}
+
+.hud__menu-btn:hover {
+  opacity: 1;
 }

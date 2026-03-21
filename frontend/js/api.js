@@ -443,6 +443,14 @@ export function repairShipAtStation(stationName) {
 // ===========================================================================
 
 /**
+ * Fetch the introductory lore text from lore/intro.json.
+ * Returns { title, subtitle, sections: [{ heading, text }] }.
+ */
+export function getLoreIntro() {
+  return get("/api/lore/intro");
+}
+
+/**
  * Fetch all energy type descriptions.
  * Returns an array of energy objects { name, category, description, ... }.
  */

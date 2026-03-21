@@ -12,7 +12,8 @@
 
 import { state }        from "./state.js";
 import { renderIndices } from "./ui/hud.js";
-import { getGameState, getGameOptions, endTurn } from "./api.js";
+import { getGameState, getGameOptions, endTurn, saveGame, listSaves, loadGame } from "./api.js";
+import { titleView }    from "./views/title.js";
 import { setupView }    from "./views/setup.js";
 import { notify }       from "./ui/notifications.js";
 
@@ -30,6 +31,7 @@ import { galaxy3dView }  from "./views/galaxy3d.js";
 // View registry — maps view name → { mount(), unmount() }
 // ---------------------------------------------------------------------------
 const VIEWS = {
+  title:     titleView,
   setup:     setupView,
   galaxy:    galaxyView,
   colony:    colonyView,
@@ -44,6 +46,7 @@ const VIEWS = {
 
 /** DOM container for each view */
 const viewEls = {
+  title:     document.getElementById("view-title"),
   setup:     document.getElementById("view-setup"),
   galaxy:    document.getElementById("view-galaxy"),
   colony:    document.getElementById("view-colony"),
@@ -472,6 +475,10 @@ function setupKeyboardShortcuts() {
       case "3":                     // 3 → 3D galaxy view
         if (state.currentView !== "galaxy3d") switchView("galaxy3d");
         break;
+      case "escape":                // Esc → game menu
+        e.preventDefault();
+        showGameMenu();
+        break;
     }
   });
 }
@@ -495,6 +502,107 @@ function setupHudNav() {
   if (endTurnBtn) {
     endTurnBtn.addEventListener("click", handleEndTurn);
   }
+
+  const menuBtn = document.getElementById("btn-menu");
+  if (menuBtn) {
+    menuBtn.addEventListener("click", showGameMenu);
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// In-game menu (MENU button / Escape)
+// ---------------------------------------------------------------------------
+
+function showGameMenu() {
+  import("./ui/modal.js").then(({ showModal, closeModal }) => {
+    const body = `
+      <div class="game-menu">
+        <button class="game-menu__btn" id="gmenu-save">Save Game</button>
+        <button class="game-menu__btn" id="gmenu-load">Load Game</button>
+        <button class="game-menu__btn game-menu__btn--danger" id="gmenu-title">Return to Title</button>
+      </div>
+    `;
+
+    showModal("GAME MENU", body,
+      [{ label: "RESUME", className: "btn--secondary", onClick: () => closeModal() }]);
+
+    setTimeout(() => {
+      // Save
+      document.getElementById("gmenu-save")?.addEventListener("click", async () => {
+        try {
+          await saveGame("autosave");
+          closeModal();
+          notify("SAVE", "Game saved.");
+        } catch (err) {
+          notify("ERROR", `Save failed: ${err.message}`);
+        }
+      });
+
+      // Load — show save list
+      document.getElementById("gmenu-load")?.addEventListener("click", async () => {
+        closeModal();
+        setTimeout(() => _showLoadFromMenu(), 50);
+      });
+
+      // Return to title
+      document.getElementById("gmenu-title")?.addEventListener("click", () => {
+        closeModal();
+        stopPolling();
+        hideHud();
+        state.gameInitialized = false;
+        switchView("title", { hasGame: true });
+      });
+    }, 50);
+  });
+}
+
+async function _showLoadFromMenu() {
+  const { showModal, closeModal } = await import("./ui/modal.js");
+
+  let saves;
+  try {
+    const result = await listSaves();
+    saves = result.saves || [];
+  } catch (err) {
+    showModal("LOAD GAME", `<p class="muted">Could not list saves: ${err.message}</p>`,
+      [{ label: "CLOSE", className: "btn--secondary", onClick: () => closeModal() }]);
+    return;
+  }
+
+  if (saves.length === 0) {
+    showModal("LOAD GAME",
+      `<p class="muted" style="text-align:center;padding:var(--sp-8) 0">No save files found.</p>`,
+      [{ label: "CLOSE", className: "btn--secondary", onClick: () => closeModal() }]);
+    return;
+  }
+
+  const rowsHtml = saves.map(s => `
+    <div class="save-row" data-path="${String(s.path || s.name).replace(/"/g, "&quot;")}">
+      <div class="save-row__name">${String(s.player_name || s.name).replace(/</g, "&lt;")}</div>
+      <div class="save-row__meta">
+        <span class="save-row__turn">Turn ${s.turn ?? "—"}</span>
+        <span class="save-row__date">${s.timestamp ? new Date(s.timestamp).toLocaleDateString() : ""}</span>
+      </div>
+    </div>
+  `).join("");
+
+  showModal("LOAD GAME", `<div class="save-list">${rowsHtml}</div>`,
+    [{ label: "CANCEL", className: "btn--ghost", onClick: () => closeModal() }]);
+
+  setTimeout(() => {
+    document.querySelectorAll(".save-row").forEach(row => {
+      row.addEventListener("click", async () => {
+        try {
+          const result = await loadGame(row.dataset.path);
+          closeModal();
+          if (result.state) onGameStarted(result.state);
+        } catch (err) {
+          notify("ERROR", `Load failed: ${err.message}`);
+        }
+      });
+    });
+  }, 50);
 }
 
 
@@ -533,25 +641,20 @@ async function boot() {
   }
 
   // Check if there's already an active game (e.g. server restart with state)
+  let hasGame = false;
   try {
     const gs = await getGameState();
     if (gs && gs.initialized) {
-      // Resume existing game
-      state.gameInitialized = true;
       state.gameState = gs;
-      showHud();
-      updateHud(gs);
-      startPolling();
-      await switchView("galaxy");
-      return;
+      hasGame = true;
     }
   } catch (err) {
-    // No game in progress — fall through to setup
+    // No game in progress — title will show New Game as primary action
   }
 
-  // First visit: show character creation
+  // Always show the title screen first
   hideHud();
-  await switchView("setup");
+  await switchView("title", { hasGame });
 }
 
 // Run as soon as the DOM is ready

@@ -1274,6 +1274,13 @@ async def save_game(request: SaveRequest):
     game.colony_state = colony_manager.serialize()
     game.deep_space_state = deep_space_manager.serialize() if deep_space_manager else {}
 
+    # save_game.py expects bot.coordinates; AIBot stores it on bot.ship.coordinates.
+    _bot_mgr = getattr(game, "bot_manager", None)
+    if _bot_mgr:
+        for _bot in getattr(_bot_mgr, "bots", []):
+            if not hasattr(_bot, "coordinates") and _bot.ship:
+                _bot.coordinates = _bot.ship.coordinates
+
     ok = save_game_module.save_game(game, request.slot_name)
     return {"success": ok, "slot_name": request.slot_name}
 
@@ -3705,6 +3712,14 @@ async def get_character_sheet():
     }
 
 
+@app.get("/api/lore/intro")
+async def get_lore_intro():
+    """Return the introductory lore text from lore/intro.json."""
+    path = os.path.join(PROJECT_ROOT, "lore", "intro.json")
+    with open(path, encoding="utf-8") as f:
+        return _json.load(f)
+
+
 @app.get("/api/lore/factions")
 async def get_lore_factions():
     """
@@ -3731,6 +3746,9 @@ async def get_lore_factions():
 # ===========================================================================
 
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
+LORE_DIR     = os.path.join(PROJECT_ROOT, "lore")
+
+app.mount("/lore", StaticFiles(directory=LORE_DIR), name="lore")
 
 # html=True makes StaticFiles serve index.html for any path that doesn't
 # match a real file — the standard pattern for single-page apps.

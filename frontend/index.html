@@ -78,6 +78,10 @@
         <button class="hud__nav-btn" data-view="galaxy3d"  title="3D Galaxy View (3)">3D</button>
       </nav>
 
+      <button class="btn btn--ghost hud__menu-btn" id="btn-menu" title="Game menu (Esc)">
+        MENU
+      </button>
+
       <button class="btn btn--primary btn--end-turn" id="btn-end-turn">
         END TURN
       </button>
@@ -103,10 +107,16 @@
     <main id="main-view" class="main-view">
 
       <!--
-        CHARACTER CREATION / SETUP VIEW
-        Shown on first load; replaced by galaxy once a game begins.
+        TITLE / MAIN MENU SCREEN
+        Shown on every load; routes to setup or galaxy.
       -->
-      <div id="view-setup" class="view view--active" role="main" aria-label="Character creation"></div>
+      <div id="view-title" class="view view--active" role="main" aria-label="Title screen"></div>
+
+      <!--
+        CHARACTER CREATION / SETUP VIEW
+        Shown after "New Game" is selected from the title screen.
+      -->
+      <div id="view-setup" class="view" role="main" aria-label="Character creation"></div>
 
       <!--
         GALAXY MAP VIEW
