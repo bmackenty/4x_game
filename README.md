@@ -3,8 +3,8 @@
 A single-player 4X strategy game inspired by Alpha Centauri.  Built on a
 deep Python game engine (~37 K lines) with a browser-based frontend:
 hex-grid galaxy map, hex-grid colony surface, research tech tree, faction
-diplomacy, commodity trading, and a full social / economic / political
-system that shapes every colony's production, research, and diplomatic
+diplomacy, commodity trading, ship management, and a full social / economic /
+political system that shapes every colony's production, research, and diplomatic
 relationships.
 
 ---
@@ -24,7 +24,7 @@ your default browser automatically.  Press **Ctrl+C** to shut down.
 ## Architecture
 
 ```
-Python FastAPI backend  ←→  Vanilla JS + HTML5 Canvas frontend
+Python FastAPI backend  ←→  Vanilla JS ES6 modules frontend
      (port 8765)                   (served as static files)
 ```
 
@@ -39,11 +39,13 @@ The game engine lives entirely in the project-root Python modules and is
 ├── run.py                  # Single-command launcher (uvicorn + browser open)
 │
 ├── backend/                # FastAPI application (web UI layer)
-│   ├── __init__.py
 │   ├── main.py             # All /api/* endpoints, singleton Game + ColonyManager
 │   ├── colony.py           # Hex tile colony system (planet surface builder)
 │   ├── colony_systems.py   # Social / economic / political system definitions
 │   │                       #   and modifier / coherence / faction-affinity logic
+│   ├── deep_space.py       # Deep space objects: derelicts, anomalies, resource
+│   │                       #   nodes, outpost sites (seeded, serialized to save)
+│   ├── gnn.py              # Galactic News Network — end-of-turn broadcast generator
 │   └── hex_utils.py        # Axial hex math, 3D galaxy→2D hex projection
 │
 ├── frontend/               # Browser UI (vanilla JS ES6 modules, no bundler)
@@ -52,9 +54,10 @@ The game engine lives entirely in the project-root Python modules and is
 │   │   ├── main.css        # Design tokens (Alpha Centauri dark palette)
 │   │   ├── layout.css      # Three-column layout + HUD
 │   │   └── components.css  # Buttons, modals, colony tiles, build menu, toasts,
-│   │                       #   systems panel, coherence bar, affinity rows
+│   │                       #   systems panel, coherence bar, affinity rows, GNN
 │   └── js/
-│       ├── main.js         # Entry point, view router, 1 s polling loop
+│       ├── main.js         # Entry point, view router, 1 s polling loop,
+│       │                   #   end-turn handler, GNN + research-complete modals
 │       ├── api.js          # All fetch() calls — only file that uses fetch
 │       ├── state.js        # Single global state object (plain JS)
 │       ├── hex/
@@ -62,23 +65,44 @@ The game engine lives entirely in the project-root Python modules and is
 │       │   ├── hex-render.js   # Canvas rendering: galaxy map + colony grid
 │       │   └── hex-input.js    # Pan, zoom, click on hex canvas
 │       ├── views/
+│       │   ├── title.js        # Title screen — new game / load / credits
 │       │   ├── setup.js        # Character creation (multi-step form)
 │       │   ├── galaxy.js       # Galaxy map: systems, jump, always-open right panel
+│       │   ├── galaxy3d.js     # Optional 3D star-field view (key: 3)
 │       │   ├── colony.js       # Planet surface: hex tiles, build/demolish,
 │       │   │                   #   SYSTEMS tab (social / economic / political config)
+│       │   ├── colonies.js     # Multi-colony management overview
+│       │   ├── ship.js         # Ship stats, attribute bars, component upgrades
 │       │   ├── research.js     # Tech tree browser — 10 category tabs
-│       │   └── diplomacy.js    # Faction reputation, diplomatic actions,
-│       │                       #   system compatibility panel
+│       │   ├── diplomacy.js    # Faction reputation, diplomatic actions,
+│       │   │                   #   system compatibility panel
+│       │   ├── trade.js        # Commodity market — buy/sell with cargo tracking
+│       │   └── character.js    # Full character sheet (stats, class, species, XP)
 │       └── ui/
 │           ├── hud.js              # HUD bar updates (credits, turn, actions, research bar)
 │           ├── modal.js            # Reusable modal dialog + confirm helper
 │           └── notifications.js    # Toast notification queue
 │
-├── lore/
-│   ├── research.json       # 150-node tech tree across 10 research categories
-│   ├── energies.json       # 50 energy types with descriptions, stats, and category
-│   └── faction_systems.json  # Preferred social / economic / political system for
-│                             #   each of the 32 NPC factions (editable data file)
+├── lore/                   # All editable data files (no Python/JS changes needed)
+│   ├── research.json           # 150-node tech tree across 10 research categories
+│   ├── intersections.json      # Research-node intersection / unlock cross-references
+│   ├── energies.json           # 50 energy types with descriptions, stats, category
+│   ├── faction_systems.json    # Preferred social/economic/political system per faction
+│   ├── factions.json           # Faction origin stories and philosophies
+│   ├── species.json            # 14 playable species with biology and cognitive traits
+│   ├── backgrounds.json        # Early-life background options
+│   ├── classes.json            # Professional specialization classes
+│   ├── professions.json        # Extended profession data
+│   ├── colony_improvements.json  # Building definitions (cost, terrain bonuses, research gate)
+│   ├── colony_systems.json     # Social/economic/political system definitions
+│   ├── terrain.json            # Terrain type modifiers
+│   ├── goods.json              # Tradeable commodity definitions
+│   ├── manufacturing.json      # Manufacturing commodity data
+│   ├── services.json           # Service commodity data
+│   ├── systems.json            # Galaxy system definitions
+│   ├── game_config.json        # Tunable game-wide constants
+│   ├── intro.json              # Intro lore (displayed on new game)
+│   └── credits.json            # Credits screen content
 │
 └── [game engine — DO NOT MODIFY]
     game.py, navigation.py, research.py, factions.py, economy.py,
@@ -93,7 +117,8 @@ The game engine lives entirely in the project-root Python modules and is
 The loop closely follows Alpha Centauri:
 
 1. **Explore** — Navigate a 3D galaxy of 30–40 star systems on the hex map.
-   Each jump costs one action point and fuel.
+   Each jump costs one action point and fuel.  Deep space between systems
+   contains derelicts, anomalies, resource nodes, and outpost sites.
 2. **Colonise** — Land on habitable planets to found colonies.  Each colony
    gets a procedurally generated hex tile grid (terrain seeded from planet
    name for reproducibility).
@@ -106,14 +131,27 @@ The loop closely follows Alpha Centauri:
    diplomatic standing, and interact with each other via a coherence score.
 5. **Research** — Advance through the tech tree to unlock superior buildings,
    ship components, faction bonuses, and advanced governing system types.
+   When a project finishes, a modal details what was learned and what it unlocks.
 6. **Trade** — Buy and sell commodities at system markets.  Prices shift with
    supply, demand, and galactic events.  Each colony's economic system also
-   produces a unique commodity per turn (e.g. Archived Experience, Cognitive
-   Cycles, Ritual Tokens).
-7. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Players
-   start at Allied standing (reputation 80) with their chosen faction.  Colony
+   produces a unique commodity per turn.
+7. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Colony
    system choices passively improve or reduce standing with factions whose
    worldview aligns or conflicts with your configuration.
+8. **Manage your Ship** — View and upgrade ship components from the Ship view.
+   Hull integrity degrades from space hazards each turn; crew auto-repairs
+   passively based on VIT + SYN.
+
+### End-of-Turn Flow
+
+Each turn end runs:
+- Engine tick (actions reset, research progress, hull wear + auto-repair)
+- Colony production (income applied; resource totals updated)
+- AI bot movement
+- **Galactic News Network (GNN)** modal — a comedic news broadcast with an
+  income/expense ledger
+- **Research Complete** modal — fires before GNN when a project finishes,
+  showing the lore description and full unlock list
 
 ---
 
@@ -151,7 +189,7 @@ always has the same layout across saves.
 | Geothermal | Mining and ether bonus |
 | Coastal | Trade and food bonus |
 
-### Improvements (15 total)
+### Improvements
 
 | Improvement | Cost | Unlock | Production |
 |-------------|------|--------|------------|
@@ -160,7 +198,7 @@ always has the same layout across saves.
 | Trade Nexus | 6,000 | — | +8 credits |
 | Population Hub | 4,500 | — | +2 food, +3 credits |
 | Solar Harvester | 3,000 | Plasma Physics | +2 minerals, +1 credit |
-| Research Node | 3,500 | Advanced Research | +3 research |
+| Research Node | 3,500 | Etheric Observation Protocol | +3 research |
 | Ether Conduit | 4,000 | Ether Energy Channeling | +2 ether |
 | Defense Array | 5,000 | Cloaking Technology | +2 defense |
 | Etheric Purifier | 5,500 | Etheric Tidal Harvesting | +2 ether |
@@ -171,7 +209,7 @@ always has the same layout across saves.
 | Xenobiology Station | 12,000 | Xenogenetics | +4 research |
 | Void Anchor | 15,000 | Null Space Exploration | +5 ether (void rifts only) |
 
-Research-gating improvements is the core **research → build** loop.
+All improvements can be tiered up for multiplied output (costs scale per tier).
 
 ---
 
@@ -216,9 +254,8 @@ tile production and interact with research, diplomacy, and trade.
 
 ### Coherence
 
-Combining systems that complement each other (e.g. Memory-Pooled Identity +
-Memory Economy + Consensus Field) earns a **High Coherence** bonus (×1.15 to
-all production).  Conflicting combinations create **Friction** (×0.80).
+Combining systems that complement each other earns a **High Coherence** bonus.
+Conflicting combinations create **Friction**.
 
 | Score | Label | Production Multiplier |
 |-------|-------|-----------------------|
@@ -228,11 +265,9 @@ all production).  Conflicting combinations create **Friction** (×0.80).
 | ≥ −3 | Friction | ×0.90 |
 | < −3 | High Friction | ×0.80 |
 
-### System Changes
-
 Systems are free to change but carry a **5-turn cooldown** per category.
 Advanced systems are locked behind research — the UI always shows the
-specific research requirement.
+specific requirement.
 
 ---
 
@@ -240,12 +275,11 @@ specific research requirement.
 
 The full tech tree is browsable in the **Research** view (keyboard: `R`).
 150 technologies are organised into 10 thematic categories with prerequisite
-chains; each node shows:
+chains.  Each node shows its turn cost, prerequisites, unlock list, and a
+linked energy-type lore tooltip.
 
-- Turn cost to complete
-- Prerequisites (greyed out if not yet researched)
-- Which colony improvements and ship components it unlocks
-- Linked energy-type lore tooltip
+When a project completes, a modal pops up with the technology's lore description
+and a full list of everything it unlocks before the GNN broadcast appears.
 
 The active research project is displayed in the HUD bar at all times.
 Only one technology can be researched at a time; cancellation is free.
@@ -254,7 +288,7 @@ Only one technology can be researched at a time; cancellation is free.
 
 | Category | Core Question |
 |----------|---------------|
-| **Scholar** | What can be known? |
+| **Epistemology** | What can be known? |
 | **Mystic** | What lies beyond the material, and how do living beings intersect with energy? |
 | **Engineering** | What can be built — or mechanically grown? |
 | **Nature** | What is "natural"? |
@@ -264,6 +298,22 @@ Only one technology can be researched at a time; cancellation is free.
 | **Topologies** | What kinds of space exist, and how do they intersect? |
 | **Chronoscience** | What is time, and how can it be shaped? |
 | **Consciousness / Ontology / Symbiosis** | What is a mind, what is a being, and how do systems co-exist? |
+
+---
+
+## Ship System
+
+The **Ship** view (keyboard: `S`) shows:
+
+- Key stats bar: ship name, class, fuel, jump range, cargo
+- Attribute list with category filter — each stat rendered as a labeled
+  progress bar (0–100 scale)
+- Components panel: installed modules and available upgrades per slot
+
+Hull integrity degrades from random deep-space hazards each turn (5% chance,
+0.5–2.0 damage).  Crew auto-repairs passively based on the captain's VIT + SYN
+attributes.  Research unlocks better ship modules that apply immediately on
+installation.
 
 ---
 
@@ -284,8 +334,6 @@ reputation (Allied → Enemy).
 | ≥ −75 | Hostile |
 | < −75 | Enemy |
 
-### Starting Relations
-
 Players begin at **Allied (80)** with their chosen faction.  All other
 factions start near neutral (−10 to +10).
 
@@ -296,11 +344,11 @@ factions start near neutral (−10 to +10).
 
 ### System Compatibility
 
-The **Diplomacy** view shows a **System Compatibility** panel for each
-faction — how well the player's current colony configurations align with
-that faction's preferred social / economic / political worldview.  Each
-matching system category contributes +5 to a passive affinity score
-(−15 to +15) that modifies diplomatic effectiveness.
+The diplomacy view shows a **System Compatibility** panel for each faction —
+how well the player's current colony configurations align with that faction's
+preferred social / economic / political worldview.  Each matching category
+contributes +5 to a passive affinity score (−15 to +15) that modifies
+diplomatic effectiveness.
 
 NPC faction preferred systems are defined in `lore/faction_systems.json`
 and can be edited without touching any Python or JS code.
@@ -321,9 +369,9 @@ available discounts and bonuses:
 
 ## Trade System
 
-Commodity markets appear in the **system detail panel** on the galaxy map.
-Each inhabited system has a local market seeded from the system's resource
-profile and the global economy.
+Commodity markets appear in the **system detail panel** on the galaxy map and
+in the dedicated **Trade** view.  Each inhabited system has a local market
+seeded from the system's resource profile and the global economy.
 
 - **Buy** a commodity: costs 1 action point; price reflects current demand.
 - **Sell** a commodity: costs 1 action point; price reflects current supply.
@@ -349,7 +397,7 @@ research tree:
 | Chaotic | Red | Chaotic Potential (banned by Icaron Collective after three moons vanished) |
 
 Energy types appear as tooltips on research tree nodes and are stored in
-`lore/energies.json` for frontend consumption.
+`lore/energies.json`.
 
 ---
 
@@ -364,7 +412,7 @@ routes always win.
 |--------|------|-------------|
 | POST | `/api/game/new` | Start a new game (character creation payload) |
 | GET | `/api/game/state` | Poll current state (HUD, credits, turn, research) |
-| POST | `/api/game/turn/end` | End turn; returns event list for toasts |
+| POST | `/api/game/turn/end` | End turn; returns events, GNN summary, research completion |
 | POST | `/api/game/save` | Save to named slot |
 | GET | `/api/game/saves` | List save files |
 | POST | `/api/game/load` | Load a save file |
@@ -378,6 +426,9 @@ routes always win.
 | GET | `/api/system/{name}` | System detail + planet list |
 | POST | `/api/ship/jump` | Jump ship to (x, y, z) — costs 1 action |
 | GET | `/api/ship/status` | Current ship stats (fuel, cargo, coords) |
+| GET | `/api/ship/attributes` | Full attribute list with category groupings |
+| GET | `/api/ship/components` | Installed components + available upgrades |
+| POST | `/api/ship/components/install` | Install a ship component |
 
 ### Colony
 
@@ -417,6 +468,12 @@ routes always win.
 | POST | `/api/trade/buy` | Buy commodities (costs 1 action) |
 | POST | `/api/trade/sell` | Sell commodities (costs 1 action) |
 
+### Character
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/character/sheet` | Full character sheet (stats, class, faction, species, XP) |
+
 ### Lore
 
 | Method | Path | Description |
@@ -424,12 +481,6 @@ routes always win.
 | GET | `/api/lore/energies` | All 50 energy types (static JSON) |
 | GET | `/api/lore/species` | Species database |
 | GET | `/api/lore/factions` | Faction origin stories and philosophies (static) |
-
-### Character
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/character` | Full character sheet (stats, class, faction, species, XP) |
 
 ---
 
@@ -439,9 +490,14 @@ routes always win.
 |-----|--------|
 | `Space` | End turn |
 | `G` | Galaxy map |
-| `C` | Colony view (if planet selected) |
+| `3` | 3D galaxy view |
+| `C` | Colony view (only if a planet is selected) |
+| `L` | Colonies management overview |
+| `S` | Ship stats & components |
 | `R` | Research tree |
 | `D` | Diplomacy |
+| `P` | Character sheet (profile) |
+| `Esc` | Game menu (save / load / quit) |
 
 ---
 
@@ -455,25 +511,12 @@ routes always win.
   the same planet always has the same layout, even across saves.
 - **Research gates building**: `ColonyManager.build_improvement()` checks
   `game.completed_research` directly — no special-casing required.
-- **Non-invasive save extension**: colony state is saved via
-  `game.colony_state = colony_manager.serialize()` before `save_game.save_game()`.
+- **Non-invasive save extension**: colony and deep-space state are saved via
+  `game.*_state = manager.serialize()` before `save_game.save_game()`.
   The save module is untouched.
-- **Everything commented**: every function in backend and frontend carries a
-  docstring or block comment explaining intent.
-
----
-
-## Build Status
-
-| Phase | Contents | Status |
-|-------|----------|--------|
-| 1 — Foundation | FastAPI app, character creation, CSS framework | ✅ Complete |
-| 2 — Galaxy Map | Hex map, system panel, ship navigation, always-open sidebar | ✅ Complete |
-| 3 — Colony System | Planet surface, build/demolish, production | ✅ Complete |
-| 4 — Research & Diplomacy | 150-node tech tree (10 categories), faction UI, energy lore, HUD bar | ✅ Complete |
-| 5 — Trade | Market UI, buy/sell flow in system panel | ✅ Complete |
-| 5b — Governing Systems | Social/economic/political systems per colony, coherence scoring, faction affinity, unique commodities | ✅ Complete |
-| 6 — Polish | Ether overlays, animations, win conditions, quest hooks | 🔲 Pending |
+- **Lore as data**: every editable game constant (terrain, improvements,
+  systems, research, factions, species) lives in `lore/*.json` — no Python
+  or JS changes needed to tune values.
 
 ---
 
