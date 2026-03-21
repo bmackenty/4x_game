@@ -4449,3 +4449,56 @@
 .hud__menu-btn:hover {
   opacity: 1;
 }
+
+
+/* ===========================================================================
+   RESEARCH COMPLETE MODAL
+   =========================================================================== */
+
+.research-complete-modal {
+  padding: var(--sp-2) 0;
+}
+
+.research-complete__category {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+}
+
+.research-complete__desc {
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: var(--sp-5);
+}
+
+.research-complete__unlocks-heading {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  margin-bottom: var(--sp-2);
+}
+
+.research-complete__unlocks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.research-complete__unlocks li {
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(0, 200, 180, 0.07);
+  border-left: 2px solid var(--accent-teal);
+  color: var(--text-bright);
+  font-size: var(--font-size-sm);
+}
+
+.research-complete__no-unlocks {
+  font-size: var(--font-size-sm);
+}

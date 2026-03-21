@@ -299,8 +299,15 @@ async function handleEndTurn() {
       notify("TURN", "The game has ended. Final score coming in Phase 6.");
     }
 
-    // Show GNN broadcast on turn end
-    if (result.gnn_summary) _showGnnModal(result.gnn_summary);
+    // Show research completion modal first, then GNN broadcast
+    if (result.newly_completed_research) {
+      const showGnn = result.gnn_summary
+        ? () => _showGnnModal(result.gnn_summary)
+        : null;
+      _showResearchCompleteModal(result.newly_completed_research, showGnn);
+    } else if (result.gnn_summary) {
+      _showGnnModal(result.gnn_summary);
+    }
   } catch (err) {
     notify("ERROR", err.message);
   } finally {
@@ -332,6 +339,42 @@ function _showEventsModal(events, onContinue) {
         label: "CONTINUE",
         className: "btn--primary",
         onClick: () => { closeModal(); onContinue(); },
+      }],
+    );
+  });
+}
+
+/**
+ * Show a research completion modal.  Fires onContinue (if provided) when
+ * the player dismisses it so the GNN modal can chain after.
+ *
+ * @param {object}   research    - { name, description, unlocks, category }
+ * @param {Function} onContinue  - Called after the player dismisses.
+ */
+function _showResearchCompleteModal(research, onContinue) {
+  const unlocksList = (research.unlocks || []).length
+    ? `<ul class="research-complete__unlocks">
+         ${research.unlocks.map(u => `<li>${u}</li>`).join("")}
+       </ul>`
+    : `<p class="research-complete__no-unlocks muted">No direct unlocks.</p>`;
+
+  const body = `
+    <div class="research-complete-modal">
+      <div class="research-complete__category">${research.category || ""}</div>
+      <p class="research-complete__desc">${research.description || ""}</p>
+      <h4 class="research-complete__unlocks-heading">UNLOCKS</h4>
+      ${unlocksList}
+    </div>
+  `;
+
+  import("./ui/modal.js").then(({ showModal, closeModal }) => {
+    showModal(
+      `✦ RESEARCH COMPLETE — ${research.name}`,
+      body,
+      [{
+        label: "CONTINUE",
+        className: "btn--primary",
+        onClick: () => { closeModal(); if (onContinue) onContinue(); },
       }],
     );
   });

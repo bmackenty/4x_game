@@ -1175,12 +1175,21 @@ async def end_turn():
 
     # Inject extra research progress so total increment equals RP/turn.
     # The engine already added +1 inside advance_turn(); we add (rp - 1) more.
+    newly_completed_research = None
     if game.active_research:
         _rp = game.calculate_rp_per_turn(colony_rp=_colony_research_output())["total"]
         game.research_progress += max(0, _rp - 1)
         _rt = all_research.get(game.active_research, {}).get("research_time", 1)
         if game.research_progress >= _rt:
+            _completed_name = game.active_research
+            _completed_data = all_research.get(_completed_name, {})
             game.complete_research()
+            newly_completed_research = {
+                "name":        _completed_name,
+                "description": _completed_data.get("description", ""),
+                "unlocks":     _completed_data.get("unlocks", []),
+                "category":    _completed_data.get("category", ""),
+            }
 
     # Re-apply the full bonus stack so any research completed this turn
     # immediately updates max_cargo, max_fuel, jump_range, and scan_range.
@@ -1249,13 +1258,14 @@ async def end_turn():
     )
 
     return {
-        "success":     success,
-        "message":     end_message,
-        "new_turn":    game.current_turn,
-        "events":      events,          # list of {"channel": str, "message": str}
-        "game_ended":  game.game_ended,
-        "gnn_summary": gnn,             # Galactic News Network broadcast
-        "state":       _build_state_snapshot(),
+        "success":                   success,
+        "message":                   end_message,
+        "new_turn":                  game.current_turn,
+        "events":                    events,          # list of {"channel": str, "message": str}
+        "game_ended":                game.game_ended,
+        "gnn_summary":               gnn,             # Galactic News Network broadcast
+        "newly_completed_research":  newly_completed_research,
+        "state":                     _build_state_snapshot(),
     }
 
 
