@@ -65,7 +65,7 @@ def _load_components() -> Dict[str, Dict[str, Mapping[str, object]]]:
     ignored by the merge helpers.
     """
     here = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(here, "lore", "components.json")
+    path = os.path.join(here, "lore", "ship_components.json")
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
 

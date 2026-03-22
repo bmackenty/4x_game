@@ -204,12 +204,6 @@ function buildComponentsTab() {
   if (!_comps) return "<p>No component data.</p>";
 
   const installed = _comps.installed || {};
-  const slots     = _comps.slots || {};
-
-  const installedHtml = buildInstalledSection(installed);
-  const upgradeHtml   = Object.entries(slots).map(([slotKey, slotData]) =>
-    buildSlotSection(slotKey, slotData, installed)
-  ).join("");
 
   return `
     <div class="ship-components">
@@ -219,12 +213,9 @@ function buildComponentsTab() {
       </section>
       <section class="ship-comp-section">
         <h3 class="ship-comp-section__title">INSTALLED COMPONENTS</h3>
-        ${installedHtml}
+        ${buildInstalledSection(installed)}
       </section>
-      <section class="ship-comp-section">
-        <h3 class="ship-comp-section__title">AVAILABLE UPGRADES</h3>
-        ${upgradeHtml}
-      </section>
+      <p class="ship-comp-note">Component upgrades available at a <strong>Shipyard</strong>.</p>
     </div>
   `;
 }
