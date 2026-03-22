@@ -1084,7 +1084,7 @@ async def new_game(request: NewGameRequest):
     # Give the starter ship a generous fuel load so new players can explore freely.
     ship = game.navigation.current_ship
     if ship:
-        ship.max_fuel = max(ship.max_fuel, 500)
+        ship.max_fuel = max(ship.max_fuel, 2000)
         ship.fuel     = ship.max_fuel
 
     # Initialise hull damage counter — starts pristine on every new game.
@@ -1233,6 +1233,26 @@ async def end_turn():
 
     events.extend(_hull_events)
     # ────────────────────────────────────────────────────────────────────────
+
+    # ── Fuel regeneration ────────────────────────────────────────────────────
+    # If the ship did not move since last turn, restore 5% of max_fuel.
+    # We track position via game.ship_last_position (set at the end of each turn).
+    _fuel_ship = getattr(game.navigation, "current_ship", None) if game.navigation else None
+    if _fuel_ship:
+        _current_pos = tuple(getattr(_fuel_ship, "coordinates", (None,)))
+        _last_pos    = getattr(game, "ship_last_position", None)
+        if _last_pos is not None and _current_pos == _last_pos:
+            _regen = max(1, int(_fuel_ship.max_fuel * 0.05))
+            _before = _fuel_ship.fuel
+            _fuel_ship.fuel = min(_fuel_ship.max_fuel, _fuel_ship.fuel + _regen)
+            _gained = _fuel_ship.fuel - _before
+            if _gained > 0:
+                events.append({
+                    "channel": "SHIP",
+                    "message": f"Ship idle: fuel cells recharged +{_gained} fuel.",
+                })
+        game.ship_last_position = _current_pos
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Snapshot credits BEFORE colony income so the ledger can show the delta.
     credits_before = game.credits

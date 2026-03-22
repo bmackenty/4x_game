@@ -467,9 +467,11 @@ function _renderRightPanel() {
           }).join("")
         : "<li class='muted'>None</li>";
 
-    // Unlocks list
-    const unlocksHtml = node.unlocks.length
-        ? node.unlocks.map(u => `<li>◆ ${esc(u)}</li>`).join("")
+    // Unlocks list — exclude items already shown in a categorized section below
+    const _catSuffixes = /\((ability|ship|crew|security|economic|diplomacy)\)\s*$/i;
+    const flatUnlocks = node.unlocks.filter(u => !_catSuffixes.test(u));
+    const unlocksHtml = flatUnlocks.length
+        ? flatUnlocks.map(u => `<li>◆ ${esc(u)}</li>`).join("")
         : "<li class='muted'>No listed unlocks.</li>";
 
     // Difficulty stars
