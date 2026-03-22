@@ -72,16 +72,67 @@ selection, crew roles, faction alignment.
 Stats for the player's ship. Baseline set by starter ship; modified by
 research, equipment, upgrades, and station services.
 
-| Key | Unit | Notes |
-|-----|------|-------|
-| `jump_range` | game units | Maximum distance per jump |
-| `fuel_capacity` | units | Tank size; determines range between refuels |
-| `fuel_efficiency` | % modifier | Reduces fuel consumed per jump |
-| `cargo_capacity` | units | Total cargo hold volume |
-| `hull_integrity` | HP | Effective health; modified by armour research |
-| `sensor_range` | galaxy units | Detection radius on galaxy map. Formula: `20 + detection_range × 0.5 + etheric_sensitivity × 0.25`. Default attributes give 40 u; theoretical max 95 u. |
-| `drive_efficiency` | % modifier | Affects propulsion and jump speed |
-| `combat_rating` | score | Ship combat effectiveness |
+Attributes are stored on a 0–100 normalised scale in `ship_attributes.py`
+and grouped into five categories. The header bar derives six gameplay values
+from these attributes (see Derived Stats below).
+
+### IV-a. Structural
+
+| Key | Notes |
+|-----|-------|
+| `hull_integrity` | Physical resilience; drives effective health (HP = `hull_integrity × 10`). |
+| `armor_strength` | Absorbs kinetic and energy impacts. |
+| `mass_efficiency` | Strength-to-mass ratio; drives cargo capacity (`mass_efficiency × 3 + effective_hull`). |
+
+### IV-b. Propulsion
+
+| Key | Notes |
+|-----|-------|
+| `engine_output` | Total thrust; secondary driver of jump range. |
+| `engine_efficiency` | Energy conversion per jump; reduces fuel cost (multiplier = `1 − (engine_efficiency − 30) / 100`, clamped 0.5–1.5). |
+| `ftl_jump_capacity` | Primary driver of jump range (`ftl_jump_capacity / 2 + engine_output / 6`). |
+| `maneuverability` | Agility and pilot responsiveness. |
+
+### IV-c. Power & Energy
+
+| Key | Notes |
+|-----|-------|
+| `reactor_output` | Overall energy generation. |
+| `energy_storage` | Capacitor/etheric reserve; drives fuel tank size (`energy_storage × 3 + engine_efficiency × 2.5`, min 2000). |
+
+### IV-d. Sensors
+
+| Key | Notes |
+|-----|-------|
+| `detection_range` | Primary driver of galaxy-map sensor radius. |
+| `scan_resolution` | Detail and fidelity of sensor imagery. |
+| `etheric_sensitivity` | Secondary driver of sensor range. Combined formula: `detection_range / 3 + etheric_sensitivity / 6`, min 5. |
+
+### IV-e. AI, Cognition & Sentience
+
+| Key | Notes |
+|-----|-------|
+| `ai_processing_power` | Computational throughput for autonomous decisions. |
+| `ai_convergence` | Fusion of digital logic with emergent etheric cognition. |
+| `decision_latency` | Delay between stimulus and AI response. |
+| `cognitive_security` | Resistance to hacking or etheric intrusion. |
+| `ship_sentience` | Degree of self-awareness and independent reasoning. |
+| `human_ai_symbiosis` | Harmony between human intuition and machine logic. |
+| `ethical_constraints` | Adherence to safety and moral protocols. |
+| `dream_state_processing` | Off-cycle cognition for creativity and pattern discovery. |
+
+### IV-f. Derived Stats (HUD display)
+
+These are computed from the attributes above and shown directly in the UI.
+
+| Derived Stat | Formula / Source |
+|---|---|
+| `jump_range` | `max(3, int((ftl_jump_capacity/2 + engine_output/6) × hull_fraction))` |
+| `fuel` / `max_fuel` | Tank: `max(2000, int(energy_storage×3 + engine_efficiency×2.5))`; cost per jump scaled by `engine_efficiency` |
+| `cargo_capacity` | `max(20, int(mass_efficiency×3 + effective_hull))` |
+| `hull_hp` | `max(50, int(hull_integrity×10))`, reduced by accumulated `ship_hull_damage` |
+| `sensor_range` | `max(5, detection_range/3 + etheric_sensitivity/6)` |
+| `fuel_efficiency` | Multiplier `1 − (engine_efficiency−30)/100`, clamped 0.5–1.5 |
 
 **Modifier sources:** research (Engineering, Energetics, Topologies),
 station upgrades, equipment slots, crew roles.

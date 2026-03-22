@@ -11,7 +11,7 @@
  * No game logic lives here — display only.
  */
 
-import { getShipAttributes, getShipComponents, installShipComponent } from "../api.js";
+import { getShipAttributes, getShipComponents } from "../api.js";
 import { notify } from "../ui/notifications.js";
 
 
@@ -492,11 +492,8 @@ function buildSlotSection(slotKey, slotData, installed) {
         <!-- Key stat pills -->
         ${statPills ? `<div class="comp-stat-pills">${statPills}</div>` : ""}
 
-        <!-- Install button -->
-        ${!isInstalled ? `
-          <button class="btn btn--sm btn-install"
-                  data-category="${slotKey}"
-                  data-name="${comp.name}">INSTALL</button>` : ""}
+        <!-- Install requires shipyard -->
+        ${!isInstalled ? `<span class="comp-shipyard-notice">⚓ Requires Shipyard</span>` : ""}
 
       </div>
     `;
@@ -545,27 +542,5 @@ function wireEvents(container) {
     });
   });
 
-  // Install buttons
-  container.querySelectorAll(".btn-install").forEach(btn => {
-    btn.addEventListener("click", () => handleInstall(btn, container));
-  });
 }
 
-async function handleInstall(btn, container) {
-  const category = btn.dataset.category;
-  const name     = btn.dataset.name;
-  btn.disabled   = true;
-  btn.textContent = "…";
-
-  try {
-    const result = await installShipComponent(category, name);
-    notify("SHIP", `Installed: ${name}`);
-    // Refresh both data sets
-    [_attrs, _comps] = await Promise.all([getShipAttributes(), getShipComponents()]);
-    render(container);
-  } catch (err) {
-    notify("ERROR", `Install failed: ${err.message}`);
-    btn.disabled    = false;
-    btn.textContent = "INSTALL";
-  }
-}

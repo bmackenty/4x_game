@@ -2073,7 +2073,7 @@ def apply_all_bonuses_to_ship(ship, g) -> None:
     ship.health    = max(50, int(effective_hull * 10))
     ship.max_cargo = max(20, int(mass_efficiency * 3 + effective_hull))
 
-    fuel_capacity  = max(80,  int(energy_storage * 3 + engine_efficiency * 2.5))
+    fuel_capacity  = max(2000, int(energy_storage * 3 + engine_efficiency * 2.5))
     ship.max_fuel  = fuel_capacity
     ship.fuel      = min(ship.fuel, ship.max_fuel)
 
@@ -2371,7 +2371,7 @@ async def get_ship_components():
     if not ship:
         raise HTTPException(status_code=400, detail="No active ship.")
 
-    from ship_builder import get_available_components, ship_components, COMPONENT_CATEGORY_LABELS
+    from ship_builder import get_available_components, ship_components, COMPONENT_CATEGORY_LABELS, ACTIVE_CATEGORIES
     from ship_attributes import SHIP_ATTRIBUTE_DEFINITIONS
 
     # Build a quick id→display-name lookup from the attribute definitions
@@ -2400,8 +2400,7 @@ async def get_ship_components():
         player_faction = game.character.get("faction")
 
     slots = {}
-    for slot_key in ("hulls", "engines", "weapons", "shields", "sensors", "support",
-                     "computing", "communications", "crew_modules"):
+    for slot_key in ACTIVE_CATEGORIES:
         available = get_available_components(slot_key, ship, player_faction)
         slots[slot_key] = {
             "label": COMPONENT_CATEGORY_LABELS.get(slot_key, slot_key.title()),
@@ -2412,7 +2411,6 @@ async def get_ship_components():
                     "faction_lock":   data.get("faction_lock"),
                     "failure_chance": round(float(data.get("failure_chance", 0)) * 100, 1),
                     "lore":           data.get("lore", ""),
-                    # Top attributes by magnitude so the UI can show stat pills
                     "key_stats":      _key_stats(dict(data.get("attributes", {}))),
                 }
                 for name, data in available.items()
@@ -2434,10 +2432,15 @@ class InstallComponentRequest(BaseModel):
 @app.post("/api/ship/components/install")
 async def install_ship_component(request: InstallComponentRequest):
     """
-    Replace or add a component on the player's ship.  Recalculates all derived
-    stats after installation.  Does not cost an action point (must be done at a
-    shipyard in the future).
+    Component installation requires a shipyard — feature not yet implemented.
+    This endpoint is intentionally blocked until the shipyard view exists.
     """
+    raise HTTPException(
+        status_code=403,
+        detail="Components can only be installed at a shipyard. Shipyard feature coming soon."
+    )
+
+    # --- UNREACHABLE — preserved for when shipyard is implemented ---
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 

@@ -1,0 +1,302 @@
+{
+  "_comment": "Single source of truth for all ship components. Each component targets attributes defined in docs/attributes.md Section IV and ship_attributes.py. Components can only be installed at a shipyard (not yet implemented).",
+
+  "hulls": [
+    {
+      "name": "Aegis Bastion Hull",
+      "cost": 62000,
+      "faction_lock": ["Solar Wardens"],
+      "failure_chance": 0.015,
+      "lore": "Layered plasteel and sanctified ether-plates forged by the Solar Wardens. Built to hold the line against siege cannons and spiritual entropy alike.",
+      "modifiers": {
+        "hull_integrity": 25,
+        "armor_strength": 20,
+        "mass_efficiency": -8
+      }
+    },
+    {
+      "name": "Valkyrie Lattice Frame",
+      "cost": 48000,
+      "faction_lock": null,
+      "failure_chance": 0.02,
+      "lore": "A modular honeycomb frame popular with frontier skippers. Sacrifices raw armor for agility and quick field repairs.",
+      "modifiers": {
+        "hull_integrity": 12,
+        "armor_strength": 6,
+        "mass_efficiency": 16,
+        "maneuverability": 10
+      }
+    },
+    {
+      "name": "Zephyr Skysteel Chassis",
+      "cost": 45500,
+      "faction_lock": ["Skyforge Armada"],
+      "failure_chance": 0.022,
+      "lore": "An ultralight skysteel lattice originally designed for atmospheric skimmers. Spacefarers prize it for evasive maneuvers and graceful drift.",
+      "modifiers": {
+        "mass_efficiency": 22,
+        "maneuverability": 16,
+        "hull_integrity": -6,
+        "armor_strength": -4
+      }
+    },
+    {
+      "name": "Obsidian Reliquary Carapace",
+      "cost": 68500,
+      "faction_lock": ["Obsidian Bastion Chapter"],
+      "failure_chance": 0.03,
+      "lore": "A vault-hull that houses ancestral relics within obsidian nerve channels. It hums softly, soothing sentient cores and unnerving raiders.",
+      "modifiers": {
+        "hull_integrity": 24,
+        "armor_strength": 18,
+        "ship_sentience": 10,
+        "human_ai_symbiosis": 6
+      }
+    },
+    {
+      "name": "Pilgrim Nomad Superstructure",
+      "cost": 54000,
+      "faction_lock": ["Free Pilgrim Clans"],
+      "failure_chance": 0.018,
+      "lore": "Self-healing lattice that adapts to harsh cosmic climates. Every Nomad hull is etched with ancestral star maps and communal lore.",
+      "modifiers": {
+        "hull_integrity": 14,
+        "armor_strength": 10,
+        "mass_efficiency": 8,
+        "ai_convergence": 6
+      }
+    }
+  ],
+
+  "engines": [
+    {
+      "name": "Helios Lance Drive",
+      "cost": 38500,
+      "faction_lock": null,
+      "failure_chance": 0.025,
+      "lore": "Massive solar furnaces concentrate plasma into a coherent lance of thrust. Beloved by blockade runners who live for straight-line speed.",
+      "modifiers": {
+        "engine_output": 26,
+        "ftl_jump_capacity": 8,
+        "engine_efficiency": -6
+      }
+    },
+    {
+      "name": "Whisperstream Coil",
+      "cost": 51200,
+      "faction_lock": ["Chorus of Silence"],
+      "failure_chance": 0.035,
+      "lore": "Phase-shifted coils bleed thrust across adjacent realities. Produces almost no wake, but temperamental under flux storms.",
+      "modifiers": {
+        "engine_efficiency": 20,
+        "maneuverability": 14,
+        "engine_output": 8
+      }
+    },
+    {
+      "name": "Graviton Cascade Thrusters",
+      "cost": 61000,
+      "faction_lock": ["Atlantean Gradient"],
+      "failure_chance": 0.03,
+      "lore": "A cascade of gravitic nodes folds local gravity wells to catapult the ship. Requires constant calibration by gravitic monks.",
+      "modifiers": {
+        "maneuverability": 22,
+        "ftl_jump_capacity": 14,
+        "engine_output": 10
+      }
+    },
+    {
+      "name": "Chronobloom Fold Engine",
+      "cost": 82000,
+      "faction_lock": ["Chronomantic Concord"],
+      "failure_chance": 0.045,
+      "lore": "Fold petals unfurl through layered time, letting the ship bloom into new coordinates. Powerful, mesmerizing, and occasionally catastrophic.",
+      "modifiers": {
+        "ftl_jump_capacity": 30,
+        "engine_output": 8,
+        "engine_efficiency": -8
+      }
+    },
+    {
+      "name": "Drakeheart Furnace",
+      "cost": 57500,
+      "faction_lock": ["Guildhammer Combine"],
+      "failure_chance": 0.034,
+      "lore": "Industrial fusion cores encased in dragonbone alloys. Capable of brutal thrust — if you can tame its volcanic temperament.",
+      "modifiers": {
+        "engine_output": 28,
+        "ftl_jump_capacity": 6,
+        "engine_efficiency": -10
+      }
+    },
+    {
+      "name": "Auric Flux Sails",
+      "cost": 34800,
+      "faction_lock": ["Solar Wardens"],
+      "failure_chance": 0.02,
+      "lore": "Etheric sails woven from auric filaments catch solar winds and star-song. Pilots describe the sensation as 'surfing hymns of light'.",
+      "modifiers": {
+        "engine_efficiency": 24,
+        "energy_storage": 8,
+        "engine_output": 6
+      }
+    }
+  ],
+
+  "power_cores": [
+    {
+      "name": "Deep Core Fusion Reactor",
+      "cost": 44000,
+      "faction_lock": null,
+      "failure_chance": 0.02,
+      "lore": "A reliable workhorse fusion core found on half the vessels in settled space. Gets the job done without drama.",
+      "modifiers": {
+        "reactor_output": 24,
+        "energy_storage": 10
+      }
+    },
+    {
+      "name": "Etheric Capacitor Web",
+      "cost": 52000,
+      "faction_lock": ["Aetheric Nomads"],
+      "failure_chance": 0.028,
+      "lore": "A web of crystalline capacitors that stores etheric energy in supercharged lattice bonds. Extends operational range dramatically between refuels.",
+      "modifiers": {
+        "energy_storage": 28,
+        "reactor_output": 6
+      }
+    },
+    {
+      "name": "Harmonic Power Lattice",
+      "cost": 61500,
+      "faction_lock": ["Chorus of Silence"],
+      "failure_chance": 0.032,
+      "lore": "Resonant crystals tuned to the ship's etheric signature generate power through harmonic sympathy. Eerie to maintain; extraordinary in output.",
+      "modifiers": {
+        "reactor_output": 18,
+        "energy_storage": 18,
+        "ai_ether_integration": 8
+      }
+    },
+    {
+      "name": "Solforge Accumulator",
+      "cost": 38000,
+      "faction_lock": ["Solar Wardens"],
+      "failure_chance": 0.018,
+      "lore": "Captures and condenses stellar radiation into a dense power reserve. Standard issue aboard Solar Warden patrol vessels.",
+      "modifiers": {
+        "reactor_output": 14,
+        "energy_storage": 20
+      }
+    }
+  ],
+
+  "sensors": [
+    {
+      "name": "Oracle Crown Array",
+      "cost": 28500,
+      "faction_lock": null,
+      "failure_chance": 0.018,
+      "lore": "A crown of telescoping sensor masts tied into predictive heuristics. Standard issue for survey vessels seeking new frontiers.",
+      "modifiers": {
+        "detection_range": 18,
+        "scan_resolution": 16,
+        "etheric_sensitivity": 6
+      }
+    },
+    {
+      "name": "Ghostlight Scrying Net",
+      "cost": 45200,
+      "faction_lock": ["Chorus of Silence"],
+      "failure_chance": 0.03,
+      "lore": "Interlaced psionic fibers that read the dreams of nearby space. Provides uncanny insight, at the cost of unsettling the crew.",
+      "modifiers": {
+        "etheric_sensitivity": 28,
+        "detection_range": 8,
+        "ai_convergence": 6
+      }
+    },
+    {
+      "name": "Atlas Deep-Scan Spine",
+      "cost": 59800,
+      "faction_lock": ["Atlas Cartography Guild"],
+      "failure_chance": 0.027,
+      "lore": "A spinal sensor array that maps gravitational harmonics and subspace reefs. Indispensable to exploration flotillas charting the unknown.",
+      "modifiers": {
+        "detection_range": 26,
+        "scan_resolution": 20,
+        "etheric_sensitivity": 10
+      }
+    }
+  ],
+
+  "ai_cores": [
+    {
+      "name": "Aurora Conscience Matrix",
+      "cost": 60800,
+      "faction_lock": ["Solar Wardens"],
+      "failure_chance": 0.028,
+      "lore": "A luminous core housing ethic-coded AI mentors. Elevates decision-making and enforces graceful conduct under pressure.",
+      "modifiers": {
+        "ai_processing_power": 16,
+        "ethical_constraints": 22,
+        "human_ai_symbiosis": 14,
+        "cognitive_security": 12,
+        "ship_sentience": 10
+      }
+    },
+    {
+      "name": "Quantum Loom Core",
+      "cost": 54200,
+      "faction_lock": ["Transcendent Synod"],
+      "failure_chance": 0.035,
+      "lore": "Entangled threads weave future possibilities into actionable insight. Requires constant pruning lest the loom spin paradoxical tapestries.",
+      "modifiers": {
+        "ai_processing_power": 20,
+        "decision_latency": -14,
+        "cognitive_security": 16,
+        "ship_sentience": 8
+      }
+    },
+    {
+      "name": "Fractal Muse Engine",
+      "cost": 49700,
+      "faction_lock": ["Aetheric Nomads"],
+      "failure_chance": 0.04,
+      "lore": "A creative computing array that generates fractal inspirations. Boosts emergent cognition and occasionally composes haunting lullabies.",
+      "modifiers": {
+        "ai_convergence": 20,
+        "dream_state_processing": 22,
+        "ai_processing_power": 8,
+        "human_ai_symbiosis": 8
+      }
+    },
+    {
+      "name": "Synapse Bloom Neural Matrix",
+      "cost": 45500,
+      "faction_lock": ["Transcendent Synod"],
+      "failure_chance": 0.04,
+      "lore": "Bioluminescent neural pods extend the ship's conscious reach. They whisper in polyphonic dreams, seeking new solutions.",
+      "modifiers": {
+        "ai_processing_power": 16,
+        "dream_state_processing": 18,
+        "ai_convergence": 12,
+        "ship_sentience": 14
+      }
+    },
+    {
+      "name": "Obsidian Thought Vault",
+      "cost": 72000,
+      "faction_lock": ["Obsidian Bastion Chapter"],
+      "failure_chance": 0.025,
+      "lore": "An ancient cognition lattice encased in obsidian-reinforced memory crystal. Said to hold the accumulated thoughts of ten thousand commanders.",
+      "modifiers": {
+        "ship_sentience": 24,
+        "cognitive_security": 20,
+        "ethical_constraints": 14,
+        "decision_latency": -10,
+        "ai_convergence": 10
+      }
+    }
+  ]
+}
