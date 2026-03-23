@@ -23,6 +23,9 @@ export const GALAXY_HEX_SIZE = 22;
 /** Default hex radius for the planet colony map */
 export const PLANET_HEX_SIZE = 32;
 
+/** Default hex radius for the system interior map (star + planets + stations) */
+export const SYSTEM_HEX_SIZE = 36;
+
 
 // ---------------------------------------------------------------------------
 // Colour maps
@@ -795,6 +798,195 @@ export function renderColonyMap(canvas, tiles, viewState) {
       ctx.textBaseline = "middle";
       ctx.fillText(icon, px, py);
     }
+  }
+
+  ctx.restore();
+}
+
+
+// ---------------------------------------------------------------------------
+// System interior hex map rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Fill colour for each planet subtype.
+ * Intentionally dark so the glyphs remain readable on a deep-space background.
+ */
+const PLANET_SUBTYPE_COLORS = {
+  "Rocky":        "#1a0e0a",
+  "Ocean":        "#081828",
+  "Gas Giant":    "#1e1028",
+  "Ice":          "#101e28",
+  "Desert":       "#281808",
+  "Volcanic":     "#280800",
+  "Lava":         "#200400",
+  "Terrestrial":  "#0a1e0a",
+  "Super-Earth":  "#0c1e10",
+  "Sub-Earth":    "#141010",
+};
+
+/**
+ * Render the interior hex map of a star system.
+ *
+ * Draws a background hex grid (deep space), subtle orbital-ring circles,
+ * then each object (star, planets, stations, NPC ships) using distinctive
+ * colours and Unicode glyphs.  Respects pan + zoom via the same transform
+ * used by renderGalaxyMap and renderColonyMap.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @param {Array}  objects     - from /api/system/{name}/interior
+ * @param {number} gridRadius  - from /api/system/{name}/interior
+ * @param {object} viewState   - { panX, panY, zoom, selectedQ, selectedR, playerHere }
+ */
+export function renderSystemMap(canvas, objects, gridRadius, viewState) {
+  const ctx = canvas.getContext("2d");
+  const { panX = 0, panY = 0, zoom = 1, selectedQ = null, selectedR = null, playerHere = false } = viewState;
+  const size = SYSTEM_HEX_SIZE;
+
+  // 1. Clear with deep-space background (slightly different from galaxy)
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#030508";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 2. Apply pan + zoom transform, centred on canvas
+  ctx.save();
+  ctx.translate(panX + canvas.width / 2, panY + canvas.height / 2);
+  ctx.scale(zoom, zoom);
+
+  // 3. Draw background hex grid out to gridRadius
+  for (let q = -gridRadius; q <= gridRadius; q++) {
+    const r1 = Math.max(-gridRadius, -q - gridRadius);
+    const r2 = Math.min(gridRadius,  -q + gridRadius);
+    for (let r = r1; r <= r2; r++) {
+      const { x: px, y: py } = axialToPixel(q, r, size);
+      // Viewport cull: skip hexes far outside the visible canvas area
+      const screenX = panX + canvas.width  / 2 + px * zoom;
+      const screenY = panY + canvas.height / 2 + py * zoom;
+      if (screenX < -size * 4 || screenX > canvas.width  + size * 4) continue;
+      if (screenY < -size * 4 || screenY > canvas.height + size * 4) continue;
+      drawHex(ctx, px, py, size - 0.5, "#0a0d18", "#141e30", 0.35);
+    }
+  }
+
+  // 4. Orbital ring hints — faint dashed arcs at each planet ring
+  //    We use the pixel distance to the east vertex of ring i as the arc radius.
+  ctx.save();
+  ctx.strokeStyle = "rgba(40,80,120,0.22)";
+  ctx.lineWidth   = 0.8;
+  ctx.setLineDash([2, 6]);
+  const maxPlanetRing = gridRadius - 2;
+  for (let ring = 2; ring <= maxPlanetRing; ring++) {
+    // Pixel radius = horizontal distance from (0,0) to the east vertex of the ring
+    const { x: rPx } = axialToPixel(ring, 0, size);
+    ctx.beginPath();
+    ctx.arc(0, 0, rPx, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // 5. Draw object hexes — star, planets, stations, NPC ships
+  for (const obj of objects) {
+    const { x: px, y: py } = axialToPixel(obj.q, obj.r, size);
+
+    // Selection glow ring
+    const isSelected = (obj.q === selectedQ && obj.r === selectedR);
+
+    if (obj.kind === "star") {
+      // Bright yellow/white star with a soft glow ring
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, size * 0.8);
+      grad.addColorStop(0,   "rgba(255,240,120,0.25)");
+      grad.addColorStop(1,   "rgba(255,200,60,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(px, py, size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      drawHex(ctx, px, py, size - 1,
+        isSelected ? "#3a2a00" : "#2a1e00",
+        isSelected ? "#00d4aa" : "#f0c040",
+        isSelected ? 2 : 1.2);
+      // Star glyph
+      ctx.fillStyle  = "#f0d060";
+      ctx.font       = `bold ${Math.round(size * 0.8)}px "Courier New", monospace`;
+      ctx.textAlign  = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("★", px, py);
+
+    } else if (obj.kind === "planet") {
+      const fill = PLANET_SUBTYPE_COLORS[obj.subtype] || "#10101a";
+      const border = obj.has_colony
+        ? (isSelected ? "#00d4aa" : "#008866")
+        : (isSelected ? "#00d4aa" : "#2a3a4a");
+      drawHex(ctx, px, py, size - 1, fill, border, isSelected ? 2 : 0.8);
+
+      // Planet glyph
+      ctx.fillStyle  = obj.habitable ? "#66ccaa" : "#607080";
+      ctx.font       = `${Math.round(size * 0.65)}px "Courier New", monospace`;
+      ctx.textAlign  = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("◉", px, py);
+
+      // Colony badge — small house icon at top-right corner
+      if (obj.has_colony) {
+        ctx.fillStyle    = "#00d4aa";
+        ctx.font         = `${Math.round(size * 0.35)}px "Courier New", monospace`;
+        ctx.textBaseline = "top";
+        ctx.fillText("⌂", px + size * 0.38, py - size * 0.65);
+        ctx.textBaseline = "middle";
+      }
+
+      // Label below hex (only when zoomed in enough)
+      if (zoom >= 0.6) {
+        ctx.fillStyle    = "#8ab0c0";
+        ctx.font         = `${Math.round(size * 0.28)}px "Courier New", monospace`;
+        ctx.textBaseline = "top";
+        ctx.fillText(obj.label, px, py + size * 0.75);
+        ctx.textBaseline = "middle";
+      }
+
+    } else if (obj.kind === "station") {
+      // Amber station hex
+      drawHex(ctx, px, py, size - 1,
+        isSelected ? "#1e1200" : "#120c00",
+        isSelected ? "#00d4aa" : "#c08820",
+        isSelected ? 2 : 1);
+      ctx.fillStyle  = "#d0a040";
+      ctx.font       = `${Math.round(size * 0.65)}px "Courier New", monospace`;
+      ctx.textAlign  = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("⊕", px, py);
+      if (zoom >= 0.6) {
+        ctx.fillStyle    = "#8a7040";
+        ctx.font         = `${Math.round(size * 0.28)}px "Courier New", monospace`;
+        ctx.textBaseline = "top";
+        ctx.fillText(obj.label, px, py + size * 0.75);
+        ctx.textBaseline = "middle";
+      }
+
+    } else if (obj.kind === "npc_ship") {
+      // Small amber circle with a ▲ glyph — same pattern as galaxy map
+      drawHex(ctx, px, py, size * 0.6,
+        isSelected ? "#1e1000" : "#0e0800",
+        isSelected ? "#00d4aa" : "#a07020",
+        isSelected ? 2 : 0.8);
+      ctx.fillStyle  = "#c09030";
+      ctx.font       = `${Math.round(size * 0.45)}px "Courier New", monospace`;
+      ctx.textAlign  = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("▲", px, py);
+    }
+  }
+
+  // 6. Player ship marker at (0,0) when player is in this system
+  if (playerHere) {
+    const { x: px, y: py } = axialToPixel(0, 0, size);
+    // Teal triangle offset slightly so it doesn't overlap the star glyph
+    ctx.fillStyle    = "#00d4aa";
+    ctx.font         = `${Math.round(size * 0.38)}px "Courier New", monospace`;
+    ctx.textAlign    = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("▲", px + size * 0.5, py - size * 0.3);
+    ctx.textBaseline = "middle";
   }
 
   ctx.restore();

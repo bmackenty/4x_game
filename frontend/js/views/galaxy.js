@@ -487,6 +487,12 @@ async function showSystemPanel(system) {
   // Render the panel immediately with what we have (no presence/market yet)
   content.innerHTML = buildSystemPanelHtml(system, null, null);
 
+  // "Enter System" → open the system interior hex map view
+  content.querySelector(".btn-enter-system")?.addEventListener("click", async () => {
+    const { switchView } = await import("../main.js");
+    switchView("system", { systemName: system.name });
+  });
+
   // Faction name link → open diplomacy view focused on that faction
   content.querySelector(".btn-faction-link")?.addEventListener("click", async (e) => {
     const factionName = e.currentTarget.dataset.faction;
@@ -1073,6 +1079,14 @@ function buildSystemPanelHtml(system, shipCoords) {
 
       <!-- Navigation info (distance, range) -->
       ${navInfoHtml}
+
+      <!-- Enter System button — only shown when player is physically here -->
+      ${atSystem ? `
+      <button class="btn btn--primary btn--sm btn-enter-system"
+              style="width:100%;margin-bottom:var(--sp-4)"
+              data-system="${esc(system.name)}">
+        &#11042; ENTER SYSTEM
+      </button>` : ""}
 
       <!-- Planets -->
       <div class="section-header" style="margin-bottom:var(--sp-2)">

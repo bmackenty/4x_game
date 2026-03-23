@@ -5228,3 +5228,42 @@
   color: var(--text-secondary);
   font-style: italic;
 }
+
+
+/* ===========================================================================
+   SYSTEM INTERIOR VIEW — header bar and canvas layout
+   =========================================================================== */
+
+/* Header bar: breadcrumb label, system name, back button in a row */
+.system-view-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.system-view-breadcrumb {
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.system-view-title {
+  font-size: var(--font-size-sm);
+  color: var(--accent-teal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+/* Canvas fills remaining height below the header */
+.system-canvas {
+  flex: 1;
+  min-height: 0;
+}

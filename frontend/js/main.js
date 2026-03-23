@@ -27,6 +27,7 @@ import { tradeView }     from "./views/trade.js";
 import { characterView } from "./views/character.js";
 import { galaxy3dView }  from "./views/galaxy3d.js";
 import { editorView }    from "./views/editor.js";
+import { systemView }    from "./views/system.js";
 
 // ---------------------------------------------------------------------------
 // View registry — maps view name → { mount(), unmount() }
@@ -44,6 +45,7 @@ const VIEWS = {
   character: characterView,
   galaxy3d:  galaxy3dView,
   editor:    editorView,
+  system:    systemView,
 };
 
 /** DOM container for each view */
@@ -60,6 +62,7 @@ const viewEls = {
   character: document.getElementById("view-character"),
   galaxy3d:  document.getElementById("view-galaxy3d"),
   editor:    document.getElementById("view-editor"),
+  system:    document.getElementById("view-system"),
 };
 
 // ---------------------------------------------------------------------------

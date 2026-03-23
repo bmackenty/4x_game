@@ -16,6 +16,7 @@ Design rules:
     routes always win over the file-server.
 """
 
+import hashlib
 import math
 import os
 import sys
@@ -51,7 +52,7 @@ from species import get_playable_species
 from factions import factions                                  # module-level dict
 from research import all_research, RESEARCH_PATH_CATEGORIES, EXTENDED_UNLOCKS  # research data
 from energies import all_energies                              # 50 energy types
-from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
+from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord, hex_ring, HEX_DIRECTIONS
 from backend.colony import ColonyManager                       # colony system
 from backend.backstory import generate_backstory               # procedural origin story
 from backend.colony_systems import (                            # governing system logic
@@ -1796,6 +1797,222 @@ async def get_system_presence(system_name: str):
         "stations":      stations,
         "npc_ships":     npc_ships,
         "has_market":    has_market,
+    }
+
+
+# ===========================================================================
+# System Interior hex map endpoint
+# ===========================================================================
+
+
+def _system_seed(system_name: str) -> int:
+    """
+    Derive a stable integer seed from the system name.
+    Used to place planets reproducibly on the interior hex map so the same
+    system always generates the same layout across calls and server restarts.
+    """
+    return int(hashlib.md5(system_name.encode()).hexdigest(), 16) % (2 ** 32)
+
+
+def _planet_hex_position(planet_index: int, total_planets: int, ring: int, seed: int):
+    """
+    Return the (q, r) position on an orbital ring for a given planet.
+
+    Strategy:
+      - Divide the ring (6*ring hexes) evenly among planets.
+      - Apply a seed-derived rotation so each system looks unique.
+      - Index into hex_ring() to get the actual axial coord.
+    """
+    ring_hexes = hex_ring(HexCoord(0, 0), ring)
+    ring_size   = len(ring_hexes)
+    step        = ring_size // max(total_planets, 1)
+    # Seed rotation keeps the same system identical across calls
+    rotation    = (seed + planet_index * 7) % ring_size
+    pos         = (planet_index * step + rotation) % ring_size
+    return ring_hexes[pos]
+
+
+def _first_free_neighbor(host_q: int, host_r: int, occupied: set) -> tuple:
+    """
+    Return the first unoccupied neighbor of (host_q, host_r).
+    Tries all six neighbors in order; falls back to the host hex itself
+    (should never happen with a sparse system map).
+    """
+    host = HexCoord(host_q, host_r)
+    for d in HEX_DIRECTIONS:
+        candidate = HexCoord(host.q + d.q, host.r + d.r)
+        if candidate not in occupied:
+            return candidate
+    return host  # fallback
+
+
+@app.get("/api/system/{system_name}/interior")
+async def get_system_interior(system_name: str):
+    """
+    Return the hex-map layout for a star system's interior view.
+
+    Positions are computed deterministically from the system name so the same
+    system always renders identically.  The frontend uses this data to draw:
+      - A star at the centre hex (0, 0)
+      - Planets on expanding orbital rings (ring 2, 3, 4 …)
+      - Stations adjacent to their host planet
+      - NPC ships on the outermost ring
+
+    Response shape:
+      {
+        system_name: str,
+        system_type: str,
+        grid_radius:  int,       # draw background hexes out to this ring
+        player_ship_here: bool,
+        objects: [
+          { q, r, kind, label, … kind-specific fields … },
+          …
+        ]
+      }
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    galaxy = game.navigation.galaxy
+
+    # ------------------------------------------------------------------
+    # Locate the system
+    # ------------------------------------------------------------------
+    system_data  = None
+    system_coords = None
+    for coords, data in galaxy.systems.items():
+        if data.get("name", "").lower() == system_name.lower():
+            system_data   = data
+            system_coords = coords
+            break
+
+    if not system_data:
+        raise HTTPException(status_code=404, detail=f"System '{system_name}' not found.")
+
+    seed = _system_seed(system_name)
+
+    # ------------------------------------------------------------------
+    # Build the objects list; track occupied hexes to avoid collisions
+    # ------------------------------------------------------------------
+    occupied: set = set()
+    objects:  list = []
+
+    # Star at the centre (always (0, 0))
+    star_hex = HexCoord(0, 0)
+    occupied.add(star_hex)
+    objects.append({
+        "q":           star_hex.q,
+        "r":           star_hex.r,
+        "kind":        "star",
+        "label":       system_data.get("name", system_name),
+        "system_type": system_data.get("type", "Unknown"),
+        "description": system_data.get("description", ""),
+    })
+
+    # ------------------------------------------------------------------
+    # Planets — one per celestial body of type "Planet"
+    # ------------------------------------------------------------------
+    raw_planets = [
+        b for b in system_data.get("celestial_bodies", [])
+        if b.get("object_type") == "Planet"
+    ]
+    total_planets = len(raw_planets)
+    planet_hexes: dict = {}   # planet name → HexCoord (for station placement)
+
+    for idx, body in enumerate(raw_planets):
+        ring      = idx + 2   # rings 2, 3, 4 … (ring 1 kept clear around star)
+        planet_coord = _planet_hex_position(idx, total_planets, ring, seed)
+
+        # Collision-shift: if another planet landed here, nudge outward
+        while planet_coord in occupied:
+            ring += 1
+            planet_coord = _planet_hex_position(idx, total_planets, ring, seed)
+
+        occupied.add(planet_coord)
+        planet_name = body.get("name", f"Planet {idx + 1}")
+        planet_hexes[planet_name] = planet_coord
+
+        objects.append({
+            "q":                   planet_coord.q,
+            "r":                   planet_coord.r,
+            "kind":                "planet",
+            "label":               planet_name,
+            "subtype":             body.get("subtype", "Unknown"),
+            "habitable":           body.get("habitable", False),
+            "has_atmosphere":      body.get("has_atmosphere", False),
+            "population":          body.get("population", 0),
+            "resources":           body.get("resources", []),
+            "controlling_faction": body.get("controlling_faction"),
+            "has_shipyard":        body.get("shipyard", False),
+            "has_colony":          planet_name in colony_manager.colonies,
+        })
+
+    # ------------------------------------------------------------------
+    # Stations — placed adjacent to their host planet (or star if unknown)
+    # ------------------------------------------------------------------
+    station_mgr = getattr(game, "station_manager", None)
+    if station_mgr:
+        for station in station_mgr.stations.values():
+            if station.get("system_name") != system_name:
+                continue
+            # Find a good anchor hex (host planet if named, else star)
+            anchor_name = station.get("planet_name") or station.get("host_planet")
+            anchor = planet_hexes.get(anchor_name, star_hex)
+            st_coord = _first_free_neighbor(anchor.q, anchor.r, occupied)
+            occupied.add(st_coord)
+            objects.append({
+                "q":           st_coord.q,
+                "r":           st_coord.r,
+                "kind":        "station",
+                "label":       station["name"],
+                "station_type": station.get("type", "Station"),
+                "services":    station.get("services", []),
+                "description": station.get("description", ""),
+            })
+
+    # ------------------------------------------------------------------
+    # NPC ships — placed on the outermost ring + 1
+    # ------------------------------------------------------------------
+    max_ring   = max((idx + 2 for idx in range(total_planets)), default=2)
+    npc_ring   = max_ring + 1
+    bot_mgr    = getattr(game, "bot_manager", None)
+    npc_placed = 0
+    if bot_mgr and system_coords:
+        ring_hexes = hex_ring(HexCoord(0, 0), npc_ring)
+        for bot in bot_mgr.bots:
+            bot_ship = getattr(bot, "ship", None)
+            if not bot_ship:
+                continue
+            if getattr(bot_ship, "coordinates", None) != tuple(system_coords):
+                continue
+            # Place on the npc ring, skipping occupied hexes
+            if npc_placed < len(ring_hexes):
+                npc_coord = ring_hexes[npc_placed]
+                while npc_coord in occupied and npc_placed < len(ring_hexes) - 1:
+                    npc_placed += 1
+                    npc_coord = ring_hexes[npc_placed]
+                occupied.add(npc_coord)
+                objects.append({
+                    "q":        npc_coord.q,
+                    "r":        npc_coord.r,
+                    "kind":     "npc_ship",
+                    "label":    bot.name,
+                    "ship_type": bot.bot_type,
+                    "faction":  getattr(bot, "faction", ""),
+                })
+                npc_placed += 1
+
+    # ------------------------------------------------------------------
+    # Grid radius — give a comfortable margin beyond the outermost object
+    # ------------------------------------------------------------------
+    grid_radius = max_ring + 2 if total_planets > 0 else 4
+
+    return {
+        "system_name":      system_data.get("name", system_name),
+        "system_type":      system_data.get("type", "Unknown"),
+        "grid_radius":      grid_radius,
+        "player_ship_here": _player_is_in_system(system_name),
+        "objects":          objects,
     }
 
 

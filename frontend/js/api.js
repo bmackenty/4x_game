@@ -154,6 +154,16 @@ export function getSystemPresence(systemName) {
 }
 
 /**
+ * Fetch the deterministic hex-map interior layout for a star system.
+ * Returns { system_name, system_type, grid_radius, player_ship_here, objects[] }.
+ * Objects include the star, planets, stations, and any NPC ships present.
+ * @param {string} systemName
+ */
+export function getSystemInterior(systemName) {
+  return get(`/api/system/${encodeURIComponent(systemName)}/interior`);
+}
+
+/**
  * Jump the player's ship to a set of galaxy coordinates.
  * @param {number} x
  * @param {number} y
