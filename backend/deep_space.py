@@ -187,12 +187,14 @@ class DeepSpaceManager:
     # Generation
     # -----------------------------------------------------------------------
 
-    def generate(self, system_hex_set: set) -> None:
+    def generate(self, system_hex_set: set,
+                 exclusion_zone: set | None = None) -> None:
         """
         Scatter deep space objects across the hex grid.
 
-        ``system_hex_set`` is a set of (q, r) tuples that already have star
-        systems — DSOs are placed in empty cells only.
+        ``system_hex_set``  — (q, r) tuples that have star systems.
+        ``exclusion_zone``  — additional (q, r) tuples where DSOs must not
+                              be placed (e.g. hexes near the player start).
 
         Galaxy scale: 500×500 units, GALAXY_SCALE = 12.5 → grid ≈ 40×40 hexes.
         We scan q ∈ [-4, 44], r ∈ [-4, 44] for a small margin around the
@@ -202,6 +204,7 @@ class DeepSpaceManager:
             return
 
         rng = random.Random(self._seed + 1)   # offset from base seed
+        forbidden = (system_hex_set | (exclusion_zone or set()))
 
         # The hex bounding box that covers the 500×500 galaxy with margins
         Q_MIN, Q_MAX = -4, 44
@@ -232,8 +235,8 @@ class DeepSpaceManager:
             r = rng.randint(R_MIN, R_MAX)
             key = (q, r)
 
-            # Skip if system exists here or DSO already placed
-            if key in system_hex_set or key in self._objects:
+            # Skip if system exists here, in exclusion zone, or DSO already placed
+            if key in forbidden or key in self._objects:
                 continue
 
             obj_type = rng.choices(types, weights=weights, k=1)[0]
@@ -244,10 +247,17 @@ class DeepSpaceManager:
         self._generated = True
 
     def _make_object(self, rng: random.Random, obj_type: str, q: int, r: int) -> DeepSpaceObject:
-        """Build a single DSO. z is fixed at the galactic midplane (25)."""
+        """Build a single DSO. z is fixed at the galactic midplane (25).
+
+        Coordinate inverse of galaxy_coords_to_hex():
+            q = round(x / SCALE)
+            r = round(y / SCALE - q / 2)
+        →   x = q * SCALE
+        →   y = (r + q / 2) * SCALE
+        """
         GALAXY_SCALE = 12.5
         x = float(q * GALAXY_SCALE)
-        y = float(r * GALAXY_SCALE)
+        y = float((r + q / 2) * GALAXY_SCALE)
         z = 25.0   # galactic midplane — same default as the frontend hexToGalaxyCoords
 
         if obj_type == "derelict":

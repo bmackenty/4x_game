@@ -1000,10 +1000,15 @@ def _init_deep_space(g) -> None:
                 h = galaxy_coords_to_hex(coords[0], coords[1])
                 system_hex_set.add((h.q, h.r))
 
+        # Build exclusion zone: all hexes within 4 hex-steps of Proxima b (q=4, r=2)
+        from backend.hex_utils import hex_spiral, HexCoord
+        _start_hex = HexCoord(4, 2)
+        exclusion_zone = {(h.q, h.r) for h in hex_spiral(_start_hex, 4)}
+
         # Use len(galaxy.systems) as a stable, per-galaxy seed offset
         seed = 1000 + len(galaxy.systems)
         deep_space_manager = DeepSpaceManager(galaxy_seed=seed)
-        deep_space_manager.generate(system_hex_set)
+        deep_space_manager.generate(system_hex_set, exclusion_zone=exclusion_zone)
     except Exception as _e:
         print(f"[4X] Warning: deep_space_manager init failed: {_e}")
         deep_space_manager = DeepSpaceManager()
