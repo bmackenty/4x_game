@@ -802,7 +802,7 @@
     {
       "name": "Emotion-Tuned Instruments",
       "value": 5,
-      "description": "Musical tools that alter tone based on player\u2019s emotional state."
+      "description": "Musical tools that alter tone based on player’s emotional state."
     },
     {
       "name": "Gravity-Woven Robes",
@@ -1196,7 +1196,7 @@
     {
       "name": "Didactic Dust",
       "value": 5,
-      "description": "Nanoparticles that embed structured lessons in air\u2014absorbed via breath and interpreted in dreams."
+      "description": "Nanoparticles that embed structured lessons in air—absorbed via breath and interpreted in dreams."
     },
     {
       "name": "Chrono-Lesson Capsules",
@@ -1236,7 +1236,7 @@
     {
       "name": "Emotionally-Tuned Lectures",
       "value": 5,
-      "description": "Recorded teachings that adjust tone and tempo based on the learner\u2019s mood."
+      "description": "Recorded teachings that adjust tone and tempo based on the learner’s mood."
     },
     {
       "name": "Knowledge Spores",
@@ -1246,7 +1246,7 @@
     {
       "name": "Quantum Reference Slates",
       "value": 5,
-      "description": "Libraries compressed into quantum layers\u2014readable only by sentient or near-sentient minds."
+      "description": "Libraries compressed into quantum layers—readable only by sentient or near-sentient minds."
     },
     {
       "name": "Didactic Symphonies",
@@ -1256,7 +1256,7 @@
     {
       "name": "HoloText Tomes",
       "value": 5,
-      "description": "Books that reconfigure themselves to match the user\u2019s cognitive level, background, and worldview."
+      "description": "Books that reconfigure themselves to match the user’s cognitive level, background, and worldview."
     }
   ]
 }
