@@ -3775,6 +3775,125 @@ async def get_lore_factions():
 
 
 # ===========================================================================
+# Lore Editor endpoints
+# ===========================================================================
+
+_EDITOR_FILE_META = {
+    "research.json":            {"title": "Research Tree",          "description": "163 tech nodes across 16 categories. Single source of truth for all research."},
+    "intersections.json":       {"title": "Intersection Nodes",     "description": "Multi-domain nodes requiring 2+ completed categories. Unlocks advanced mechanics."},
+    "ship_components.json":     {"title": "Ship Components",        "description": "Installable ship upgrades. Each targets ship attributes via 'modifiers'."},
+    "species.json":             {"title": "Species",                "description": "Playable species definitions with stat modifiers and origin lore."},
+    "backgrounds.json":         {"title": "Backgrounds",            "description": "Early-life origins. Each grants flat stat bonuses and a unique talent."},
+    "classes.json":             {"title": "Character Classes",      "description": "54 character classes. Currently cosmetic; displayed on the character sheet."},
+    "professions.json":         {"title": "Professions",            "description": "Career specialisations that influence category ordering."},
+    "factions.json":            {"title": "Factions",               "description": "~30 NPC factions with philosophy, government type, and origin lore."},
+    "faction_systems.json":     {"title": "Faction Systems",        "description": "Preferred social / economic / political systems per faction."},
+    "energies.json":            {"title": "Energies",               "description": "50 energy types used as research categories and mystical alignments."},
+    "systems.json":             {"title": "Star Systems",           "description": "Faction-controlled star systems and spatial zones."},
+    "colony_improvements.json": {"title": "Colony Improvements",    "description": "Buildable colony tile upgrades across multiple tiers."},
+    "colony_systems.json":      {"title": "Colony Systems",         "description": "Selectable governing systems (economic, social, political) per colony."},
+    "terrain.json":             {"title": "Terrain Types",          "description": "Hex tile modifiers affecting colony production and build costs."},
+    "goods.json":               {"title": "Trade Goods",            "description": "Trade commodities organised by category for the in-game market."},
+    "manufacturing.json":       {"title": "Manufacturing",          "description": "Resource conversion chains (e.g. minerals → alloys)."},
+    "services.json":            {"title": "Services",               "description": "Station and colony services such as Logistics and Research."},
+    "game_config.json":         {"title": "Game Config",            "description": "Numeric balance tuning: upgrade costs, population growth, ore bonuses, etc."},
+    "intro.json":               {"title": "Introduction",           "description": "Opening lore narrative shown on the title screen."},
+    "credits.json":             {"title": "Credits",                "description": "Game version and contributor credits."},
+}
+
+
+@app.get("/api/editor/files")
+async def editor_list_files():
+    files = []
+    for fname in sorted(os.listdir(LORE_DIR)):
+        if not fname.endswith(".json"):
+            continue
+        meta = _EDITOR_FILE_META.get(fname, {"title": fname, "description": ""})
+        size = os.path.getsize(os.path.join(LORE_DIR, fname))
+        files.append({
+            "filename":    fname,
+            "title":       meta["title"],
+            "description": meta["description"],
+            "size_kb":     round(size / 1024, 1),
+        })
+    return {"files": files}
+
+
+@app.get("/api/editor/file/{filename}")
+async def editor_get_file(filename: str):
+    if not filename.endswith(".json") or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    path = os.path.join(LORE_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    with open(path, encoding="utf-8") as f:
+        raw = f.read()
+    return {"filename": filename, "content": raw}
+
+
+class EditorSaveRequest(BaseModel):
+    content: str
+
+
+@app.post("/api/editor/file/{filename}")
+async def editor_save_file(filename: str, req: EditorSaveRequest):
+    if not filename.endswith(".json") or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    path = os.path.join(LORE_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        _json.loads(req.content)
+    except _json.JSONDecodeError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid JSON: {e}")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(req.content)
+    return {"ok": True, "filename": filename}
+
+
+def _scan_modifiers(obj, filename, valid_ids, issues, context=""):
+    if isinstance(obj, dict):
+        if "modifiers" in obj and isinstance(obj["modifiers"], dict):
+            label = obj.get("name", context) or context
+            for key in obj["modifiers"]:
+                if key not in valid_ids:
+                    issues.append({
+                        "file":      filename,
+                        "type":      "invalid_attribute",
+                        "component": label,
+                        "attribute": key,
+                        "detail":    f"'{key}' is not a valid ship attribute",
+                    })
+        for k, v in obj.items():
+            _scan_modifiers(v, filename, valid_ids, issues, context=obj.get("name", context) or context)
+    elif isinstance(obj, list):
+        for item in obj:
+            _scan_modifiers(item, filename, valid_ids, issues, context)
+
+
+@app.get("/api/editor/validate")
+async def editor_validate():
+    from ship_attributes import ALL_ATTRIBUTE_IDS
+    valid_ids = set(ALL_ATTRIBUTE_IDS)
+    issues = []
+    # Ship attribute validation only applies to ship_components.json.
+    # Other files use their own attribute namespaces (colony, character, etc.).
+    for fname in sorted(os.listdir(LORE_DIR)):
+        if not fname.endswith(".json"):
+            continue
+        path = os.path.join(LORE_DIR, fname)
+        with open(path, encoding="utf-8") as f:
+            try:
+                data = _json.load(f)
+            except _json.JSONDecodeError as e:
+                issues.append({"file": fname, "type": "parse_error", "component": "", "attribute": "", "detail": str(e)})
+                continue
+        if fname == "ship_components.json":
+            _scan_modifiers(data, fname, valid_ids, issues)
+    return {"issues": issues, "valid": len(issues) == 0}
+
+
+# ===========================================================================
 # Static files — mounted LAST so /api/* routes always win
 # ===========================================================================
 

@@ -492,3 +492,23 @@ export function harvestDeepSpace() {
 export function foundDeepSpaceOutpost() {
   return post("/api/deep_space/found_outpost");
 }
+
+// ===========================================================================
+// Lore Editor
+// ===========================================================================
+
+export function editorListFiles() {
+  return get("/api/editor/files");
+}
+
+export function editorGetFile(filename) {
+  return get(`/api/editor/file/${encodeURIComponent(filename)}`);
+}
+
+export function editorSaveFile(filename, content) {
+  return post(`/api/editor/file/${encodeURIComponent(filename)}`, { content });
+}
+
+export function editorValidate() {
+  return get("/api/editor/validate");
+}

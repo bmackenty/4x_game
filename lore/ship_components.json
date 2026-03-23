@@ -175,7 +175,7 @@
       "modifiers": {
         "reactor_output": 18,
         "energy_storage": 18,
-        "ai_ether_integration": 8
+        "etheric_sensitivity": 8
       }
     },
     {
@@ -226,6 +226,29 @@
         "detection_range": 26,
         "scan_resolution": 20,
         "etheric_sensitivity": 10
+      }
+    },
+    {
+      "name": "Prism Lattice Telescope",
+      "cost": 38000,
+      "faction_lock": ["Atlas Cartography Guild"],
+      "failure_chance": 0.022,
+      "lore": "A dense cluster of micro-refraction lenses that resolves star-chart data to sub-parsec precision. Favoured by cartographers mapping the void's finest details.",
+      "modifiers": {
+        "scan_resolution": 26,
+        "detection_range": 12
+      }
+    },
+    {
+      "name": "Void Echo Listener",
+      "cost": 42500,
+      "faction_lock": null,
+      "failure_chance": 0.028,
+      "lore": "Passive receiver arrays tuned to pick up echoes bouncing off distant mass. Beloved by scouts and smugglers who prefer to observe unseen.",
+      "modifiers": {
+        "scan_resolution": 16,
+        "etheric_sensitivity": 12,
+        "detection_range": 8
       }
     }
   ],
@@ -296,6 +319,57 @@
         "ethical_constraints": 14,
         "decision_latency": -10,
         "ai_convergence": 10
+      }
+    },
+    {
+      "name": "Covenant Conscience Engine",
+      "cost": 55000,
+      "faction_lock": ["Transcendent Synod"],
+      "failure_chance": 0.03,
+      "lore": "An AI architecture governed by multilayered covenant protocols. It negotiates between crew desires and ethical imperatives with almost uncanny grace.",
+      "modifiers": {
+        "ethical_constraints": 22,
+        "human_ai_symbiosis": 18,
+        "cognitive_security": 8,
+        "ai_processing_power": 6
+      }
+    },
+    {
+      "name": "Reverie Drift Processor",
+      "cost": 47800,
+      "faction_lock": ["Aetheric Nomads"],
+      "failure_chance": 0.038,
+      "lore": "A processor that enters liminal dream-states between jump cycles, emerging with optimised routing and uncanny intuitions. It hums in colours.",
+      "modifiers": {
+        "dream_state_processing": 24,
+        "decision_latency": -14,
+        "ai_convergence": 8
+      }
+    },
+    {
+      "name": "Aegis Mind Bastion",
+      "cost": 63000,
+      "faction_lock": ["Obsidian Bastion Chapter"],
+      "failure_chance": 0.022,
+      "lore": "A fortress-mind core sealed in obsidian memory-glass. Designed to hold against intrusion, paradox, and existential doubt with equal stoicism.",
+      "modifiers": {
+        "cognitive_security": 24,
+        "decision_latency": -10,
+        "ethical_constraints": 12,
+        "ai_processing_power": 8
+      }
+    },
+    {
+      "name": "Somnium Weave Core",
+      "cost": 51000,
+      "faction_lock": ["Chorus of Silence"],
+      "failure_chance": 0.035,
+      "lore": "Woven from silence and deep-cycle processing threads, this core bridges machine logic and human intuition through shared dream architectures.",
+      "modifiers": {
+        "dream_state_processing": 20,
+        "human_ai_symbiosis": 14,
+        "ship_sentience": 8,
+        "decision_latency": -6
       }
     }
   ]

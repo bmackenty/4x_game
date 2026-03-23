@@ -7,7 +7,11 @@
       "COH": 1
     },
     "talent": "Distributed Awareness: Once per day, split attention across two simultaneous tasks without penalty.",
-    "traits": ["Systems Adaptive", "Multi-Species Socialized", "Event-Driven Learner"]
+    "traits": [
+      "Systems Adaptive",
+      "Multi-Species Socialized",
+      "Event-Driven Learner"
+    ]
   },
   "Ecological Symbiosis": {
     "description": "Raised within living, responsive biospheres — forests that signaled distress, oceans that encoded data. Childhood was structured around stewardship, ecological modeling, and long-term thinking. Control was never the lesson; participation was.",
@@ -17,7 +21,11 @@
       "VIT": 1
     },
     "talent": "Biosphere Reading: Can sense ecological health or imbalance in any planetary environment without instruments.",
-    "traits": ["Ecological Intuition", "Long-Term Thinker", "Systems Steward"]
+    "traits": [
+      "Ecological Intuition",
+      "Long-Term Thinker",
+      "Systems Steward"
+    ]
   },
   "Cognitive Engineering": {
     "description": "Paired with adaptive AI companions from early childhood in advanced research enclaves. Education centered on abstraction, simulation design, recursive problem-solving, and cognitive augmentation tools introduced before most children could read.",
@@ -26,7 +34,11 @@
       "INT": 2
     },
     "talent": "Cognitive Scaffold: Once per session, reduce the RP cost of any research project by 20%.",
-    "traits": ["Abstract Reasoner", "AI-Paired", "Recursive Thinker"]
+    "traits": [
+      "Abstract Reasoner",
+      "AI-Paired",
+      "Recursive Thinker"
+    ]
   },
   "Ritual-Cultural Synthesis": {
     "description": "Raised in multi-species diplomatic hubs and cultural convergence zones. Structured rituals encoded social, political, and emotional knowledge. Conflict resolution and identity formation were mediated through shared ceremonial systems.",
@@ -36,7 +48,11 @@
       "COH": 1
     },
     "talent": "Shared Ritual: Once per day, restore minor social harmony or faction trust through a brief ceremonial act.",
-    "traits": ["Symbolic Literate", "Cross-Cultural", "Ceremonial Thinker"]
+    "traits": [
+      "Symbolic Literate",
+      "Cross-Cultural",
+      "Ceremonial Thinker"
+    ]
   },
   "Frontier Autonomy": {
     "description": "Grew up in resource-constrained edge systems and partially explored regions where authority structures were minimal and autonomy was expected early. Learning was pragmatic: repair systems, improvise tools, manage risk.",
@@ -46,7 +62,11 @@
       "VIT": 1
     },
     "talent": "Field Ingenuity: Once per day, jury-rig a device or system from available materials without a skill penalty.",
-    "traits": ["Pragmatic Survivor", "Self-Reliant", "Improvisation Expert"]
+    "traits": [
+      "Pragmatic Survivor",
+      "Self-Reliant",
+      "Improvisation Expert"
+    ]
   },
   "Economic Flow Immersion": {
     "description": "Embedded in trade nexuses, orbital marketplaces, and interstellar logistics hubs from childhood. Simulated and real trading systems were the classroom — tracking flows of goods, energy, and information across species and currencies.",
@@ -56,7 +76,11 @@
       "INT": 1
     },
     "talent": "Market Sense: Once per session, predict commodity price trends or identify the optimal trade route currently available.",
-    "traits": ["Market Intuitive", "Negotiator", "Flow Strategist"]
+    "traits": [
+      "Market Intuitive",
+      "Negotiator",
+      "Flow Strategist"
+    ]
   },
   "Temporal Awareness": {
     "description": "Raised in regions affected by chrono-synthetic flux where time runs at variable rates or overlapping temporal states. Memory and anticipation were trained as dynamic, adjustable processes — causality was a skill, not an assumption.",
@@ -66,7 +90,11 @@
       "AEF": 1
     },
     "talent": "Temporal Flicker: Once per day, reroll any initiative or timing-based test.",
-    "traits": ["Temporal Flexible", "Causality Analyst", "Non-Linear Planner"]
+    "traits": [
+      "Temporal Flexible",
+      "Causality Analyst",
+      "Non-Linear Planner"
+    ]
   },
   "Embodied Craft": {
     "description": "Raised in nano-fabrication hubs and artisan guild worlds where identity was tied to making. From early childhood: constructing materials, devices, and structures at multiple scales. Precision and iteration were cultural values, not instructions.",
@@ -76,6 +104,10 @@
       "SYN": 1
     },
     "talent": "Artisan's Touch: Gains advantage on any check involving physical construction, repair, or fabrication.",
-    "traits": ["Craft Master", "Guild-Trained", "Material Intuitive"]
+    "traits": [
+      "Craft Master",
+      "Guild-Trained",
+      "Material Intuitive"
+    ]
   }
 }

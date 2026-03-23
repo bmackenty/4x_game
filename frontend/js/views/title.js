@@ -86,6 +86,7 @@ function _buildHtml(hasGame) {
           <a href="#" class="title-link" id="title-load">Load Game</a>
           ${saveLink}
           <a href="#" class="title-link title-link--dim" id="title-credits">Credits</a>
+          <a href="#" class="title-link title-link--dim" id="title-editor">Data Editor</a>
         </nav>
 
       </div>
@@ -122,6 +123,11 @@ function _attach(container, hasGame) {
   container.querySelector("#title-credits")?.addEventListener("click", e => {
     e.preventDefault();
     _showCreditsModal();
+  });
+
+  container.querySelector("#title-editor")?.addEventListener("click", e => {
+    e.preventDefault();
+    _switchView("editor");
   });
 
   if (hasGame) {
