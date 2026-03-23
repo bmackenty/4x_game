@@ -1081,6 +1081,18 @@ async def new_game(request: NewGameRequest):
             game.navigation.current_ship.coordinates = start_sys["coordinates"]
             start_sys["visited"] = True
 
+            # Enforce a 4-hex (~50 unit) exclusion zone around Proxima b.
+            # generate_procedural_systems() only avoids 15 units, so we cull
+            # any procedural system that spawned too close after the fact.
+            _px, _py, _pz = start_sys["coordinates"]
+            _too_close = [
+                coords for coords, sys_data in list(galaxy.systems.items())
+                if sys_data.get("name") != "Proxima b"
+                and ((_px - coords[0])**2 + (_py - coords[1])**2 + (_pz - coords[2])**2) ** 0.5 < 50
+            ]
+            for _coords in _too_close:
+                del galaxy.systems[_coords]
+
     # Give the starter ship a generous fuel load so new players can explore freely.
     ship = game.navigation.current_ship
     if ship:
