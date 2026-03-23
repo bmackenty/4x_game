@@ -962,7 +962,7 @@ function buildSystemPanelHtml(system, shipCoords) {
 
   // Navigation info: distance from ship to this system
   let navInfoHtml = "";
-  let atSystem = false;
+  let atSystem = false;  // hoisted so planet cards can reference it below
   {
     const shipInfo = state.gameState?.ship;
     const sCoords  = shipInfo?.coordinates ?? shipCoords;
@@ -1017,18 +1017,12 @@ function buildSystemPanelHtml(system, shipCoords) {
         ? `<div style="font-size:var(--font-size-xs);color:var(--text-dim);margin-top:2px">
              ${p.resources.slice(0, 3).join(", ")}</div>`
         : ""}
-      ${p.habitable
-        ? p.has_colony
-          ? `<button class="btn btn--sm btn--secondary btn-found-colony"
-                     style="margin-top:var(--sp-2);width:100%"
-                     data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
-               ◉ VISIT COLONY
-             </button>`
-          : `<button class="btn btn--sm btn--primary btn-found-colony"
-                     style="margin-top:var(--sp-2);width:100%"
-                     data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
-               ⊕ ESTABLISH COLONY
-             </button>`
+      ${p.habitable && p.has_colony
+        ? `<button class="btn btn--sm btn--secondary btn-found-colony"
+                   style="margin-top:var(--sp-2);width:100%"
+                   data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
+             ◉ VISIT COLONY
+           </button>`
         : ""}
     </div>
   `).join("") || `<p style="color:var(--text-dim);font-size:var(--font-size-xs)">
@@ -1726,6 +1720,27 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
 
 
 // ---------------------------------------------------------------------------
+// Galaxy map refresh — called after any movement so newly-scanned systems,
+// stations, and deep-space objects become visible immediately.
+// ---------------------------------------------------------------------------
+
+async function _refreshGalaxyMap() {
+  try {
+    const result = await getGalaxyMap();
+    state.galaxyMap        = result.systems            || [];
+    state.stationsData     = result.stations           || [];
+    state.deepSpaceObjects = result.deep_space_objects || [];
+    systemsData  = state.galaxyMap;
+    stationsData = state.stationsData;
+    dsoData      = state.deepSpaceObjects;
+    isDirty = true;
+  } catch (_err) {
+    // Non-fatal — map stays stale until the next jump or remount
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Jump action
 // ---------------------------------------------------------------------------
 
@@ -1737,19 +1752,17 @@ async function handleJump(system) {
     if (result.success) {
       notify("NAV", `Arrived at ${system.name}.  Fuel: ${result.fuel_remaining}`);
 
-      // Update the visited flag in our local cache
-      const cached = systemsData.find(s => s.name === system.name);
-      if (cached) cached.visited = true;
-
       // Update ship coordinates in state immediately so the marker moves
       // without waiting for the 1-second polling loop to catch up.
       if (state.gameState?.ship && result.new_coords) {
         state.gameState.ship.coordinates = result.new_coords;
       }
 
-      // Refresh state
       state.selectedSystem = { ...state.selectedSystem, visited: true };
-      isDirty = true;
+
+      // Re-fetch the galaxy map so systems, stations, and DSOs that just
+      // entered scan range become visible without needing to remount.
+      await _refreshGalaxyMap();
     } else {
       notify("ERROR", result.message || "Jump failed.");
     }
@@ -1779,23 +1792,15 @@ async function handleDeepSpaceMove(q, r) {
       }
 
       const dso = result.deep_space_object;
+
+      // Re-fetch the galaxy map so newly-scanned objects appear immediately.
+      await _refreshGalaxyMap();
+
       if (dso) {
         notify("NAV", `Arrived at ${dso.name || dso.subtype || "deep space"}.  Fuel: ${result.fuel_remaining}`);
-        // Reveal the DSO in local cache
-        const cached = dsoData.find(d => d.hex_q === q && d.hex_r === r);
-        if (cached) {
-          cached.discovered = true;
-          cached.name = dso.name;
-          cached.description = dso.description;
-        } else if (dso.type) {
-          dsoData.push({ ...dso, hex_q: q, hex_r: r });
-          state.deepSpaceObjects = dsoData;
-        }
-        isDirty = true;
         showDsoPanel({ ...dso, hex_q: q, hex_r: r }, q, r);
       } else {
         notify("NAV", `Entered deep space at (${q}, ${r}).  Fuel: ${result.fuel_remaining}`);
-        isDirty = true;
         showEmptyHexPanel(q, r);
       }
     } else {

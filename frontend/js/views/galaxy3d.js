@@ -239,6 +239,9 @@ function _processData(rawSystems) {
     visited:            s.visited || false,
     controlling_faction: s.controlling_faction || null,
     population:         s.population || 0,
+    // Preserve fog-of-war flag so the 3D renderer respects scan range,
+    // matching the 2D view's visibility rules.
+    in_scan_range:      s.in_scan_range !== false,
   }));
 
   // Populate legend
