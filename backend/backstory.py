@@ -21,13 +21,21 @@ import random
 # Internal helper
 # ---------------------------------------------------------------------------
 
+def _article(word: str) -> str:
+    """Return 'an' if word starts with a vowel sound, otherwise 'a'."""
+    return "an" if word and word[0].lower() in "aeiou" else "a"
+
+
 def _pick(bank: dict, key: str, **fmt) -> str:
     """
     Select a random fragment from bank[key], falling back to bank["default"].
     Returns an empty string if neither key nor "default" exists.
-    Interpolates {name}, {profession}, and any other fmt kwargs.
+    Interpolates {name}, {profession}, {article} and any other fmt kwargs.
+    The {article} placeholder resolves to 'a' or 'an' based on the profession.
     """
     options = bank.get(key) or bank.get("default") or [""]
+    profession = fmt.get("profession", "")
+    fmt.setdefault("article", _article(profession))
     return random.choice(options).format(**fmt)
 
 
@@ -181,36 +189,36 @@ _PIVOT = {
 
 _PROFESSION_ENTRY = {
     "Etheric": [
-        "After completing assessments that placed them in the upper cohort for etheric sensitivity, {name} qualified as a {profession} and entered a field where the instruments are often less reliable than the practitioner.",
-        "{name}'s early evaluations confirmed what childhood had suggested: a measurable affinity for etheric phenomena that led directly into formal training as a {profession}, younger than most.",
+        "After completing assessments that placed them in the upper cohort for etheric sensitivity, {name} qualified as {article} {profession} and entered a field where the instruments are often less reliable than the practitioner.",
+        "{name}'s early evaluations confirmed what childhood had suggested: a measurable affinity for etheric phenomena that led directly into formal training as {article} {profession}, younger than most.",
     ],
     "Engineering": [
-        "Technical certification as a {profession} followed naturally from years of informal practice — {name} entered the field with fewer theoretical gaps and more practical hours than most of their peers.",
-        "{name} completed their engineering track and qualified as a {profession} at an age that raised eyebrows at the certification board — not for irregularity, but for the quality of the work.",
+        "Technical certification as {article} {profession} followed naturally from years of informal practice — {name} entered the field with fewer theoretical gaps and more practical hours than most of their peers.",
+        "{name} completed their engineering track and qualified as {article} {profession} at an age that raised eyebrows at the certification board — not for irregularity, but for the quality of the work.",
     ],
     "Scientific": [
-        "{name} was awarded a research designation as a {profession} after assessments that described their approach as 'methodologically unconventional and empirically rigorous' — a combination that opened doors.",
-        "A natural aptitude for systematic inquiry led {name} into formal scientific training as a {profession}, where the habit of asking structural questions finally found an institutional home.",
+        "{name} was awarded a research designation as {article} {profession} after assessments that described their approach as 'methodologically unconventional and empirically rigorous' — a combination that opened doors.",
+        "A natural aptitude for systematic inquiry led {name} into formal scientific training as {article} {profession}, where the habit of asking structural questions finally found an institutional home.",
     ],
     "Medical": [
-        "Medical qualification as a {profession} came after a training period that {name} later described as 'learning to pay attention at the cellular level' — a discipline that turned out to have broad applications.",
-        "{name} entered practice as a {profession} after training that combined formal curriculum with field experience: the kind of preparation that no examination fully measures.",
+        "Medical qualification as {article} {profession} came after a training period that {name} later described as 'learning to pay attention at the cellular level' — a discipline that turned out to have broad applications.",
+        "{name} entered practice as {article} {profession} after training that combined formal curriculum with field experience: the kind of preparation that no examination fully measures.",
     ],
     "Diplomatic": [
-        "Formal posting as a {profession} was a credential {name} had been working toward deliberately, each prior placement chosen to build fluency in the language of institutional leverage.",
-        "{name} was cleared for independent service as a {profession} younger than the median — a function less of exceptional talent than of an unusually complete set of applicable preparation.",
+        "Formal posting as {article} {profession} was a credential {name} had been working toward deliberately, each prior placement chosen to build fluency in the language of institutional leverage.",
+        "{name} was cleared for independent service as {article} {profession} younger than the median — a function less of exceptional talent than of an unusually complete set of applicable preparation.",
     ],
     "Operations": [
-        "Operational certification as a {profession} gave structure to skills {name} had been developing informally for years, providing a framework without fundamentally changing the approach.",
-        "{name} qualified as a {profession} through a track that weighted applied experience as heavily as formal examination — a policy that worked strongly in their favor.",
+        "Operational certification as {article} {profession} gave structure to skills {name} had been developing informally for years, providing a framework without fundamentally changing the approach.",
+        "{name} qualified as {article} {profession} through a track that weighted applied experience as heavily as formal examination — a policy that worked strongly in their favor.",
     ],
     "Artistic": [
-        "Recognition as a {profession} came when {name}'s work began circulating beyond the cohort that first encountered it — a progression from local reputation to something wider and less controllable.",
-        "{name} completed formal designation as a {profession} and immediately began working at a scale that made the designation feel slightly inadequate.",
+        "Recognition as {article} {profession} came when {name}'s work began circulating beyond the cohort that first encountered it — a progression from local reputation to something wider and less controllable.",
+        "{name} completed formal designation as {article} {profession} and immediately began working at a scale that made the designation feel slightly inadequate.",
     ],
     "default": [
-        "Formal qualification as a {profession} followed a path that, in retrospect, had been laid since early childhood — each choice pointing toward the same destination from a different angle.",
-        "{name} entered their professional track as a {profession} with the kind of preparation that looks inevitable after the fact and feels like improvisation while it's happening.",
+        "Formal qualification as {article} {profession} followed a path that, in retrospect, had been laid since early childhood — each choice pointing toward the same destination from a different angle.",
+        "{name} entered their professional track as {article} {profession} with the kind of preparation that looks inevitable after the fact and feels like improvisation while it's happening.",
     ],
 }
 
