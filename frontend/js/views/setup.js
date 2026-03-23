@@ -5,9 +5,10 @@
  * On submit it calls /api/game/new and, on success, hands off to main.js.
  */
 
-import { state }           from "../state.js";
-import { newGame }         from "../api.js";
-import { notify }          from "../ui/notifications.js";
+import { state }                    from "../state.js";
+import { newGame }                  from "../api.js";
+import { notify }                   from "../ui/notifications.js";
+import { showModal, closeModal }    from "../ui/modal.js";
 // onGameStarted is imported lazily to avoid circular dep with main.js
 let _onGameStarted = null;
 
@@ -616,7 +617,30 @@ async function handleSubmit(container) {
       research_paths:   [],
     });
 
-    if (_onGameStarted) {
+    // Store the backstory on global state so the character sheet can display it
+    // without a separate API call.
+    state.characterBackstory = result.backstory || "";
+
+    // Show the Commander Dossier modal before routing to the galaxy.
+    // The player clicks "BEGIN JOURNEY" to dismiss it and start the game.
+    if (result.backstory && _onGameStarted) {
+      showModal(
+        "COMMANDER DOSSIER",
+        `<div class="backstory-modal">
+           <p class="backstory-modal__lede">${escapeHtml(result.backstory)}</p>
+         </div>`,
+        [
+          {
+            label:     "BEGIN JOURNEY",
+            className: "btn--primary",
+            onClick:   () => {
+              closeModal();
+              _onGameStarted(result.state);
+            },
+          },
+        ]
+      );
+    } else if (_onGameStarted) {
       _onGameStarted(result.state);
     }
 

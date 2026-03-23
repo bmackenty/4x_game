@@ -88,4 +88,11 @@ export const state = {
 
   /** Full response from GET /api/game/options */
   options: null,
+
+  // -----------------------------------------------------------------
+  // Character narrative
+  // -----------------------------------------------------------------
+
+  /** Procedurally generated origin story, set from /api/game/new response. */
+  characterBackstory: "",
 };

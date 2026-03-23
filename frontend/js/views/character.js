@@ -145,6 +145,11 @@ function _buildDesignationPanel(s) {
           </div>
         </div>
       </div>
+      ${s.backstory ? `
+      <div class="char-backstory">
+        <div class="char-backstory__label">COMMANDER RECORD</div>
+        <p class="char-backstory__text">${esc(s.backstory)}</p>
+      </div>` : ""}
     </section>
   `;
 }

@@ -53,6 +53,7 @@ from research import all_research, RESEARCH_PATH_CATEGORIES, EXTENDED_UNLOCKS  #
 from energies import all_energies                              # 50 energy types
 from backend.hex_utils import resolve_hex_collisions, galaxy_coords_to_hex, _find_free_hex, HexCoord
 from backend.colony import ColonyManager                       # colony system
+from backend.backstory import generate_backstory               # procedural origin story
 from backend.colony_systems import (                            # governing system logic
     get_available_systems,
     calculate_faction_affinity,
@@ -1128,10 +1129,25 @@ async def new_game(request: NewGameRequest):
     else:
         game.character_profession = ""
 
+    # Generate a procedural origin story from the character's creation choices and
+    # store it as an attribute on the game object so it persists for the session.
+    game.character_backstory = generate_backstory(
+        character_data={
+            "name":       game.player_name,
+            "background": game.character_background,
+            "profession": getattr(game, "character_profession", ""),
+            "faction":    game.character_faction,
+            "stats":      game.character_stats or {},
+        },
+        lore_backgrounds=lore_backgrounds,
+        lore_professions=PROFESSIONS,
+    )
+
     return {
-        "success": True,
-        "message": f"Welcome, {game.player_name}. The galaxy awaits.",
-        "state": _build_state_snapshot(),
+        "success":   True,
+        "message":   f"Welcome, {game.player_name}. The galaxy awaits.",
+        "backstory": game.character_backstory,
+        "state":     _build_state_snapshot(),
     }
 
 
@@ -1318,8 +1334,10 @@ async def save_game(request: SaveRequest):
         raise HTTPException(status_code=400, detail="No game in progress.")
 
     # Inject colony and deep-space state so save_game.py persists them via game.*_state.
-    game.colony_state = colony_manager.serialize()
-    game.deep_space_state = deep_space_manager.serialize() if deep_space_manager else {}
+    game.colony_state      = colony_manager.serialize()
+    game.deep_space_state  = deep_space_manager.serialize() if deep_space_manager else {}
+    # Ensure character_backstory attribute exists before saving (graceful for old saves).
+    game.character_backstory = getattr(game, "character_backstory", "")
 
     # save_game.py expects bot.coordinates; AIBot stores it on bot.ship.coordinates.
     _bot_mgr = getattr(game, "bot_manager", None)
@@ -1372,6 +1390,9 @@ async def load_game(request: LoadRequest):
     # Hull damage is not persisted by save_game.py; reset to pristine on load.
     # (Save persistence for hull damage is a future improvement.)
     game.ship_hull_damage = 0.0
+
+    # Ensure character_backstory attribute exists after loading (graceful for old saves).
+    game.character_backstory = getattr(game, "character_backstory", "")
 
     # Re-apply the full bonus stack (research/faction/character) on top of the
     # component profile that save_game restores via calculate_stats_from_components().
@@ -3759,6 +3780,8 @@ async def get_character_sheet():
         "equipment":             [],
         "cybernetics":           [],
         "etheric_enhancements":  [],
+        # Procedurally generated origin story (set at game creation, persisted via save).
+        "backstory":             getattr(game, "character_backstory", ""),
     }
 
 

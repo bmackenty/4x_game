@@ -5187,3 +5187,44 @@
   border-color: var(--accent-gold, #f0a030);
   color: var(--accent-gold, #f0a030);
 }
+
+
+/* ── Commander Dossier intro modal ─────────────────────────────────────── */
+
+.backstory-modal {
+  padding: var(--sp-4);
+}
+
+.backstory-modal__lede {
+  font-size: var(--font-size-sm);
+  line-height: 1.75;
+  color: var(--text-secondary);
+  font-style: italic;
+  max-width: 52ch;
+  margin: 0 auto;
+  text-align: center;
+}
+
+
+/* ── Character sheet backstory block ───────────────────────────────────── */
+
+.char-backstory {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.char-backstory__label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  color: var(--accent-teal);
+  text-transform: uppercase;
+  margin-bottom: var(--sp-2);
+}
+
+.char-backstory__text {
+  font-size: var(--font-size-sm);
+  line-height: 1.75;
+  color: var(--text-secondary);
+  font-style: italic;
+}
