@@ -119,6 +119,11 @@ The loop closely follows Alpha Centauri:
 1. **Explore** — Navigate a 3D galaxy of 30–40 star systems on the hex map.
    Each jump costs one action point and fuel.  Deep space between systems
    contains derelicts, anomalies, resource nodes, and outpost sites.
+   Use the **Z-band filter buttons** (↑↑ HIGH / ↑ ABOVE / — PLANE / ↓ BELOW /
+   ↓↓ DEEP) to select your operating depth in galactic elevation; selecting a
+   band both highlights systems at that elevation *and* sets the Z coordinate
+   used for empty-space jumps.  Your ship's current elevation band is shown
+   in the top-right corner of the galaxy map canvas.
 2. **Colonise** — Land on habitable planets to found colonies.  Each colony
    gets a procedurally generated hex tile grid (terrain seeded from planet
    name for reproducibility).
@@ -134,7 +139,10 @@ The loop closely follows Alpha Centauri:
    When a project finishes, a modal details what was learned and what it unlocks.
 6. **Trade** — Buy and sell commodities at system markets.  Prices shift with
    supply, demand, and galactic events.  Each colony's economic system also
-   produces a unique commodity per turn.
+   produces a unique commodity per turn.  Systems with structural shortfalls
+   (more demand than supply) display **⚠ GALACTIC NEEDS** badges in the system
+   panel — filling a shortfall earns a 10% credit bonus and +3 faction
+   reputation with the controlling faction.
 7. **Diplomacy** — Manage reputation with the galaxy's 30+ factions.  Colony
    system choices passively improve or reduce standing with factions whose
    worldview aligns or conflicts with your configuration.
@@ -149,7 +157,9 @@ Each turn end runs:
 - Colony production (income applied; resource totals updated)
 - AI bot movement
 - **Galactic News Network (GNN)** modal — a comedic news broadcast with an
-  income/expense ledger
+  income/expense ledger.  The broadcast now surfaces actual macro-economic
+  events from the game engine (Mining Booms, Crop Failures, Trade Wars,
+  Technology Breakthroughs, Pirate Raids) with tailored narrative copy.
 - **Research Complete** modal — fires before GNN when a project finishes,
   showing the lore description and full unlock list
 
@@ -377,6 +387,25 @@ seeded from the system's resource profile and the global economy.
 - **Sell** a commodity: costs 1 action point; price reflects current supply.
 - Prices shift each turn based on supply, demand, and galactic events.
 - Faction territory modifies buy/sell prices according to reputation tier.
+
+### Galactic Needs
+
+Every system panel shows a **⚠ GALACTIC NEEDS** section listing up to three
+commodities where local demand structurally exceeds supply (shortfalls).
+Each shortfall entry shows the commodity name and how far above the base price
+the market is currently paying (e.g. "+85% above base").
+
+Filling a shortfall — selling enough units so the commodity is no longer
+undersupplied — rewards the player immediately:
+
+| Reward | Amount |
+|--------|--------|
+| Credit bonus | +10% of the sale value |
+| Faction reputation | +3 with the system's controlling faction |
+
+A **NEED FILLED** toast appears in the HUD to confirm the bonus.  Shortfalls
+are recalculated each turn as supply and demand shift, so different systems
+will call for different goods as the game progresses.
 
 ---
 
