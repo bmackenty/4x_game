@@ -2468,6 +2468,92 @@ async def deep_space_harvest():
     }
 
 
+@app.post("/api/deep_space/encounter")
+async def deep_space_encounter():
+    """
+    Trigger a random encounter with the derelict at the ship's current hex.
+
+    Automatically resolves: salvage, exploration, combat skirmish, or hazard.
+    Applies loot to cargo/credits and hull damage to the ship. Marks the
+    derelict as depleted.
+
+    Returns the full narrative + outcome + resource changes.
+    """
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+    if not deep_space_manager:
+        raise HTTPException(status_code=503, detail="Deep space system not ready.")
+
+    coords = ship.coordinates
+    dest_hex = galaxy_coords_to_hex(coords[0], coords[1])
+    try:
+        result = deep_space_manager.encounter(dest_hex.q, dest_hex.r)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Apply loot
+    loot         = result["loot"]
+    credits_gained = loot.get("credits", 0)
+    cargo_added    = {}
+
+    game.credits = getattr(game, "credits", 0) + credits_gained
+
+    for resource, amount in loot.get("cargo", {}).items():
+        if resource == "stolen":
+            # Ghost scenario: remove random cargo items
+            stolen_value = amount
+            for res_key in list(ship.cargo.keys()):
+                if ship.cargo[res_key] > 0 and stolen_value > 0:
+                    take = min(ship.cargo[res_key], max(1, stolen_value // 50))
+                    ship.cargo[res_key] -= take
+                    cargo_added[res_key] = -take   # negative = lost
+                    stolen_value -= take * 50
+        else:
+            ship.cargo[resource] = ship.cargo.get(resource, 0) + amount
+            cargo_added[resource] = amount
+
+    # Apply hull damage
+    hull_damage = result.get("hull_damage", 0.0)
+    if hull_damage > 0:
+        game.ship_hull_damage = round(getattr(game, "ship_hull_damage", 0.0) + hull_damage, 2)
+        apply_all_bonuses_to_ship(ship, game)
+
+    # Apply research boost: data_cores in cargo grant RP toward active research.
+    # Each core = 5 RP; only meaningful if a research project is active.
+    _RP_PER_CORE = 5
+    data_cores_found = cargo_added.get("data_cores", 0)
+    research_gained  = 0
+    if data_cores_found > 0 and getattr(game, "active_research", None):
+        research_gained = data_cores_found * _RP_PER_CORE
+        game.research_progress = getattr(game, "research_progress", 0) + research_gained
+        # Check if this completes the active research
+        all_res = getattr(game, "research_tree", {}) or {}
+        _rt = all_res.get(game.active_research, {}).get("research_time", None)
+        if _rt and game.research_progress >= _rt:
+            try:
+                game.complete_research()
+            except Exception:
+                pass
+
+    return {
+        "success":           True,
+        "opening":           result["opening"],
+        "outcome_type":      result["outcome_type"],
+        "outcome_title":     result["outcome_title"],
+        "outcome_narrative": result["outcome_narrative"],
+        "credits_gained":    credits_gained,
+        "cargo_added":       cargo_added,
+        "hull_damage":       hull_damage,
+        "research_gained":   research_gained,
+        "credits":           game.credits,
+        "cargo":             dict(ship.cargo),
+        "subtype":           result["subtype"],
+    }
+
+
 @app.post("/api/deep_space/found_outpost")
 async def deep_space_found_outpost():
     """
@@ -2610,6 +2696,8 @@ async def get_ship_attributes():
         "hull_integrity_effective": _hull_eff,
         "components":  getattr(ship, "components", {}),
         "categories":  categories,
+        "cargo":       {k: v for k, v in (getattr(ship, "cargo", {}) or {}).items() if v},
+        "credits":     getattr(game, "credits", 0),
     }
 
 

@@ -19,7 +19,7 @@ import { getGalaxyMap, getSystem, jumpToCoords,
          getSystemPresence,
          getStation, getStationUpgrades, buyStationUpgrade, repairShipAtStation,
          getNpcShips,
-         harvestDeepSpace, foundDeepSpaceOutpost } from "../api.js";
+         harvestDeepSpace, foundDeepSpaceOutpost, encounterDerelict } from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { showModal, closeModal } from "../ui/modal.js";
 import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
@@ -614,12 +614,16 @@ function showEmptyHexPanel(q, r) {
 // Deep space object detail panel
 // ---------------------------------------------------------------------------
 
-/** Icons for each DSO type */
+/** Icons for each DSO type (normal / depleted) */
 const DSO_ICONS = {
   derelict:      "⊘",
   anomaly:       "✦",
   resource_node: "◈",
   outpost_site:  "○",
+};
+const DSO_ICONS_EXPLORED = {
+  derelict:      "✓",
+  resource_node: "✓",
 };
 
 /** Accent colours for each DSO type */
@@ -642,8 +646,8 @@ function showDsoPanel(dso, q, r) {
   panel.classList.remove("panel--hidden");
   state.rightPanelOpen = true;
 
-  const icon   = DSO_ICONS[dso.type]   || "·";
-  const color  = DSO_COLORS[dso.type]  || "var(--text-dim)";
+  const icon   = (dso.depleted && DSO_ICONS_EXPLORED[dso.type]) ? DSO_ICONS_EXPLORED[dso.type] : (DSO_ICONS[dso.type] || "·");
+  const color  = dso.depleted ? "var(--text-dim)" : (DSO_COLORS[dso.type] || "var(--text-dim)");
   const coords = hexToGalaxyCoords(q, r);
 
   const shipCoords = state.gameState?.ship?.coordinates;
@@ -669,8 +673,9 @@ function showDsoPanel(dso, q, r) {
   }
 
   if (dso.depleted) {
+    const depletedLabel = dso.type === "derelict" ? "✓ EXPLORED" : "DEPLETED";
     actionHtml = `<div style="color:var(--text-dim);font-size:var(--font-size-xs);
-                              margin-top:var(--sp-2);text-align:center">DEPLETED</div>`;
+                              margin-top:var(--sp-2);text-align:center">${depletedLabel}</div>`;
   }
 
   content.innerHTML = `
@@ -1798,7 +1803,11 @@ async function handleDeepSpaceMove(q, r) {
 
       if (dso) {
         notify("NAV", `Arrived at ${dso.name || dso.subtype || "deep space"}.  Fuel: ${result.fuel_remaining}`);
-        showDsoPanel({ ...dso, hex_q: q, hex_r: r }, q, r);
+        if (dso.type === "derelict" && !dso.depleted) {
+          await _triggerDerelictEncounter(dso, q, r);
+        } else {
+          showDsoPanel({ ...dso, hex_q: q, hex_r: r }, q, r);
+        }
       } else {
         notify("NAV", `Entered deep space at (${q}, ${r}).  Fuel: ${result.fuel_remaining}`);
         showEmptyHexPanel(q, r);
@@ -1809,6 +1818,99 @@ async function handleDeepSpaceMove(q, r) {
   } catch (err) {
     notify("ERROR", `Move failed: ${err.message}`);
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// Derelict encounter — automatic random resolution
+// ---------------------------------------------------------------------------
+
+const OUTCOME_ICONS = {
+  salvage:         "⊘",
+  explore:         "◎",
+  combat_skirmish: "⚡",
+  hazard:          "⚠",
+};
+
+async function _triggerDerelictEncounter(dso, q, r) {
+  const { showModal, closeModal } = await import("../ui/modal.js");
+
+  // Show "scanning..." immediately while we wait for the API
+  showModal(
+    `⊘ ${esc(dso.name || dso.subtype || "DERELICT")}`,
+    `<div style="color:var(--text-dim);text-align:center;padding:var(--sp-6) 0">
+       Scanning wreck…
+     </div>`,
+    [],
+    { wide: true }
+  );
+
+  let result;
+  try {
+    result = await encounterDerelict();
+  } catch (err) {
+    closeModal();
+    notify("ERROR", `Encounter failed: ${err.message}`);
+    showDsoPanel({ ...dso, hex_q: q, hex_r: r }, q, r);
+    return;
+  }
+
+  // Update local DSO cache to depleted
+  const cached = dsoData.find(d => d.hex_q === q && d.hex_r === r);
+  if (cached) cached.depleted = true;
+  if (state.gameState?.player) state.gameState.player.credits = result.credits;
+  isDirty = true;
+
+  // Build loot summary
+  const lootParts = [];
+  if (result.credits_gained > 0) lootParts.push(`${result.credits_gained.toLocaleString()} cr`);
+  for (const [k, v] of Object.entries(result.cargo_added || {})) {
+    if (v > 0) lootParts.push(`${v} ${k.replace(/_/g, " ")}`);
+    else if (v < 0) lootParts.push(`<span style="color:var(--accent-red)">${Math.abs(v)} ${k.replace(/_/g, " ")} lost</span>`);
+  }
+  const lootHtml = lootParts.length
+    ? `<div class="encounter-loot">${lootParts.join("  ·  ")}</div>`
+    : "";
+
+  const researchHtml = result.research_gained > 0
+    ? `<div class="encounter-research">◎ +${result.research_gained} research progress</div>`
+    : "";
+
+  const hullHtml = result.hull_damage > 0
+    ? `<div class="encounter-hull-warn">Hull integrity −${result.hull_damage.toFixed(1)}</div>`
+    : "";
+
+  const outcomeIcon = OUTCOME_ICONS[result.outcome_type] || "·";
+  const color = result.outcome_type === "hazard"    ? "var(--accent-red)"
+              : result.outcome_type === "combat_skirmish" ? "var(--accent-orange)"
+              : result.outcome_type === "explore"    ? "rgba(0,170,255,0.9)"
+              : "var(--accent-green)";
+
+  const body = `
+    <div class="encounter-modal">
+      <p class="encounter-opening">${esc(result.opening)}</p>
+      <div class="encounter-divider"></div>
+      <div class="encounter-outcome" style="border-left-color:${color}">
+        <div class="encounter-outcome__title" style="color:${color}">
+          ${outcomeIcon} ${esc(result.outcome_title)}
+        </div>
+        <p class="encounter-outcome__text">${esc(result.outcome_narrative)}</p>
+        ${lootHtml}
+        ${researchHtml}
+        ${hullHtml}
+      </div>
+    </div>
+  `;
+
+  showModal(
+    `⊘ ${esc(dso.name || dso.subtype || "DERELICT")}`,
+    body,
+    [{ label: "CLOSE", className: "btn--secondary", onClick: () => {
+      closeModal();
+      showDsoPanel({ ...dso, hex_q: q, hex_r: r, depleted: true }, q, r);
+    }}],
+    { wide: true }
+  );
 }
 
 

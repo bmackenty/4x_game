@@ -496,6 +496,15 @@ export function harvestDeepSpace() {
 }
 
 /**
+ * Trigger a random encounter with the derelict at the ship's current position.
+ * Returns { success, opening, outcome_type, outcome_title, outcome_narrative,
+ *           credits_gained, cargo_added, hull_damage, credits, cargo, subtype }.
+ */
+export function encounterDerelict() {
+  return post("/api/deep_space/encounter");
+}
+
+/**
  * Attempt to found an outpost at the ship's current position (stub — future feature).
  * Returns { success, message }.
  */

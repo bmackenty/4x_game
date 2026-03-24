@@ -107,6 +107,144 @@ ANOMALY_EFFECTS: Dict[str, Dict] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Derelict encounter narratives — opening paragraph per subtype
+# ---------------------------------------------------------------------------
+
+DERELICT_NARRATIVES: Dict[str, str] = {
+    "Freighter Wreck": (
+        "The wreck drifts silently, cargo containers punctured and venting crystallized "
+        "gas. Your hull sensors detect residual heat — this ship hasn't been cold long. "
+        "Hull registration: stripped. Whoever hit it didn't want it traced."
+    ),
+    "Mining Barge Hull": (
+        "A massive ore hauler, split along its spine. The mining array still rotates "
+        "lazily in the void, grinding against nothing. Ore dust halos the wreck in a faint "
+        "shimmer visible even at this range."
+    ),
+    "Exploration Vessel": (
+        "A scout-class vessel, sleek design suggesting pre-war manufacture. Navigation "
+        "beacons still pulse weakly from its bow — someone left the power on. Or something did."
+    ),
+    "Military Cruiser Fragment": (
+        "A warship's aft section, cannons still bristling from shattered hardpoints. The "
+        "hull markings are scorched beyond identification. Whatever killed it brought overwhelming "
+        "force — the armor plating peeled like foil."
+    ),
+    "Ancient Generation Ship": (
+        "Enormous. Ancient. The vessel dwarfs your ship by orders of magnitude — a cathedral "
+        "of the old civilization, adrift for centuries. Thousands of hab-rings, dark and cold. "
+        "You wonder how many people it once carried."
+    ),
+    "Research Station Debris": (
+        "A modular research platform, labs exposed to vacuum. Specimen containers tumble "
+        "slowly through the debris field. Data cores still blink amber in the wreckage — "
+        "whatever they were studying, they kept meticulous records."
+    ),
+}
+
+# Encounter outcomes — random events when a derelict is boarded
+# Each has: type, weight, title, narrative, and optional effect hints
+ENCOUNTER_OUTCOMES: list = [
+    {
+        "type":      "salvage",
+        "weight":    0.35,
+        "title":     "Cargo Hold Intact",
+        "narrative": (
+            "Your boarding drone cuts through to the cargo hold. Containers sealed against "
+            "vacuum — the contents survived. You work quickly, transferring what you can before "
+            "the structural groaning grows too loud to ignore."
+        ),
+        "loot_multiplier": 1.0,
+    },
+    {
+        "type":      "salvage",
+        "weight":    0.15,
+        "title":     "Emergency Stores",
+        "narrative": (
+            "The engineering bay holds emergency reserve caches — fuel cells, repair kits, "
+            "trade goods the crew stowed for a crisis that came before they could use them. "
+            "Someone's loss becomes your gain."
+        ),
+        "loot_multiplier": 0.6,
+    },
+    {
+        "type":      "explore",
+        "weight":    0.20,
+        "title":     "Log Archive Recovered",
+        "narrative": (
+            "The ship's black box is intact. You spend an hour pulling logs — crew manifests, "
+            "route data, the last frantic entries before the end. The story is incomplete, "
+            "but the navigation data alone is worth the detour. Data cores secured."
+        ),
+        "loot_multiplier": 0.4,
+        "bonus_data_cores": 2,
+    },
+    {
+        "type":      "explore",
+        "weight":    0.10,
+        "title":     "Research Files",
+        "narrative": (
+            "Encrypted research cores, still cycling through their redundant backups. "
+            "You can't read them without a proper lab interface, but their sheer volume "
+            "suggests something significant was being studied here. Knowledge has value."
+        ),
+        "loot_multiplier": 0.2,
+        "bonus_data_cores": 4,
+    },
+    {
+        "type":      "combat_skirmish",
+        "weight":    0.10,
+        "title":     "Scavengers Routed",
+        "narrative": (
+            "Your approach triggered a proximity alarm — a scavenger crew was already aboard. "
+            "They scatter at your weapon signatures, their shuttle burning hard for deep space. "
+            "They left in a hurry; so did whatever they were carrying. You sweep the wreck "
+            "and find what they missed."
+        ),
+        "loot_multiplier": 0.5,
+    },
+    {
+        "type":      "combat_skirmish",
+        "weight":    0.05,
+        "title":     "Ghost in the Hull",
+        "narrative": (
+            "Motion sensors spike. Then silence. The hull groans. Thermal imaging shows a "
+            "heat signature that shouldn't exist in a derelict this cold. It moves — then "
+            "vanishes through a bulkhead. You sweep every compartment. Whatever it was, "
+            "it's gone. So is a portion of your cargo manifest you're certain you loaded."
+        ),
+        "loot_multiplier": -0.3,   # negative = cargo loss
+    },
+    {
+        "type":      "hazard",
+        "weight":    0.03,
+        "title":     "Reactor Flare",
+        "narrative": (
+            "Residual reactor activity spikes the moment you breach the hull. Emergency "
+            "alerts cascade across your board — shields absorb the worst, but the particle "
+            "burst strips paint and scorches sensor arrays. You pull back fast, salvaging "
+            "what you can on the way out."
+        ),
+        "hull_damage": 4.0,
+        "loot_multiplier": 0.3,
+    },
+    {
+        "type":      "hazard",
+        "weight":    0.02,
+        "title":     "Atmospheric Rupture",
+        "narrative": (
+            "A rupture in the engineering section vents corrosive atmosphere directly into "
+            "your docking collar. Emergency seals hold — barely. The chemical burn etches "
+            "micro-fractures across your forward hull plating. You retreat and run a full "
+            "damage assessment."
+        ),
+        "hull_damage": 6.5,
+        "loot_multiplier": 0.0,
+    },
+]
+
+
 # Salvage loot tables for derelicts
 DERELICT_LOOT: Dict[str, Dict] = {
     "Freighter Wreck":           {"cargo": {"minerals": 8, "food": 5},    "credits": 800},
@@ -317,6 +455,86 @@ class DeepSpaceManager:
         obj = self._objects.get((q, r))
         if obj:
             obj.discovered = True
+
+    def encounter(self, q: int, r: int) -> Dict:
+        """
+        Trigger a random derelict encounter at (q, r).
+
+        Picks a weighted-random outcome, applies loot/damage modifiers, marks
+        the derelict as depleted, and returns the full encounter result dict.
+
+        Raises ValueError if there is no derelict here or it is already depleted.
+
+        Return shape:
+          {
+            "opening":        str,   # subtype-specific flavour intro
+            "outcome_type":   str,   # "salvage" | "explore" | "combat_skirmish" | "hazard"
+            "outcome_title":  str,
+            "outcome_narrative": str,
+            "loot": {                # resources gained (may be empty)
+                "credits": int,
+                "cargo":   {resource: amount, ...}
+            },
+            "hull_damage":    float, # 0 unless a hazard occurred
+            "subtype":        str,
+          }
+        """
+        obj = self._objects.get((q, r))
+        if not obj:
+            raise ValueError("No deep space object at this location.")
+        if obj.type != "derelict":
+            raise ValueError("This is not a derelict — use harvest() for resource nodes.")
+        if obj.depleted:
+            raise ValueError("This derelict has already been explored.")
+
+        # Pick outcome
+        weights = [o["weight"] for o in ENCOUNTER_OUTCOMES]
+        outcome = random.choices(ENCOUNTER_OUTCOMES, weights=weights, k=1)[0]
+
+        # Base loot from the derelict's loot table
+        # Structure: {"credits": int, "cargo": {resource: amount, ...}}
+        base_loot    = dict(obj.data.get("loot", {}))
+        base_credits = base_loot.pop("credits", 0)
+        base_cargo   = dict(base_loot.pop("cargo", base_loot))  # nested cargo dict
+
+        multiplier = outcome.get("loot_multiplier", 1.0)
+        extra_data_cores = outcome.get("bonus_data_cores", 0)
+
+        loot_credits = 0
+        loot_cargo: Dict[str, int] = {}
+
+        if multiplier > 0:
+            loot_credits = max(0, round(base_credits * multiplier))
+            for res, amt in base_cargo.items():
+                scaled = max(0, round(amt * multiplier))
+                if scaled:
+                    loot_cargo[res] = scaled
+        elif multiplier < 0:
+            # Ghost scenario: cargo is stolen — return negative to let caller handle
+            loot_credits = 0
+            loot_cargo   = {"stolen": round(abs(multiplier) * 100)}   # flag for frontend
+
+        if extra_data_cores:
+            loot_cargo["data_cores"] = loot_cargo.get("data_cores", 0) + extra_data_cores
+
+        hull_damage = outcome.get("hull_damage", 0.0)
+        opening = DERELICT_NARRATIVES.get(obj.subtype, "The wreck drifts silent and cold in the void.")
+
+        obj.depleted  = True
+        obj.discovered = True
+
+        return {
+            "opening":           opening,
+            "outcome_type":      outcome["type"],
+            "outcome_title":     outcome["title"],
+            "outcome_narrative": outcome["narrative"],
+            "loot": {
+                "credits": loot_credits,
+                "cargo":   loot_cargo,
+            },
+            "hull_damage": hull_damage,
+            "subtype":     obj.subtype,
+        }
 
     def harvest(self, q: int, r: int) -> Dict:
         """

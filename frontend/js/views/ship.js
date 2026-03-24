@@ -22,7 +22,7 @@ import { notify } from "../ui/notifications.js";
 let _attrs   = null;   // Response from /api/ship/attributes
 let _comps   = null;   // Response from /api/ship/components
 let _catFilter = "all"; // Active category id, or "all"
-let _tab = "stats";    // "stats" | "components"
+let _tab = "stats";    // "stats" | "components" | "cargo"
 
 
 // ---------------------------------------------------------------------------
@@ -138,11 +138,13 @@ function buildHtml() {
                 data-tab="stats">ATTRIBUTES</button>
         <button class="ship-tab-btn ${_tab === "components" ? "ship-tab-btn--active" : ""}"
                 data-tab="components">COMPONENTS</button>
+        <button class="ship-tab-btn ${_tab === "cargo" ? "ship-tab-btn--active" : ""}"
+                data-tab="cargo">CARGO</button>
       </div>
 
       <!-- ── Tab content ─────────────────────────────────── -->
       <div class="ship-view__body">
-        ${_tab === "stats" ? buildStatsTab() : buildComponentsTab()}
+        ${_tab === "stats" ? buildStatsTab() : _tab === "components" ? buildComponentsTab() : buildCargoTab()}
       </div>
 
     </div>
@@ -216,6 +218,72 @@ function buildComponentsTab() {
         ${buildInstalledSection(installed)}
       </section>
       <p class="ship-comp-note">Component upgrades available at a <strong>Shipyard</strong>.</p>
+    </div>
+  `;
+}
+
+
+// ── Cargo tab ───────────────────────────────────────────────────────────────
+
+const CARGO_ICONS = {
+  minerals:        "⬡",
+  food:            "❋",
+  water:           "◉",
+  alloys:          "◈",
+  energy_cells:    "⚡",
+  dark_matter:     "◆",
+  crystals:        "✦",
+  data_cores:      "◎",
+  artifacts:       "◎",
+  organics:        "❋",
+  hydrogen:        "◉",
+  exotic_particles:"✦",
+};
+
+function buildCargoTab() {
+  const cargo   = _attrs.cargo   || {};
+  const credits = _attrs.credits ?? 0;
+  const maxCargo = _attrs.max_cargo ?? 0;
+
+  const entries = Object.entries(cargo).filter(([, v]) => v > 0);
+  const used    = entries.reduce((sum, [, v]) => sum + v, 0);
+  const usedPct = maxCargo > 0 ? Math.min(100, Math.round((used / maxCargo) * 100)) : 0;
+  const barMod  = usedPct >= 90 ? " cargo-bar--crit" : usedPct >= 70 ? " cargo-bar--warn" : "";
+
+  const emptyMsg = entries.length === 0
+    ? `<div class="cargo-empty">Cargo hold is empty.</div>`
+    : "";
+
+  const rows = entries.map(([key, qty]) => {
+    const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const icon  = CARGO_ICONS[key] || "·";
+    return `
+      <div class="cargo-row">
+        <span class="cargo-row__icon">${icon}</span>
+        <span class="cargo-row__name">${label}</span>
+        <span class="cargo-row__qty">${qty}</span>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="ship-cargo">
+      <div class="cargo-header">
+        <div class="cargo-header__label">HOLD CAPACITY</div>
+        <div class="cargo-header__bar-wrap">
+          <div class="cargo-header__bar${barMod}" style="width:${usedPct}%"></div>
+        </div>
+        <div class="cargo-header__value">${used} / ${maxCargo} t</div>
+      </div>
+      <div class="cargo-credits">
+        <span class="cargo-credits__icon">◈</span>
+        <span class="cargo-credits__label">Credits</span>
+        <span class="cargo-credits__value">${credits.toLocaleString()}</span>
+      </div>
+      <div class="cargo-list">
+        ${emptyMsg}
+        ${rows}
+      </div>
     </div>
   `;
 }
