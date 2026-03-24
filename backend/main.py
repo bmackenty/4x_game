@@ -1618,20 +1618,22 @@ async def get_galaxy_map():
                 "description": st.get("description", ""),
             })
 
-    # Include deep space objects using the same scan-range fog-of-war as systems:
-    #   - within current scan range → auto-discover and include
-    #   - previously discovered      → include
-    #   - never seen                 → omit entirely
+    # Include deep space objects within current sensor range only.
+    # Objects outside range are hidden even if previously encountered.
+    # Discovery (name/description reveal) is still persistent — once identified,
+    # an object shows its full details whenever it comes back into range.
     dso_list = []
-    if deep_space_manager:
+    if deep_space_manager and ship_coords:
+        sx, sy, sz = ship_coords
         for dso in deep_space_manager.list_all():
-            if ship_coords:
-                sx, sy, sz = ship_coords
-                dso_dist = math.sqrt((dso.x - sx) ** 2 + (dso.y - sy) ** 2 + (dso.z - sz) ** 2)
-                if dso_dist <= scan_range and not dso.discovered:
-                    deep_space_manager.discover(dso.hex_q, dso.hex_r)
-            if dso.discovered:
-                dso_list.append(dso.to_dict())
+            dso_dist = math.sqrt(
+                (dso.x - sx) ** 2 + (dso.y - sy) ** 2 + (dso.z - sz) ** 2
+            )
+            if dso_dist > scan_range:
+                continue
+            if not dso.discovered:
+                deep_space_manager.discover(dso.hex_q, dso.hex_r)
+            dso_list.append(dso.to_dict())
 
     return {"systems": projected, "stations": deep_space_stations, "deep_space_objects": dso_list}
 
