@@ -20,12 +20,6 @@ import { axialToPixel, HEX_DIRECTIONS } from "./hex-math.js";
 /** Default hex radius (centre → corner) in pixels for the galaxy map */
 export const GALAXY_HEX_SIZE = 22;
 
-/**
- * Width in pixels of the Z-depth gauge strip docked to the right edge of the
- * galaxy canvas.  galaxy.js uses this to detect gauge-zone pointer events.
- */
-export const Z_GAUGE_WIDTH = 22;
-
 /** Default hex radius for the planet colony map */
 export const PLANET_HEX_SIZE = 32;
 
@@ -711,18 +705,41 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   ctx.restore();
 
   // -----------------------------------------------------------------------
-  // Z-depth gauge — screen-space overlay drawn AFTER ctx.restore() so it is
-  // not affected by the pan/zoom transform.  Reads gaugeShipZ and gaugeTargetZ
-  // from viewState; skips if zStats is absent (e.g. empty galaxy).
+  // Z-depth readout — compact screen-space overlay in the top-right corner.
+  // Shows the ship's current elevation band and Z value so the player can
+  // see what depth they're operating at without any extra UI element.
   // -----------------------------------------------------------------------
-  if (viewState.gaugeShipZ !== undefined && viewState.gaugeTargetZ !== undefined && zStats) {
-    drawZGauge(
-      ctx,
-      canvas.width, canvas.height,
-      viewState.gaugeShipZ,
-      viewState.gaugeTargetZ,
-      zStats,
-    );
+  if (zStats && viewState.gaugeShipZ !== undefined) {
+    const shipZ = viewState.gaugeShipZ;
+    const band  = _zBand(shipZ, zStats);
+    const bandColors = {
+      high:  "#00e5ff",
+      above: "#4fc3f7",
+      plane: "rgba(200,216,232,0.55)",
+      below: "#ffb74d",
+      deep:  "#ff7043",
+    };
+    const bandLabels = {
+      high:  "↑↑ HIGH",
+      above: "↑ ABOVE",
+      plane: "— PLANE",
+      below: "↓ BELOW",
+      deep:  "↓↓ DEEP",
+    };
+    const color = bandColors[band] || "rgba(200,216,232,0.55)";
+    const label = bandLabels[band] || "PLANE";
+
+    ctx.save();
+    ctx.font         = "8px 'Courier New', monospace";
+    ctx.textAlign    = "right";
+    ctx.textBaseline = "top";
+    // Depth value line
+    ctx.fillStyle = "rgba(200,216,232,0.40)";
+    ctx.fillText(`Z ${Math.round(shipZ)}u`, canvas.width - 6, 6);
+    // Band label line — coloured to match the elevation dot on the hex
+    ctx.fillStyle = color;
+    ctx.fillText(label, canvas.width - 6, 16);
+    ctx.restore();
   }
 }
 
@@ -759,131 +776,6 @@ function _drawStarfield(ctx, width, height, viewState) {
     ctx.arc(fx * width, fy * height, 0.8, 0, Math.PI * 2);
     ctx.fill();
   }
-}
-
-
-// ---------------------------------------------------------------------------
-// Z-depth gauge
-// ---------------------------------------------------------------------------
-
-/**
- * Draw a vertical Z-elevation gauge in screen space on the right edge of the
- * galaxy canvas.  Called from renderGalaxyMap() AFTER ctx.restore() so it is
- * immune to the pan/zoom transform.
- *
- * Visual layout (top = high elevation, bottom = deep):
- *   ┌──┐  ← "Z" label
- *   │  │  cyan gradient    (HIGH band)
- *   │─ │  ← ship Z hairline (teal)
- *   │▷ │  ← target Z arrow (white, draggable from galaxy.js)
- *   │  │  orange-red gradient (DEEP band)
- *   └──┘
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} canvasW      - canvas pixel width
- * @param {number} canvasH      - canvas pixel height
- * @param {number} shipZ        - ship's current Z coordinate in game units
- * @param {number} targetZ      - player's chosen jump-Z (set by dragging gauge)
- * @param {{ min: number, max: number, mean: number, std: number }} zStats
- */
-export function drawZGauge(ctx, canvasW, canvasH, shipZ, targetZ, zStats) {
-  const GW      = Z_GAUGE_WIDTH;   // gauge strip width in px
-  const MARGIN  = 26;              // top/bottom margin for label + breathing room
-  const gx      = canvasW - GW;   // left edge of the gauge strip
-  const gy      = MARGIN;          // top of the colored bar
-  const gh      = canvasH - MARGIN * 2;  // height of the colored bar
-  const zMin    = zStats.min;
-  const zMax    = zStats.max;
-  const zRange  = (zMax - zMin) || 1;
-
-  // Map a Z game value → Y pixel (top of gauge = highest Z = "HIGH")
-  const zToY = z => gy + gh * (1 - (Math.max(zMin, Math.min(zMax, z)) - zMin) / zRange);
-
-  ctx.save();
-
-  // --- Background fill behind the full gauge column ---
-  ctx.fillStyle = "rgba(5, 9, 15, 0.80)";
-  ctx.fillRect(gx, 0, GW, canvasH);
-
-  // --- Colored elevation gradient bar ---
-  const grad = ctx.createLinearGradient(0, gy, 0, gy + gh);
-  grad.addColorStop(0.00, "rgba(  0, 229, 255, 0.40)");   // HIGH — cyan
-  grad.addColorStop(0.28, "rgba( 79, 195, 247, 0.22)");   // ABOVE — pale blue
-  grad.addColorStop(0.50, "rgba( 10,  15,  30, 0.00)");   // PLANE — transparent
-  grad.addColorStop(0.72, "rgba(255, 183,  77, 0.22)");   // BELOW — amber
-  grad.addColorStop(1.00, "rgba(255, 112,  67, 0.40)");   // DEEP  — orange-red
-  ctx.fillStyle = grad;
-  ctx.fillRect(gx, gy, GW, gh);
-
-  // --- Left separator line ---
-  ctx.beginPath();
-  ctx.moveTo(gx, 0);
-  ctx.lineTo(gx, canvasH);
-  ctx.strokeStyle = "rgba(30, 50, 80, 0.9)";
-  ctx.lineWidth   = 1;
-  ctx.stroke();
-
-  // --- Sigma-threshold tick marks ---
-  // Mark the ±1σ and ±2σ boundaries using the elevation-band colours.
-  const ticks = [
-    { z: zStats.mean + 2 * zStats.std, color: "rgba(  0, 229, 255, 0.55)" },  // +2σ HIGH edge
-    { z: zStats.mean + 1 * zStats.std, color: "rgba( 79, 195, 247, 0.35)" },  // +1σ ABOVE edge
-    { z: zStats.mean,                  color: "rgba(200, 216, 232, 0.25)" },  // midplane
-    { z: zStats.mean - 1 * zStats.std, color: "rgba(255, 183,  77, 0.35)" },  // -1σ BELOW edge
-    { z: zStats.mean - 2 * zStats.std, color: "rgba(255, 112,  67, 0.55)" },  // -2σ DEEP edge
-  ];
-  for (const t of ticks) {
-    if (t.z < zMin || t.z > zMax) continue;
-    const ty = zToY(t.z);
-    ctx.beginPath();
-    ctx.moveTo(gx + 4, ty);
-    ctx.lineTo(gx + GW, ty);
-    ctx.strokeStyle = t.color;
-    ctx.lineWidth   = 0.8;
-    ctx.stroke();
-  }
-
-  // --- Target Z marker — white triangle pointing right from the left edge ---
-  // This indicates the Z plane the player will jump to on empty-hex clicks.
-  const tyY = zToY(targetZ);
-  ctx.beginPath();
-  ctx.moveTo(gx,     tyY - 4);
-  ctx.lineTo(gx,     tyY + 4);
-  ctx.lineTo(gx + 9, tyY);
-  ctx.closePath();
-  ctx.fillStyle   = "rgba(255, 255, 255, 0.85)";
-  ctx.fill();
-
-  // Target Z numeric readout to the left of the strip
-  ctx.fillStyle    = "rgba(255, 255, 255, 0.55)";
-  ctx.font         = "7px 'Courier New', monospace";
-  ctx.textAlign    = "right";
-  ctx.textBaseline = "middle";
-  ctx.fillText(Math.round(targetZ), gx - 2, tyY);
-
-  // --- Ship Z hairline — solid teal horizontal line ---
-  const syY = zToY(shipZ);
-  ctx.beginPath();
-  ctx.moveTo(gx, syY);
-  ctx.lineTo(gx + GW, syY);
-  ctx.strokeStyle = "#00d4aa";
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
-
-  // Small teal circle at the ship hairline to make it distinct from tick marks
-  ctx.beginPath();
-  ctx.arc(gx + GW / 2, syY, 2.5, 0, Math.PI * 2);
-  ctx.fillStyle = "#00d4aa";
-  ctx.fill();
-
-  // --- "Z" label at top ---
-  ctx.fillStyle    = "rgba(200, 216, 232, 0.45)";
-  ctx.font         = "8px 'Courier New', monospace";
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("Z", gx + GW / 2, MARGIN / 2);
-
-  ctx.restore();
 }
 
 

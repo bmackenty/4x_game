@@ -22,7 +22,7 @@ import { getGalaxyMap, getSystem, jumpToCoords,
          harvestDeepSpace, foundDeepSpaceOutpost, encounterDerelict } from "../api.js";
 import { notify }             from "../ui/notifications.js";
 import { showModal, closeModal } from "../ui/modal.js";
-import { renderGalaxyMap, GALAXY_HEX_SIZE, Z_GAUGE_WIDTH } from "../hex/hex-render.js";
+import { renderGalaxyMap, GALAXY_HEX_SIZE } from "../hex/hex-render.js";
 import { attachHexInput }     from "../hex/hex-input.js";
 
 // ---------------------------------------------------------------------------
@@ -106,16 +106,10 @@ let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-proje
 let zStats        = null;    // { mean, std, min, max } computed from systemsData z values
 let activeZFilter = "all";   // "all"|"high"|"above"|"plane"|"below"|"deep"
 
-// Z-depth gauge state — targetZ is the Z plane used for empty-space jumps.
-// It is set by dragging the gauge widget on the right edge of the canvas.
-// Defaults to galactic midplane (25) on first mount; preserved across re-mounts.
-let targetZ           = 25;    // current target jump depth (game units)
-let _gaugeDragging    = false; // true while the player is dragging the gauge
-
-// Module-level references to gauge event handlers so they can be removed in unmount().
-let _gaugeOnMouseDown = null;
-let _gaugeOnMouseMove = null;
-let _gaugeOnMouseUp   = null;
+// Z-depth target — the Z plane used for empty-space jumps.
+// Updated when the player clicks a Z-band filter button.
+// Defaults to galactic midplane (25); preserved across re-mounts.
+let targetZ = 25;
 
 // Sensor ring toggle — persists while this view is mounted
 let showScanRing  = false;
@@ -130,6 +124,36 @@ let _marketData = null;
 // ---------------------------------------------------------------------------
 // Z-elevation helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Return the Z coordinate at the centre of a named elevation band.
+ * Used to set targetZ when the player clicks a band filter button.
+ * Bands are defined relative to the dataset mean and std deviation:
+ *   high  = mean + 2.5σ  (middle of the >2σ region)
+ *   above = mean + 1.5σ  (middle of the 1–2σ region)
+ *   plane = mean         (galactic midplane)
+ *   below = mean - 1.5σ
+ *   deep  = mean - 2.5σ
+ * "all" returns the ship's current Z so clicking ALL DEPTHS doesn't jump depth.
+ * @param {string} band
+ * @param {{ mean: number, std: number, min: number, max: number }} zStats
+ * @returns {number}
+ */
+function _bandCenterZ(band, zStats) {
+  if (!zStats) return 25;
+  const { mean, std, min, max } = zStats;
+  let z;
+  switch (band) {
+    case "high":  z = mean + 2.5 * std; break;
+    case "above": z = mean + 1.5 * std; break;
+    case "plane": z = mean;             break;
+    case "below": z = mean - 1.5 * std; break;
+    case "deep":  z = mean - 2.5 * std; break;
+    default:      return targetZ;        // "all" — preserve current depth
+  }
+  // Clamp to the actual Z extent of the galaxy
+  return Math.max(min, Math.min(max, z));
+}
 
 /**
  * Compute mean and standard deviation of the z coordinates across all systems.
@@ -212,8 +236,8 @@ export const galaxyView = {
     // Compute z-elevation statistics across all systems now that data is loaded.
     zStats = _computeZStats(systemsData);
 
-    // Initialise targetZ to the ship's current Z so the gauge starts at the
-    // player's actual depth rather than always snapping to the midplane (25).
+    // Initialise targetZ to the ship's current Z so empty-space jumps start
+    // at the player's actual depth rather than always snapping to midplane (25).
     {
       const initShipZ = state.gameState?.ship?.coordinates?.[2];
       if (initShipZ !== undefined) targetZ = initShipZ;
@@ -237,6 +261,11 @@ export const galaxyView = {
       const btn = e.target.closest("[data-zband]");
       if (!btn) return;
       activeZFilter = btn.dataset.zband;
+      // Set the target jump depth to the centre of the selected band so that
+      // clicking a band button also moves the player's operating depth —
+      // "show me these systems" and "I want to travel at this elevation" are
+      // the same action.  "ALL DEPTHS" preserves the current targetZ.
+      targetZ = _bandCenterZ(activeZFilter, zStats);
       // Update active button styling immediately
       filterBarEl.querySelectorAll(".z-filter-btn").forEach(b => {
         b.classList.toggle("z-filter-btn--active", b.dataset.zband === activeZFilter);
@@ -265,69 +294,6 @@ export const galaxyView = {
       showSystemPanel(state.selectedSystem);
     } else {
       showDefaultPanel();
-    }
-
-    // -----------------------------------------------------------------------
-    // Z-gauge interaction — register BEFORE attachHexInput so our handlers
-    // fire first and can call stopImmediatePropagation() to block hex-input
-    // from treating gauge clicks as map pans or hex-clicks.
-    // -----------------------------------------------------------------------
-    {
-      /**
-       * Map a canvas Y pixel position to a Z game coordinate.
-       * Mirrors the zToY formula inside drawZGauge in hex-render.js (inverted).
-       */
-      const GAUGE_MARGIN = 26;  // must match the MARGIN constant in drawZGauge
-      const yToZ = (canvasY, canvasH) => {
-        if (!zStats) return 25;
-        const gh   = canvasH - GAUGE_MARGIN * 2;
-        const frac = 1 - (canvasY - GAUGE_MARGIN) / gh;  // 1 = top = max Z
-        return zStats.min + (zStats.max - zStats.min) * Math.max(0, Math.min(1, frac));
-      };
-
-      /** True when the pointer is inside the gauge strip (right edge of canvas) */
-      const inGaugeZone = (canvasX) => canvasX >= canvas.width - Z_GAUGE_WIDTH;
-
-      _gaugeOnMouseDown = (e) => {
-        if (e.button !== 0) return;
-        const rect    = canvas.getBoundingClientRect();
-        const canvasX = e.clientX - rect.left;
-        if (!inGaugeZone(canvasX)) return;
-        // Consume the event so hex-input never sees it
-        e.stopImmediatePropagation();
-        _gaugeDragging = true;
-        targetZ  = yToZ(e.clientY - rect.top, canvas.height);
-        isDirty  = true;
-      };
-
-      _gaugeOnMouseMove = (e) => {
-        const rect    = canvas.getBoundingClientRect();
-        const canvasX = e.clientX - rect.left;
-        // Show depth-resize cursor over gauge zone; restore crosshair elsewhere
-        if (inGaugeZone(canvasX)) {
-          canvas.style.cursor = "ns-resize";
-        } else if (!_gaugeDragging) {
-          canvas.style.cursor = "crosshair";
-        }
-        if (!_gaugeDragging) return;
-        // While dragging, block the pan logic in hex-input
-        e.stopImmediatePropagation();
-        targetZ = yToZ(e.clientY - rect.top, canvas.height);
-        isDirty = true;
-      };
-
-      _gaugeOnMouseUp = (e) => {
-        if (!_gaugeDragging) return;
-        // Consume so hex-input's click handler doesn't fire on release
-        e.stopImmediatePropagation();
-        _gaugeDragging = false;
-      };
-
-      // Register in bubble phase — they fire before attachHexInput's listeners
-      // because we register first (same phase, same element = registration order)
-      canvas.addEventListener("mousedown", _gaugeOnMouseDown);
-      canvas.addEventListener("mousemove", _gaugeOnMouseMove);
-      canvas.addEventListener("mouseup",   _gaugeOnMouseUp);
     }
 
     // Attach pan/zoom/click input
@@ -367,18 +333,6 @@ export const galaxyView = {
       cancelAnimationFrame(rafHandle);
       rafHandle = null;
     }
-    // Remove gauge interaction listeners
-    const canvas = document.getElementById("galaxy-canvas");
-    if (canvas) {
-      if (_gaugeOnMouseDown) { canvas.removeEventListener("mousedown", _gaugeOnMouseDown); }
-      if (_gaugeOnMouseMove) { canvas.removeEventListener("mousemove", _gaugeOnMouseMove); }
-      if (_gaugeOnMouseUp)   { canvas.removeEventListener("mouseup",   _gaugeOnMouseUp);   }
-    }
-    _gaugeOnMouseDown = null;
-    _gaugeOnMouseMove = null;
-    _gaugeOnMouseUp   = null;
-    _gaugeDragging    = false;
-
     // Remove input listeners
     if (inputControls) {
       inputControls.detach();
@@ -428,8 +382,8 @@ function startRenderLoop(canvas) {
         { ...viewState, shipHex, jumpRangePx, scanRangePx, scanRangeUnits: scanRange,
           showScanRing, stations: stationsData, npcShips: npcShipsData,
           deepSpaceObjects: dsoData, zStats, activeZFilter, zoom: viewState.zoom,
-          // Z-gauge params — passed through to drawZGauge in hex-render.js
-          gaugeShipZ: shipZ, gaugeTargetZ: targetZ },
+          // Ship Z passed through for the top-right elevation readout in hex-render.js
+          gaugeShipZ: shipZ },
         FACTION_COLORS
       );
     }
