@@ -3543,6 +3543,53 @@
 }
 
 
+/* ── Galactic Needs / Shortfall badges (shown in system panel) ─────────────── */
+
+.galactic-needs {
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(255, 140, 0, 0.05);
+  border-left: 2px solid rgba(255, 140, 0, 0.55);
+  margin-bottom: var(--sp-2);
+}
+
+.galactic-needs__label {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 140, 0, 0.80);
+  margin-bottom: var(--sp-2);
+}
+
+.galactic-needs__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 2px 0;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+}
+
+.galactic-needs__name {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.galactic-needs__pct {
+  color: #ffb74d;          /* amber — matches the "below" elevation colour */
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.galactic-needs__hint {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+
 /* ===========================================================================
    3D GALAXY VIEW  (#view-galaxy3d)
    =========================================================================== */

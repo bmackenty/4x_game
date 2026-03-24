@@ -64,6 +64,59 @@ _MARKET_TIDBITS = [
     "Demand for minerals at all-time high; supply mysteriously in a cave.",
 ]
 
+# ---------------------------------------------------------------------------
+# Economy event narrative templates
+# Keys match the 'name' field in economy.py's create_economic_event().
+# Each list entry is a GNN-style sentence.  {commodities} is replaced by the
+# affected goods names.  A fallback generic template handles unknown events.
+# ---------------------------------------------------------------------------
+
+_ECON_EVENT_TEMPLATES = {
+    "Mining Boom": [
+        "BREAKING MARKETS: Rich ore deposits discovered across multiple systems. "
+        "{commodities} flooding the exchange — traders are loading up.",
+        "ECONOMY DESK: A mining boom is underway. {commodities} prices have collapsed "
+        "as supply surges. Industrial worlds are celebrating; investors are not.",
+    ],
+    "Crop Failure": [
+        "BREAKING MARKETS: Agricultural blight has devastated harvests across the "
+        "sector. {commodities} prices spiking hard — anyone with food cargo is "
+        "sitting on a fortune.",
+        "ECONOMY DESK: Crop failures reported on three systems. {commodities} "
+        "shortfalls are severe. Humanitarian fleets en route; price gougers reportedly "
+        "en route faster.",
+    ],
+    "Trade War": [
+        "BREAKING MARKETS: Political tensions between factions have disrupted trade "
+        "lanes. Prices across all commodities up — {commodities} hit hardest. "
+        "Diplomats are talking; traders are not waiting.",
+        "ECONOMY DESK: A trade war has broken out. Commerce is complicated, prices "
+        "are elevated, and everyone is calling it someone else's fault. "
+        "Affected: {commodities}.",
+    ],
+    "Technology Breakthrough": [
+        "BREAKING MARKETS: New manufacturing techniques are revolutionising production "
+        "of {commodities}. Expect prices to fall as supply expands. "
+        "Early buyers will feel this one.",
+        "ECONOMY DESK: A technology breakthrough has been announced. {commodities} "
+        "supply is surging as factories retool. Analysts advise selling before the "
+        "market realises what's happening.",
+    ],
+    "Pirate Raids": [
+        "BREAKING MARKETS: Pirate activity along core trade lanes has disrupted "
+        "luxury shipments. {commodities} supplies cut — prices elevated. "
+        "The pirates, predictably, are unavailable for comment.",
+        "ECONOMY DESK: Pirate raids have targeted convoys carrying {commodities}. "
+        "Supply is down, prices are up, and insurance rates are becoming "
+        "philosophically interesting.",
+    ],
+}
+
+_ECON_EVENT_FALLBACK = (
+    "ECONOMY DESK: An economic event ({name}) has rippled through the markets. "
+    "Traders are advised to check prices before assuming anything."
+)
+
 _FACTION_SNIPPETS = {
     "The Veritas Covenant": [
         "Veritas Covenant releases 40-volume research compendium; nobody has time to read it.",
@@ -262,6 +315,36 @@ def generate_gnn_summary(game, colony_manager, events: list,
 
     # ── Market tidbit ────────────────────────────────────────────────────────
     news_items.append("MARKETS: " + rng.choice(_MARKET_TIDBITS))
+
+    # ── Economy events from the engine ───────────────────────────────────────
+    # economy.global_events stores the last 5 macro events triggered by
+    # tick_global_state (Mining Boom, Crop Failure, Trade War, etc.).
+    # We surface the most recent one with a tailored narrative template so the
+    # GNN feels connected to what is actually happening in the economy.
+    try:
+        economy = getattr(game, "economy", None)
+        recent_econ_events = list(getattr(economy, "global_events", [])) if economy else []
+        if recent_econ_events:
+            evt       = recent_econ_events[-1]  # most recent event
+            evt_name  = evt.get("name", "Unknown")
+            effects   = evt.get("effects", {})
+            raw_comms = effects.get("commodities", [])
+            # Resolve the commodity list (may be a list, the string "all", or "luxury")
+            if isinstance(raw_comms, list):
+                comm_str = ", ".join(raw_comms[:3]) if raw_comms else "various commodities"
+            elif raw_comms == "all":
+                comm_str = "all major commodities"
+            else:
+                comm_str = str(raw_comms)
+
+            templates = _ECON_EVENT_TEMPLATES.get(evt_name)
+            if templates:
+                snippet = rng.choice(templates).format(commodities=comm_str)
+            else:
+                snippet = _ECON_EVENT_FALLBACK.format(name=evt_name)
+            news_items.append(snippet)
+    except Exception:
+        pass  # economy event flavour is cosmetic; never crash GNN
 
     # Shuffle so the order feels organic
     rng.shuffle(news_items)

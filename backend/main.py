@@ -3774,11 +3774,39 @@ async def get_market(system_name: str):
     # Generate faction-aware flavor text for this market
     market_description, market_faction = _generate_market_flavor(system_name)
 
+    # ── Galactic Needs / Shortfalls ──────────────────────────────────────────
+    # A shortfall is a commodity where demand substantially outstrips supply,
+    # pushing price well above baseline.  We derive these from the economy's
+    # best_sells list (demand > 100, price > 1.2× base) and enrich them with
+    # the percentage premium so the UI can display clear trade-mission context.
+    # Top 3 shortfalls are surfaced; the rest are still visible in the market.
+    shortfalls = []
+    base_prices = getattr(game.economy, "base_prices", {})
+    for s in info.get("best_sells", []):
+        commodity, price, demand = s[0], s[1], s[2]
+        base  = base_prices.get(commodity, 5)
+        supply = int(market.get("supply", {}).get(commodity, 0))
+        pct_above = round((price / base - 1) * 100) if base > 0 else 0
+        shortfalls.append({
+            "commodity": commodity,
+            "price":     round(price, 2),
+            "demand":    int(demand),
+            "supply":    supply,
+            "pct_above": max(0, pct_above),
+        })
+    # Sort by severity (highest demand-to-supply ratio first) and cap at 3
+    shortfalls.sort(
+        key=lambda s: s["demand"] / max(s["supply"], 1),
+        reverse=True,
+    )
+    shortfalls = shortfalls[:3]
+
     return {
         "system_name":        system_name,
         "commodities":        commodities,
         "best_buys":          [{"name": b[0], "price": b[1], "supply": b[2]} for b in info.get("best_buys",  [])],
         "best_sells":         [{"name": s[0], "price": s[1], "demand": s[2]} for s in info.get("best_sells", [])],
+        "shortfalls":         shortfalls,
         "player_credits":     game.credits,
         "cargo_used":         cargo_used,
         "max_cargo":          max_cargo,
@@ -3857,6 +3885,15 @@ async def trade_sell(request: TradeRequest):
             detail=f"You must be at {request.system_name} to trade there."
         )
 
+    # Check shortfall status BEFORE the sale modifies supply/demand.
+    # A commodity is a shortfall if it appears in the economy's best_sells list
+    # (demand > 100, price > 1.2× base price).
+    pre_info = game.economy.get_market_info(request.system_name)
+    was_shortfall = pre_info and any(
+        s[0] == request.commodity
+        for s in pre_info.get("best_sells", [])
+    )
+
     success, message = game.perform_trade_sell(
         request.system_name, request.commodity, request.quantity
     )
@@ -3864,13 +3901,42 @@ async def trade_sell(request: TradeRequest):
         game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(status_code=400, detail=message)
 
+    # ── Shortfall fill bonus ─────────────────────────────────────────────────
+    # Filling a Galactic Need rewards extra credits (10% of estimated sale
+    # value) and a reputation bump with the controlling faction.
+    shortfall_bonus = 0
+    shortfall_filled = False
+    if was_shortfall:
+        market_prices = (pre_info["market"].get("prices", {}) if pre_info else {})
+        unit_price    = market_prices.get(request.commodity, 5)
+        shortfall_bonus = max(1, int(unit_price * request.quantity * 0.10))
+        game.credits += shortfall_bonus
+        shortfall_filled = True
+        # Faction reputation boost for filling a community need
+        try:
+            system_data = next(
+                (v for v in game.navigation.galaxy.systems.values()
+                 if v.get("name") == request.system_name),
+                None,
+            )
+            faction_name = system_data.get("controlling_faction") if system_data else None
+            if faction_name and hasattr(game, "faction_relations"):
+                game.faction_relations[faction_name] = (
+                    game.faction_relations.get(faction_name, 0) + 3
+                )
+        except Exception:
+            pass  # faction rep boost is cosmetic; never fail the trade
+
     info = game.economy.get_market_info(request.system_name)
     return {
-        "success":        True,
-        "message":        message,
+        "success":          True,
+        "message":          message,
         "credits_remaining": game.credits,
-        "inventory":      dict(game.inventory),
-        "market_prices":  info["market"]["prices"] if info else {},
+        "inventory":        dict(game.inventory),
+        "market_prices":    info["market"]["prices"] if info else {},
+        "shortfall_filled": shortfall_filled,
+        "shortfall_bonus":  shortfall_bonus,
+        "shortfall_commodity": request.commodity if shortfall_filled else None,
     }
 
 

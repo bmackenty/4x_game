@@ -1311,8 +1311,26 @@ function _renderMarketSection(systemName, market) {
     return;
   }
 
+  // ── Galactic Needs / Shortfall badges ─────────────────────────────────────
+  // Show up to 3 shortfalls above the market button so the player can see
+  // trade opportunities at a glance without opening the full market modal.
+  const shortfalls = market.shortfalls || [];
+  const shortfallHtml = shortfalls.length
+    ? `<div class="galactic-needs">
+        <div class="galactic-needs__label">⚠ GALACTIC NEEDS</div>
+        ${shortfalls.map(s => `
+          <div class="galactic-needs__row" data-commodity="${esc(s.commodity)}">
+            <span class="galactic-needs__name">${esc(s.commodity)}</span>
+            <span class="galactic-needs__pct">+${s.pct_above}%</span>
+            <span class="galactic-needs__hint">above base</span>
+          </div>
+        `).join("")}
+      </div>`
+    : "";
+
   placeholder.innerHTML = `
-    <button class="btn btn--primary" style="width:100%" id="btn-open-market">
+    ${shortfallHtml}
+    <button class="btn btn--primary" style="width:100%;margin-top:var(--sp-2)" id="btn-open-market">
       ⬡ OPEN MARKET
     </button>
   `;
@@ -1756,6 +1774,16 @@ async function _doTrade(systemName, commodity, action, quantity, btn) {
     const result = await fn(systemName, commodity, quantity);
 
     notify("TRADE", result.message || `${action.toUpperCase()} complete.`);
+
+    // If this sale filled a Galactic Need, surface a separate high-priority
+    // notification so the player understands the bonus they earned.
+    if (result.shortfall_filled && result.shortfall_bonus > 0) {
+      notify(
+        "NEED FILLED",
+        `${result.shortfall_commodity} shortage resolved. `
+        + `Bonus: +${result.shortfall_bonus} cr · Faction relations improved.`,
+      );
+    }
 
     // Sync credits into local game state immediately so the HUD updates
     if (state.gameState?.player) {
