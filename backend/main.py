@@ -1334,9 +1334,11 @@ async def save_game(request: SaveRequest):
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    # Inject colony and deep-space state so save_game.py persists them via game.*_state.
-    game.colony_state      = colony_manager.serialize()
-    game.deep_space_state  = deep_space_manager.serialize() if deep_space_manager else {}
+    # Inject colony, deep-space, and discovery state so save_game.py persists them via game.*_state.
+    game.colony_state            = colony_manager.serialize()
+    game.deep_space_state        = deep_space_manager.serialize() if deep_space_manager else {}
+    # Persist the fog-of-war discovery set so scanned-but-not-visited systems survive reload.
+    game.discovered_systems_state = list(_discovered_systems)
     # Ensure character_backstory attribute exists before saving (graceful for old saves).
     game.character_backstory = getattr(game, "character_backstory", "")
 
@@ -1375,6 +1377,17 @@ async def load_game(request: LoadRequest):
 
     # Restore colony manager state from the loaded save (or empty if none saved yet).
     colony_manager.deserialize(getattr(game, "colony_state", {}))
+
+    # Restore fog-of-war discovery set.  If the save pre-dates this feature,
+    # fall back to seeding from visited systems via _seed_discovery() as before.
+    global _discovered_systems, _discovery_seeded
+    _saved_discovery = getattr(game, "discovered_systems_state", None)
+    if _saved_discovery is not None:
+        _discovered_systems = set(_saved_discovery)
+        _discovery_seeded   = True   # skip the visited-only fallback seed
+    else:
+        _discovered_systems = set()
+        _discovery_seeded   = False  # let _seed_discovery() run on next map fetch
 
     # Recreate NPC infrastructure — bots and station managers are not serialised
     # in save files, so they must be rebuilt every time a game is loaded.
