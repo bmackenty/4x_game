@@ -175,9 +175,6 @@ function updateHud(gs) {
   // Turn counter
   setText("hud-turn", `Turn ${t.current_turn}${t.max_turns > 0 ? " / " + t.max_turns : ""}`);
 
-  // Action pips
-  renderActionPips(t.actions_remaining, t.max_actions);
-
   // Research bar — clickable link to R&D view when a project is active
   const researchEl   = document.getElementById("hud-research");
   const researchNode = document.getElementById("hud-research-name");
@@ -269,16 +266,6 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-function renderActionPips(remaining, max) {
-  const container = document.getElementById("hud-actions");
-  if (!container) return;
-  container.innerHTML = "";
-  for (let i = 0; i < max; i++) {
-    const pip = document.createElement("span");
-    pip.className = "action-pip " + (i < remaining ? "action-pip--full" : "action-pip--empty");
-    container.appendChild(pip);
-  }
-}
 
 
 // ---------------------------------------------------------------------------

@@ -2351,9 +2351,8 @@ async def ship_jump(request: JumpRequest):
     """
     Jump the player's ship to the target galaxy coordinates.
 
-    Costs one action point per jump in addition to fuel.  If the engine
-    rejects the jump (out of range, insufficient fuel, etc.) the action
-    point is refunded so the player is not penalised for invalid moves.
+    Costs fuel.  If the engine rejects the jump (out of range, insufficient
+    fuel, etc.) the attempt fails cleanly with no side effects.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
@@ -2363,26 +2362,10 @@ async def ship_jump(request: JumpRequest):
     if not ship:
         raise HTTPException(status_code=400, detail="No active ship.")
 
-    # Consume one action point before attempting the jump
-    ok, reason = game.consume_action("move")
-    if not ok:
-        return {
-            "success":               False,
-            "message":               reason,
-            "new_coords":            list(ship.coordinates),
-            "fuel_remaining":        ship.fuel,
-            "system_at_destination": None,
-            "deep_space_object":     None,
-        }
-
     target = (request.target_x, request.target_y, request.target_z)
     success, message = ship.jump_to(target, nav.galaxy, game)
 
     if not success:
-        # Refund the action — the move never happened
-        game.turn_actions_remaining = min(
-            game.turn_actions_remaining + 1, game.max_actions_per_turn
-        )
         return {
             "success":              False,
             "message":              message,
@@ -3824,18 +3807,11 @@ async def trade_buy(request: TradeRequest):
       * Checks cargo capacity on the active ship.
       * Deducts credits.
       * Adds the goods to game.inventory and ship.cargo.
-    Consumes one action point.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    # Action point check — trading costs one action
-    ok, reason = game.consume_action("trade")
-    if not ok:
-        raise HTTPException(status_code=400, detail=reason)
-
     if not _player_is_at_market(request.system_name):
-        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(
             status_code=403,
             detail=f"You must be at {request.system_name} to trade there."
@@ -3845,8 +3821,6 @@ async def trade_buy(request: TradeRequest):
         request.system_name, request.commodity, request.quantity
     )
     if not success:
-        # Refund the action point since the trade failed
-        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(status_code=400, detail=message)
 
     # Return fresh market + player data so the frontend can update immediately
@@ -3869,17 +3843,11 @@ async def trade_sell(request: TradeRequest):
       * Validates inventory.
       * Adds credits earned.
       * Removes goods from game.inventory and ship.cargo.
-    Consumes one action point.
     """
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    ok, reason = game.consume_action("trade")
-    if not ok:
-        raise HTTPException(status_code=400, detail=reason)
-
     if not _player_is_at_market(request.system_name):
-        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(
             status_code=403,
             detail=f"You must be at {request.system_name} to trade there."
@@ -3898,7 +3866,6 @@ async def trade_sell(request: TradeRequest):
         request.system_name, request.commodity, request.quantity
     )
     if not success:
-        game.turn_actions_remaining = min(game.turn_actions_remaining + 1, game.max_actions_per_turn)
         raise HTTPException(status_code=400, detail=message)
 
     # ── Shortfall fill bonus ─────────────────────────────────────────────────

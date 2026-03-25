@@ -248,11 +248,6 @@ class ColonyManager:
         if self.game.credits < cost:
             return False, f"Insufficient credits. Need {cost:,}, have {self.game.credits:,}."
 
-        # Action point
-        ok, msg = self.game.consume_action("colony_build")
-        if not ok:
-            return False, msg
-
         # Commit the build
         self.game.credits -= cost
         tile.improvement = improvement_type
@@ -287,11 +282,6 @@ class ColonyManager:
             return False, "Cannot determine upgrade cost."
         if self.game.credits < cost:
             return False, f"Insufficient credits. Need {cost:,}, have {self.game.credits:,}."
-
-        # Consume an action point
-        ok, msg = self.game.consume_action("colony_build")
-        if not ok:
-            return False, msg
 
         # Apply the upgrade
         self.game.credits -= cost

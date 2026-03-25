@@ -26,8 +26,6 @@ export function refreshHud() {
   setText("hud-class", p.character_class);
   setText("hud-credits", `⬡ ${p.credits.toLocaleString()}`);
   setText("hud-turn",    `Turn ${t.current_turn}${t.max_turns > 0 ? " / " + t.max_turns : ""}`);
-  renderActionPips(t.actions_remaining, t.max_actions);
-
   if (r.active) {
     setText("hud-research-name", r.active);
     const pct = r.total_time
@@ -252,13 +250,3 @@ function setStyle(id, prop, value) {
   if (el) el.style[prop] = value;
 }
 
-function renderActionPips(remaining, max) {
-  const container = document.getElementById("hud-actions");
-  if (!container) return;
-  container.innerHTML = "";
-  for (let i = 0; i < max; i++) {
-    const pip = document.createElement("span");
-    pip.className = `action-pip ${i < remaining ? "action-pip--full" : "action-pip--empty"}`;
-    container.appendChild(pip);
-  }
-}

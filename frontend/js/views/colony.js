@@ -742,10 +742,10 @@ async function _doFoundColony() {
 function _renderFoundPrompt() {
     const { planetName = "Unknown", planetType } = _context;
 
-    // Show the prompt inside the left panel, hide/dim the canvas
-    const leftPanel = document.getElementById("colony-left-panel");
-    if (leftPanel) {
-        leftPanel.innerHTML = `
+    // Show the prompt inside the right panel, hide/dim the canvas
+    const rightPanel = document.getElementById("colony-right-panel");
+    if (rightPanel) {
+        rightPanel.innerHTML = `
             <div class="found-colony-prompt">
                 <h3>Uninhabited World</h3>
                 <p class="muted">No colony has been established on <strong>${planetName}</strong> yet.</p>

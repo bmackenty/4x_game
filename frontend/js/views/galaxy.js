@@ -1066,7 +1066,15 @@ function buildSystemPanelHtml(system, shipCoords) {
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="color:var(--text-bright);font-size:var(--font-size-xs);
                      text-transform:uppercase;letter-spacing:0.06em">${esc(p.name)}</span>
-        <span style="font-size:var(--font-size-xs);color:var(--text-dim)">${esc(p.subtype)}</span>
+        <div style="display:flex;align-items:center;gap:var(--sp-2)">
+          <span style="font-size:var(--font-size-xs);color:var(--text-dim)">${esc(p.subtype)}</span>
+          ${p.habitable && p.has_colony
+            ? `<button class="btn btn--sm btn--secondary btn-found-colony"
+                         data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
+                 ◉ VISIT COLONY
+               </button>`
+            : ""}
+        </div>
       </div>
       ${p.population > 0
         ? `<div style="font-size:var(--font-size-xs);color:var(--text-dim);margin-top:var(--sp-1)">
@@ -1075,13 +1083,6 @@ function buildSystemPanelHtml(system, shipCoords) {
       ${p.resources && p.resources.length > 0
         ? `<div style="font-size:var(--font-size-xs);color:var(--text-dim);margin-top:2px">
              ${p.resources.slice(0, 3).join(", ")}</div>`
-        : ""}
-      ${p.habitable && p.has_colony
-        ? `<button class="btn btn--sm btn--secondary btn-found-colony"
-                   style="margin-top:var(--sp-2);width:100%"
-                   data-planet="${esc(p.name)}" data-type="${esc(p.subtype)}">
-             ◉ VISIT COLONY
-           </button>`
         : ""}
     </div>
   `).join("") || `<p style="color:var(--text-dim);font-size:var(--font-size-xs)">

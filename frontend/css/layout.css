@@ -85,23 +85,6 @@
   font-size: var(--font-size-sm);
 }
 
-/* Action pips — rendered as small coloured dots by hud.js */
-.hud__actions {
-  display: flex;
-  gap: var(--sp-1);
-  align-items: center;
-}
-
-.action-pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-teal-dim);
-}
-
-.action-pip--full  { background: var(--accent-teal); box-shadow: 0 0 4px var(--accent-teal); }
-.action-pip--empty { background: transparent; }
-
 
 /* ── Composite power indices ──────────────────────────────────────────────── */
 
