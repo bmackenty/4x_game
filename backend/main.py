@@ -91,6 +91,11 @@ deep_space_manager: Optional[DeepSpaceManager] = None
 _discovered_systems: set[str] = set()
 _discovery_seeded: bool = False
 
+# Dicts of previously-seen stations and DSOs keyed by name / "q,r".
+# Stored so that objects outside current scan range can still be ghost-rendered.
+_discovered_stations: dict[str, dict] = {}   # key = station name
+_discovered_dsos:     dict[str, dict] = {}   # key = "hex_q,hex_r"
+
 # Scan range formula (galaxy is 500×500×200 units):
 #   scan_range = 20 + detection_range * 0.5 + etheric_sensitivity * 0.25
 #
@@ -1028,12 +1033,16 @@ async def new_game(request: NewGameRequest):
     Creates a brand-new Game instance (discarding any previous session) and
     calls initialize_new_game() with the player's character choices.
     """
-    global game, colony_manager, deep_space_manager, _discovered_systems, _discovery_seeded
+    global game, colony_manager, deep_space_manager, \
+           _discovered_systems, _discovery_seeded, \
+           _discovered_stations, _discovered_dsos
     # Always start with a clean slate
     game = Game()
     colony_manager = ColonyManager(game)
-    _discovered_systems = set()
-    _discovery_seeded = False
+    _discovered_systems  = set()
+    _discovery_seeded    = False
+    _discovered_stations = {}
+    _discovered_dsos     = {}
 
     character_data = {
         "name": request.name,
@@ -1337,8 +1346,10 @@ async def save_game(request: SaveRequest):
     # Inject colony, deep-space, and discovery state so save_game.py persists them via game.*_state.
     game.colony_state            = colony_manager.serialize()
     game.deep_space_state        = deep_space_manager.serialize() if deep_space_manager else {}
-    # Persist the fog-of-war discovery set so scanned-but-not-visited systems survive reload.
-    game.discovered_systems_state = list(_discovered_systems)
+    # Persist fog-of-war discovery sets so all detected objects survive reload.
+    game.discovered_systems_state  = list(_discovered_systems)
+    game.discovered_stations_state = dict(_discovered_stations)
+    game.discovered_dsos_state     = dict(_discovered_dsos)
     # Ensure character_backstory attribute exists before saving (graceful for old saves).
     game.character_backstory = getattr(game, "character_backstory", "")
 
@@ -1378,9 +1389,9 @@ async def load_game(request: LoadRequest):
     # Restore colony manager state from the loaded save (or empty if none saved yet).
     colony_manager.deserialize(getattr(game, "colony_state", {}))
 
-    # Restore fog-of-war discovery set.  If the save pre-dates this feature,
-    # fall back to seeding from visited systems via _seed_discovery() as before.
-    global _discovered_systems, _discovery_seeded
+    # Restore fog-of-war discovery sets.  If the save pre-dates this feature,
+    # fall back to seeding systems from visited flags via _seed_discovery().
+    global _discovered_systems, _discovery_seeded, _discovered_stations, _discovered_dsos
     _saved_discovery = getattr(game, "discovered_systems_state", None)
     if _saved_discovery is not None:
         _discovered_systems = set(_saved_discovery)
@@ -1388,6 +1399,8 @@ async def load_game(request: LoadRequest):
     else:
         _discovered_systems = set()
         _discovery_seeded   = False  # let _seed_discovery() run on next map fetch
+    _discovered_stations = dict(getattr(game, "discovered_stations_state", {}))
+    _discovered_dsos     = dict(getattr(game, "discovered_dsos_state",     {}))
 
     # Recreate NPC infrastructure — bots and station managers are not serialised
     # in save files, so they must be rebuilt every time a game is loaded.
@@ -1610,31 +1623,46 @@ async def get_galaxy_map():
     for sys in projected:
         sys["has_player_colony"] = sys["name"] in colonized_systems
 
-    # Include deep-space stations within scan range only
+    # Include deep-space stations in scan range fully; ghost-render previously
+    # discovered stations that are now out of range.
     deep_space_stations = []
     station_mgr = getattr(game, "station_manager", None)
     if station_mgr:
+        seen_station_names: set[str] = set()
         for st in station_mgr.get_deep_space_stations():
             sc = st.get("coordinates")
+            name = st["name"]
+            in_range = True
             if sc and ship_coords:
                 sx, sy, sz = ship_coords
                 dist = math.sqrt((sc[0]-sx)**2 + (sc[1]-sy)**2 + (sc[2]-sz)**2)
-                if dist > scan_range:
-                    continue
-            deep_space_stations.append({
-                "name":        st["name"],
-                "type":        st["type"],
-                "hex_q":       st["hex_q"],
-                "hex_r":       st["hex_r"],
-                "coordinates": list(sc),
-                "services":    st.get("services", []),
-                "description": st.get("description", ""),
-            })
+                in_range = dist <= scan_range
 
-    # Include deep space objects within current sensor range only.
-    # Objects outside range are hidden even if previously encountered.
-    # Discovery (name/description reveal) is still persistent — once identified,
-    # an object shows its full details whenever it comes back into range.
+            entry = {
+                "name":         name,
+                "type":         st["type"],
+                "hex_q":        st["hex_q"],
+                "hex_r":        st["hex_r"],
+                "coordinates":  list(sc) if sc else [],
+                "services":     st.get("services", []),
+                "description":  st.get("description", ""),
+                "in_scan_range": in_range,
+            }
+            if in_range:
+                # Remember this station for future ghost rendering
+                _discovered_stations[name] = entry
+                deep_space_stations.append(entry)
+            elif name in _discovered_stations:
+                # Previously discovered — include as ghost (no live services/description)
+                ghost = dict(_discovered_stations[name])
+                ghost["in_scan_range"] = False
+                ghost["services"]      = []
+                ghost["description"]   = ""
+                deep_space_stations.append(ghost)
+            seen_station_names.add(name)
+
+    # Include DSOs in scan range fully; ghost-render previously discovered ones
+    # that are now outside sensor range.
     dso_list = []
     if deep_space_manager and ship_coords:
         sx, sy, sz = ship_coords
@@ -1642,11 +1670,19 @@ async def get_galaxy_map():
             dso_dist = math.sqrt(
                 (dso.x - sx) ** 2 + (dso.y - sy) ** 2 + (dso.z - sz) ** 2
             )
-            if dso_dist > scan_range:
-                continue
-            if not dso.discovered:
-                deep_space_manager.discover(dso.hex_q, dso.hex_r)
-            dso_list.append(dso.to_dict())
+            key = f"{dso.hex_q},{dso.hex_r}"
+            if dso_dist <= scan_range:
+                if not dso.discovered:
+                    deep_space_manager.discover(dso.hex_q, dso.hex_r)
+                entry = dso.to_dict()
+                entry["in_scan_range"] = True
+                _discovered_dsos[key] = entry     # cache for ghost rendering
+                dso_list.append(entry)
+            elif key in _discovered_dsos:
+                # Previously discovered — include as ghost
+                ghost = dict(_discovered_dsos[key])
+                ghost["in_scan_range"] = False
+                dso_list.append(ghost)
 
     return {"systems": projected, "stations": deep_space_stations, "deep_space_objects": dso_list}
 

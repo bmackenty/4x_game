@@ -301,8 +301,25 @@ const DSO_RENDER = {
 function _drawDsoMarkers(ctx, dsos, size, zoom) {
   for (const dso of dsos) {
     if (dso.depleted) continue;   // depleted objects fade from the map
-    const render = DSO_RENDER[dso.type] || DSO_RENDER.anomaly;
     const { x: dx, y: dy } = axialToPixel(dso.hex_q, dso.hex_r, size);
+
+    // Ghost render: previously detected DSO now outside sensor range
+    if (dso.in_scan_range === false) {
+      ctx.globalAlpha = 0.40;
+      drawHex(ctx, dx, dy, size - 2, "#050d10", "rgba(30,80,100,0.7)", 0.8);
+      if (zoom >= 0.8 && dso.name) {
+        ctx.fillStyle = "rgba(100,160,180,0.55)";
+        ctx.font = `${Math.max(6, Math.floor(7 * zoom))}px "Courier New", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(dso.name.length > 18 ? dso.name.slice(0, 16) + "…" : dso.name,
+                     dx, dy + size * 0.55);
+      }
+      ctx.globalAlpha = 1.0;
+      continue;
+    }
+
+    const render = DSO_RENDER[dso.type] || DSO_RENDER.anomaly;
 
     // Subtle hex background
     drawHex(ctx, dx, dy, size - 2, render.bg, render.color, 0.6);
@@ -410,11 +427,12 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     const inScanRange = sys.in_scan_range !== false;  // default true for backward compat
 
     if (!inScanRange) {
-      // Ghost render: dim hex outline + name only, no faction/glyph/details
-      ctx.globalAlpha = dimmed ? 0.04 : 0.22;
-      drawHex(ctx, px, py, size - 1, "#0a0e1a", "#1a2840", 0.5);
+      // Ghost render: previously detected but now out of sensor range.
+      // Slightly brighter than the background so the hex outline is legible.
+      ctx.globalAlpha = dimmed ? 0.08 : 0.45;
+      drawHex(ctx, px, py, size - 1, "#0e1a2e", "rgba(50,100,160,0.7)", 0.8);
       if (zoom >= 0.7) {
-        ctx.fillStyle = "rgba(120,150,180,0.5)";
+        ctx.fillStyle = "rgba(140,180,220,0.6)";
         ctx.font = `${Math.max(7, Math.floor(8 * zoom))}px "Courier New", monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
@@ -549,6 +567,21 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   for (const st of stations) {
     const { x: stx, y: sty } = axialToPixel(st.hex_q, st.hex_r, size);
     const isSelected = st.name === selectedStationName;
+
+    // Ghost render: previously detected station now outside sensor range
+    if (st.in_scan_range === false) {
+      ctx.globalAlpha = 0.40;
+      drawHex(ctx, stx, sty, size - 1, "#0d0900", "rgba(100,70,0,0.7)", 0.8);
+      if (zoom >= 0.7) {
+        ctx.fillStyle = "rgba(180,140,40,0.55)";
+        ctx.font = `${Math.max(7, Math.floor(8 * zoom))}px "Courier New", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(st.name, stx, sty + size * 0.55);
+      }
+      ctx.globalAlpha = 1.0;
+      continue;
+    }
 
     // Hex background — deep amber for stations
     drawHex(ctx, stx, sty, size - 1, "#1a1200", isSelected ? "#d4a800" : "#5a4000",
