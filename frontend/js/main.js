@@ -205,15 +205,17 @@ function updateHud(gs) {
       researchEl.title = `${r.active} — click to open R&D`;
     }
   } else {
-    if (researchNode) researchNode.textContent = "No research";
+    if (researchNode) researchNode.textContent = "No research — click to open R&D";
     if (researchFill) researchFill.style.width = "0%";
 
-    // Remove the click handler when no research is active
-    if (researchEl && researchEl._researchClickHandler) {
-      researchEl.removeEventListener("click", researchEl._researchClickHandler);
-      researchEl._researchClickHandler = null;
-      researchEl.style.cursor = "";
-      researchEl.title        = "Active research";
+    // Make the widget a link to R&D when idle (so the player is prompted to queue research)
+    if (researchEl && !researchEl._researchClickHandler) {
+      researchEl.style.cursor = "pointer";
+      researchEl.title        = "No research active — click to open R&D";
+      researchEl._researchClickHandler = () => {
+        if (state.gameInitialized) switchView("research");
+      };
+      researchEl.addEventListener("click", researchEl._researchClickHandler);
     }
   }
 
