@@ -725,6 +725,12 @@ async function _doFoundColony() {
                     const { switchView } = await import("../main.js");
                     switchView("galaxy");
                 });
+
+            // Re-wire tab buttons (they are rebuilt with the chrome)
+            document.getElementById("colony-tab-hex")
+                ?.addEventListener("click", () => _switchTab("hex"));
+            document.getElementById("colony-tab-systems")
+                ?.addEventListener("click", () => _switchTab("systems"));
         }
     } catch (err) {
         notify("ERROR", err.message || "Failed to found colony.");

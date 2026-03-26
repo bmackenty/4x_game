@@ -1048,17 +1048,6 @@ export function renderSystemMap(canvas, objects, gridRadius, viewState) {
     }
   }
 
-  // 6. Player ship marker at (0,0) when player is in this system
-  if (playerHere) {
-    const { x: px, y: py } = axialToPixel(0, 0, size);
-    // Teal triangle offset slightly so it doesn't overlap the star glyph
-    ctx.fillStyle    = "#00d4aa";
-    ctx.font         = `${Math.round(size * 0.38)}px "Courier New", monospace`;
-    ctx.textAlign    = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillText("▲", px + size * 0.5, py - size * 0.3);
-    ctx.textBaseline = "middle";
-  }
 
   ctx.restore();
 }

@@ -272,7 +272,7 @@ function setText(id, text) {
 // End-turn button
 // ---------------------------------------------------------------------------
 
-async function handleEndTurn() {
+export async function handleEndTurn() {
   const btn = document.getElementById("btn-end-turn");
   if (btn) {
     btn.disabled = true;

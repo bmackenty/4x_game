@@ -1829,6 +1829,25 @@ async function _refreshGalaxyMap() {
 
 
 // ---------------------------------------------------------------------------
+// Auto end-turn after movement
+// ---------------------------------------------------------------------------
+
+/**
+ * Called after every successful jump/move.  Triggers end-of-turn processing
+ * so that each move costs one turn.  Updates HUD state and shows GNN/events
+ * the same way the manual End Turn button does.
+ */
+async function _endTurnAfterMove() {
+  try {
+    const { handleEndTurn } = await import("../main.js");
+    await handleEndTurn();
+  } catch (_err) {
+    // Non-fatal: game continues, player can end turn manually
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Jump action
 // ---------------------------------------------------------------------------
 
@@ -1851,6 +1870,9 @@ async function handleJump(system) {
       // Re-fetch the galaxy map so systems, stations, and DSOs that just
       // entered scan range become visible without needing to remount.
       await _refreshGalaxyMap();
+
+      // Each jump costs one turn
+      await _endTurnAfterMove();
     } else {
       notify("ERROR", result.message || "Jump failed.");
     }
@@ -1895,6 +1917,9 @@ async function handleDeepSpaceMove(q, r) {
         notify("NAV", `Entered deep space at (${q}, ${r}).  Fuel: ${result.fuel_remaining}`);
         showEmptyHexPanel(q, r);
       }
+
+      // Each move costs one turn
+      await _endTurnAfterMove();
     } else {
       notify("ERROR", result.message || "Move failed.");
     }
