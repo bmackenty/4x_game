@@ -56,8 +56,10 @@ class Game:
         self.active_research = None
         self.research_progress = 0
         self.inventory = {}
-        self.owned_ships = []
-        self.custom_ships = []  # Player-built ships
+        # fleet: dict[ship_name, Ship] — replaces the old owned_ships (list of
+        # strings) + custom_ships (list of dicts).  navigation.current_ship is
+        # always a direct reference into this dict so mutations stay in sync.
+        self.fleet: dict = {}
         self.owned_stations = []
         self.owned_platforms = []
         # Fleet pool — empire-wide military strength, accumulated from Shipyards
@@ -439,56 +441,28 @@ class Game:
         input("\nPress Enter to return to main menu...")
 
     def auto_select_ship(self):
-        """Automatically select the first available ship if none is currently selected"""
+        """Automatically select the first available ship if none is currently selected."""
         if self.navigation.current_ship:
-            return  # Already have a ship selected
-        
-        all_ships = self.owned_ships + [ship['name'] for ship in self.custom_ships]
-        
-        if all_ships:
-            # Select the first available ship
-            ship_name = all_ships[0]
-            
-            # Determine ship class
-            if ship_name in self.owned_ships:
-                ship_class = ship_name
-            else:
-                # Custom ship - find its class
-                for custom_ship in self.custom_ships:
-                    if custom_ship['name'] == ship_name:
-                        ship_class = "Custom Ship"
-                        break
-                else:
-                    ship_class = "Custom Ship"
-            
-            # Create and select the ship
-            from navigation import Ship
-            self.navigation.current_ship = Ship(ship_name, ship_class)
-            print(f"\n[SHIP] Automatically selected ship: {ship_name}")
+            return
+        if self.fleet:
+            first = next(iter(self.fleet.values()))
+            self.navigation.current_ship = first
+            print(f"\n[SHIP] Automatically selected ship: {first.name}")
     
     # Ship Management Methods
     def get_all_ships(self):
-        """Get list of all available ships (owned + custom)"""
-        ships = []
-        # Add owned ships
-        for ship_name in self.owned_ships:
-            ships.append({
-                'name': ship_name,
-                'type': 'owned',
-                'class': ship_name,
-                'display': f"🚢 {ship_name}"
-            })
-        
-        # Add custom ships
-        for ship in self.custom_ships:
-            ships.append({
-                'name': ship.get('name', 'Unnamed Ship'),
-                'type': 'custom',
-                'class': ship.get('role', 'Custom Ship'),
-                'display': f"🛠️ {ship.get('name', 'Unnamed Ship')}"
-            })
-        
-        return ships
+        """Return all ships in the fleet as a list of info dicts."""
+        active_name = self.navigation.current_ship.name if self.navigation.current_ship else None
+        return [
+            {
+                'name': ship.name,
+                'class': getattr(ship, 'ship_class', 'Unknown'),
+                'active': ship.name == active_name,
+                'fuel': ship.fuel,
+                'max_fuel': ship.max_fuel,
+            }
+            for ship in self.fleet.values()
+        ]
     
     def get_active_ship_info(self):
         """Get information about the currently active ship"""
@@ -519,79 +493,32 @@ class Game:
         }
     
     def create_custom_ship(self, ship_name, ship_role="Custom Ship"):
-        """Create a new custom ship"""
+        """Create a new custom ship and add it to the fleet."""
         if not ship_name or not ship_name.strip():
             return False, "Ship name cannot be empty"
-        
         ship_name = ship_name.strip()
-        
-        # Check if name already exists
-        for ship in self.custom_ships:
-            if ship.get('name') == ship_name:
-                return False, "Ship name already exists"
-        
-        if ship_name in self.owned_ships:
-            return False, "Ship name conflicts with owned ship"
-        
-        # Create new custom ship
-        new_ship = {
-            'name': ship_name,
-            'role': ship_role,
-            'created_by': 'player'
-        }
-        
-        self.custom_ships.append(new_ship)
+        if ship_name in self.fleet:
+            return False, "Ship name already exists"
+        from navigation import Ship
+        ship = Ship(ship_name, ship_role)
+        self.fleet[ship_name] = ship
         return True, f"Successfully created ship: {ship_name}"
     
     def set_active_ship(self, ship_name):
-        """Set a ship as the active/current ship"""
-        # Find the ship in owned or custom ships
-        ship_class = None
-        found = False
-        
-        if ship_name in self.owned_ships:
-            ship_class = ship_name
-            found = True
-        else:
-            for ship in self.custom_ships:
-                if ship.get('name') == ship_name:
-                    ship_class = ship.get('role', 'Custom Ship')
-                    found = True
-                    break
-        
-        if not found:
+        """Set a fleet ship as the active/current ship."""
+        if ship_name not in self.fleet:
             return False, f"Ship '{ship_name}' not found"
-        
-        # Create and set as current ship
-        try:
-            from navigation import Ship
-            self.navigation.current_ship = Ship(ship_name, ship_class)
-            return True, f"Active ship set to: {ship_name}"
-        except Exception as e:
-            return False, f"Error setting active ship: {str(e)}"
+        self.navigation.current_ship = self.fleet[ship_name]
+        return True, f"Active ship set to: {ship_name}"
     
     def delete_ship(self, ship_name):
-        """Delete a ship (custom ships only, owned ships can be removed from fleet)"""
-        # Try to remove from custom ships first
-        for i, ship in enumerate(self.custom_ships):
-            if ship.get('name') == ship_name:
-                del self.custom_ships[i]
-                # Clear active ship if it was the deleted one
-                if (self.navigation.current_ship and 
-                    self.navigation.current_ship.name == ship_name):
-                    self.navigation.current_ship = None
-                return True, f"Deleted custom ship: {ship_name}"
-        
-        # Try to remove from owned ships (remove from fleet, not delete ship class)
-        if ship_name in self.owned_ships:
-            self.owned_ships.remove(ship_name)
-            # Clear active ship if it was the removed one
-            if (self.navigation.current_ship and 
-                self.navigation.current_ship.name == ship_name):
-                self.navigation.current_ship = None
-            return True, f"Removed ship from fleet: {ship_name}"
-        
-        return False, f"Ship '{ship_name}' not found"
+        """Remove a ship from the fleet."""
+        if ship_name not in self.fleet:
+            return False, f"Ship '{ship_name}' not found"
+        del self.fleet[ship_name]
+        if self.navigation.current_ship and self.navigation.current_ship.name == ship_name:
+            self.navigation.current_ship = None
+        return True, f"Removed ship from fleet: {ship_name}"
     
     def rename_ship(self, old_name, new_name):
         """Rename a custom ship (owned ships cannot be renamed)"""
@@ -600,28 +527,18 @@ class Game:
         
         new_name = new_name.strip()
         
-        # Check if new name already exists
-        for ship in self.custom_ships:
-            if ship.get('name') == new_name:
-                return False, "New name already exists"
-        
-        if new_name in self.owned_ships:
-            return False, "New name conflicts with owned ship"
-        
-        # Find and rename custom ship
-        for ship in self.custom_ships:
-            if ship.get('name') == old_name:
-                old_ship_name = ship['name']
-                ship['name'] = new_name
-                
-                # Update active ship if it was renamed
-                if (self.navigation.current_ship and 
-                    self.navigation.current_ship.name == old_ship_name):
-                    self.navigation.current_ship.name = new_name
-                
-                return True, f"Renamed ship from '{old_name}' to '{new_name}'"
-        
-        return False, f"Custom ship '{old_name}' not found (owned ships cannot be renamed)"
+        # Check the name is not already taken
+        if new_name in self.fleet:
+            return False, "New name already exists"
+        # Rename in fleet
+        if old_name not in self.fleet:
+            return False, f"Ship '{old_name}' not found"
+        ship = self.fleet.pop(old_name)
+        ship.name = new_name
+        self.fleet[new_name] = ship
+        if self.navigation.current_ship and self.navigation.current_ship.name == old_name:
+            self.navigation.current_ship = ship
+        return True, f"Renamed ship from '{old_name}' to '{new_name}'"
 
     # Turn-Based Game Management Methods
     def get_turn_info(self):
@@ -1337,17 +1254,11 @@ class Game:
         else:
             print("  (Empty)")
             
-        print("\nOWNED SHIPS:")
-        if self.owned_ships:
-            for ship in self.owned_ships:
-                print(f"  • {ship}")
-        else:
-            print("  (None)")
-            
-        print("\nCUSTOM SHIPS:")
-        if self.custom_ships:
-            for ship in self.custom_ships:
-                print(f"  • {ship['name']} ({ship['role']})")
+        print("\nFLEET:")
+        if self.fleet:
+            for name, ship in self.fleet.items():
+                active = " (ACTIVE)" if self.navigation.current_ship and self.navigation.current_ship.name == name else ""
+                print(f"  • {name} [{getattr(ship, 'ship_class', 'Unknown')}]{active}")
         else:
             print("  (None)")
             
@@ -2525,7 +2436,9 @@ class Game:
                 
                 if price <= self.credits:
                     self.credits -= price
-                    self.owned_ships.append(ship_name)
+                    if ship_name not in self.fleet:
+                        from navigation import Ship
+                        self.fleet[ship_name] = Ship(ship_name, ship_name)
                     print(f"\nPurchased {ship_name} for {price:,} credits!")
                 else:
                     print(f"\nInsufficient credits. Need {price:,}, have {self.credits:,}.")
@@ -2668,7 +2581,10 @@ class Game:
                 
                 # Add starting ships
                 if "starting_ships" in class_info:
-                    self.owned_ships.extend(class_info["starting_ships"])
+                    from navigation import Ship
+                    for _sname in class_info["starting_ships"]:
+                        if _sname not in self.fleet:
+                            self.fleet[_sname] = Ship(_sname, _sname)
                 
                 # Add starting platforms
                 if "starting_platforms" in class_info:
@@ -2724,13 +2640,13 @@ class Game:
         self.character_stats = create_base_character_stats()
         
         # Ensure every character has at least a basic ship
-        if not self.owned_ships:
-            self.owned_ships.append("Basic Transport")
+        if not self.fleet:
+            from navigation import Ship
+            self.fleet["Basic Transport"] = Ship("Basic Transport", "Basic Transport")
             print("\nYou've been assigned a Basic Transport as your starter ship.")
-        
         print(f"\nCharacter created successfully!")
         print(f"Final starting credits: {self.credits:,}")
-        print(f"Starting ships: {', '.join(self.owned_ships)}")
+        print(f"Starting ships: {', '.join(self.fleet.keys())}")
         if hasattr(self.profession_system, 'character_profession') and self.profession_system.character_profession:
             print(f"Profession: {self.profession_system.character_profession}")
         input("\nPress Enter to continue...")
@@ -3459,7 +3375,7 @@ class Game:
         
         ship_name = input("\nEnter ship name: ").strip()
         if not ship_name:
-            ship_name = f"Custom Ship {len(self.custom_ships) + 1}"
+            ship_name = f"Custom Ship {len(self.fleet) + 1}"
         
         ship_role = input("Enter ship role/purpose: ").strip()
         if not ship_role:
@@ -3469,14 +3385,9 @@ class Game:
         if confirm.lower() == 'y':
             self.credits -= stats['total_cost']
             
-            custom_ship = {
-                "name": ship_name,
-                "role": ship_role,
-                "design": ship_design,
-                "stats": stats
-            }
-            
-            self.custom_ships.append(custom_ship)
+            from navigation import Ship
+            _new_ship = Ship(ship_name, ship_role)
+            self.fleet[ship_name] = _new_ship
             print(f"\n{ship_name} built successfully!")
         
         input("\nPress Enter to continue...")
@@ -3514,14 +3425,9 @@ class Game:
                     # Calculate stats for template
                     stats = calculate_ship_stats(template_info)
                     
-                    custom_ship = {
-                        "name": ship_name,
-                        "role": template_info['role'],
-                        "design": template_info,
-                        "stats": stats
-                    }
-                    
-                    self.custom_ships.append(custom_ship)
+                    from navigation import Ship
+                    _new_ship = Ship(ship_name, template_info['role'])
+                    self.fleet[ship_name] = _new_ship
                     print(f"\n{ship_name} built successfully!")
             else:
                 print("Invalid selection.")
@@ -3547,21 +3453,16 @@ class Game:
 
     def view_custom_ships(self):
         print("\n" + "="*60)
-        print("           YOUR CUSTOM SHIPS")
+        print("           YOUR FLEET")
         print("="*60)
-        
-        if not self.custom_ships:
-            print("No custom ships built yet.")
+        if not self.fleet:
+            print("No ships in fleet.")
             input("\nPress Enter to continue...")
             return
-        
-        for i, ship in enumerate(self.custom_ships, 1):
-            print(f"{i}. {ship['name']}")
-            print(f"   Role: {ship['role']}")
-            print(f"   Health: {ship['stats']['health']}")
-            print(f"   Cargo: {ship['stats']['cargo_space']}")
-            print(f"   Speed: {ship['stats']['speed']:.1f}x")
-            print(f"   Value: {ship['stats']['total_cost']:,} credits")
+        for i, (name, ship) in enumerate(self.fleet.items(), 1):
+            active = " (ACTIVE)" if self.navigation.current_ship and self.navigation.current_ship.name == name else ""
+            print(f"{i}. {name} [{getattr(ship, 'ship_class', 'Unknown')}]{active}")
+            print(f"   Fuel: {ship.fuel}/{ship.max_fuel}")
             print()
         
         input("\nPress Enter to continue...")
@@ -3747,14 +3648,13 @@ class Game:
         print("           SHIP ENERGY SYSTEMS INTEGRATION")
         print("="*60)
         
-        if not self.owned_ships and not self.custom_ships:
+        if not self.fleet:
             print("No ships available for energy integration.")
             print("Build or purchase a ship first.")
             input("\nPress Enter to continue...")
             return
-        
         # Show available ships
-        all_ships = self.owned_ships + [ship.get('name', 'Unknown') for ship in self.custom_ships]
+        all_ships = list(self.fleet.keys())
         print("\nAvailable Ships:")
         for i, ship_name in enumerate(all_ships, 1):
             print(f"{i}. {ship_name}")

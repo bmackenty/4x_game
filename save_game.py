@@ -152,12 +152,14 @@ def save_game(game, save_name: Optional[str] = None) -> bool:
             'max_actions_per_turn': getattr(game, 'max_actions_per_turn', 3),
             'game_ended': getattr(game, 'game_ended', False),
             
-            # Ships
-            'owned_ships': getattr(game, 'owned_ships', []),
-            'custom_ships': getattr(game, 'custom_ships', []),
-            
-            # Current ship state (if exists)
-            'current_ship_state': _save_current_ship(getattr(game, 'navigation', None)),
+            # Fleet: dict of {ship_name: ship_state_dict}.
+            # active_ship_name records which entry navigation.current_ship points to.
+            'fleet_state': _save_fleet(game),
+            'active_ship_name': (
+                game.navigation.current_ship.name
+                if getattr(game, 'navigation', None) and game.navigation.current_ship
+                else None
+            ),
             
             # Stations and platforms
             'owned_stations': getattr(game, 'owned_stations', []),
@@ -258,29 +260,26 @@ def load_game(game, save_path: str) -> bool:
         game.max_actions_per_turn = save_data.get('max_actions_per_turn', 3)
         game.game_ended = save_data.get('game_ended', False)
         
-        # Load ships
-        game.owned_ships = save_data.get('owned_ships', [])
-        game.custom_ships = save_data.get('custom_ships', [])
-        
+        # Load fleet (new format: fleet_state dict)
+        # Also handles old saves that used owned_ships + current_ship_state.
+        if 'fleet_state' in save_data:
+            _load_fleet(game, save_data['fleet_state'])
+            active_name = save_data.get('active_ship_name')
+            if active_name and game.navigation and active_name in game.fleet:
+                game.navigation.current_ship = game.fleet[active_name]
+            elif game.navigation and game.fleet:
+                game.navigation.current_ship = next(iter(game.fleet.values()))
+        else:
+            # Backwards-compat: old save with owned_ships list + current_ship_state
+            _migrate_old_ships(game, save_data)
+
         # Load stations and platforms
         game.owned_stations = save_data.get('owned_stations', [])
         game.owned_platforms = save_data.get('owned_platforms', [])
-        
+
         # Load navigation state
         if 'navigation_state' in save_data and game.navigation:
             _load_navigation(game.navigation, save_data['navigation_state'])
-        
-        # Load current ship state (must be after navigation is initialized)
-        if 'current_ship_state' in save_data and save_data.get('current_ship_state') and game.navigation:
-            _load_current_ship(game.navigation, save_data['current_ship_state'])
-        elif game.navigation and game.owned_ships:
-            # If no saved ship but we have owned ships, select the first one
-            try:
-                from navigation import Ship
-                first_ship_name = game.owned_ships[0]
-                game.navigation.current_ship = Ship(first_ship_name, first_ship_name)
-            except Exception:
-                pass
         
         # Load faction system
         if 'faction_state' in save_data:
@@ -322,35 +321,27 @@ def load_game(game, save_path: str) -> bool:
 
 # Helper functions for saving/loading subsystems
 
-def _save_current_ship(nav) -> Optional[Dict[str, Any]]:
-    """Save current ship state"""
-    if not nav or not nav.current_ship:
-        return None
-    
-    ship = nav.current_ship
+def _ship_to_dict(ship) -> Dict[str, Any]:
+    """Serialise a Ship object to a plain dict."""
     return {
         'name': ship.name,
-        'ship_class': ship.ship_class,
-        'coordinates': ship.coordinates,
+        'ship_class': getattr(ship, 'ship_class', 'Basic Transport'),
+        'coordinates': list(ship.coordinates) if ship.coordinates else [50, 50, 25],
         'fuel': ship.fuel,
         'max_fuel': ship.max_fuel,
         'jump_range': ship.jump_range,
         'cargo': ship.cargo,
         'max_cargo': ship.max_cargo,
         'scan_range': ship.scan_range,
+        'health': getattr(ship, 'health', 300),
         'components': getattr(ship, 'components', {}),
         'attribute_profile': getattr(ship, 'attribute_profile', {}),
     }
 
 
-def _load_current_ship(nav, state: Dict[str, Any]):
-    """Load current ship state"""
-    if not nav or not state:
-        return
-    
+def _ship_from_dict(state: Dict[str, Any]):
+    """Reconstruct a Ship object from a serialised dict."""
     from navigation import Ship
-    
-    # Create ship from saved state
     ship = Ship(state['name'], state.get('ship_class', 'Basic Transport'))
     ship.coordinates = tuple(state.get('coordinates', (50, 50, 25)))
     ship.fuel = state.get('fuel', 100)
@@ -359,19 +350,50 @@ def _load_current_ship(nav, state: Dict[str, Any]):
     ship.cargo = state.get('cargo', {})
     ship.max_cargo = state.get('max_cargo', 100)
     ship.scan_range = state.get('scan_range', 5.0)
-    
-    # Restore components if they exist
+    ship.health = state.get('health', 300)
     if 'components' in state:
         ship.components = state['components']
-        # Recalculate stats from components
         if hasattr(ship, 'calculate_stats_from_components'):
             ship.calculate_stats_from_components()
-    
-    # Restore attribute profile if it exists
     if 'attribute_profile' in state:
         ship.attribute_profile = state['attribute_profile']
-    
-    nav.current_ship = ship
+    return ship
+
+
+def _save_fleet(game) -> Dict[str, Any]:
+    """Serialise game.fleet to a {name: ship_dict} mapping."""
+    return {
+        name: _ship_to_dict(ship)
+        for name, ship in getattr(game, 'fleet', {}).items()
+    }
+
+
+def _load_fleet(game, fleet_state: Dict[str, Any]):
+    """Reconstruct game.fleet from a serialised {name: ship_dict} mapping."""
+    game.fleet = {
+        name: _ship_from_dict(state)
+        for name, state in fleet_state.items()
+    }
+
+
+def _migrate_old_ships(game, save_data: Dict[str, Any]):
+    """Backwards-compat: build fleet from old owned_ships list + current_ship_state."""
+    from navigation import Ship
+    game.fleet = {}
+    for ship_name in save_data.get('owned_ships', []):
+        game.fleet[ship_name] = Ship(ship_name, ship_name)
+    for cs in save_data.get('custom_ships', []):
+        name = cs.get('name', 'Unknown')
+        if name not in game.fleet:
+            game.fleet[name] = Ship(name, cs.get('role', 'Custom Ship'))
+    # Restore the saved current-ship state into the fleet entry (or as a new entry)
+    cs_state = save_data.get('current_ship_state')
+    if cs_state and game.navigation:
+        ship = _ship_from_dict(cs_state)
+        game.fleet[ship.name] = ship   # overwrite with full saved state
+        game.navigation.current_ship = ship
+    elif game.navigation and game.fleet:
+        game.navigation.current_ship = next(iter(game.fleet.values()))
 
 
 def _save_navigation(nav) -> Dict[str, Any]:

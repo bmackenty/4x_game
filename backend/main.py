@@ -333,7 +333,7 @@ def _compute_indices() -> dict:
 
     stats     = game.character_stats or {}
     completed = game.completed_research or []
-    ships     = len(game.owned_ships or [])
+    ships     = len(getattr(game, 'fleet', {}))
     credits   = max(0, game.credits)
 
     # Character stat shortcuts (base 30; range 30-100)
@@ -1076,14 +1076,14 @@ async def new_game(request: NewGameRequest):
     # separately.  We replicate that pattern here without modifying game.py.
     cls_data = character_classes.get(request.character_class, {})
     starting_ships = cls_data.get("starting_ships", ["Basic Transport"])
+    from navigation import Ship as _NavShip
     for ship_name in starting_ships:
-        if ship_name not in game.owned_ships:
-            game.owned_ships.append(ship_name)
+        if ship_name not in game.fleet:
+            game.fleet[ship_name] = _NavShip(ship_name, ship_name)
 
-    if game.owned_ships and not game.navigation.current_ship:
-        from navigation import Ship as _NavShip
-        first_ship = game.owned_ships[0]
-        game.navigation.current_ship = _NavShip(first_ship, first_ship)
+    if game.fleet and not game.navigation.current_ship:
+        first_ship_obj = next(iter(game.fleet.values()))
+        game.navigation.current_ship = first_ship_obj
         # Place the ship at the starting system (Proxima b — closest predefined
         # system to the default (50,50,25) origin).  Without this the player
         # starts in deep space and every proximity check fails until they jump.

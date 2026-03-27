@@ -1166,34 +1166,22 @@ class NavigationSystem:
     
     def select_ship(self):
         """Select which ship to pilot"""
-        all_ships = self.game.owned_ships + [ship['name'] for ship in self.game.custom_ships]
-        
-        if not all_ships:
+        fleet = getattr(self.game, 'fleet', {})
+        if not fleet:
             print("No ships available!")
             return
-        
+
+        all_names = list(fleet.keys())
         print("\nAvailable ships:")
-        for i, ship_name in enumerate(all_ships, 1):
+        for i, ship_name in enumerate(all_names, 1):
             current = " (CURRENT)" if self.current_ship and self.current_ship.name == ship_name else ""
             print(f"{i}. {ship_name}{current}")
-        
+
         try:
             choice = int(input("\nSelect ship to pilot: ")) - 1
-            if 0 <= choice < len(all_ships):
-                ship_name = all_ships[choice]
-                
-                # Determine ship class
-                if ship_name in self.game.owned_ships:
-                    # Standard ship
-                    ship_class = ship_name
-                else:
-                    # Custom ship - find its class
-                    for custom_ship in self.game.custom_ships:
-                        if custom_ship['name'] == ship_name:
-                            ship_class = "Custom Ship"
-                            break
-                
-                self.current_ship = Ship(ship_name, ship_class)
+            if 0 <= choice < len(all_names):
+                ship_name = all_names[choice]
+                self.current_ship = fleet[ship_name]
                 print(f"\nNow piloting: {ship_name}")
             else:
                 print("Invalid selection!")
