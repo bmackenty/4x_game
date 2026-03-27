@@ -458,3 +458,163 @@ class TestFleetPersistence:
         game.fleet["Scout"] = ship
         game.fleet["Scout"].fuel = 600
         assert ship.fuel == 600
+
+
+# ---------------------------------------------------------------------------
+# TestScanRangeFormulaParity — all three sites must use the same formula
+#
+# Formula: max(5.0, 20.0 + detection_range * 0.5 + etheric_sensitivity * 0.25)
+#
+# Sites tested:
+#   1. navigation.Ship.calculate_stats_from_components()
+#   2. game.apply_all_bonuses_to_ship()
+#   3. Cross-site: both sites produce the same value for the same inputs
+#
+# If any site drifts back to the old formula (detection/3 + etheric/6)
+# these tests will fail — the two formulas disagree by ~31 units at
+# the default component values (53.0 new vs 22.0 old).
+# ---------------------------------------------------------------------------
+
+def _scan_formula(detection: float, etheric: float) -> float:
+    """The one authoritative formula, written once here for the tests."""
+    return max(5.0, 20.0 + detection * 0.5 + etheric * 0.25)
+
+
+def _old_scan_formula(detection: float, etheric: float) -> float:
+    """The retired formula — used only to confirm it is no longer in use."""
+    return max(5.0, detection / 3.0 + etheric / 6.0)
+
+
+class TestScanRangeFormulaParity:
+
+    # ── Site 1: navigation.Ship.calculate_stats_from_components() ──────────
+
+    def test_nav_ship_scan_range_matches_formula(self):
+        """A freshly constructed Ship's scan_range must equal the unified formula."""
+        from navigation import Ship
+        ship = Ship("FormulaTest")
+        profile    = ship.attribute_profile
+        detection  = profile.get("detection_range", 30.0)
+        etheric    = profile.get("etheric_sensitivity", 20.0)
+        expected   = _scan_formula(detection, etheric)
+        assert ship.scan_range == pytest.approx(expected), (
+            f"navigation.py formula mismatch: got {ship.scan_range}, "
+            f"expected {expected} (detection={detection}, etheric={etheric}). "
+            "Check Ship.calculate_stats_from_components()."
+        )
+
+    def test_nav_ship_does_not_use_old_formula(self):
+        """Confirm the old formula (detection/3 + etheric/6) is no longer used."""
+        from navigation import Ship
+        ship = Ship("FormulaTest")
+        profile   = ship.attribute_profile
+        detection = profile.get("detection_range", 30.0)
+        etheric   = profile.get("etheric_sensitivity", 20.0)
+        old_val   = _old_scan_formula(detection, etheric)
+        new_val   = _scan_formula(detection, etheric)
+        # The two formulas produce meaningfully different results at default
+        # component values (~53 new vs ~22 old), so this assertion is load-bearing.
+        if abs(old_val - new_val) > 0.01:
+            assert ship.scan_range != pytest.approx(old_val), (
+                f"navigation.py is still using the old formula "
+                f"(detection/3 + etheric/6 = {old_val:.1f}). "
+                f"Expected the new formula result of {new_val:.1f}."
+            )
+
+    # ── Site 2: game.apply_all_bonuses_to_ship() ───────────────────────────
+
+    def test_apply_bonuses_scan_range_matches_formula(self):
+        """apply_all_bonuses_to_ship() must produce the unified formula result."""
+        # Use known attribute values so the expected answer is deterministic.
+        detection, etheric = 48.0, 36.0   # matches default Ship component profile
+        expected = _scan_formula(detection, etheric)  # 53.0
+
+        ship = types.SimpleNamespace(
+            attribute_profile={
+                "hull_integrity": 30.0, "mass_efficiency": 30.0,
+                "energy_storage": 30.0, "engine_efficiency": 30.0,
+                "engine_output":  30.0, "ftl_jump_capacity": 30.0,
+                "detection_range": detection,
+                "etheric_sensitivity": etheric,
+            },
+            fuel=1000,
+            components={},
+        )
+        # No bonuses: empty research, no faction, no char stats, no hull damage
+        g = Game()
+        g.completed_research = []
+        g.character_faction  = None
+        g.character_stats    = {}
+        g.ship_hull_damage   = 0.0
+
+        apply_all_bonuses_to_ship(ship, g)
+
+        assert ship.scan_range == pytest.approx(expected), (
+            f"game.py apply_all_bonuses formula mismatch: got {ship.scan_range}, "
+            f"expected {expected}. Check apply_all_bonuses_to_ship()."
+        )
+
+    def test_apply_bonuses_does_not_use_old_formula(self):
+        """Confirm apply_all_bonuses_to_ship does not use detection/3 + etheric/6."""
+        detection, etheric = 48.0, 36.0
+        old_val = _old_scan_formula(detection, etheric)   # 22.0
+
+        ship = types.SimpleNamespace(
+            attribute_profile={
+                "hull_integrity": 30.0, "mass_efficiency": 30.0,
+                "energy_storage": 30.0, "engine_efficiency": 30.0,
+                "engine_output":  30.0, "ftl_jump_capacity": 30.0,
+                "detection_range": detection,
+                "etheric_sensitivity": etheric,
+            },
+            fuel=1000,
+            components={},
+        )
+        g = Game()
+        g.completed_research = []
+        g.character_faction  = None
+        g.character_stats    = {}
+        g.ship_hull_damage   = 0.0
+
+        apply_all_bonuses_to_ship(ship, g)
+
+        assert ship.scan_range != pytest.approx(old_val), (
+            f"game.py apply_all_bonuses is still using the old formula "
+            f"(detection/3 + etheric/6 = {old_val:.1f})."
+        )
+
+    # ── Cross-site parity ──────────────────────────────────────────────────
+
+    def test_nav_and_apply_bonuses_agree_on_same_inputs(self):
+        """Both sites must produce identical scan_range for the same attribute profile.
+
+        This is the core divergence-catching test: if navigation.py and game.py
+        use different formulas they will disagree even before any bonus stacking.
+        """
+        from navigation import Ship
+
+        # Build a real Ship so calculate_stats_from_components() runs.
+        nav_ship      = Ship("ParityTest")
+        profile       = dict(nav_ship.attribute_profile)
+        scan_from_nav = nav_ship.scan_range
+
+        # Feed the identical profile through apply_all_bonuses_to_ship
+        # with zero bonuses so no attribute values are shifted.
+        bonus_ship = types.SimpleNamespace(
+            attribute_profile=dict(profile),
+            fuel=1000,
+            components={},
+        )
+        g = Game()
+        g.completed_research = []
+        g.character_faction  = None
+        g.character_stats    = {}
+        g.ship_hull_damage   = 0.0
+        apply_all_bonuses_to_ship(bonus_ship, g)
+        scan_from_bonus = bonus_ship.scan_range
+
+        assert scan_from_nav == pytest.approx(scan_from_bonus), (
+            f"Formula divergence between navigation.py ({scan_from_nav}) and "
+            f"game.py ({scan_from_bonus}) for the same attribute profile. "
+            "Both sites must use: max(5.0, 20 + detection*0.5 + etheric*0.25)."
+        )

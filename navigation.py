@@ -764,9 +764,12 @@ class Ship:
                 int(ftl_capacity / 2 + engine_output / 6),
             )
 
+            # Unified formula — must match apply_all_bonuses_to_ship() in game.py
+            # and get_effective_scan_range() so the value is consistent regardless
+            # of whether the bonus stack has been applied yet.
             self.scan_range = max(
                 5.0,
-                detection_range / 3.0 + etheric_sensitivity / 6.0,
+                20.0 + detection_range * 0.5 + etheric_sensitivity * 0.25,
             )
 
         except ImportError:
