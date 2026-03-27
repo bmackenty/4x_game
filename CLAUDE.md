@@ -56,4 +56,6 @@ Both backend (`hex_utils.py`) and frontend (`hex/hex-math.js`) use **axial (q, r
 
 ### End-of-Turn Flow
 
-`POST /api/game/turn/end` → engine processes turn → `backend/gnn.py` generates the Galactic News Network broadcast → response includes `gnn_summary` and `events` list → frontend shows a GNN modal and toast notifications.
+`POST /api/game/turn/end` → `game.resolve_end_turn()` runs the full pipeline (turn counter, research, hull repair, fuel regen, colony production, **NPC bot tick**) → `backend/gnn.py` generates the Galactic News Network broadcast → response includes `gnn_summary` and `events` list → frontend shows a GNN modal and toast notifications.
+
+The backend endpoint is a thin delegate: it calls `game.resolve_end_turn()`, then `generate_gnn_summary()`, then returns.  All gameplay simulation — including bot movement — lives inside `resolve_end_turn()` so it runs correctly whether the caller is the REST API, a CLI, or a test.

@@ -790,6 +790,21 @@ class Game:
                 })
         credits_after = self.credits
 
+        # ── 8. NPC bot tick ──────────────────────────────────────────────────
+        # Bot movement is gameplay simulation, not a presentation concern.
+        # Running it here ensures bots tick regardless of which caller
+        # (REST endpoint, CLI, test, or future autoplay mode) triggers
+        # the end-of-turn cycle.
+        bot_mgr = getattr(self, "bot_manager", None)
+        if bot_mgr:
+            try:
+                bot_mgr.update_all_bots()
+            except Exception as _exc:
+                events.append({
+                    "channel": "ERROR",
+                    "message": f"Bot tick failed: {_exc}",
+                })
+
         return {
             "success":                   success,
             "message":                   message,
@@ -4798,7 +4813,48 @@ def apply_all_bonuses_to_ship(ship, g) -> None:
 
     base_jump       = max(5, int(ftl_capacity / 2 + engine_output / 6))
     ship.jump_range = max(3, int(base_jump * (0.7 + 0.3 * hull_fraction)))
-    ship.scan_range = max(5.0, detection_range / 3.0 + etheric_sensitivity / 6.0)
+    # Unified scan-range formula (matches backend fog-of-war calculation):
+    #   scan_range = 20 + detection_range * 0.5 + etheric_sensitivity * 0.25
+    ship.scan_range = max(5.0, 20.0 + detection_range * 0.5 + etheric_sensitivity * 0.25)
+
+
+def get_effective_scan_range(g) -> float:
+    """Return the ship's effective scan range in galaxy units.
+
+    Reads the already-computed ship.scan_range attribute, which is kept
+    current by apply_all_bonuses_to_ship().  Falls back to the formula's
+    default-attribute result (40.0) when no ship is available.
+
+    Use this instead of re-deriving the bonus stack from scratch.
+    """
+    try:
+        ship = g.navigation.current_ship
+        sr = getattr(ship, "scan_range", None)
+        if sr is not None:
+            return float(sr)
+    except Exception:
+        pass
+    # Default: 20 + 30*0.5 + 20*0.25 = 40.0
+    return 20.0 + 30.0 * 0.5 + 20.0 * 0.25
+
+
+def get_effective_fuel_efficiency(g) -> float:
+    """Return the ship's current fuel efficiency multiplier (0.5–1.5).
+
+    Reads engine_efficiency from ship.attribute_profile (kept current by
+    apply_all_bonuses_to_ship) and applies the navigation formula:
+        multiplier = 1.0 − ((engine_efficiency − 30) / 100)
+    Values below 1.0 mean cheaper jumps; above 1.0 mean more expensive.
+    Falls back to 1.0 (baseline) if no profile is available.
+    """
+    try:
+        ship = g.navigation.current_ship
+        profile = getattr(ship, "attribute_profile", None) or {}
+        engine_efficiency = profile.get("engine_efficiency", 30.0)
+        multiplier = 1.0 - ((engine_efficiency - 30.0) / 100.0)
+        return round(max(0.5, min(1.5, multiplier)), 3)
+    except Exception:
+        return 1.0
 
 
 def main():

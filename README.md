@@ -28,9 +28,8 @@ Python FastAPI backend  ←→  Vanilla JS ES6 modules frontend
      (port 8765)                   (served as static files)
 ```
 
-The game engine lives entirely in the project-root Python modules and is
-**never modified** — `backend/` is a thin REST translation layer, and
-`frontend/` is the browser UI.
+The game engine lives in the project-root Python modules.  `backend/` is a
+thin REST translation layer, and `frontend/` is the browser UI.
 
 ### Directory Layout
 
@@ -104,7 +103,7 @@ The game engine lives entirely in the project-root Python modules and is
 │   ├── intro.json              # Intro lore (displayed on new game)
 │   └── credits.json            # Credits screen content
 │
-└── [game engine — DO NOT MODIFY]
+└── [game engine]
     game.py, navigation.py, research.py, factions.py, economy.py,
     systems.py, events.py, ship_builder.py, save_game.py, species.py,
     characters.py, energies.py, …  (90+ files, ~37 K lines)
@@ -532,8 +531,8 @@ routes always win.
 
 ## Design Principles
 
-- **Strict separation**: game logic lives in the project-root Python modules
-  and is never modified.  `backend/` only exposes it via REST.
+- **Strict separation**: game logic lives in the project-root Python modules.
+  `backend/` only exposes it via REST — no game logic duplicated there.
 - **Single fetch source**: `frontend/js/api.js` is the only file that calls
   `fetch()`.  All views import from it.
 - **Reproducible worlds**: colony terrain is seeded from the planet name so

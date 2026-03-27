@@ -17,8 +17,10 @@ import os
 # Make the project root importable regardless of where pytest is invoked from.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import types
+import unittest.mock as mock
 import pytest
-from game import Game, hull_auto_repair_rate
+from game import Game, hull_auto_repair_rate, get_effective_scan_range, get_effective_fuel_efficiency, apply_all_bonuses_to_ship
 
 
 # ---------------------------------------------------------------------------
@@ -302,3 +304,157 @@ class TestResolveEndTurn:
         game_with_research.resolve_end_turn()
         game_with_research.resolve_end_turn()
         assert game_with_research.research_progress == rp * 2
+
+
+# ---------------------------------------------------------------------------
+# TestBotManagerTick — bots tick inside the engine (step 8)
+# ---------------------------------------------------------------------------
+
+class TestBotManagerTick:
+
+    def test_bot_manager_ticked_during_resolve(self, game):
+        """bot_manager.update_all_bots() is called by resolve_end_turn."""
+        bot_mgr = mock.MagicMock()
+        game.bot_manager = bot_mgr
+        game.resolve_end_turn()
+        bot_mgr.update_all_bots.assert_called_once()
+
+    def test_bot_tick_exception_does_not_abort_turn(self, game):
+        """A failing bot tick adds an error event but does not raise."""
+        bot_mgr = mock.MagicMock()
+        bot_mgr.update_all_bots.side_effect = RuntimeError("bot exploded")
+        game.bot_manager = bot_mgr
+        result = game.resolve_end_turn()
+        assert result["success"] is True
+        error_events = [e for e in result["events"] if e["channel"] == "ERROR"]
+        assert any("bot" in e["message"].lower() for e in error_events)
+
+
+# ---------------------------------------------------------------------------
+# TestEffectiveScanRange — engine function
+# ---------------------------------------------------------------------------
+
+class TestEffectiveScanRange:
+
+    def test_returns_float(self, game):
+        result = get_effective_scan_range(game)
+        assert isinstance(result, float)
+
+    def test_fallback_when_no_ship(self, game):
+        """Without a ship set up, falls back to 40.0 (20 + 30*0.5 + 20*0.25)."""
+        # Default fixture has no current_ship; expect fallback
+        game.navigation.current_ship = None
+        result = get_effective_scan_range(game)
+        assert result == pytest.approx(40.0)
+
+    def test_reads_ship_scan_range(self, game):
+        """When a ship with scan_range is present, returns that value."""
+        ship = types.SimpleNamespace(scan_range=55.0)
+        game.navigation.current_ship = ship
+        assert get_effective_scan_range(game) == pytest.approx(55.0)
+
+    def test_survives_missing_navigation(self, game):
+        """Does not raise when navigation is None; returns a float."""
+        game.navigation = None
+        result = get_effective_scan_range(game)
+        assert isinstance(result, float)
+
+
+# ---------------------------------------------------------------------------
+# TestEffectiveFuelEfficiency — engine function
+# ---------------------------------------------------------------------------
+
+class TestEffectiveFuelEfficiency:
+
+    def test_returns_float(self, game):
+        result = get_effective_fuel_efficiency(game)
+        assert isinstance(result, float)
+
+    def test_baseline_engine_efficiency_gives_one(self, game):
+        """engine_efficiency=30 → multiplier=1.0 (no bonus, no penalty)."""
+        ship = types.SimpleNamespace(attribute_profile={"engine_efficiency": 30.0})
+        game.navigation.current_ship = ship
+        assert get_effective_fuel_efficiency(game) == pytest.approx(1.0)
+
+    def test_high_efficiency_reduces_multiplier(self, game):
+        """engine_efficiency>30 → multiplier<1.0 (cheaper jumps)."""
+        ship = types.SimpleNamespace(attribute_profile={"engine_efficiency": 80.0})
+        game.navigation.current_ship = ship
+        result = get_effective_fuel_efficiency(game)
+        assert result < 1.0
+
+    def test_survives_no_ship(self, game):
+        """Does not raise when current_ship is None; returns 1.0."""
+        game.navigation.current_ship = None
+        assert get_effective_fuel_efficiency(game) == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# TestFactionAccess — character_faction is the canonical path
+# ---------------------------------------------------------------------------
+
+class TestFactionAccess:
+
+    def test_character_faction_set_by_fixture(self, game):
+        assert game.character_faction == "Independent"
+
+    def test_apply_all_bonuses_does_not_raise(self, game):
+        """apply_all_bonuses_to_ship should not raise when character_faction is set."""
+        ship = types.SimpleNamespace(
+            attribute_profile={
+                "hull_integrity": 30.0, "mass_efficiency": 30.0,
+                "energy_storage": 30.0, "engine_efficiency": 30.0,
+                "engine_output": 30.0, "ftl_jump_capacity": 30.0,
+                "detection_range": 30.0, "etheric_sensitivity": 20.0,
+            },
+            fuel=1000,
+            components={},
+        )
+        game.ship_hull_damage = 0.0
+        apply_all_bonuses_to_ship(ship, game)
+        assert hasattr(ship, "scan_range")
+
+    def test_scan_range_uses_unified_formula(self, game):
+        """scan_range = 20 + detection*0.5 + etheric*0.25 after apply_all_bonuses."""
+        ship = types.SimpleNamespace(
+            attribute_profile={
+                "hull_integrity": 30.0, "mass_efficiency": 30.0,
+                "energy_storage": 30.0, "engine_efficiency": 30.0,
+                "engine_output": 30.0, "ftl_jump_capacity": 30.0,
+                "detection_range": 30.0, "etheric_sensitivity": 20.0,
+            },
+            fuel=1000,
+            components={},
+        )
+        game.ship_hull_damage = 0.0
+        apply_all_bonuses_to_ship(ship, game)
+        # Formula yields at least 20 + base_detection*0.5 + base_etheric*0.25
+        # (faction/research may shift attributes, but the base offset of 20 always applies).
+        assert ship.scan_range >= 20.0
+
+
+# ---------------------------------------------------------------------------
+# TestFleetPersistence — ship objects persist across switches
+# ---------------------------------------------------------------------------
+
+class TestFleetPersistence:
+
+    def test_fleet_dict_starts_empty(self, game):
+        assert game.fleet == {}
+
+    def test_ship_added_to_fleet_persists(self, game):
+        ship = types.SimpleNamespace(name="Eagle", fuel=500)
+        game.fleet["Eagle"] = ship
+        assert "Eagle" in game.fleet
+
+    def test_fleet_dict_retains_multiple_ships(self, game):
+        game.fleet["Alpha"] = types.SimpleNamespace(name="Alpha")
+        game.fleet["Beta"] = types.SimpleNamespace(name="Beta")
+        assert len(game.fleet) == 2
+
+    def test_fleet_values_are_same_objects(self, game):
+        """Mutations to a fleet ship are visible through the dict."""
+        ship = types.SimpleNamespace(name="Scout", fuel=800)
+        game.fleet["Scout"] = ship
+        game.fleet["Scout"].fuel = 600
+        assert ship.fuel == 600

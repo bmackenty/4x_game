@@ -37,7 +37,13 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 # Game-engine imports (all live in the project root)
-from game import Game, apply_all_bonuses_to_ship, hull_auto_repair_rate  # core engine
+from game import (                                                      # core engine
+    Game,
+    apply_all_bonuses_to_ship,
+    hull_auto_repair_rate,
+    get_effective_scan_range,
+    get_effective_fuel_efficiency,
+)
 import save_game as save_game_module                           # save/load helpers
 from characters import (
     character_classes,
@@ -96,103 +102,14 @@ _discovery_seeded: bool = False
 _discovered_stations: dict[str, dict] = {}   # key = station name
 _discovered_dsos:     dict[str, dict] = {}   # key = "hex_q,hex_r"
 
-# Scan range formula (galaxy is 500×500×200 units):
-#   scan_range = 20 + detection_range * 0.5 + etheric_sensitivity * 0.25
-#
-# At attribute defaults (detection=30, etheric=20): 20 + 15 + 5 = 40 units
-# At theoretical max  (both at 100):                20 + 50 + 25 = 95 units
-#
-# Both attributes are modified by components, research, faction, and INT stat,
-# so every investment layer produces a felt, measurable change in galaxy visibility.
-_SCAN_RANGE_BASE        = 20.0
-_SCAN_DETECTION_FACTOR  = 0.5
-_SCAN_ETHERIC_FACTOR    = 0.25
-
-
 def _effective_scan_range() -> float:
-    """Return the ship's effective scan range in galaxy units.
-
-    Reads the fully-stacked sensor attribute profile (components + research +
-    faction + character stats) so every modifier source flows through to the
-    fog-of-war calculation.  Falls back to the formula's default-attribute
-    result (40 units) if no game state is available.
-    """
-    try:
-        from ship_builder import compute_ship_profile
-        from ship_bonus_rules import (
-            calculate_research_bonuses,
-            calculate_faction_bonuses,
-            calculate_character_stat_bonuses,
-        )
-
-        ship = game.navigation.current_ship
-        profile = compute_ship_profile(getattr(ship, "components", {}) or {})
-
-        # Layer research, faction, and character-stat bonuses (same stack as /api/ship/attributes)
-        completed_research = getattr(game, "completed_research", None) or []
-        faction_name       = _get_player_faction(game)
-        char_stats         = getattr(game, "character_stats", None) or {}
-
-        for bonus_dict in (
-            calculate_research_bonuses(completed_research),
-            calculate_faction_bonuses(faction_name),
-            calculate_character_stat_bonuses(char_stats),
-        ):
-            for attr_id, bonus in bonus_dict.items():
-                if attr_id in profile:
-                    profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
-
-        detection = profile.get("detection_range",     30.0)
-        etheric   = profile.get("etheric_sensitivity", 20.0)
-        return round(
-            _SCAN_RANGE_BASE
-            + detection * _SCAN_DETECTION_FACTOR
-            + etheric   * _SCAN_ETHERIC_FACTOR,
-            1,
-        )
-    except Exception:
-        return _SCAN_RANGE_BASE + 30.0 * _SCAN_DETECTION_FACTOR + 20.0 * _SCAN_ETHERIC_FACTOR  # 40.0
+    """Delegate to the engine's get_effective_scan_range(); see game.py."""
+    return get_effective_scan_range(game)
 
 
 def _effective_fuel_efficiency() -> float:
-    """Return the ship's current fuel efficiency multiplier (0.5–1.5).
-
-    Mirrors the formula in navigation.calculate_fuel_consumption():
-        multiplier = 1.0 − ((engine_efficiency − 30) / 100)
-        clamped to [0.5, 1.5]
-
-    Values below 1.0 mean cheaper jumps; above 1.0 mean more expensive.
-    At the default engine_efficiency of 30 the multiplier is exactly 1.0.
-    """
-    try:
-        from ship_builder import compute_ship_profile
-        from ship_bonus_rules import (
-            calculate_research_bonuses,
-            calculate_faction_bonuses,
-            calculate_character_stat_bonuses,
-        )
-
-        ship    = game.navigation.current_ship
-        profile = compute_ship_profile(getattr(ship, "components", {}) or {})
-
-        completed_research = getattr(game, "completed_research", None) or []
-        faction_name       = _get_player_faction(game)
-        char_stats         = getattr(game, "character_stats", None) or {}
-
-        for bonus_dict in (
-            calculate_research_bonuses(completed_research),
-            calculate_faction_bonuses(faction_name),
-            calculate_character_stat_bonuses(char_stats),
-        ):
-            for attr_id, bonus in bonus_dict.items():
-                if attr_id in profile:
-                    profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
-
-        engine_efficiency = profile.get("engine_efficiency", 30.0)
-        multiplier = 1.0 - ((engine_efficiency - 30.0) / 100.0)
-        return round(max(0.5, min(1.5, multiplier)), 3)
-    except Exception:
-        return 1.0  # baseline fallback
+    """Delegate to the engine's get_effective_fuel_efficiency(); see game.py."""
+    return get_effective_fuel_efficiency(game)
 
 
 def _seed_discovery() -> None:
@@ -1211,15 +1128,6 @@ async def end_turn():
         colony_rp=_colony_research_output(),
         colony_advance_fn=lambda events: colony_manager.advance_turn(events),
     )
-
-    # Tick all NPC bots (presentation-layer concern; bots know about game state
-    # but the scheduling decision lives here in the API layer).
-    bot_mgr = getattr(game, "bot_manager", None)
-    if bot_mgr:
-        try:
-            bot_mgr.update_all_bots()
-        except Exception as _e:
-            print(f"[4X] Warning: bot update failed: {_e}")
 
     gnn = generate_gnn_summary(
         game, colony_manager, result["events"],
@@ -2588,9 +2496,7 @@ async def get_ship_components():
             for k, v in nonzero[:top_n]
         ]
 
-    player_faction = getattr(game, "player_faction", None)
-    if not player_faction and hasattr(game, "character") and game.character:
-        player_faction = game.character.get("faction")
+    player_faction = _get_player_faction(game)
 
     slots = {}
     for slot_key in ACTIVE_CATEGORIES:
@@ -2643,9 +2549,7 @@ async def install_ship_component(request: InstallComponentRequest):
 
     from ship_builder import install_component, ship_components, COMPONENT_CATEGORY_ALIASES
 
-    player_faction = None
-    if hasattr(game, "character") and game.character:
-        player_faction = game.character.get("faction")
+    player_faction = _get_player_faction(game)
 
     # Resolve category alias and look up component cost before installing
     resolved_cat = COMPONENT_CATEGORY_ALIASES.get(request.category, request.category)
