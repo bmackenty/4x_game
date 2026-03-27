@@ -21,6 +21,11 @@ from characters import (
 from species import species_database, get_playable_species
 from energies import all_energies, get_safe_energies, get_energy_efficiency, get_energy_cost_multiplier
 from research import all_research, research_categories, get_research_by_category, get_available_research
+from ship_bonus_rules import (
+    calculate_research_bonuses,
+    calculate_faction_bonuses,
+    calculate_character_stat_bonuses,
+)
 from ship_builder import ship_components, ship_templates, calculate_ship_stats
 from navigation import NavigationSystem
 from economy import EconomicSystem
@@ -724,6 +729,161 @@ class Game:
         if hasattr(self, 'bot_manager') and self.bot_manager:
             # AI bots take their actions
             pass
+
+    def resolve_end_turn(
+        self,
+        colony_rp: int = 0,
+        colony_advance_fn=None,
+    ) -> dict:
+        """Run a complete end-of-turn cycle and return a structured result dict.
+
+        This is the single authoritative entry point for ending a turn.  It
+        absorbs all game-logic that previously lived in the backend HTTP
+        handler, so the REST layer only needs to inject two external
+        dependencies:
+
+        Parameters
+        ----------
+        colony_rp : int
+            Research points contributed by colonies this turn.  The caller
+            (backend) passes ``colony_manager.calculate_all_production()
+            ["research"]``; defaults to 0 when there are no colonies.
+        colony_advance_fn : callable | None
+            ``colony_manager.advance_turn(events)`` — optional callable that
+            ticks colony production and population tax, appends colony-related
+            events to the *events* list, and returns a ``financial_summary``
+            dict.  When ``None``, colony production is skipped.
+
+        Returns
+        -------
+        dict with keys:
+            success                  – bool: False only if game is already ended
+            message                  – str: human-readable turn message
+            new_turn                 – int: the new current_turn value
+            events                   – list[dict]: event log (channel/message pairs)
+            game_ended               – bool
+            newly_completed_research – dict | None: metadata for the research
+                                       that completed this turn, if any
+            financial_summary        – dict: colony income/expense breakdown
+            credits_before           – int: credits before colony income
+            credits_after            – int: credits after colony income
+        """
+        # ── 1. Increment turn counter, reset action points ─────────────────
+        success, message = self.end_turn()
+        if not success:
+            return {
+                "success": False,
+                "message": message,
+                "new_turn": self.current_turn,
+                "events": [],
+                "game_ended": self.game_ended,
+                "newly_completed_research": None,
+                "financial_summary": {},
+                "credits_before": self.credits,
+                "credits_after": self.credits,
+            }
+
+        # ── 2. Subsystem tick (economy, events, NPC ships, +1 research) ────
+        events: list[dict] = self.advance_turn()
+
+        # ── 3. Research progression ─────────────────────────────────────────
+        # advance_turn() already added +1; add the remaining (rp - 1) so the
+        # total increment equals the full rp value this turn.
+        newly_completed_research = None
+        if self.active_research:
+            rp = self.calculate_rp_per_turn(colony_rp=colony_rp)["total"]
+            self.research_progress += max(0, rp - 1)
+
+            research_data = all_research.get(self.active_research, {})
+            research_time = research_data.get("research_time", 1)
+            if self.research_progress >= research_time:
+                completed_name = self.active_research
+                completed_data = all_research.get(completed_name, {})
+                self.complete_research()
+                newly_completed_research = {
+                    "name":        completed_name,
+                    "description": completed_data.get("description", ""),
+                    "unlocks":     completed_data.get("unlocks", []),
+                    "category":    completed_data.get("category", ""),
+                }
+                events.append({
+                    "channel": "R&D",
+                    "message": f"Research complete: {completed_name}!",
+                })
+
+        # ── 4. Re-apply ship bonus stack (research just completed may change stats) ─
+        ship = getattr(self.navigation, "current_ship", None) if self.navigation else None
+        if ship and getattr(ship, "attribute_profile", None):
+            apply_all_bonuses_to_ship(ship, self)
+
+        # ── 5. Hull degradation & auto-repair ──────────────────────────────
+        hull_dmg_before = getattr(self, "ship_hull_damage", 0.0)
+        hull_dmg = hull_dmg_before
+
+        # 5% chance of space-hazard wear: 0.5–2.0 integrity points
+        if random.random() < 0.05:
+            wear = round(random.uniform(0.5, 2.0), 1)
+            hull_dmg = round(hull_dmg + wear, 2)
+            events.append({
+                "channel": "HULL",
+                "message": f"Space hazard encountered: hull took {wear:.1f} damage.",
+            })
+
+        # Per-turn auto-repair (no-op when hull is pristine)
+        if hull_dmg > 0:
+            repair_rate = hull_auto_repair_rate(getattr(self, "character_stats", None) or {})
+            repaired    = round(min(hull_dmg, repair_rate), 2)
+            hull_dmg    = round(hull_dmg - repaired, 2)
+            events.append({
+                "channel": "HULL",
+                "message": f"Crew auto-repair: +{repaired:.1f} hull integrity restored.",
+            })
+
+        self.ship_hull_damage = hull_dmg
+        if hull_dmg != hull_dmg_before and ship and getattr(ship, "attribute_profile", None):
+            apply_all_bonuses_to_ship(ship, self)
+
+        # ── 6. Fuel regeneration (idle ship restores 5 % of max_fuel) ──────
+        fuel_ship = getattr(self.navigation, "current_ship", None) if self.navigation else None
+        if fuel_ship:
+            current_pos = tuple(getattr(fuel_ship, "coordinates", (None,)))
+            last_pos    = getattr(self, "ship_last_position", None)
+            if last_pos is not None and current_pos == last_pos:
+                regen  = max(1, int(fuel_ship.max_fuel * 0.05))
+                before = fuel_ship.fuel
+                fuel_ship.fuel = min(fuel_ship.max_fuel, fuel_ship.fuel + regen)
+                gained = fuel_ship.fuel - before
+                if gained > 0:
+                    events.append({
+                        "channel": "SHIP",
+                        "message": f"Ship idle: fuel cells recharged +{gained} fuel.",
+                    })
+            self.ship_last_position = current_pos
+
+        # ── 7. Colony production ────────────────────────────────────────────
+        credits_before   = self.credits
+        financial_summary: dict = {}
+        if colony_advance_fn is not None:
+            try:
+                financial_summary = colony_advance_fn(events) or {}
+            except Exception as exc:
+                events.append({
+                    "channel": "ERROR",
+                    "message": f"Colony production failed: {exc}",
+                })
+        credits_after = self.credits
+
+        return {
+            "success":                   success,
+            "message":                   message,
+            "new_turn":                  self.current_turn,
+            "events":                    events,
+            "game_ended":                self.game_ended,
+            "newly_completed_research":  newly_completed_research,
+            "financial_summary":         financial_summary,
+            "credits_before":            credits_before,
+            "credits_after":             credits_after,
+        }
 
     # Player Log Management Methods
     def add_log_entry(self, entry_type, message, details=None):
@@ -4666,6 +4826,80 @@ class Game:
         
         input("\nPress Enter to begin...")
         self.main_menu()
+
+# ---------------------------------------------------------------------------
+# Ship-bonus helpers — pure engine logic, no backend/API dependencies
+# ---------------------------------------------------------------------------
+
+def hull_auto_repair_rate(char_stats: dict) -> float:
+    """Return per-turn hull auto-repair amount based on captain VIT and SYN.
+
+    Formula: 0.5 + (VIT - 30) * 0.03 + (SYN - 30) * 0.02
+    Default stats (both 30): 0.5 per turn.
+    Max stats (both 100):    0.5 + 2.1 + 1.4 = 4.0 per turn.
+    Minimum clamped at 0.1.
+    """
+    vit = char_stats.get("VIT", 30)
+    syn = char_stats.get("SYN", 30)
+    return max(0.1, round(0.5 + (vit - 30) * 0.03 + (syn - 30) * 0.02, 2))
+
+
+def apply_all_bonuses_to_ship(ship, g) -> None:
+    """Layer research, faction, and character-stat bonuses onto *ship* and
+    re-derive the legacy gameplay properties (max_cargo, max_fuel,
+    jump_range, scan_range) from the updated attribute profile.
+
+    Hull degradation is factored in here: ``g.ship_hull_damage`` is
+    subtracted from hull_integrity before deriving stats so a damaged ship
+    loses health/range until repaired.  The stored profile value is NOT
+    mutated — it always reflects the undamaged base.
+
+    Call this immediately after ``ship.calculate_stats_from_components()``.
+    """
+    profile = dict(getattr(ship, "attribute_profile", None) or {})
+    if not profile:
+        return
+
+    faction_name = getattr(g, "character_faction", None) or getattr(g, "player_faction", None)
+
+    completed_research: list = getattr(g, "completed_research", None) or []
+    char_stats: dict = getattr(g, "character_stats", None) or {}
+
+    for bonus_dict in (
+        calculate_research_bonuses(completed_research),
+        calculate_faction_bonuses(faction_name),
+        calculate_character_stat_bonuses(char_stats),
+    ):
+        for attr_id, bonus in bonus_dict.items():
+            if attr_id in profile:
+                profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
+
+    ship.attribute_profile = profile
+
+    hull_integrity      = profile.get("hull_integrity",      30.0)
+    mass_efficiency     = profile.get("mass_efficiency",     30.0)
+    energy_storage      = profile.get("energy_storage",      30.0)
+    engine_efficiency   = profile.get("engine_efficiency",   30.0)
+    engine_output       = profile.get("engine_output",       30.0)
+    ftl_capacity        = profile.get("ftl_jump_capacity",   30.0)
+    detection_range     = profile.get("detection_range",     30.0)
+    etheric_sensitivity = profile.get("etheric_sensitivity", 20.0)
+
+    hull_damage    = getattr(g, "ship_hull_damage", 0.0)
+    effective_hull = max(1.0, hull_integrity - hull_damage)
+    hull_fraction  = effective_hull / hull_integrity if hull_integrity > 0 else 1.0
+
+    ship.health    = max(50, int(effective_hull * 10))
+    ship.max_cargo = max(20, int(mass_efficiency * 3 + effective_hull))
+
+    fuel_capacity  = max(2000, int(energy_storage * 3 + engine_efficiency * 2.5))
+    ship.max_fuel  = fuel_capacity
+    ship.fuel      = min(ship.fuel, ship.max_fuel)
+
+    base_jump       = max(5, int(ftl_capacity / 2 + engine_output / 6))
+    ship.jump_range = max(3, int(base_jump * (0.7 + 0.3 * hull_fraction)))
+    ship.scan_range = max(5.0, detection_range / 3.0 + etheric_sensitivity / 6.0)
+
 
 def main():
     game = Game()

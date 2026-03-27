@@ -26,7 +26,7 @@ Python FastAPI backend (port 8765)  ←→  Vanilla JS ES6 modules (no bundler)
 
 ### The Three Layers
 
-1. **Game engine** (project root `.py` files — `game.py`, `navigation.py`, `research.py`, `factions.py`, etc.): ~37K lines of pure game logic. **Never modify these files.** They are treated as a black-box library.
+1. **Game engine** (project root `.py` files — `game.py`, `navigation.py`, `research.py`, `factions.py`, etc.): ~37K lines of pure game logic. These files are fair game to read and modify.
 
 2. **`backend/`** — Thin REST translation layer. `backend/main.py` holds all `/api/*` endpoints, a singleton `Game` instance, and a `ColonyManager`. It imports from the engine and exposes state via plain dicts. `backend/colony.py` owns the hex-tile colony building system. `backend/hex_utils.py` handles axial hex math and 3D→2D galaxy projection.
 

@@ -37,7 +37,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 # Game-engine imports (all live in the project root)
-from game import Game                                          # core engine
+from game import Game, apply_all_bonuses_to_ship, hull_auto_repair_rate  # core engine
 import save_game as save_game_module                           # save/load helpers
 from characters import (
     character_classes,
@@ -1203,110 +1203,17 @@ async def debug_nav():
 
 @app.post("/api/game/turn/end")
 async def end_turn():
-    """
-    End the current turn and advance to the next.
-
-    Calls game.end_turn() (which resets action points and increments the turn
-    counter) then game.advance_turn() (which runs per-turn subsystem updates
-    and returns a structured event log for the notification toast queue).
-    """
+    """End the current turn and advance to the next."""
     if not game or not game.character_created:
         raise HTTPException(status_code=400, detail="No game in progress.")
 
-    success, end_message = game.end_turn()   # increments current_turn, resets actions
-    events = game.advance_turn()             # runs subsystem tick; does NOT increment turn
+    result = game.resolve_end_turn(
+        colony_rp=_colony_research_output(),
+        colony_advance_fn=lambda events: colony_manager.advance_turn(events),
+    )
 
-    # Inject extra research progress so total increment equals RP/turn.
-    # The engine already added +1 inside advance_turn(); we add (rp - 1) more.
-    newly_completed_research = None
-    if game.active_research:
-        _rp = game.calculate_rp_per_turn(colony_rp=_colony_research_output())["total"]
-        game.research_progress += max(0, _rp - 1)
-        _rt = all_research.get(game.active_research, {}).get("research_time", 1)
-        if game.research_progress >= _rt:
-            _completed_name = game.active_research
-            _completed_data = all_research.get(_completed_name, {})
-            game.complete_research()
-            newly_completed_research = {
-                "name":        _completed_name,
-                "description": _completed_data.get("description", ""),
-                "unlocks":     _completed_data.get("unlocks", []),
-                "category":    _completed_data.get("category", ""),
-            }
-
-    # Re-apply the full bonus stack so any research completed this turn
-    # immediately updates max_cargo, max_fuel, jump_range, and scan_range.
-    _ship = getattr(game.navigation, "current_ship", None) if game.navigation else None
-    if _ship and getattr(_ship, "attribute_profile", None):
-        apply_all_bonuses_to_ship(_ship, game)
-
-    # ── Hull degradation & auto-repair ──────────────────────────────────────
-    # 1. Small random chance of hull wear from deep-space hazards each turn.
-    # 2. Crew/captain passively repairs a small amount based on VIT + SYN.
-    # Both are computed on the current damage value so they can net to zero
-    # (pristine hull stays pristine).
-    import random as _rnd
-    _hull_events: list = []
-    _hull_dmg_before = getattr(game, "ship_hull_damage", 0.0)
-    _hull_dmg        = _hull_dmg_before
-
-    # 5% chance of space-hazard wear: 0.5–2.0 integrity points
-    if _rnd.random() < 0.05:
-        _wear = round(_rnd.uniform(0.5, 2.0), 1)
-        _hull_dmg = round(_hull_dmg + _wear, 2)
-        _hull_events.append({
-            "channel": "HULL",
-            "message": f"Space hazard encountered: hull took {_wear:.1f} damage.",
-        })
-
-    # Per-turn auto-repair (always runs; no-op if hull is pristine)
-    if _hull_dmg > 0:
-        _repair_rate = _hull_auto_repair_rate(getattr(game, "character_stats", None) or {})
-        _repaired    = round(min(_hull_dmg, _repair_rate), 2)
-        _hull_dmg    = round(_hull_dmg - _repaired, 2)
-        _hull_events.append({
-            "channel": "HULL",
-            "message": f"Crew auto-repair: +{_repaired:.1f} hull integrity restored.",
-        })
-
-    # Commit hull damage and re-derive ship stats if anything changed
-    game.ship_hull_damage = _hull_dmg
-    if _hull_dmg != _hull_dmg_before and _ship and getattr(_ship, "attribute_profile", None):
-        apply_all_bonuses_to_ship(_ship, game)
-
-    events.extend(_hull_events)
-    # ────────────────────────────────────────────────────────────────────────
-
-    # ── Fuel regeneration ────────────────────────────────────────────────────
-    # If the ship did not move since last turn, restore 5% of max_fuel.
-    # We track position via game.ship_last_position (set at the end of each turn).
-    _fuel_ship = getattr(game.navigation, "current_ship", None) if game.navigation else None
-    if _fuel_ship:
-        _current_pos = tuple(getattr(_fuel_ship, "coordinates", (None,)))
-        _last_pos    = getattr(game, "ship_last_position", None)
-        if _last_pos is not None and _current_pos == _last_pos:
-            _regen = max(1, int(_fuel_ship.max_fuel * 0.05))
-            _before = _fuel_ship.fuel
-            _fuel_ship.fuel = min(_fuel_ship.max_fuel, _fuel_ship.fuel + _regen)
-            _gained = _fuel_ship.fuel - _before
-            if _gained > 0:
-                events.append({
-                    "channel": "SHIP",
-                    "message": f"Ship idle: fuel cells recharged +{_gained} fuel.",
-                })
-        game.ship_last_position = _current_pos
-    # ─────────────────────────────────────────────────────────────────────────
-
-    # Snapshot credits BEFORE colony income so the ledger can show the delta.
-    credits_before = game.credits
-
-    # Apply colony production + population tax to the player's resources.
-    # Returns a financial_summary dict used by the GNN broadcast.
-    financial_summary = colony_manager.advance_turn(events)
-
-    credits_after = game.credits
-
-    # Tick all NPC bots so they move toward their goals each turn.
+    # Tick all NPC bots (presentation-layer concern; bots know about game state
+    # but the scheduling decision lives here in the API layer).
     bot_mgr = getattr(game, "bot_manager", None)
     if bot_mgr:
         try:
@@ -1314,20 +1221,21 @@ async def end_turn():
         except Exception as _e:
             print(f"[4X] Warning: bot update failed: {_e}")
 
-    # Generate the Galactic News Network end-of-turn summary.
     gnn = generate_gnn_summary(
-        game, colony_manager, events,
-        financial_summary, credits_before, credits_after,
+        game, colony_manager, result["events"],
+        result["financial_summary"],
+        result["credits_before"],
+        result["credits_after"],
     )
 
     return {
-        "success":                   success,
-        "message":                   end_message,
-        "new_turn":                  game.current_turn,
-        "events":                    events,          # list of {"channel": str, "message": str}
-        "game_ended":                game.game_ended,
-        "gnn_summary":               gnn,             # Galactic News Network broadcast
-        "newly_completed_research":  newly_completed_research,
+        "success":                   result["success"],
+        "message":                   result["message"],
+        "new_turn":                  result["new_turn"],
+        "events":                    result["events"],
+        "game_ended":                result["game_ended"],
+        "gnn_summary":               gnn,
+        "newly_completed_research":  result["newly_completed_research"],
         "state":                     _build_state_snapshot(),
     }
 
@@ -2268,11 +2176,8 @@ async def repair_ship_at_station(station_name: str):
 # ===========================================================================
 
 def _get_player_faction(g) -> Optional[str]:
-    """Return the player's faction name from whichever attribute is populated."""
-    faction = getattr(g, "player_faction", None)
-    if not faction and getattr(g, "character", None):
-        faction = g.character.get("faction")
-    return faction
+    """Return the player's faction name."""
+    return getattr(g, "character_faction", None) or getattr(g, "player_faction", None)
 
 
 def _colony_system_affinity_for_faction(faction_name: str) -> int:
@@ -2299,95 +2204,6 @@ def _colony_system_affinity_for_faction(faction_name: str) -> int:
         for colony in colony_manager.colonies.values()
     ]
     return round(sum(scores) / len(scores))
-
-
-def _hull_auto_repair_rate(char_stats: dict) -> float:
-    """Return per-turn hull auto-repair amount based on captain VIT and SYN stats.
-
-    Formula: 0.5 + (VIT - 30) * 0.03 + (SYN - 30) * 0.02
-    At default stats (both 30): 0.5 per turn.
-    At high stats (both 100): 0.5 + 2.1 + 1.4 = 4.0 per turn.
-    Minimum: 0.1 (clamped).
-    """
-    vit = char_stats.get("VIT", 30)
-    syn = char_stats.get("SYN", 30)
-    return max(0.1, round(0.5 + (vit - 30) * 0.03 + (syn - 30) * 0.02, 2))
-
-
-def apply_all_bonuses_to_ship(ship, g) -> None:
-    """
-    Layer research, faction, and character-stat bonuses on top of the
-    component-derived attribute profile already stored in
-    ``ship.attribute_profile``, then re-derive the legacy engine properties
-    (max_cargo, max_fuel, jump_range, scan_range) so real gameplay reflects
-    the full bonus stack.
-
-    Hull degradation is also applied here: ``g.ship_hull_damage`` (a float that
-    grows as the ship takes damage) is subtracted from the base hull_integrity
-    before deriving health, cargo, and jump_range.  The profile value is NOT
-    modified — it still reflects the undamaged base so repairs are meaningful.
-
-    Call this immediately after any ``ship.calculate_stats_from_components()``
-    invocation so the two steps always stay in sync.
-    """
-    profile = dict(getattr(ship, "attribute_profile", None) or {})
-    if not profile:
-        # No component profile yet — nothing to augment.
-        return
-
-    from ship_bonus_rules import (
-        calculate_research_bonuses,
-        calculate_faction_bonuses,
-        calculate_character_stat_bonuses,
-    )
-
-    completed_research: list = getattr(g, "completed_research", None) or []
-    faction_name: Optional[str] = _get_player_faction(g)
-    char_stats: dict = getattr(g, "character_stats", None) or {}
-
-    for bonus_dict in (
-        calculate_research_bonuses(completed_research),
-        calculate_faction_bonuses(faction_name),
-        calculate_character_stat_bonuses(char_stats),
-    ):
-        for attr_id, bonus in bonus_dict.items():
-            if attr_id in profile:
-                profile[attr_id] = max(0.0, min(100.0, profile[attr_id] + bonus))
-
-    ship.attribute_profile = profile
-
-    # Re-derive legacy engine properties using the same formulas as
-    # navigation.Ship.calculate_stats_from_components() so the engine's
-    # actual gameplay values stay in sync with the full bonus stack.
-    hull_integrity      = profile.get("hull_integrity",              30.0)
-    mass_efficiency     = profile.get("mass_efficiency",             30.0)
-    energy_storage      = profile.get("energy_storage",              30.0)
-    engine_efficiency   = profile.get("engine_efficiency",           30.0)
-    engine_output       = profile.get("engine_output",               30.0)
-    ftl_capacity        = profile.get("ftl_jump_capacity",           30.0)
-    detection_range     = profile.get("detection_range",             30.0)
-    etheric_sensitivity = profile.get("etheric_sensitivity",         20.0)
-
-    # Hull degradation: accumulated damage reduces the effective hull value.
-    # This lowers health, max_cargo, and jump_range — not a hard cap, but a
-    # progressively worsening penalty until the ship is repaired.
-    hull_damage      = getattr(g, "ship_hull_damage", 0.0)
-    effective_hull   = max(1.0, hull_integrity - hull_damage)
-    # Fraction of hull remaining (1.0 = pristine, approaching 0 = severely damaged)
-    hull_fraction    = effective_hull / hull_integrity if hull_integrity > 0 else 1.0
-
-    ship.health    = max(50, int(effective_hull * 10))
-    ship.max_cargo = max(20, int(mass_efficiency * 3 + effective_hull))
-
-    fuel_capacity  = max(2000, int(energy_storage * 3 + engine_efficiency * 2.5))
-    ship.max_fuel  = fuel_capacity
-    ship.fuel      = min(ship.fuel, ship.max_fuel)
-
-    # Jump range is penalised by hull damage: up to 30% cut at zero effective hull.
-    # Full range is restored when hull_fraction == 1.0.
-    base_jump       = max(5, int(ftl_capacity / 2 + engine_output / 6))
-    ship.jump_range = max(3, int(base_jump * (0.7 + 0.3 * hull_fraction)))
-    ship.scan_range = max(5.0, detection_range / 3.0 + etheric_sensitivity / 6.0)
 
 
 class JumpRequest(BaseModel):
