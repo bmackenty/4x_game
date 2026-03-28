@@ -523,8 +523,10 @@ async function handleHexClick({ q, r }) {
     return;
   }
 
-  // Jump immediately if not already at this system
-  if (!_playerIsAt(sys.coordinates)) {
+  // Jump immediately if not already at this system.
+  // Use current_system name match (not just coordinate proximity) so that
+  // clicking the system the player is already docked at never wastes a turn.
+  if (!_playerIsInSystem(sys.name) && !_playerIsAt(sys.coordinates)) {
     handleJump(sys);  // fire-and-forget; panel loads in parallel
   }
 

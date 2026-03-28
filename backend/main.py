@@ -89,6 +89,15 @@ game: Optional[Game] = None
 colony_manager: Optional[ColonyManager] = None
 deep_space_manager: Optional[DeepSpaceManager] = None
 
+# GNN accumulator — collects events / financial data across 3 turns so the
+# broadcast covers a full 3-turn window rather than a single turn.
+_gnn_accumulator: dict = {
+    "events":            [],
+    "financial_summary": {},
+    "credits_before":    None,   # credits at the START of the 3-turn window
+    "credits_after":     0,
+}
+
 # ---------------------------------------------------------------------------
 # Scan / discovery tracking
 # ---------------------------------------------------------------------------
@@ -956,6 +965,10 @@ async def new_game(request: NewGameRequest):
     # Always start with a clean slate
     game = Game()
     colony_manager = ColonyManager(game)
+    _gnn_accumulator["events"]            = []
+    _gnn_accumulator["financial_summary"] = {}
+    _gnn_accumulator["credits_before"]    = None
+    _gnn_accumulator["credits_after"]     = 0
     _discovered_systems  = set()
     _discovery_seeded    = False
     _discovered_stations = {}
@@ -1129,12 +1142,39 @@ async def end_turn():
         colony_advance_fn=lambda events: colony_manager.advance_turn(events),
     )
 
-    gnn = generate_gnn_summary(
-        game, colony_manager, result["events"],
-        result["financial_summary"],
-        result["credits_before"],
-        result["credits_after"],
-    )
+    # Accumulate events and financial data across turns for a 3-turn GNN window.
+    acc = _gnn_accumulator
+    acc["events"].extend(result["events"])
+    # Merge financial summary: sum numeric fields, keep latest colony list
+    fs = result["financial_summary"]
+    for key, val in fs.items():
+        if key == "colonies":
+            acc["financial_summary"]["colonies"] = val  # latest snapshot
+        elif isinstance(val, (int, float)):
+            acc["financial_summary"][key] = acc["financial_summary"].get(key, 0) + val
+        else:
+            acc["financial_summary"].setdefault(key, val)
+    # Track credits_before as the start of the window, credits_after always latest
+    if acc["credits_before"] is None:
+        acc["credits_before"] = result["credits_before"]
+    acc["credits_after"] = result["credits_after"]
+
+    # Emit GNN every 3 turns, then reset the accumulator
+    GNN_INTERVAL = 3
+    gnn = None
+    if game.current_turn % GNN_INTERVAL == 0:
+        gnn = generate_gnn_summary(
+            game, colony_manager,
+            acc["events"],
+            acc["financial_summary"],
+            acc["credits_before"],
+            acc["credits_after"],
+        )
+        # Reset accumulator for the next window
+        _gnn_accumulator["events"]            = []
+        _gnn_accumulator["financial_summary"] = {}
+        _gnn_accumulator["credits_before"]    = None
+        _gnn_accumulator["credits_after"]     = 0
 
     return {
         "success":                   result["success"],
@@ -1208,6 +1248,10 @@ async def load_game(request: LoadRequest):
     # Restore fog-of-war discovery sets.  If the save pre-dates this feature,
     # fall back to seeding systems from visited flags via _seed_discovery().
     global _discovered_systems, _discovery_seeded, _discovered_stations, _discovered_dsos
+    _gnn_accumulator["events"]            = []
+    _gnn_accumulator["financial_summary"] = {}
+    _gnn_accumulator["credits_before"]    = None
+    _gnn_accumulator["credits_after"]     = 0
     _saved_discovery = getattr(game, "discovered_systems_state", None)
     if _saved_discovery is not None:
         _discovered_systems = set(_saved_discovery)

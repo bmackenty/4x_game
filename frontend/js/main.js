@@ -377,7 +377,7 @@ function _showGnnModal(gnn) {
 
   const ledgerHtml = (incomeRows || colonyRows) ? `
     <section class="gnn-section gnn-ledger">
-      <h3 class="gnn-section-title">FINANCIAL REPORT — TURN ${gnn.turn}</h3>
+      <h3 class="gnn-section-title">FINANCIAL REPORT — TURNS ${gnn.turn - 2}–${gnn.turn}</h3>
       <table class="gnn-table">
         <tbody>
           ${incomeRows}
