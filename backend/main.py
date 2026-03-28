@@ -2127,12 +2127,23 @@ async def repair_ship_at_station(station_name: str):
     game.ship_hull_damage  = 0.0
     apply_all_bonuses_to_ship(ship, game)
 
+    profession_levelup = None
+    _xp = game._award_profession_xp("Medical", 15, "hull repair")
+    if _xp and "Level up" in _xp:
+        profession_levelup = {
+            "message": _xp,
+            "benefits": game.profession_system.get_profession_bonuses(
+                game.profession_system.character_profession
+            ),
+        }
+
     return {
-        "success":       True,
-        "message":       f"Hull fully repaired (+{hull_dmg:.1f} integrity restored).",
-        "credits_spent": cost,
-        "hull_restored": hull_dmg,
-        "credits":       game.credits,
+        "success":            True,
+        "message":            f"Hull fully repaired (+{hull_dmg:.1f} integrity restored).",
+        "credits_spent":      cost,
+        "hull_restored":      hull_dmg,
+        "credits":            game.credits,
+        "profession_levelup": profession_levelup,
     }
 
 
@@ -2229,6 +2240,16 @@ async def ship_jump(request: JumpRequest):
                 deep_space_manager.discover(dest_hex.q, dest_hex.r)
             dso = dso_obj.to_dict()
 
+    profession_levelup = None
+    _xp = game._award_profession_xp("Operations", 5, "jump")
+    if _xp and "Level up" in _xp:
+        profession_levelup = {
+            "message": _xp,
+            "benefits": game.profession_system.get_profession_bonuses(
+                game.profession_system.character_profession
+            ),
+        }
+
     return {
         "success":               True,
         "message":               message,
@@ -2236,6 +2257,7 @@ async def ship_jump(request: JumpRequest):
         "fuel_remaining":        ship.fuel,
         "system_at_destination": dest_system,
         "deep_space_object":     dso,
+        "profession_levelup":    profession_levelup,
     }
 
 
@@ -2949,11 +2971,22 @@ async def build_improvement(planet_name: str, request: BuildImprovementRequest):
                 except Exception as _me:
                     print(f"[4X] Warning: colony market init failed for {sys_name}: {_me}")
 
+    profession_levelup = None
+    xp_result = game._award_profession_xp("Engineering", 20, "colony build")
+    if xp_result and "Level up" in xp_result:
+        profession_levelup = {
+            "message": xp_result,
+            "benefits": game.profession_system.get_profession_bonuses(
+                game.profession_system.character_profession
+            ),
+        }
+
     return {
         "success": True,
         "message": message,
         "colony": colony_manager.get_colony_dict(planet_name),
         "credits_remaining": game.credits,
+        "profession_levelup": profession_levelup,
     }
 
 

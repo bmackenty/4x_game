@@ -187,6 +187,10 @@ def save_game(game, save_name: Optional[str] = None) -> bool:
             # Bot manager state
             'bot_manager_state': _save_bot_manager(getattr(game, 'bot_manager', None)),
             
+            # Profession progress
+            'profession_experience': dict(getattr(game.profession_system, 'profession_experience', {})),
+            'profession_levels':     dict(getattr(game.profession_system, 'profession_levels', {})),
+
             # Player log
             'player_log': getattr(game, 'player_log', [])[-getattr(game, 'max_log_entries', 100):],
         }
@@ -235,6 +239,13 @@ def load_game(game, save_path: str) -> bool:
         with open(save_path, 'r') as f:
             save_data = json.load(f)
         
+        # Load profession progress (must run before character data so profession
+        # state is in place before any downstream code reads profession_level)
+        if save_data.get('profession_experience'):
+            game.profession_system.profession_experience = save_data['profession_experience']
+        if save_data.get('profession_levels'):
+            game.profession_system.profession_levels = save_data['profession_levels']
+
         # Load character data
         game.player_name = save_data.get('player_name', '')
         game.character_class = save_data.get('character_class', '')

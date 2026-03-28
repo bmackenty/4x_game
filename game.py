@@ -727,6 +727,21 @@ class Game:
                     "channel": "R&D",
                     "message": f"Research complete: {completed_name}!",
                 })
+                # Award profession XP for Scientific/Etheric research categories
+                _research_category = completed_data.get("category", "")
+                _prof_xp_category = (
+                    "Etheric" if _research_category == "Theurgy"
+                    else "Scientific"
+                )
+                _xp_result = self._award_profession_xp(_prof_xp_category, 50, "research completion")
+                if _xp_result and "Level up" in _xp_result:
+                    events.append({
+                        "channel": "CAREER",
+                        "message": _xp_result,
+                        "benefits": self.profession_system.get_profession_bonuses(
+                            self.profession_system.character_profession
+                        ),
+                    })
 
         # ── 4. Re-apply ship bonus stack (research just completed may change stats) ─
         ship = getattr(self.navigation, "current_ship", None) if self.navigation else None
@@ -2230,6 +2245,23 @@ class Game:
         progress_pct = (self.research_progress / total_time) * 100
         return True, f"Research progress: {progress_pct:.1f}%"
     
+    def _award_profession_xp(self, category: str, xp: int, activity: str) -> str | None:
+        """Award XP to the player's profession if it belongs to the given category.
+
+        Returns the gain_experience() status string (which may contain "Level up!")
+        or None if no award was made.
+        """
+        try:
+            prof = getattr(self.profession_system, "character_profession", None)
+            if not prof:
+                return None
+            from professions import PROFESSIONS
+            if PROFESSIONS.get(prof, {}).get("category") == category:
+                return self.profession_system.gain_experience(prof, xp, activity)
+        except Exception:
+            pass
+        return None
+
     def complete_research(self):
         """Complete the current research project"""
         from research import all_research
