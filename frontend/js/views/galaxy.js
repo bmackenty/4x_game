@@ -201,6 +201,9 @@ function _buildZFilterBar() {
         ${canDown ? "" : "disabled"}>
         ▼ DESCEND
       </button>
+      <span id="nav-coords"
+            style="margin-left:var(--sp-3);font-size:0.68rem;font-family:var(--font-mono);
+                   color:rgba(200,216,232,0.45);align-self:center;white-space:nowrap">—</span>
       <button
         class="z-filter-btn${showScanRing ? " z-filter-btn--active" : ""}"
         id="btn-scan-ring"
