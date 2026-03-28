@@ -248,10 +248,14 @@ function updateNavStatus(ship) {
   setText("nav-jump-range", `${jumpRange} ly`);
   setText("nav-cargo",      `${cargoUsed} / ${cargoMax}`);
 
-  // Show raw 3D coordinates for navigation debugging
+  // Show 3D coordinates + current galactic layer name
   if (ship.coordinates) {
     const [cx, cy, cz] = ship.coordinates;
-    setText("nav-coords", `(${Math.round(cx)}, ${Math.round(cy)}, ${Math.round(cz)})`);
+    const LAYER_NAMES = ["Deep Void", "Lower Reaches", "Galactic Plane", "Upper Reaches", "High Orbit"];
+    const LAYER_Z     = [45, 85, 125, 165, Infinity];
+    const layerIdx    = LAYER_Z.findIndex(max => cz < max);
+    const layerName   = layerIdx >= 0 ? LAYER_NAMES[layerIdx] : "High Orbit";
+    setText("nav-coords", `(${Math.round(cx)}, ${Math.round(cy)}, ${Math.round(cz)})  ${layerName}`);
   }
 
   const fillEl = document.getElementById("nav-fuel-fill");

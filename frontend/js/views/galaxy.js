@@ -334,6 +334,9 @@ export const galaxyView = {
       }
     });
 
+    // Sync ascend/descend button states to the ship's current layer on mount
+    _syncLayerButtons();
+
     // Fetch NPC bot positions.  The backend pre-projects each bot to axial
     // hex coordinates and ensures they never overlap a star-system hex, so we
     // use hex_q / hex_r directly rather than re-projecting from raw coordinates.
@@ -1902,6 +1905,24 @@ async function _refreshGalaxyMap() {
   } catch (_err) {
     // Non-fatal — map stays stale until the next jump or remount
   }
+  _syncLayerButtons();
+}
+
+/**
+ * Update the ASCEND/DESCEND button disabled states to match the ship's
+ * current layer.  Called after every movement so the buttons stay accurate
+ * even after normal star-system jumps that cross layer boundaries.
+ */
+function _syncLayerButtons() {
+  const filterBar = document.getElementById("z-filter-bar");
+  if (!filterBar) return;
+  const shipZ    = state.gameState?.ship?.coordinates?.[2];
+  if (shipZ == null) return;
+  const layer    = _getLayerIndex(shipZ);
+  const btnUp    = filterBar.querySelector("#btn-ascend");
+  const btnDown  = filterBar.querySelector("#btn-descend");
+  if (btnUp)   { btnUp.disabled   = layer >= 5; btnUp.title   = layer < 5  ? "Ascend to next layer — costs 15 fuel" : "Already at highest layer"; }
+  if (btnDown) { btnDown.disabled = layer <= 1; btnDown.title = layer > 1  ? "Descend to next layer — costs 15 fuel" : "Already at lowest layer"; }
 }
 
 
