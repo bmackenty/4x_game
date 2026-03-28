@@ -1354,6 +1354,19 @@ async def get_game_options():
 # Galaxy / Navigation endpoints  (Phase 2)
 # ===========================================================================
 
+@app.get("/api/galaxy/layers")
+async def get_galaxy_layers():
+    """Return the 5 galactic layer definitions and the player's current layer."""
+    from navigation import GALAXY_LAYERS, get_layer
+    ship_z = None
+    if game and getattr(game, "navigation", None) and game.navigation.current_ship:
+        ship_z = game.navigation.current_ship.coordinates[2]
+    return {
+        "layers": {str(k): v for k, v in GALAXY_LAYERS.items()},
+        "current_layer": get_layer(ship_z) if ship_z is not None else 3,
+    }
+
+
 @app.get("/api/galaxy/map")
 async def get_galaxy_map():
     """

@@ -71,44 +71,45 @@ export const TERRAIN_COLORS = {
 };
 
 // ---------------------------------------------------------------------------
-// Z-elevation band helpers
+// Z-elevation band helpers (now tied to fixed galactic layers, not σ statistics)
 // ---------------------------------------------------------------------------
 
 /**
- * Classify a system's z coordinate into one of five galactic elevation bands.
- *
- * Bands are defined by standard-deviation distance from the dataset mean:
- *   "high"  z >  mean + 2σ   — well above the galactic plane
- *   "above" z >  mean + 1σ   — above the plane
- *   "plane" |z - mean| ≤ 1σ  — at the galactic midplane
- *   "below" z <  mean - 1σ   — below the plane
- *   "deep"  z <  mean - 2σ   — well below the galactic plane
- *
- * @param {number}                         z
- * @param {{ mean: number, std: number }|null} zStats
- * @returns {"high"|"above"|"plane"|"below"|"deep"}
+ * The 5 fixed galactic layers — mirrors GALAXY_LAYERS in navigation.py.
+ * Each entry provides z range boundaries and the visual style for the 2D map.
+ *   dot  — colour of the small elevation dot drawn below the star glyph (null = none)
+ *   ring — colour of the outer elevation ring drawn for extreme layers (null = none)
  */
-function _zBand(z, zStats) {
-  if (!zStats || zStats.std === 0) return "plane";
-  const d = (z - zStats.mean) / zStats.std;
-  if (d >  2) return "high";
-  if (d >  1) return "above";
-  if (d < -2) return "deep";
-  if (d < -1) return "below";
-  return "plane";
-}
+const LAYER_BANDS = [
+  { idx: 1, name: "Deep Void",      z_min: 5,   z_max: 45,  dot: "#ff7043", ring: "rgba(255,112,67,0.45)" },
+  { idx: 2, name: "Lower Reaches",  z_min: 45,  z_max: 85,  dot: "#ffb74d", ring: null                    },
+  { idx: 3, name: "Galactic Plane", z_min: 85,  z_max: 125, dot: null,      ring: null                    },
+  { idx: 4, name: "Upper Reaches",  z_min: 125, z_max: 165, dot: "#4fc3f7", ring: null                    },
+  { idx: 5, name: "High Orbit",     z_min: 165, z_max: 195, dot: "#00e5ff", ring: "rgba(0,229,255,0.50)"  },
+];
 
 /**
- * Visual style for each z-elevation band.
- * dot  — colour of the small elevation dot drawn below the star glyph (null = none)
- * ring — colour of the outer elevation ring drawn for extreme bands (null = none)
+ * Return the layer band object for a given Z coordinate.
+ * Falls back to Galactic Plane (idx 3) for any Z outside defined ranges.
+ *
+ * @param {number} z
+ * @returns {{ idx, name, z_min, z_max, dot, ring }}
  */
+function _zBand(z) {
+  for (const b of LAYER_BANDS) {
+    if (z >= b.z_min && z < b.z_max) return b;
+  }
+  return LAYER_BANDS[2];  // Galactic Plane fallback
+}
+
+// Keep Z_BAND_STYLES as a pass-through alias so any remaining callers that
+// index by band name still work — maps the old string keys to layer objects.
 const Z_BAND_STYLES = {
-  high:  { dot: "#00e5ff", ring: "rgba(0,229,255,0.50)"  },  // cyan  — high above plane
-  above: { dot: "#4fc3f7", ring: null                    },  // pale blue
-  plane: { dot: null,      ring: null                    },  // no indicator at midplane
-  below: { dot: "#ffb74d", ring: null                    },  // amber
-  deep:  { dot: "#ff7043", ring: "rgba(255,112,67,0.45)" },  // orange-red — deep below plane
+  high:  LAYER_BANDS[4],   // High Orbit
+  above: LAYER_BANDS[3],   // Upper Reaches
+  plane: LAYER_BANDS[2],   // Galactic Plane
+  below: LAYER_BANDS[1],   // Lower Reaches
+  deep:  LAYER_BANDS[0],   // Deep Void
 };
 
 
@@ -404,11 +405,11 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
   for (const sys of systems) {
     const { x: px, y: py } = axialToPixel(sys.hex_q, sys.hex_r, size);
 
-    // ── Z-elevation: compute band and filter dimming ──────────────────────
-    // Every system carries a z coordinate from the backend; classify it into
-    // one of five elevation bands relative to the dataset mean/std.
-    const band   = zStats ? _zBand(sys.z ?? 0, zStats) : "plane";
-    const dimmed = activeZFilter !== "all" && band !== activeZFilter;
+    // ── Z-elevation: classify into fixed galactic layer ───────────────────
+    // Every system carries a z coordinate from the backend; map it to one of
+    // the 5 named layers using fixed Z boundaries (no longer σ-relative).
+    const band   = _zBand(sys.z ?? 0);
+    const dimmed = activeZFilter !== "all" && band.idx !== Number(activeZFilter);
     // Dimmed systems render at ~10% alpha so the galaxy silhouette stays visible
     ctx.globalAlpha = dimmed ? 0.10 : 1.0;
 
@@ -480,9 +481,9 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
       ctx.stroke();
     }
 
-    // Elevation ring — extra outer ring for extreme bands (high / deep)
-    if (zStats && !dimmed) {
-      const zStyle = Z_BAND_STYLES[band];
+    // Elevation ring — extra outer ring for extreme layers (Deep Void / High Orbit)
+    if (!dimmed) {
+      const zStyle = band;
       if (zStyle.ring) {
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -512,9 +513,9 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
     }
 
     // Elevation dot — small coloured circle below the star glyph.
-    // Absent for "plane" systems to avoid clutter; always drawn unless dimmed.
-    if (zStats && !dimmed) {
-      const zStyle = Z_BAND_STYLES[band];
+    // Absent for Galactic Plane systems to avoid clutter; always drawn unless dimmed.
+    if (!dimmed) {
+      const zStyle = band;
       if (zStyle.dot) {
         ctx.beginPath();
         ctx.arc(px, py + size * 0.68, 2.5, 0, Math.PI * 2);
@@ -739,39 +740,23 @@ export function renderGalaxyMap(canvas, systems, viewState, factionColors) {
 
   // -----------------------------------------------------------------------
   // Z-depth readout — compact screen-space overlay in the top-right corner.
-  // Shows the ship's current elevation band and Z value so the player can
-  // see what depth they're operating at without any extra UI element.
+  // Shows the ship's current galactic layer name and Z value.
   // -----------------------------------------------------------------------
-  if (zStats && viewState.gaugeShipZ !== undefined) {
+  if (viewState.gaugeShipZ !== undefined) {
     const shipZ = viewState.gaugeShipZ;
-    const band  = _zBand(shipZ, zStats);
-    const bandColors = {
-      high:  "#00e5ff",
-      above: "#4fc3f7",
-      plane: "rgba(200,216,232,0.55)",
-      below: "#ffb74d",
-      deep:  "#ff7043",
-    };
-    const bandLabels = {
-      high:  "↑↑ HIGH",
-      above: "↑ ABOVE",
-      plane: "— PLANE",
-      below: "↓ BELOW",
-      deep:  "↓↓ DEEP",
-    };
-    const color = bandColors[band] || "rgba(200,216,232,0.55)";
-    const label = bandLabels[band] || "PLANE";
+    const layer = _zBand(shipZ);
+    // dot color (or neutral grey for Galactic Plane which has no dot)
+    const color = layer.dot || "rgba(200,216,232,0.55)";
 
     ctx.save();
     ctx.font         = "8px 'Courier New', monospace";
     ctx.textAlign    = "right";
     ctx.textBaseline = "top";
-    // Depth value line
-    ctx.fillStyle = "rgba(200,216,232,0.40)";
+    ctx.fillStyle    = "rgba(200,216,232,0.40)";
     ctx.fillText(`Z ${Math.round(shipZ)}u`, canvas.width - 6, 6);
-    // Band label line — coloured to match the elevation dot on the hex
+    // Layer name — coloured to match the elevation dot on the hex
     ctx.fillStyle = color;
-    ctx.fillText(label, canvas.width - 6, 16);
+    ctx.fillText(layer.name.toUpperCase(), canvas.width - 6, 16);
     ctx.restore();
   }
 }

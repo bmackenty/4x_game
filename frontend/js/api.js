@@ -137,6 +137,10 @@ export function getGalaxyMap() {
   return get("/api/galaxy/map");
 }
 
+export function getGalaxyLayers() {
+  return get("/api/galaxy/layers");
+}
+
 /**
  * Fetch detailed info for one star system by name.
  * @param {string} systemName

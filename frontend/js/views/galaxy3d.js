@@ -15,8 +15,8 @@
  *   and are within BORDER_DIST_THRESHOLD normalised units of one another.
  */
 
-import { getGalaxyMap, getShipStatus } from "../api.js";
-import { notify }                      from "../ui/notifications.js";
+import { getGalaxyMap, getGalaxyLayers, getShipStatus } from "../api.js";
+import { notify }                                       from "../ui/notifications.js";
 
 // ---------------------------------------------------------------------------
 // Public view object
@@ -59,6 +59,44 @@ let _normCx = 0, _normCy = 0, _normCz = 0, _normMax = 1;
 
 /** Perspective projection — eye distance multiplier; larger = less distortion */
 const PERSPECTIVE_DEPTH = 2.0;
+
+// ---------------------------------------------------------------------------
+// Galactic layer state (loaded once from /api/galaxy/layers)
+// ---------------------------------------------------------------------------
+
+/** Layer definitions: { "1": {...}, "2": {...}, ... } */
+let _layers      = null;
+/** Index 1–5 of the player's current layer */
+let _currentLayer = 3;
+
+/**
+ * Map layer index → subtle tint color used to mix into star dots.
+ * These mirror the engine's GALAXY_LAYERS colors.
+ */
+const LAYER_TINTS = {
+  1: "#c62828",   // Deep Void      — dark red
+  2: "#e65100",   // Lower Reaches  — burnt orange
+  3: null,        // Galactic Plane — no tint (natural star color)
+  4: "#4fc3f7",   // Upper Reaches  — pale blue
+  5: "#00e5ff",   // High Orbit     — cyan
+};
+
+/**
+ * Y positions (in normalised [-1, 1] space) for each of the 5 layer planes.
+ * Layer 1 sits at the bottom (-0.8), layer 5 at the top (+0.8).
+ */
+function _layerNy(layerIdx) {
+  return -0.8 + (layerIdx - 1) * 0.4;
+}
+
+/** Return the layer index (1–5) for a raw Z coordinate. */
+function _zToLayer(z) {
+  if (!_layers) return 3;
+  for (const [k, l] of Object.entries(_layers)) {
+    if (z >= l.z_min && z < l.z_max) return Number(k);
+  }
+  return 3;
+}
 
 
 // ---------------------------------------------------------------------------
@@ -106,6 +144,8 @@ async function mount() {
   _normCx = _normCy = _normCz = 0;
   _normMax = 1;
   _factionHueIndex = 0;
+  _layers       = null;
+  _currentLayer = 3;
   Object.keys(_factionColorCache).forEach(k => delete _factionColorCache[k]);
 
   const container = document.getElementById("view-galaxy3d");
@@ -140,10 +180,17 @@ async function mount() {
   // Start render loop immediately (shows loading message)
   _startRenderLoop();
 
-  // Fetch galaxy data and ship position in parallel
+  // Fetch galaxy data, layer definitions, and ship position in parallel
   try {
-    const [mapData, shipData] = await Promise.all([getGalaxyMap(), getShipStatus()]);
+    const [mapData, layerData, shipData] = await Promise.all([
+      getGalaxyMap(), getGalaxyLayers(), getShipStatus(),
+    ]);
     _processData(mapData.systems || []);
+
+    if (layerData) {
+      _layers       = layerData.layers || null;
+      _currentLayer = layerData.current_layer || 3;
+    }
 
     // Normalise ship position using the same centroid + scale computed in _processData
     const sc = shipData && shipData.coordinates;
@@ -388,8 +435,8 @@ function _render() {
   // Z-sort back-to-front so closer systems render on top
   projected.sort((a, b) => b.depth - a.depth);
 
-  // --- Step 2: galactic plane reference grid --------------------------------
-  _drawPlaneGrid(cw, ch);
+  // --- Step 2: galactic layer planes ----------------------------------------
+  _drawLayerPlanes(cw, ch);
 
   // --- Step 4: star systems -------------------------------------------------
   let newHovered = null;
@@ -406,12 +453,25 @@ function _render() {
     const perspScale = Math.max(0.5, 1.5 / Math.max(s.depth, 0.3));
     const r          = radius * perspScale;
 
-    // Colour
+    // Colour — base from system type, then layer tint, then faction override
     let color = TYPE_COLORS[s.type] || DEFAULT_COLOR;
-    if (!inScanRange) color = "#263238";               // Out of range: dark ghost
-    if (inScanRange && s.controlling_faction) {
-      // Tint toward faction colour
-      color = _factionColor(s.controlling_faction);
+    if (!inScanRange) {
+      color = "#263238";                               // Out of range: dark ghost
+    } else {
+      // Apply a subtle layer tint (20% mix) on top of the type color
+      const layerIdx = _zToLayer(s.z);
+      const tint     = LAYER_TINTS[layerIdx];
+      if (tint) {
+        // Mix: draw type color dot then overlay tint at low alpha
+        // (handled below via a secondary draw after the main dot)
+        s._layerTint = tint;
+      } else {
+        s._layerTint = null;
+      }
+      if (s.controlling_faction) {
+        // Faction color overrides type color (layer tint still applies)
+        color = _factionColor(s.controlling_faction);
+      }
     }
 
     // Glow for in-range + factioned systems
@@ -432,6 +492,14 @@ function _render() {
     _ctx.arc(s.sx, s.sy, r, 0, Math.PI * 2);
     _ctx.fillStyle = color;
     _ctx.fill();
+
+    // Layer tint overlay (20% alpha mix on top of main dot)
+    if (inScanRange && s._layerTint) {
+      _ctx.beginPath();
+      _ctx.arc(s.sx, s.sy, r, 0, Math.PI * 2);
+      _ctx.fillStyle = s._layerTint + "33";  // hex alpha ~20%
+      _ctx.fill();
+    }
 
     // Hover detection
     const dx = s.sx - mouseX, dy = s.sy - mouseY;
@@ -458,42 +526,73 @@ function _render() {
 
 
 // ---------------------------------------------------------------------------
-// Galactic plane reference grid
+// Galactic layer planes (replaces single reference grid)
 // ---------------------------------------------------------------------------
 
-function _drawPlaneGrid(cw, ch) {
-  const GRID_LINES = 8;
-  const GRID_STEP  = 2 / GRID_LINES; // in normalised space [-1, 1]
+/**
+ * Draw 5 horizontal grid planes at the normalised Y positions corresponding
+ * to each galactic layer.  The player's current layer is highlighted; others
+ * fade with distance from it so the active stratum is always the focal point.
+ */
+function _drawLayerPlanes(cw, ch) {
+  const GRID_LINES = 6;
+  const GRID_STEP  = 2 / GRID_LINES;
 
-  _ctx.save();
-  _ctx.strokeStyle = "rgba(0,212,170,0.22)";
-  _ctx.lineWidth   = 0.8;
+  const LAYER_NAMES = _layers
+    ? Object.fromEntries(Object.entries(_layers).map(([k, v]) => [Number(k), v.name]))
+    : { 1: "Deep Void", 2: "Lower Reaches", 3: "Galactic Plane", 4: "Upper Reaches", 5: "High Orbit" };
 
-  for (let i = 0; i <= GRID_LINES; i++) {
-    const u = -1 + i * GRID_STEP;
+  for (let layerIdx = 1; layerIdx <= 5; layerIdx++) {
+    const ny   = _layerNy(layerIdx);
+    const dist = Math.abs(layerIdx - _currentLayer);
 
-    // Lines along X axis
-    _ctx.beginPath();
-    const a1 = _rotate(u, 0, -1, _azimuth, _elevation);
-    const p1 = _project(a1.x, a1.y, a1.z, cw, ch);
-    const a2 = _rotate(u, 0,  1, _azimuth, _elevation);
-    const p2 = _project(a2.x, a2.y, a2.z, cw, ch);
-    _ctx.moveTo(p1.sx, p1.sy);
-    _ctx.lineTo(p2.sx, p2.sy);
-    _ctx.stroke();
+    // Stroke alpha: active = 0.30, adjacent = 0.12, far = 0.04
+    const alpha = dist === 0 ? 0.30 : dist === 1 ? 0.12 : 0.04;
+    const lw    = dist === 0 ? 1.0  : 0.6;
 
-    // Lines along Z axis
-    _ctx.beginPath();
-    const b1 = _rotate(-1, 0, u, _azimuth, _elevation);
-    const q1 = _project(b1.x, b1.y, b1.z, cw, ch);
-    const b2 = _rotate( 1, 0, u, _azimuth, _elevation);
-    const q2 = _project(b2.x, b2.y, b2.z, cw, ch);
-    _ctx.moveTo(q1.sx, q1.sy);
-    _ctx.lineTo(q2.sx, q2.sy);
-    _ctx.stroke();
+    _ctx.save();
+    _ctx.strokeStyle = `rgba(0,212,170,${alpha})`;
+    _ctx.lineWidth   = lw;
+
+    for (let i = 0; i <= GRID_LINES; i++) {
+      const u = -1 + i * GRID_STEP;
+
+      // Lines along X axis at this layer's ny
+      _ctx.beginPath();
+      const a1 = _rotate(u, ny, -1, _azimuth, _elevation);
+      const p1 = _project(a1.x, a1.y, a1.z, cw, ch);
+      const a2 = _rotate(u, ny,  1, _azimuth, _elevation);
+      const p2 = _project(a2.x, a2.y, a2.z, cw, ch);
+      _ctx.moveTo(p1.sx, p1.sy);
+      _ctx.lineTo(p2.sx, p2.sy);
+      _ctx.stroke();
+
+      // Lines along Z axis at this layer's ny
+      _ctx.beginPath();
+      const b1 = _rotate(-1, ny, u, _azimuth, _elevation);
+      const q1 = _project(b1.x, b1.y, b1.z, cw, ch);
+      const b2 = _rotate( 1, ny, u, _azimuth, _elevation);
+      const q2 = _project(b2.x, b2.y, b2.z, cw, ch);
+      _ctx.moveTo(q1.sx, q1.sy);
+      _ctx.lineTo(q2.sx, q2.sy);
+      _ctx.stroke();
+    }
+
+    // Layer name label at the right edge of the plane
+    if (dist <= 1) {
+      const labelPt = _rotate(1, ny, 0, _azimuth, _elevation);
+      const lp      = _project(labelPt.x, labelPt.y, labelPt.z, cw, ch);
+      _ctx.font      = dist === 0 ? "bold 10px monospace" : "9px monospace";
+      _ctx.fillStyle = dist === 0
+        ? `rgba(0,212,170,0.85)`
+        : `rgba(0,212,170,0.35)`;
+      _ctx.textAlign    = "left";
+      _ctx.textBaseline = "middle";
+      _ctx.fillText(LAYER_NAMES[layerIdx] || `Layer ${layerIdx}`, lp.sx + 4, lp.sy);
+    }
+
+    _ctx.restore();
   }
-
-  _ctx.restore();
 }
 
 
@@ -618,14 +717,22 @@ function _drawHudOverlay(cw, ch) {
   const az  = ((_azimuth   * 180 / Math.PI) % 360).toFixed(0);
   const el  = ((_elevation * 180 / Math.PI) % 360).toFixed(0);
   const zm  = (1 / _camDist * 3.5).toFixed(2);
-  const txt = `Az ${az}°  El ${el}°  Zoom ×${zm}  Systems ${_systems.length}`;
+  const line1 = `Az ${az}°  El ${el}°  Zoom ×${zm}  Systems ${_systems.length}`;
+
+  // Current layer name from loaded layer data
+  const layerName = (_layers && _layers[String(_currentLayer)])
+    ? _layers[String(_currentLayer)].name
+    : ["", "Deep Void", "Lower Reaches", "Galactic Plane", "Upper Reaches", "High Orbit"][_currentLayer] || "Unknown";
+  const line2 = `Layer: ${layerName}  (${_currentLayer}/5)`;
 
   _ctx.save();
   _ctx.font         = "10px monospace";
   _ctx.textAlign    = "right";
   _ctx.textBaseline = "bottom";
   _ctx.fillStyle    = "rgba(96,125,139,0.8)";
-  _ctx.fillText(txt, cw - 8, ch - 6);
+  _ctx.fillText(line1, cw - 8, ch - 18);
+  _ctx.fillStyle = "rgba(0,212,170,0.7)";
+  _ctx.fillText(line2, cw - 8, ch - 6);
   _ctx.restore();
 }
 

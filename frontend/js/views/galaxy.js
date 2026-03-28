@@ -103,13 +103,13 @@ let dsoData        = [];     // deep space objects from /api/galaxy/map
 let npcShipsData   = [];     // NPC bot positions from /api/npc_ships (hex-projected)
 
 // Z-elevation state
-let zStats        = null;    // { mean, std, min, max } computed from systemsData z values
-let activeZFilter = "all";   // "all"|"high"|"above"|"plane"|"below"|"deep"
+let zStats        = null;    // { mean, std, min, max } computed from systemsData z values — kept for backward compat
+let activeZFilter = "all";   // "all"|"1"|"2"|"3"|"4"|"5" (layer index, or "all")
 
 // Z-depth target — the Z plane used for empty-space jumps.
-// Updated when the player clicks a Z-band filter button.
-// Defaults to galactic midplane (25); preserved across re-mounts.
-let targetZ = 25;
+// Updated when the player clicks a layer filter button.
+// Defaults to galactic midplane (105 = layer 3 center); preserved across re-mounts.
+let targetZ = 105;
 
 // Sensor ring toggle — persists while this view is mounted
 let showScanRing  = false;
@@ -126,33 +126,16 @@ let _marketData = null;
 // ---------------------------------------------------------------------------
 
 /**
- * Return the Z coordinate at the centre of a named elevation band.
- * Used to set targetZ when the player clicks a band filter button.
- * Bands are defined relative to the dataset mean and std deviation:
- *   high  = mean + 2.5σ  (middle of the >2σ region)
- *   above = mean + 1.5σ  (middle of the 1–2σ region)
- *   plane = mean         (galactic midplane)
- *   below = mean - 1.5σ
- *   deep  = mean - 2.5σ
- * "all" returns the ship's current Z so clicking ALL DEPTHS doesn't jump depth.
- * @param {string} band
- * @param {{ mean: number, std: number, min: number, max: number }} zStats
+ * Return the Z coordinate at the center of a galactic layer.
+ * Used to set targetZ when the player clicks a layer filter button.
+ * Layer centers mirror GALAXY_LAYERS in navigation.py.
+ * "all" preserves the current targetZ.
+ * @param {string} layerKey  "all"|"1"|"2"|"3"|"4"|"5"
  * @returns {number}
  */
-function _bandCenterZ(band, zStats) {
-  if (!zStats) return 25;
-  const { mean, std, min, max } = zStats;
-  let z;
-  switch (band) {
-    case "high":  z = mean + 2.5 * std; break;
-    case "above": z = mean + 1.5 * std; break;
-    case "plane": z = mean;             break;
-    case "below": z = mean - 1.5 * std; break;
-    case "deep":  z = mean - 2.5 * std; break;
-    default:      return targetZ;        // "all" — preserve current depth
-  }
-  // Clamp to the actual Z extent of the galaxy
-  return Math.max(min, Math.min(max, z));
+function _layerCenterZ(layerKey) {
+  const LAYER_CENTERS = { "1": 25, "2": 65, "3": 105, "4": 145, "5": 180 };
+  return layerKey in LAYER_CENTERS ? LAYER_CENTERS[layerKey] : targetZ;
 }
 
 /**
@@ -172,26 +155,27 @@ function _computeZStats(systems) {
 }
 
 /**
- * Build the HTML for the galactic plane filter bar.
+ * Build the HTML for the galactic layer filter bar.
+ * Buttons correspond to the 5 fixed galactic strata (mirrors GALAXY_LAYERS in navigation.py).
  * The active button is marked with the z-filter-btn--active class.
  * @returns {string}
  */
 function _buildZFilterBar() {
-  const bands = [
-    { key: "all",   label: "ALL DEPTHS", title: "Show all systems at every galactic elevation" },
-    { key: "high",  label: "↑↑ HIGH",    title: "Systems >2σ above the galactic midplane" },
-    { key: "above", label: "↑ ABOVE",    title: "Systems 1–2σ above the galactic midplane" },
-    { key: "plane", label: "— PLANE",    title: "Systems within ±1σ of the galactic midplane" },
-    { key: "below", label: "↓ BELOW",    title: "Systems 1–2σ below the galactic midplane" },
-    { key: "deep",  label: "↓↓ DEEP",    title: "Systems >2σ below the galactic midplane" },
+  const layers = [
+    { key: "all", label: "ALL",           title: "Show systems on every galactic layer" },
+    { key: "5",   label: "↑↑ HIGH ORBIT", title: "High Orbit — sparse, fast ether, faction patrols (Z 165–195)" },
+    { key: "4",   label: "↑ UPPER",       title: "Upper Reaches — thinning systems, fast currents (Z 125–165)" },
+    { key: "3",   label: "— PLANE",       title: "Galactic Plane — most systems, balanced risk/reward (Z 85–125)" },
+    { key: "2",   label: "↓ LOWER",       title: "Lower Reaches — below the plane, mining-rich (Z 45–85)" },
+    { key: "1",   label: "↓↓ DEEP VOID",  title: "Deep Void — sparse, heavy ether, ancient ruins (Z 5–45)" },
   ];
-  const btns = bands.map(b => `
-    <button class="z-filter-btn${activeZFilter === b.key ? " z-filter-btn--active" : ""}"
-            data-zband="${b.key}" title="${b.title}">${b.label}</button>
+  const btns = layers.map(l => `
+    <button class="z-filter-btn${activeZFilter === l.key ? " z-filter-btn--active" : ""}"
+            data-zband="${l.key}" title="${l.title}">${l.label}</button>
   `).join("");
   return `
     <div class="z-filter-bar" id="z-filter-bar">
-      <span class="z-filter-bar__label">GALACTIC PLANE</span>
+      <span class="z-filter-bar__label">LAYER</span>
       ${btns}
       <button
         class="z-filter-btn${showScanRing ? " z-filter-btn--active" : ""}"
@@ -261,11 +245,11 @@ export const galaxyView = {
       const btn = e.target.closest("[data-zband]");
       if (!btn) return;
       activeZFilter = btn.dataset.zband;
-      // Set the target jump depth to the centre of the selected band so that
-      // clicking a band button also moves the player's operating depth —
+      // Set the target jump depth to the centre of the selected layer so that
+      // clicking a layer button also moves the player's operating depth —
       // "show me these systems" and "I want to travel at this elevation" are
-      // the same action.  "ALL DEPTHS" preserves the current targetZ.
-      targetZ = _bandCenterZ(activeZFilter, zStats);
+      // the same action.  "ALL" preserves the current targetZ.
+      targetZ = _layerCenterZ(activeZFilter);
       // Update active button styling immediately
       filterBarEl.querySelectorAll(".z-filter-btn").forEach(b => {
         b.classList.toggle("z-filter-btn--active", b.dataset.zband === activeZFilter);
@@ -986,17 +970,15 @@ function _coordRowHtml(system) {
   const z = system.z ?? system.coordinates?.[2];
   if (x == null || y == null || z == null) return "";
 
-  // Derive elevation band label + colour (mirrors _zBand in hex-render.js)
-  let bandLabel = "—";
-  let bandColor = "var(--text-dim)";
-  if (zStats) {
-    const d = zStats.std > 0 ? (z - zStats.mean) / zStats.std : 0;
-    if      (d >  2) { bandLabel = "↑↑ HIGH";  bandColor = "#00e5ff"; }
-    else if (d >  1) { bandLabel = "↑ ABOVE";  bandColor = "#4fc3f7"; }
-    else if (d < -2) { bandLabel = "↓↓ DEEP";  bandColor = "#ff7043"; }
-    else if (d < -1) { bandLabel = "↓ BELOW";  bandColor = "#ffb74d"; }
-    else             { bandLabel = "— PLANE";  bandColor = "var(--text-dim)"; }
-  }
+  // Derive layer label + colour from fixed layer boundaries (mirrors LAYER_BANDS in hex-render.js)
+  const LAYER_BANDS = [
+    { z_min: 5,   z_max: 45,  label: "↓↓ DEEP VOID",  color: "#ff7043" },
+    { z_min: 45,  z_max: 85,  label: "↓ LOWER REACHES", color: "#ffb74d" },
+    { z_min: 85,  z_max: 125, label: "— GALACTIC PLANE", color: "var(--text-dim)" },
+    { z_min: 125, z_max: 165, label: "↑ UPPER REACHES", color: "#4fc3f7" },
+    { z_min: 165, z_max: 195, label: "↑↑ HIGH ORBIT",  color: "#00e5ff" },
+  ];
+  const lb = LAYER_BANDS.find(b => z >= b.z_min && z < b.z_max) || LAYER_BANDS[2];
 
   const fmt = n => (Math.round(n * 10) / 10).toFixed(1);
   return `
@@ -1007,8 +989,8 @@ function _coordRowHtml(system) {
       </span>
     </div>
     <div class="stat-row">
-      <span class="stat-row__label">Galactic Elevation</span>
-      <span class="stat-row__value" style="color:${bandColor}">${bandLabel}</span>
+      <span class="stat-row__label">Galactic Layer</span>
+      <span class="stat-row__value" style="color:${lb.color}">${lb.label}</span>
     </div>
   `;
 }

@@ -15,6 +15,59 @@ import math
 from systems import system_registry, SYSTEM_TYPES, FACTION_ZONES
 
 
+# ---------------------------------------------------------------------------
+# Galactic layer definitions — the 5 strategic Z strata
+# ---------------------------------------------------------------------------
+
+GALAXY_LAYERS = {
+    1: dict(
+        name="Deep Void",      z_min=5,   z_max=45,  z_center=25,
+        ether_friction=1.4,  danger_mod=1.5, system_density=0.4,
+        color="#c62828",
+        description="Ancient and treacherous. Rare relics, heavy ether storms.",
+    ),
+    2: dict(
+        name="Lower Reaches",  z_min=45,  z_max=85,  z_center=65,
+        ether_friction=1.2,  danger_mod=1.2, system_density=0.7,
+        color="#e65100",
+        description="Below the plane. Rich in ore, patchy ether resistance.",
+    ),
+    3: dict(
+        name="Galactic Plane", z_min=85,  z_max=125, z_center=105,
+        ether_friction=1.0,  danger_mod=1.0, system_density=1.0,
+        color="#00acc1",
+        description="The galactic midplane. Balanced risk and reward.",
+    ),
+    4: dict(
+        name="Upper Reaches",  z_min=125, z_max=165, z_center=145,
+        ether_friction=0.85, danger_mod=1.1, system_density=0.65,
+        color="#4fc3f7",
+        description="Above the plane. Fast ether currents, faction patrol lanes.",
+    ),
+    5: dict(
+        name="High Orbit",     z_min=165, z_max=195, z_center=180,
+        ether_friction=0.7,  danger_mod=1.3, system_density=0.4,
+        color="#00e5ff",
+        description="Sparse and fast. Speed lanes, high-security faction presence.",
+    ),
+}
+
+#: Flat fuel surcharge added per layer boundary crossed during a jump.
+INTERLAYER_FUEL_COST = 15
+
+
+def get_layer(z: float) -> int:
+    """Return layer index (1–5) for a given Z coordinate.
+
+    Layer 3 (Galactic Plane) is the default/fallback for any Z outside the
+    defined ranges.
+    """
+    for idx, layer in GALAXY_LAYERS.items():
+        if layer["z_min"] <= z < layer["z_max"]:
+            return idx
+    return 3
+
+
 def calculate_fuel_consumption(ship, distance, target_coords=None, game=None):
     """
     Calculate fuel consumption for a jump based on distance, engine efficiency,
@@ -119,7 +172,16 @@ def calculate_fuel_consumption(ship, distance, target_coords=None, game=None):
     if game and hasattr(game, 'event_system'):
         if game.event_system.is_location_dangerous(target_coords):
             fuel_needed *= 1.5  # 50% fuel penalty in dangerous regions
-    
+
+    # Interlayer surcharge — flat cost per layer boundary crossed.
+    # Applies whenever source and destination sit in different galactic strata.
+    if target_coords and hasattr(ship, 'coordinates'):
+        src_layer = get_layer(ship.coordinates[2])
+        dst_layer = get_layer(target_coords[2])
+        layers_crossed = abs(dst_layer - src_layer)
+        if layers_crossed > 0:
+            fuel_needed += INTERLAYER_FUEL_COST * layers_crossed
+
     # Round to nearest integer
     return max(1, int(round(fuel_needed)))
 
@@ -454,12 +516,19 @@ class Galaxy:
             else:
                 name = f"System-{existing_count + i + 1}"  # Fallback if we run out of names
             
-            # Random coordinates within galaxy bounds, avoiding predefined system locations
+            # Random coordinates within galaxy bounds, avoiding predefined system locations.
+            # Z is chosen by first picking a layer weighted by its system_density, then
+            # placing the star inside that layer's Z range.  This gives layer 3 the most
+            # systems and layers 1/5 the fewest, creating the intended strategic topology.
+            _layer_weights = [GALAXY_LAYERS[i]["system_density"] for i in range(1, 6)]
+            _chosen_layer  = random.choices(range(1, 6), weights=_layer_weights)[0]
+            _ldata         = GALAXY_LAYERS[_chosen_layer]
+
             max_attempts = 50
             for attempt in range(max_attempts):
                 x = random.randint(10, self.size_x - 10)
                 y = random.randint(10, self.size_y - 10)
-                z = random.randint(5, self.size_z - 5)
+                z = random.randint(_ldata["z_min"] + 2, _ldata["z_max"] - 2)
                 
                 # Check if too close to existing systems (minimum 15 units apart)
                 too_close = False
