@@ -199,6 +199,14 @@ export function getShipComponents() {
 }
 
 /**
+ * Shift the ship one galactic layer up or down (ignores jump range, costs 15 fuel flat).
+ * @param {"up"|"down"} direction
+ */
+export function layerShift(direction) {
+  return post("/api/ship/layer_shift", { direction });
+}
+
+/**
  * Install a component on the player's ship.
  * @param {string} category      - Slot category key (e.g. "hulls", "engines")
  * @param {string} componentName - Exact component name from the registry

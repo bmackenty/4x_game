@@ -14,7 +14,7 @@
  */
 
 import { state }              from "../state.js";
-import { getGalaxyMap, getSystem, jumpToCoords,
+import { getGalaxyMap, getSystem, jumpToCoords, layerShift,
          getMarket, buyGoods, sellGoods,
          getSystemPresence,
          getStation, getStationUpgrades, buyStationUpgrade, repairShipAtStation,
@@ -173,10 +173,34 @@ function _buildZFilterBar() {
     <button class="z-filter-btn${activeZFilter === l.key ? " z-filter-btn--active" : ""}"
             data-zband="${l.key}" title="${l.title}">${l.label}</button>
   `).join("");
+
+  // ASCEND/DESCEND: compute current layer from ship Z to enable/disable appropriately
+  const shipZ    = state.gameState?.ship?.coordinates?.[2] ?? 105;
+  const curLayer = _getLayerIndex(shipZ);
+  const canUp    = curLayer < 5;
+  const canDown  = curLayer > 1;
+  const upFuel   = 15;  // INTERLAYER_FUEL_COST — mirrors navigation.py constant
+  const downFuel = 15;
+
   return `
     <div class="z-filter-bar" id="z-filter-bar">
       <span class="z-filter-bar__label">LAYER</span>
       ${btns}
+      <button
+        id="btn-ascend"
+        class="z-filter-btn"
+        title="${canUp ? `Ascend to next layer — costs ${upFuel} extra fuel` : "Already at highest layer"}"
+        style="margin-left:var(--sp-3)"
+        ${canUp ? "" : "disabled"}>
+        ▲ ASCEND
+      </button>
+      <button
+        id="btn-descend"
+        class="z-filter-btn"
+        title="${canDown ? `Descend to next layer — costs ${downFuel} extra fuel` : "Already at lowest layer"}"
+        ${canDown ? "" : "disabled"}>
+        ▼ DESCEND
+      </button>
       <button
         class="z-filter-btn${showScanRing ? " z-filter-btn--active" : ""}"
         id="btn-scan-ring"
@@ -186,6 +210,19 @@ function _buildZFilterBar() {
       </button>
     </div>
   `;
+}
+
+/**
+ * Map a Z coordinate to a layer index (1–5), mirroring get_layer() in navigation.py.
+ * @param {number} z
+ * @returns {number} 1–5
+ */
+function _getLayerIndex(z) {
+  if (z <  45) return 1;
+  if (z <  85) return 2;
+  if (z < 125) return 3;
+  if (z < 165) return 4;
+  return 5;
 }
 
 
@@ -255,6 +292,46 @@ export const galaxyView = {
         b.classList.toggle("z-filter-btn--active", b.dataset.zband === activeZFilter);
       });
       isDirty = true;
+    });
+
+    // ASCEND / DESCEND — jump ship to same X,Y but next layer up/down
+    filterBarEl.addEventListener("click", async e => {
+      const isAscend  = !!e.target.closest("#btn-ascend");
+      const isDescend = !!e.target.closest("#btn-descend");
+      if (!isAscend && !isDescend) return;
+
+      const shipZ    = state.gameState?.ship?.coordinates?.[2];
+      if (shipZ == null) return;
+      const curLayer = _getLayerIndex(shipZ);
+
+      const btnAscend  = filterBarEl.querySelector("#btn-ascend");
+      const btnDescend = filterBarEl.querySelector("#btn-descend");
+      if (btnAscend)  btnAscend.disabled  = true;
+      if (btnDescend) btnDescend.disabled = true;
+
+      try {
+        const result = await layerShift(isAscend ? "up" : "down");
+        if (result.success) {
+          if (state.gameState?.ship && result.new_coords) {
+            state.gameState.ship.coordinates = result.new_coords;
+          }
+          notify("NAV", `${isAscend ? "Ascended" : "Descended"} to ${result.layer_name}.  Fuel: ${result.fuel_remaining}`);
+          await _refreshGalaxyMap();
+          await _endTurnAfterMove();
+          // Update button states for the new layer
+          const newLayer = _getLayerIndex(state.gameState?.ship?.coordinates?.[2] ?? 105);
+          if (btnAscend)  { btnAscend.disabled  = newLayer >= 5; btnAscend.title  = newLayer < 5  ? "Ascend to next layer — costs 15 fuel" : "Already at highest layer"; }
+          if (btnDescend) { btnDescend.disabled = newLayer <= 1; btnDescend.title = newLayer > 1  ? "Descend to next layer — costs 15 fuel" : "Already at lowest layer"; }
+        } else {
+          notify("ERROR", result.message || "Layer shift failed.");
+          if (btnAscend)  btnAscend.disabled  = curLayer >= 5;
+          if (btnDescend) btnDescend.disabled = curLayer <= 1;
+        }
+      } catch (err) {
+        notify("ERROR", `Layer shift failed: ${err.message}`);
+        if (btnAscend)  btnAscend.disabled  = curLayer >= 5;
+        if (btnDescend) btnDescend.disabled = curLayer <= 1;
+      }
     });
 
     // Fetch NPC bot positions.  The backend pre-projects each bot to axial
@@ -1036,6 +1113,24 @@ function buildSystemPanelHtml(system, shipCoords) {
               ${inRange ? "✓ In range" : "✗ Out of range"} (${jumpRange} ly max)
             </span>
           </div>` : ""}
+          ${(() => {
+            if (atSystem) return "";
+            const LAYER_NAMES = { 1: "Deep Void", 2: "Lower Reaches", 3: "Galactic Plane", 4: "Upper Reaches", 5: "High Orbit" };
+            const srcLayer = _getLayerIndex(sz);
+            const dstLayer = _getLayerIndex(tz);
+            const delta    = Math.abs(dstLayer - srcLayer);
+            if (delta === 0) return "";
+            const surcharge = delta * 15;
+            const srcName   = LAYER_NAMES[srcLayer];
+            const dstName   = LAYER_NAMES[dstLayer];
+            return `
+          <div style="display:flex;justify-content:space-between;margin-top:2px">
+            <span style="color:var(--text-dim)">Layer surcharge</span>
+            <span style="color:var(--accent-orange)" title="${srcName} → ${dstName} (${delta} layer${delta > 1 ? "s" : ""} crossed)">
+              +${surcharge} fuel  (${srcName} → ${dstName})
+            </span>
+          </div>`;
+          })()}
         </div>
       `;
     }

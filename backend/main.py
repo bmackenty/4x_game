@@ -2195,6 +2195,54 @@ async def ship_jump(request: JumpRequest):
     }
 
 
+@app.post("/api/ship/layer_shift")
+async def ship_layer_shift(body: dict):
+    """
+    Shift the ship one galactic layer up ('up') or down ('down').
+
+    Unlike a normal jump this is a vertical maneuver — it ignores jump range
+    and charges only the flat INTERLAYER_FUEL_COST (15 fuel).  The ship's X/Y
+    coordinates are unchanged; Z is set to the target layer's centre.
+    """
+    from navigation import GALAXY_LAYERS, get_layer, INTERLAYER_FUEL_COST
+
+    if not game or not game.character_created:
+        raise HTTPException(status_code=400, detail="No game in progress.")
+
+    ship = game.navigation.current_ship
+    if not ship:
+        raise HTTPException(status_code=400, detail="No active ship.")
+
+    direction = body.get("direction", "").lower()
+    if direction not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'.")
+
+    cur_layer = get_layer(ship.coordinates[2])
+    tgt_layer = cur_layer + (1 if direction == "up" else -1)
+
+    if tgt_layer < 1 or tgt_layer > 5:
+        return {"success": False, "message": f"Already at {'highest' if direction == 'up' else 'lowest'} layer."}
+
+    if ship.fuel < INTERLAYER_FUEL_COST:
+        return {"success": False, "message": f"Insufficient fuel. Layer shift costs {INTERLAYER_FUEL_COST} fuel."}
+
+    layer_data = GALAXY_LAYERS[tgt_layer]
+    sx, sy, _  = ship.coordinates
+    new_coords  = (sx, sy, float(layer_data["z_center"]))
+
+    ship.coordinates = new_coords
+    ship.fuel        = max(0, ship.fuel - INTERLAYER_FUEL_COST)
+
+    return {
+        "success":        True,
+        "message":        f"Layer shift {direction}: now in {layer_data['name']}.",
+        "new_coords":     list(ship.coordinates),
+        "fuel_remaining": ship.fuel,
+        "layer":          tgt_layer,
+        "layer_name":     layer_data["name"],
+    }
+
+
 # ===========================================================================
 # Deep space action endpoints
 # ===========================================================================
